@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pydantic-settings
+boto3
+numpy
+requests
+voyageai
+pinecone-client
+scikit-learn
