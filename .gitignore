@@ -3,6 +3,7 @@
 # ========================
 .env
 .env.*
+!.env.enc
 .env.local
 .env.production
 

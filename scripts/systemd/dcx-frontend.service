@@ -1,0 +1,28 @@
+# DCX Agent 프론트엔드 서비스 (Next.js standalone)
+# 설치: sudo cp scripts/systemd/dcx-frontend.service /etc/systemd/system/
+#       sudo systemctl daemon-reload
+#       sudo systemctl enable --now dcx-frontend
+
+[Unit]
+Description=DCX Agent Frontend (Next.js)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/dcx_agent/frontend/.next/standalone
+Environment="NODE_ENV=production"
+Environment="PORT=3000"
+Environment="HOSTNAME=127.0.0.1"
+
+ExecStart=/usr/bin/node server.js
+
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dcx-frontend
+
+[Install]
+WantedBy=multi-user.target

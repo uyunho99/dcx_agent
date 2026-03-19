@@ -7,3 +7,4 @@ requests
 voyageai
 pinecone-client
 scikit-learn
+gunicorn

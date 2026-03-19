@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     pinecone_api_key: str = "x"
     voyage_api_key: str = "x"
 
+    # 배포 설정
+    cors_origins: str = "*"  # 프로덕션: "https://your-domain.com"
+
     class Config:
         env_file = _ENV_FILE
 
