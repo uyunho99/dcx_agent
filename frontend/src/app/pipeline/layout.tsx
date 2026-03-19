@@ -1,5 +1,5 @@
 "use client";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import TopBar from "@/components/TopBar";
 import StepBar from "@/components/StepBar";
 import ChatPanel from "@/components/ChatPanel";
@@ -7,6 +7,7 @@ import { useSessionStore } from "@/stores/useSessionStore";
 import { sendChat } from "@/lib/api";
 
 export default function PipelineLayout({ children }: { children: React.ReactNode }) {
+  const [chatOpen, setChatOpen] = useState(false);
   const { sid, bk, kw, step } = useSessionStore();
 
   const handleChat = useCallback(
@@ -27,21 +28,33 @@ export default function PipelineLayout({ children }: { children: React.ReactNode
         {/* Step sidebar */}
         <StepBar currentStep={step} />
         {/* Main content */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 relative">
           <div className="flex-1 overflow-y-auto p-6">{children}</div>
+          {!chatOpen && (
+            <button
+              onClick={() => setChatOpen(true)}
+              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-indigo-500 text-white shadow-lg hover:bg-indigo-600 active:scale-95 transition-all flex items-center justify-center text-lg"
+              title="챗봇 열기"
+            >
+              💬
+            </button>
+          )}
         </div>
         {/* Right panel - chatbot */}
-        <div className="w-[400px] shrink-0 bg-white/60 backdrop-blur-xl flex flex-col shadow-[-4px_0_20px_rgba(0,0,0,0.06)] border-l border-white/30">
-          <div className="px-5 py-3.5 border-b border-white/30 bg-white/40 backdrop-blur-sm font-semibold text-sm text-stone-700">
-            💬 파이프라인 챗봇
+        {chatOpen && (
+          <div className="w-[400px] shrink-0 bg-white/60 backdrop-blur-xl flex flex-col shadow-[-4px_0_20px_rgba(0,0,0,0.06)] border-l border-white/30">
+            <div className="px-5 py-3.5 border-b border-white/30 bg-white/40 backdrop-blur-sm font-semibold text-sm text-stone-700 flex items-center justify-between">
+              <span>💬 파이프라인 챗봇</span>
+              <button onClick={() => setChatOpen(false)} className="text-stone-400 hover:text-stone-600 transition-colors text-lg leading-none">✕</button>
+            </div>
+            <div className="flex-1 min-h-0">
+              <ChatPanel
+                initialMessage="안녕하세요! 파이프라인 진행이나 결과에 대해 물어보세요."
+                onSend={handleChat}
+              />
+            </div>
           </div>
-          <div className="flex-1 min-h-0">
-            <ChatPanel
-              initialMessage="안녕하세요! 파이프라인 진행이나 결과에 대해 물어보세요."
-              onSend={handleChat}
-            />
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

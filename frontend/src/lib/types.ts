@@ -4,6 +4,12 @@ export interface Keyword {
   cat: string;
   score?: number;
   total?: number;
+  manual?: boolean;
+}
+
+export interface SuggestedWord {
+  word: string;
+  type: "형용사" | "동사";
 }
 
 export interface SessionInfo {

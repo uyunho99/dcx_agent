@@ -19,6 +19,14 @@ export const deleteSession = (sid: string) => request(`/delete-session/${sid}`, 
 export const generateKeywords = (body: Record<string, unknown>) =>
   request<{ status: string; keywords: Record<string, unknown>[]; round: number }>("/generate-keywords", { method: "POST", body: JSON.stringify(body) });
 
+export const scoreKeywords = (body: { bk: string; keywords: { kw: string; cat: string }[] }) =>
+  request<{ status: string; keywords: { kw: string; cat: string; score: number; total: number }[] }>(
+    "/score-keywords", { method: "POST", body: JSON.stringify(body) });
+
+export const suggestWords = (body: { bk: string; problemDef: string; category: string; existingKeywords: string[] }) =>
+  request<{ status: string; words: { word: string; type: string }[] }>(
+    "/suggest-words", { method: "POST", body: JSON.stringify(body) });
+
 // Crawling
 export const startCrawl = (body: Record<string, unknown>) =>
   request("/crawl", { method: "POST", body: JSON.stringify(body) });

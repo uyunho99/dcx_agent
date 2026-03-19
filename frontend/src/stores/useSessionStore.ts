@@ -20,6 +20,10 @@ interface SessionState {
   // actions
   setSession: (data: Partial<SessionState>) => void;
   addKeywords: (kw: Keyword[]) => void;
+  addManualKeyword: (keyword: Keyword) => void;
+  updateKeywordCategory: (id: number | string, newCat: string) => void;
+  updateKeywordScore: (id: number | string, score: number, total: number) => void;
+  removeKeyword: (id: number | string) => void;
   setPendingKw: (kw: Keyword[], round: string) => void;
   clearPendingKw: () => void;
   setStep: (step: string) => void;
@@ -49,6 +53,38 @@ export const useSessionStore = create<SessionState>((set) => ({
   addKeywords: (newKw) =>
     set((state) => {
       const kw = [...state.kw, ...newKw];
+      const sd = state.sd ? { ...state.sd, allKw: kw } : null;
+      return { kw, sd };
+    }),
+
+  addManualKeyword: (keyword) =>
+    set((state) => {
+      const kw = [...state.kw, keyword];
+      const sd = state.sd ? { ...state.sd, allKw: kw } : null;
+      return { kw, sd };
+    }),
+
+  updateKeywordCategory: (id, newCat) =>
+    set((state) => {
+      const kw = state.kw.map((k) =>
+        k.id === id ? { ...k, cat: newCat } : k
+      );
+      const sd = state.sd ? { ...state.sd, allKw: kw } : null;
+      return { kw, sd };
+    }),
+
+  updateKeywordScore: (id, score, total) =>
+    set((state) => {
+      const kw = state.kw.map((k) =>
+        k.id === id ? { ...k, score, total } : k
+      );
+      const sd = state.sd ? { ...state.sd, allKw: kw } : null;
+      return { kw, sd };
+    }),
+
+  removeKeyword: (id) =>
+    set((state) => {
+      const kw = state.kw.filter((k) => k.id !== id);
       const sd = state.sd ? { ...state.sd, allKw: kw } : null;
       return { kw, sd };
     }),

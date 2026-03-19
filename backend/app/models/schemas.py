@@ -79,3 +79,15 @@ class KeywordGenRequest(BaseModel):
     ages: list[str] = []
     ageRange: list[str] = []
     gens: list[str] = []
+
+
+class ScoreKeywordsRequest(BaseModel):
+    bk: str = ""
+    keywords: list[dict] = []  # [{"kw": "...", "cat": "..."}]
+
+
+class SuggestWordsRequest(BaseModel):
+    bk: str = ""
+    problemDef: str = ""
+    category: str = ""
+    existingKeywords: list[str] = []

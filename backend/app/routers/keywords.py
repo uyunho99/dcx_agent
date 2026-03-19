@@ -5,8 +5,9 @@ import requests
 from fastapi import APIRouter
 
 from app.services.claude import call_claude
+from app.services.naver import score_keywords_batch
 from app.config import settings
-from app.models.schemas import KeywordGenRequest
+from app.models.schemas import KeywordGenRequest, ScoreKeywordsRequest, SuggestWordsRequest
 
 router = APIRouter()
 
@@ -91,53 +92,83 @@ def generate_keywords(req: KeywordGenRequest):
             match = re.search(r"\[[\s\S]*\]", text)
             if match:
                 keywords = json.loads(match.group())
-                scored = []
-                for i, kw_obj in enumerate(keywords):
+                # Filter invalid and duplicate keywords
+                filtered = []
+                for kw_obj in keywords:
                     kw = kw_obj.get("kw", "")
-                    cat = kw_obj.get("cat", "")
                     if not kw or len(kw) < 2:
                         continue
                     if kw.lower() in [e.lower() for e in existing_kw]:
                         continue
+                    filtered.append({"kw": kw, "cat": kw_obj.get("cat", "")})
 
-                    score = 50
-                    total = 0
-                    try:
-                        nr = requests.get(
-                            "https://openapi.naver.com/v1/search/cafearticle.json",
-                            headers={
-                                "X-Naver-Client-Id": settings.naver_client_id,
-                                "X-Naver-Client-Secret": settings.naver_client_secret,
-                            },
-                            params={"query": f"{bk} {kw}", "display": 1},
-                            timeout=3,
-                        )
-                        total = nr.json().get("total", 0)
-                        if total >= 10000:
-                            score = 95
-                        elif total >= 5000:
-                            score = 85
-                        elif total >= 1000:
-                            score = 75
-                        elif total >= 500:
-                            score = 65
-                        elif total >= 100:
-                            score = 55
-                        elif total >= 50:
-                            score = 45
-                        elif total >= 10:
-                            score = 35
-                        else:
-                            score = 25
-                    except Exception:
-                        pass
+                # Score via Naver (reusable function)
+                scored_list = score_keywords_batch(bk, filtered)
 
-                    scored.append({"id": i + 1, "kw": kw, "cat": cat, "score": score, "total": total})
-                    if i % 5 == 4:
-                        time.sleep(0.1)
-
+                # Assign IDs and sort
+                scored = []
+                for i, item in enumerate(scored_list):
+                    scored.append({
+                        "id": i + 1,
+                        "kw": item["kw"],
+                        "cat": item["cat"],
+                        "score": item["score"],
+                        "total": item["total"],
+                    })
                 scored.sort(key=lambda x: -x.get("score", 0))
                 return {"status": "ok", "keywords": scored, "round": round_num}
+        return {"status": "error", "error": "Claude API 응답 파싱 실패"}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@router.post("/score-keywords")
+def score_keywords(req: ScoreKeywordsRequest):
+    """수동 입력 키워드에 Naver 스코어링 적용."""
+    if not req.bk:
+        return {"status": "error", "error": "bk (제품명) 필요"}
+    if not req.keywords:
+        return {"status": "error", "error": "키워드 목록 필요"}
+
+    try:
+        results = score_keywords_batch(req.bk, req.keywords)
+        return {"status": "ok", "keywords": results}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@router.post("/suggest-words")
+def suggest_words(req: SuggestWordsRequest):
+    """카테고리 기반 LLM 추천 형용사/동사 생성."""
+    if not req.bk:
+        return {"status": "error", "error": "bk (제품명) 필요"}
+    if not req.category:
+        return {"status": "error", "error": "카테고리 필요"}
+
+    existing_str = ", ".join(req.existingKeywords) if req.existingKeywords else "없음"
+
+    prompt = f"""제품: "{req.bk}"
+카테고리: "{req.category}"
+문제정의: {req.problemDef or '소비자 경험 분석'}
+기존 키워드: {existing_str}
+
+위 키워드들과 의미적으로 가까운 형용사와 동사를 추천하세요.
+- "{req.bk} + [추천단어]"로 네이버 카페 검색 시 소비자 경험담이 나올 법한 단어
+- 형용사: 소비자가 체감하는 상태/감각을 표현 (예: 시원한, 눅눅한, 답답한)
+- 동사: 소비자 행동/경험을 표현 (예: 견디다, 틀다, 갈아끼우다)
+- 1~2단어, 10~15개
+- 기존 키워드와 중복되지 않게
+
+출력 (JSON 배열만):
+[{{"word": "단어", "type": "형용사|동사"}}]"""
+
+    try:
+        text = call_claude(prompt, max_tokens=2000, timeout=60)
+        if text:
+            match = re.search(r"\[[\s\S]*\]", text)
+            if match:
+                words = json.loads(match.group())
+                return {"status": "ok", "words": words}
         return {"status": "error", "error": "Claude API 응답 파싱 실패"}
     except Exception as e:
         return {"status": "error", "error": str(e)}

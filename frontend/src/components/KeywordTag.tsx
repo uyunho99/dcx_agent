@@ -3,8 +3,11 @@
 interface KeywordTagProps {
   kw: string;
   score?: number;
-  variant: "old" | "new" | "approved" | "rejected";
+  variant: "old" | "new" | "approved" | "rejected" | "manual" | "suggested";
   onClick?: () => void;
+  draggable?: boolean;
+  kwId?: number | string;
+  cat?: string;
 }
 
 function scoreClass(score: number) {
@@ -13,17 +16,37 @@ function scoreClass(score: number) {
   return "text-rose-700 bg-rose-100";
 }
 
-export default function KeywordTag({ kw, score, variant, onClick }: KeywordTagProps) {
+export default function KeywordTag({ kw, score, variant, onClick, draggable, kwId, cat }: KeywordTagProps) {
   const base = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-all select-none hover:scale-[1.03]";
   const styles: Record<string, string> = {
     old: "bg-stone-100/70 backdrop-blur-sm text-stone-500",
     new: "bg-indigo-50/70 backdrop-blur-sm text-indigo-700 border border-indigo-200/60 shadow-sm",
     approved: "bg-indigo-50/70 backdrop-blur-sm text-indigo-700 border border-indigo-200/60 shadow-sm",
     rejected: "bg-stone-50/50 text-stone-400 line-through opacity-50",
+    manual: "bg-emerald-50/70 backdrop-blur-sm text-emerald-700 border border-emerald-200/60 shadow-sm",
+    suggested: "bg-violet-50/70 backdrop-blur-sm text-violet-700 border border-violet-200/60 shadow-sm",
+  };
+
+  const handleDragStart = (e: React.DragEvent<HTMLSpanElement>) => {
+    if (kwId !== undefined && cat !== undefined) {
+      e.dataTransfer.setData("text/plain", JSON.stringify({ id: kwId, kw, fromCat: cat }));
+      e.dataTransfer.effectAllowed = "move";
+      (e.target as HTMLElement).style.opacity = "0.5";
+    }
+  };
+
+  const handleDragEnd = (e: React.DragEvent<HTMLSpanElement>) => {
+    (e.target as HTMLElement).style.opacity = "1";
   };
 
   return (
-    <span className={`${base} ${styles[variant]}`} onClick={onClick}>
+    <span
+      className={`${base} ${styles[variant]}`}
+      onClick={onClick}
+      draggable={draggable}
+      onDragStart={draggable ? handleDragStart : undefined}
+      onDragEnd={draggable ? handleDragEnd : undefined}
+    >
       {kw}
       {score !== undefined && (
         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${scoreClass(score)}`}>
