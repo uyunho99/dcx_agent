@@ -74,7 +74,7 @@ dcx_agent/
 ## 1. 레포지토리 클론
 
 ```bash
-git clone https://github.com/your-org/dcx_agent.git
+git clone https://github.com/uyunho99/dcx_agent.git
 cd dcx_agent
 ```
 
@@ -149,7 +149,7 @@ npm run dev
 
 | 항목 | 권장 | 비고 |
 |------|------|------|
-| 인스턴스 | t3.medium (2vCPU, 4GB) | ML 앙상블 + 크롤링 동시 실행 고려 |
+| 인스턴스 | t3.small (2vCPU, 2GB) + 2GB swap | ML 앙상블 + 크롤링 실행 |
 | 스토리지 | 20GB gp3 | OS + 런타임 + 빌드 산출물 |
 | OS | Ubuntu 22.04 LTS | |
 | 보안 그룹 | 인바운드 80, 443, 22 | Nginx가 내부 포트 프록시 |
@@ -158,7 +158,7 @@ npm run dev
 
 1. AWS 콘솔 → EC2 → **인스턴스 시작**
 2. AMI: **Ubuntu Server 22.04 LTS**
-3. 인스턴스 유형: **t3.medium**
+3. 인스턴스 유형: **t3.small**
 4. 키 페어 생성 또는 기존 키 선택
 5. 보안 그룹 설정:
 
@@ -170,16 +170,20 @@ npm run dev
 
 > 3000, 8000 포트는 열지 않습니다. Nginx가 80번 포트에서 내부로 프록시합니다.
 
-## 2. EC2 접속 및 레포 클론
+## 2. EC2 접속 및 초기 설정
 
 ```bash
 ssh -i your-key.pem ubuntu@<EC2-퍼블릭-IP>
 
-# Git 설치 (Ubuntu 22.04 기본 포함, 없으면)
-sudo apt update && sudo apt install -y git
+# Swap 2GB 추가 (t3.small 메모리 보완 — sklearn 학습 시 필요)
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 
 # 레포 클론
-git clone https://github.com/your-org/dcx_agent.git ~/dcx_agent
+git clone https://github.com/uyunho99/dcx_agent.git ~/dcx_agent
 cd ~/dcx_agent
 ```
 
