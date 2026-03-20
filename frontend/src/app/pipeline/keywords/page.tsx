@@ -5,9 +5,8 @@ import { useSessionStore } from "@/stores/useSessionStore";
 import { generateKeywords, saveSession, scoreKeywords } from "@/lib/api";
 import KeywordTag from "@/components/KeywordTag";
 import Spinner from "@/components/Spinner";
-import CategoryKeywordInput from "@/components/CategoryKeywordInput";
 import NewCategoryInput from "@/components/NewCategoryInput";
-import SuggestedWordsPanel from "@/components/SuggestedWordsPanel";
+import CategoryInputPanel from "@/components/CategoryInputPanel";
 import type { Keyword } from "@/lib/types";
 
 const ROUND_NAMES: Record<string, string> = { r1: "R1: 발산", r2: "R2: 발산", r3: "R3: 수렴", "r3-expand": "R4: 재발산" };
@@ -25,20 +24,48 @@ export default function KeywordsPage() {
 
   // DnD state
   const [dragOverCat, setDragOverCat] = useState<string | null>(null);
-  // Suggest panel state
-  const [suggestingCat, setSuggestingCat] = useState<string | null>(null);
+  // Unified input panel state (manual add + suggestions)
+  const [activePanelCat, setActivePanelCat] = useState<string | null>(null);
   // Track added suggested words
   const [addedSuggested, setAddedSuggested] = useState<Set<string>>(new Set());
   // Empty categories (user-created, no keywords yet)
   const [emptyCategories, setEmptyCategories] = useState<string[]>([]);
+  // Collapse/expand state for categories
+  const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
 
   const currentRound = round as string;
   const allKeywords = kw; // alias for clarity
+
+  const toggleCollapse = (cat: string) => {
+    setCollapsedCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) {
+        next.delete(cat);
+      } else {
+        next.add(cat);
+        if (activePanelCat === cat) setActivePanelCat(null);
+      }
+      return next;
+    });
+  };
+  const toggleAllCollapse = (categories: string[]) => {
+    setCollapsedCats((prev) =>
+      prev.size === categories.length ? new Set() : new Set(categories)
+    );
+  };
+  const togglePanel = (cat: string) => {
+    const next = activePanelCat === cat ? null : cat;
+    setActivePanelCat(next);
+    if (next) {
+      setCollapsedCats((prev) => { const n = new Set(prev); n.delete(cat); return n; });
+    }
+  };
 
   const doGenerate = useCallback(async (rd: string) => {
     setLoading(true);
     setIsFinal(false);
     setRound(rd);
+    setCollapsedCats(new Set());
     try {
       const d = await generateKeywords({
         sid, bk, problemDef: pd,
@@ -49,6 +76,9 @@ export default function KeywordsPage() {
       const filtered = raw.filter((nk) => !kw.find((ek) => ek.kw === nk.kw));
       setNewKw(filtered);
       setRejected(new Set());
+      // Auto-collapse all if 10+ categories
+      const allCats = new Set([...kw, ...filtered].map((k) => k.cat));
+      if (allCats.size >= 10) setCollapsedCats(allCats);
       store.setPendingKw(filtered, rd);
       if (sd) {
         const updated = { ...sd, step: rd, _pendingKw: filtered };
@@ -96,6 +126,9 @@ export default function KeywordsPage() {
     if (next === "final") {
       setIsFinal(true);
       setNewKw([]);
+      // Reset collapse; auto-collapse if 10+ categories
+      const finalCats = new Set(allKw.map((k) => k.cat));
+      setCollapsedCats(finalCats.size >= 10 ? finalCats : new Set());
       const updated = { ...sd!, allKw, step: "final", _pendingKw: [] };
       store.setSession({ sd: updated, step: "final", kw: allKw });
       await saveSession(sid!, updated);
@@ -241,9 +274,10 @@ export default function KeywordsPage() {
   const renderCategorySection = (
     cat: string,
     items: Keyword[],
-    options: { showScores?: boolean; enableToggle?: boolean; isNewItems?: boolean }
+    options: { showScores?: boolean; enableToggle?: boolean; isNewItems?: boolean; summaryBadge?: string }
   ) => {
-    const { showScores, enableToggle, isNewItems } = options;
+    const { showScores, enableToggle, isNewItems, summaryBadge } = options;
+    const collapsed = collapsedCats.has(cat);
     return (
       <div
         key={cat}
@@ -254,67 +288,80 @@ export default function KeywordsPage() {
         onDragLeave={handleDragLeave}
         onDrop={(e) => handleDrop(e, cat)}
       >
-        <div className="flex items-center gap-2 mb-2">
+        <div
+          className="flex items-center gap-2 mb-2 cursor-pointer select-none"
+          onClick={() => toggleCollapse(cat)}
+        >
+          <span
+            className="inline-block text-xs text-stone-400 transition-transform duration-200"
+            style={{ transform: collapsed ? "rotate(0deg)" : "rotate(90deg)" }}
+          >
+            ▶
+          </span>
           <span className="text-sm font-semibold text-stone-700">{cat}</span>
           <span className="text-stone-400 font-normal text-sm">{items.length}</span>
-          <CategoryKeywordInput
-            category={cat}
-            allKeywords={allKeywords}
-            onAdd={handleManualAdd}
-            onMove={handleMoveKeyword}
-          />
+          {collapsed && summaryBadge && (
+            <span className="text-xs text-stone-400 ml-1">{summaryBadge}</span>
+          )}
           <button
-            onClick={() => setSuggestingCat(suggestingCat === cat ? null : cat)}
-            className="px-2 py-1 rounded-lg text-xs font-medium text-violet-600 hover:bg-violet-50 transition-colors"
+            onClick={(e) => { e.stopPropagation(); togglePanel(cat); }}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
           >
-            추천
+            <span className="text-sm">+</span>
           </button>
           {items.length === 0 && (
             <button
-              onClick={() => handleDeleteEmptyCategory(cat)}
+              onClick={(e) => { e.stopPropagation(); handleDeleteEmptyCategory(cat); }}
               className="px-2 py-1 rounded-lg text-xs text-stone-400 hover:text-rose-500 transition-colors"
             >
               삭제
             </button>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
-          {(showScores ? [...items].sort((a, b) => (b.score || 0) - (a.score || 0)) : items).map((k) => {
-            const isRejected = rejected.has(k.id);
-            let variant: "old" | "new" | "approved" | "rejected" | "manual" | "suggested";
-            if (isNewItems) {
-              variant = isRejected ? "rejected" : "new";
-            } else {
-              variant = getVariant(k, isRejected);
-            }
-            return (
-              <KeywordTag
-                key={k.id}
-                kw={k.kw}
-                score={showScores ? k.score : undefined}
-                variant={variant}
-                onClick={enableToggle ? () => toggleKw(k.id) : undefined}
-                draggable={true}
-                kwId={k.id}
-                cat={k.cat}
-              />
-            );
-          })}
-          {items.length === 0 && (
-            <span className="text-xs text-stone-400 italic">비어있음 — 키워드를 추가하거나 드래그하세요</span>
+        <div
+          className={`transition-all duration-200 overflow-hidden ${collapsed ? "max-h-0 opacity-0" : "max-h-[1000px] opacity-100"}`}
+        >
+          <div className="flex flex-wrap gap-2">
+            {(showScores ? [...items].sort((a, b) => (b.score || 0) - (a.score || 0)) : items).map((k) => {
+              const isRejected = rejected.has(k.id);
+              let variant: "old" | "new" | "approved" | "rejected" | "manual" | "suggested";
+              if (isNewItems) {
+                variant = isRejected ? "rejected" : "new";
+              } else {
+                variant = getVariant(k, isRejected);
+              }
+              return (
+                <KeywordTag
+                  key={k.id}
+                  kw={k.kw}
+                  score={showScores ? k.score : undefined}
+                  variant={variant}
+                  onClick={enableToggle ? () => toggleKw(k.id) : undefined}
+                  draggable={true}
+                  kwId={k.id}
+                  cat={k.cat}
+                />
+              );
+            })}
+            {items.length === 0 && (
+              <span className="text-xs text-stone-400 italic">비어있음 — 키워드를 추가하거나 드래그하세요</span>
+            )}
+          </div>
+          {activePanelCat === cat && (
+            <CategoryInputPanel
+              category={cat}
+              allKeywords={allKeywords}
+              bk={bk}
+              problemDef={pd}
+              existingKeywords={items.map((k) => k.kw)}
+              addedSuggestedWords={addedSuggested}
+              onManualAdd={handleManualAdd}
+              onMove={handleMoveKeyword}
+              onSuggestedAdd={handleSuggestedAdd}
+              onSuggestedAddAll={handleSuggestedAddAll}
+            />
           )}
         </div>
-        {suggestingCat === cat && (
-          <SuggestedWordsPanel
-            category={cat}
-            bk={bk}
-            problemDef={pd}
-            existingKeywords={items.map((k) => k.kw)}
-            addedWords={addedSuggested}
-            onAddWord={handleSuggestedAdd}
-            onAddAll={handleSuggestedAddAll}
-          />
-        )}
       </div>
     );
   };
@@ -340,9 +387,22 @@ export default function KeywordsPage() {
           <button onClick={() => setRejected(new Set(kw.map((k) => k.id)))} className="flex-1 py-2.5 rounded-xl text-sm font-medium border transition-colors bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100">전체 거절</button>
         </div>
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] border border-white/40 mb-5">
-          {Object.entries(byCategory).map(([cat, items]) =>
-            renderCategorySection(cat, items, { enableToggle: true })
-          )}
+          <div className="flex justify-end mb-3">
+            <button
+              onClick={() => toggleAllCollapse(categories)}
+              className="text-xs text-stone-500 hover:text-indigo-600 transition-colors"
+            >
+              {collapsedCats.size === categories.length ? "전체 펼치기" : "전체 접기"}
+            </button>
+          </div>
+          {Object.entries(byCategory).map(([cat, items]) => {
+            const approvedCount = items.filter((k) => !rejected.has(k.id)).length;
+            const rejectedCount = items.filter((k) => rejected.has(k.id)).length;
+            return renderCategorySection(cat, items, {
+              enableToggle: true,
+              summaryBadge: `승인 ${approvedCount} / 거절 ${rejectedCount}`,
+            });
+          })}
           <div className="mt-4">
             <NewCategoryInput existingCategories={categories} onAdd={handleNewCategory} />
           </div>
@@ -385,58 +445,82 @@ export default function KeywordsPage() {
         누적: {kw.length}개 | 신규: {newKw.length}개
       </div>
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] border border-white/40 mb-5">
-        {Object.entries(byCategory).map(([cat, { existing, newItems }]) => (
-          <div
-            key={cat}
-            className={`mb-4 p-3 rounded-xl transition-all ${
-              dragOverCat === cat ? "border-2 border-dashed border-indigo-300 bg-indigo-50/30" : "border-2 border-transparent"
-            }`}
-            onDragOver={(e) => handleDragOver(e, cat)}
-            onDragLeave={handleDragLeave}
-            onDrop={(e) => handleDrop(e, cat)}
+        <div className="flex justify-end mb-3">
+          <button
+            onClick={() => toggleAllCollapse(reviewCategories)}
+            className="text-xs text-stone-500 hover:text-indigo-600 transition-colors"
           >
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-sm font-semibold text-stone-700">{cat}</span>
-              <span className="text-stone-400 font-normal text-sm">{existing.length + newItems.length}</span>
-              <CategoryKeywordInput
-                category={cat}
-                allKeywords={[...allKeywords, ...newKw]}
-                onAdd={handleManualAdd}
-                onMove={handleMoveKeyword}
-              />
-              <button
-                onClick={() => setSuggestingCat(suggestingCat === cat ? null : cat)}
-                className="px-2 py-1 rounded-lg text-xs font-medium text-violet-600 hover:bg-violet-50 transition-colors"
+            {collapsedCats.size === reviewCategories.length ? "전체 펼치기" : "전체 접기"}
+          </button>
+        </div>
+        {Object.entries(byCategory).map(([cat, { existing, newItems }]) => {
+          const collapsed = collapsedCats.has(cat);
+          return (
+            <div
+              key={cat}
+              className={`mb-4 p-3 rounded-xl transition-all ${
+                dragOverCat === cat ? "border-2 border-dashed border-indigo-300 bg-indigo-50/30" : "border-2 border-transparent"
+              }`}
+              onDragOver={(e) => handleDragOver(e, cat)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, cat)}
+            >
+              <div
+                className="flex items-center gap-2 mb-2 cursor-pointer select-none"
+                onClick={() => toggleCollapse(cat)}
               >
-                추천
-              </button>
+                <span
+                  className="inline-block text-xs text-stone-400 transition-transform duration-200"
+                  style={{ transform: collapsed ? "rotate(0deg)" : "rotate(90deg)" }}
+                >
+                  ▶
+                </span>
+                <span className="text-sm font-semibold text-stone-700">{cat}</span>
+                <span className="text-stone-400 font-normal text-sm">{existing.length + newItems.length}</span>
+                {collapsed && (
+                  <span className="text-xs text-stone-400 ml-1">기존 {existing.length} + 신규 {newItems.length}</span>
+                )}
+                <button
+                  onClick={(e) => { e.stopPropagation(); togglePanel(cat); }}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
+                >
+                  <span className="text-sm">+</span>
+                </button>
+              </div>
+              <div
+                className={`transition-all duration-200 overflow-hidden ${collapsed ? "max-h-0 opacity-0" : "max-h-[1000px] opacity-100"}`}
+              >
+                <div className="flex flex-wrap gap-2">
+                  {existing.map((k) => (
+                    <KeywordTag key={k.id} kw={k.kw} variant={k.manual ? "manual" : "old"} draggable={true} kwId={k.id} cat={k.cat} />
+                  ))}
+                  {[...newItems].sort((a, b) => (b.score || 0) - (a.score || 0)).map((k) => (
+                    <KeywordTag
+                      key={k.id} kw={k.kw} score={k.score}
+                      variant={rejected.has(k.id) ? "rejected" : "new"}
+                      onClick={() => toggleKw(k.id)}
+                      draggable={true} kwId={k.id} cat={k.cat}
+                    />
+                  ))}
+                </div>
+                {activePanelCat === cat && (
+                  <CategoryInputPanel
+                    category={cat}
+                    allKeywords={[...allKeywords, ...newKw]}
+                    bk={bk}
+                    problemDef={pd}
+                    existingKeywords={[...existing, ...newItems].map((k) => k.kw)}
+                    addedSuggestedWords={addedSuggested}
+                    onManualAdd={handleManualAdd}
+                    onMove={handleMoveKeyword}
+                    onSuggestedAdd={handleSuggestedAdd}
+                    onSuggestedAddAll={handleSuggestedAddAll}
+                  />
+                )}
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {existing.map((k) => (
-                <KeywordTag key={k.id} kw={k.kw} variant={k.manual ? "manual" : "old"} draggable={true} kwId={k.id} cat={k.cat} />
-              ))}
-              {[...newItems].sort((a, b) => (b.score || 0) - (a.score || 0)).map((k) => (
-                <KeywordTag
-                  key={k.id} kw={k.kw} score={k.score}
-                  variant={rejected.has(k.id) ? "rejected" : "new"}
-                  onClick={() => toggleKw(k.id)}
-                  draggable={true} kwId={k.id} cat={k.cat}
-                />
-              ))}
-            </div>
-            {suggestingCat === cat && (
-              <SuggestedWordsPanel
-                category={cat}
-                bk={bk}
-                problemDef={pd}
-                existingKeywords={[...existing, ...newItems].map((k) => k.kw)}
-                addedWords={addedSuggested}
-                onAddWord={handleSuggestedAdd}
-                onAddAll={handleSuggestedAddAll}
-              />
-            )}
-          </div>
-        ))}
+          );
+        })}
         <div className="mt-4">
           <NewCategoryInput existingCategories={reviewCategories} onAdd={handleNewCategory} />
         </div>

@@ -2,16 +2,25 @@
 import { useState } from "react";
 import type { Keyword } from "@/lib/types";
 import DuplicateAlertCard from "./DuplicateAlertCard";
+import SuggestedWordsPanel from "./SuggestedWordsPanel";
 
-interface CategoryKeywordInputProps {
+interface CategoryInputPanelProps {
   category: string;
   allKeywords: Keyword[];
-  onAdd: (kw: string, cat: string) => void;
+  bk: string;
+  problemDef: string;
+  existingKeywords: string[];
+  addedSuggestedWords: Set<string>;
+  onManualAdd: (kw: string, cat: string) => void;
   onMove: (kwId: number | string, newCat: string) => void;
+  onSuggestedAdd: (word: string, cat: string) => void;
+  onSuggestedAddAll: (words: string[], cat: string) => void;
 }
 
-export default function CategoryKeywordInput({ category, allKeywords, onAdd, onMove }: CategoryKeywordInputProps) {
-  const [open, setOpen] = useState(false);
+export default function CategoryInputPanel({
+  category, allKeywords, bk, problemDef, existingKeywords,
+  addedSuggestedWords, onManualAdd, onMove, onSuggestedAdd, onSuggestedAddAll,
+}: CategoryInputPanelProps) {
   const [value, setValue] = useState("");
   const [duplicate, setDuplicate] = useState<{ kw: string; existingCat: string; existingId: number | string } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -27,10 +36,10 @@ export default function CategoryKeywordInput({ category, allKeywords, onAdd, onM
           setTimeout(() => setToast(null), 2000);
         } else {
           setDuplicate({ kw: word, existingCat: existing.cat, existingId: existing.id });
-          return; // Stop processing, wait for user action
+          return;
         }
       } else {
-        onAdd(word, category);
+        onManualAdd(word, category);
       }
     }
     setValue("");
@@ -51,19 +60,9 @@ export default function CategoryKeywordInput({ category, allKeywords, onAdd, onM
     }
   };
 
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
-      >
-        <span className="text-sm">+</span>
-      </button>
-    );
-  }
-
   return (
-    <div className="mt-2">
+    <div className="bg-stone-50/80 backdrop-blur-sm rounded-xl border border-stone-200/60 px-4 py-3 mt-2">
+      {/* Manual input */}
       <div className="flex gap-2">
         <input
           type="text"
@@ -80,12 +79,6 @@ export default function CategoryKeywordInput({ category, allKeywords, onAdd, onM
         >
           추가
         </button>
-        <button
-          onClick={() => { setOpen(false); setValue(""); setDuplicate(null); }}
-          className="px-2 py-1.5 rounded-lg text-xs text-stone-400 hover:text-stone-600 transition-colors"
-        >
-          ✕
-        </button>
       </div>
       {toast && (
         <div className="text-amber-600 text-xs mt-1.5 px-1">{toast}</div>
@@ -98,6 +91,21 @@ export default function CategoryKeywordInput({ category, allKeywords, onAdd, onM
           onIgnore={() => { setDuplicate(null); setValue(""); }}
         />
       )}
+
+      {/* Divider */}
+      <div className="border-t border-stone-200/60 my-3" />
+
+      {/* Suggested words */}
+      <SuggestedWordsPanel
+        embedded
+        category={category}
+        bk={bk}
+        problemDef={problemDef}
+        existingKeywords={existingKeywords}
+        addedWords={addedSuggestedWords}
+        onAddWord={onSuggestedAdd}
+        onAddAll={onSuggestedAddAll}
+      />
     </div>
   );
 }

@@ -11,6 +11,7 @@ interface SuggestedWordsPanelProps {
   addedWords: Set<string>;
   onAddWord: (word: string, category: string) => void;
   onAddAll: (words: string[], category: string) => void;
+  embedded?: boolean;
 }
 
 interface WordItem {
@@ -19,7 +20,7 @@ interface WordItem {
 }
 
 export default function SuggestedWordsPanel({
-  category, bk, problemDef, existingKeywords, addedWords, onAddWord, onAddAll,
+  category, bk, problemDef, existingKeywords, addedWords, onAddWord, onAddAll, embedded,
 }: SuggestedWordsPanelProps) {
   const [words, setWords] = useState<WordItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -45,7 +46,7 @@ export default function SuggestedWordsPanel({
   const remaining = words.filter((w) => !addedWords.has(w.word));
 
   return (
-    <div className="bg-violet-50/70 backdrop-blur-sm rounded-xl border border-violet-200/60 px-4 py-3 mt-2">
+    <div className={embedded ? "" : "bg-violet-50/70 backdrop-blur-sm rounded-xl border border-violet-200/60 px-4 py-3 mt-2"}>
       {!fetched && !loading && (
         <button
           onClick={fetchSuggestions}
