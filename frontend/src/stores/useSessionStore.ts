@@ -1,6 +1,8 @@
 "use client";
 import { create } from "zustand";
 import type { Keyword, SessionData } from "@/lib/types";
+import { persistSid, clearPersistedSid } from "@/lib/sessionPersist";
+import { saveSession } from "@/lib/api";
 
 interface SessionState {
   sid: string | null;
@@ -44,11 +46,14 @@ const initial = {
   lastRound: "",
 };
 
-export const useSessionStore = create<SessionState>((set) => ({
+export const useSessionStore = create<SessionState>((set, get) => ({
   ...initial,
 
-  setSession: (data) =>
-    set((state) => ({ ...state, ...data })),
+  setSession: (data) => {
+    set((state) => ({ ...state, ...data }));
+    const { sid, step } = get();
+    if (sid) persistSid(sid, step);
+  },
 
   addKeywords: (newKw) =>
     set((state) => {
@@ -89,17 +94,29 @@ export const useSessionStore = create<SessionState>((set) => ({
       return { kw, sd };
     }),
 
-  setPendingKw: (kw, round) =>
-    set({ pendingKw: kw, lastRound: round }),
+  setPendingKw: (kw, round) => {
+    set({ pendingKw: kw, lastRound: round });
+    const { sid, sd } = get();
+    if (sid && sd) {
+      const updated = { ...sd, _pendingKw: kw, _lastRound: round };
+      saveSession(sid, updated);
+    }
+  },
 
   clearPendingKw: () =>
     set({ pendingKw: [], lastRound: "" }),
 
-  setStep: (step) =>
+  setStep: (step) => {
     set((state) => {
       const sd = state.sd ? { ...state.sd, step } : null;
       return { step, sd };
-    }),
+    });
+    const { sid } = get();
+    if (sid) persistSid(sid, step);
+  },
 
-  reset: () => set(initial),
+  reset: () => {
+    set(initial);
+    clearPersistedSid();
+  },
 }));

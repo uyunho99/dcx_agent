@@ -1,14 +1,35 @@
 "use client";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import TopBar from "@/components/TopBar";
 import StepBar from "@/components/StepBar";
 import ChatPanel from "@/components/ChatPanel";
 import { useSessionStore } from "@/stores/useSessionStore";
 import { sendChat } from "@/lib/api";
+import { getPersistedSid, clearPersistedSid, restoreSessionToStore } from "@/lib/sessionPersist";
 
 export default function PipelineLayout({ children }: { children: React.ReactNode }) {
   const [chatOpen, setChatOpen] = useState(false);
-  const { sid, bk, kw, step } = useSessionStore();
+  const store = useSessionStore();
+  const { sid, bk, kw, step } = store;
+
+  const [restoring, setRestoring] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !store.sid && !!getPersistedSid();
+  });
+
+  useEffect(() => {
+    if (sid) return;
+    const persisted = getPersistedSid();
+    if (!persisted) return;
+
+    setRestoring(true);
+    restoreSessionToStore(persisted.sid, store)
+      .catch(() => {
+        clearPersistedSid();
+      })
+      .finally(() => setRestoring(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleChat = useCallback(
     async (msg: string) => {
@@ -29,7 +50,16 @@ export default function PipelineLayout({ children }: { children: React.ReactNode
         <StepBar currentStep={step} />
         {/* Main content */}
         <div className="flex-1 flex flex-col min-w-0 relative">
-          <div className="flex-1 overflow-y-auto p-6">{children}</div>
+          <div className="flex-1 overflow-y-auto p-6">
+            {restoring ? (
+              <div className="flex items-center justify-center h-full gap-3 text-stone-500">
+                <div className="w-5 h-5 border-2 border-stone-300 border-t-indigo-500 rounded-full animate-spin" />
+                <span className="text-sm">세션 복원 중...</span>
+              </div>
+            ) : (
+              children
+            )}
+          </div>
           {!chatOpen && (
             <button
               onClick={() => setChatOpen(true)}

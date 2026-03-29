@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, datetime as dt
 
 from app.services.naver import search_naver_cafe
-from app.services.s3 import s3, save_jsonl
+from app.services.s3 import save_jsonl
 from app.utils.text import clean_text
 from app.config import settings
 from app.jobs.manager import job_manager

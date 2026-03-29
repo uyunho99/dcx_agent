@@ -3,7 +3,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import SessionList from "@/components/SessionList";
 import { useSessionStore } from "@/stores/useSessionStore";
-import { getSession, saveSession } from "@/lib/api";
+import { saveSession } from "@/lib/api";
+import { restoreSessionToStore } from "@/lib/sessionPersist";
 
 const AGES = ["주부", "직장인", "1인가구", "신혼부부", "육아맘", "시니어", "대학생", "자영업"];
 const RANGES = ["20대", "30대", "40대", "50대+"];
@@ -34,20 +35,7 @@ export default function StartPage() {
 
   const handleLoad = async (sid: string) => {
     try {
-      const resp = await getSession(sid);
-      const d = (resp.data || resp) as Record<string, unknown>;
-      store.setSession({
-        sid,
-        bk: (d.bk as string) || "",
-        pd: (d.problemDef as string) || "",
-        kw: (d.allKw as never[]) || [],
-        sd: d as never,
-        ages: (d.ages as string[]) || [],
-        ar: (d.ageRange as string[]) || [],
-        gens: (d.gens as string[]) || [],
-        step: (d.step as string) || "start",
-      });
-      const step = (d.step as string) || "start";
+      const step = await restoreSessionToStore(sid, store);
       const routeMap: Record<string, string> = {
         start: "/pipeline/start", r1: "/pipeline/keywords", r2: "/pipeline/keywords",
         r3: "/pipeline/keywords", "r3-expand": "/pipeline/keywords", final: "/pipeline/keywords",

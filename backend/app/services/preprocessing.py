@@ -1,8 +1,7 @@
 import json
 from datetime import datetime
 
-from app.services.s3 import s3, save_jsonl
-from app.config import settings
+from app.services.s3 import load_data, save_jsonl
 from app.jobs.manager import job_manager
 
 
@@ -15,17 +14,8 @@ def preprocess_data(config: dict) -> None:
         exclude_cafes = [x.strip() for x in exclude_cafes.split(",") if x.strip()]
 
     try:
-        resp = s3.list_objects_v2(Bucket=settings.s3_bucket, Prefix=f"crawl/{sid}/")
-        all_data, seen = [], set()
-        for f in resp.get("Contents", []):
-            body = s3.get_object(Bucket=settings.s3_bucket, Key=f["Key"])["Body"]
-            for line in body.read().decode("utf-8").strip().split("\n"):
-                if line:
-                    try:
-                        all_data.append(json.loads(line))
-                    except Exception:
-                        pass
-
+        all_data = load_data(f"crawl/{sid}/")
+        seen: set[str] = set()
         original = len(all_data)
         filtered = []
         for idx, item in enumerate(all_data):

@@ -6,6 +6,10 @@ _ENV_FILE = str(Path(__file__).resolve().parents[2] / ".env")
 
 
 class Settings(BaseSettings):
+    # 저장소: "s3" (AWS) 또는 "local" (로컬 디스크)
+    storage: str = "s3"
+    local_data_dir: str = "data"
+
     s3_bucket: str = "x"
     s3_region: str = "x"
     naver_client_id: str = "x"
