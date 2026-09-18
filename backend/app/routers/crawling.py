@@ -16,15 +16,18 @@ router = APIRouter()
 def start_crawl(req: CrawlRequest):
     sid = req.sid
     config = req.model_dump()
-    job_manager.set("crawl", sid, {"status": "running", "total": 0})
+    job_manager.set("crawl", sid, {"status": "running", "total": 0, "phase": "api_collecting"})
 
     def _run():
         try:
             total = crawl_keywords(config)
-            job_manager.set("crawl", sid, {"status": "done", "total": total})
+            if job_manager.is_stop_requested("crawl", sid):
+                job_manager.update("crawl", sid, status="stopped", total=total, phase="done")
+            else:
+                job_manager.update("crawl", sid, status="done", total=total, phase="done")
         except Exception as e:
             logger.exception("Crawl failed for sid=%s", sid)
-            job_manager.set("crawl", sid, {"status": "error", "error": str(e)})
+            job_manager.update("crawl", sid, status="error", error=str(e))
 
     threading.Thread(target=_run, daemon=True).start()
     return {"sid": sid, "status": "started"}
@@ -47,7 +50,7 @@ def get_status(sid: str):
         except Exception:
             pass
 
-    if status == "done":
+    if status in ("done", "stopped"):
         try:
             all_data = load_data(f"crawl/{sid}/")
             cafe_count: dict[str, int] = {}
@@ -62,4 +65,17 @@ def get_status(sid: str):
             pass
 
     error = job.get("error", "")
-    return {"status": status, "total": total, "cafe_stats": cafe_stats, "error": error}
+    return {
+        "status": status, "total": total, "cafe_stats": cafe_stats, "error": error,
+        "phase": job.get("phase"),
+        "body_crawled": job.get("body_crawled"),
+        "body_failed": job.get("body_failed"),
+        "avg_body_length": job.get("avg_body_length"),
+        "meta_summary": job.get("meta_summary"),
+    }
+
+
+@router.post("/stop-crawl/{sid}")
+def stop_crawl(sid: str):
+    success = job_manager.request_stop("crawl", sid)
+    return {"status": "stop_requested" if success else "not_running"}

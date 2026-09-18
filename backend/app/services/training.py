@@ -3,6 +3,7 @@ import numpy as np
 from datetime import datetime
 
 from app.services.s3 import load_data, load_json, save_jsonl
+from app.utils.text import get_text
 from app.config import settings
 from app.jobs.manager import job_manager
 
@@ -26,7 +27,7 @@ def train_models(config: dict) -> None:
             job_manager.set("train", sid, {"status": "error", "error": "Need at least 5 labeled samples"})
             return
 
-        texts = [f"{d.get('title', '')} {d.get('desc', '')}" for d in labeled]
+        texts = [get_text(d) for d in labeled]
         labels = [1 if d.get("label") == "relevant" or d.get("label") == 1 else 0 for d in labeled]
 
         job_manager.update("train", sid, progress=10, phase="preparing")
@@ -112,7 +113,7 @@ def _train_tensorflow(sid: str, texts: list[str], labels: list[int]) -> None:
 
     all_data = load_data(f"preprocessed/{sid}/")
     if all_data:
-        all_texts = [f"{d.get('title', '')} {d.get('desc', '')}" for d in all_data]
+        all_texts = [get_text(d) for d in all_data]
         all_seq = tokenizer.texts_to_sequences(all_texts)
         X_all = pad_sequences(all_seq, maxlen=MAX_LEN, padding="post", truncating="post")
 
@@ -175,7 +176,7 @@ def _train_sklearn(sid: str, texts: list[str], labels: list[int]) -> None:
 
     all_data = load_data(f"preprocessed/{sid}/")
     if all_data:
-        all_texts = [f"{d.get('title', '')} {d.get('desc', '')}" for d in all_data]
+        all_texts = [get_text(d) for d in all_data]
         X_all = vec.transform(all_texts)
         p1 = m1.predict_proba(X_all)[:, 1]
         p2 = m2.predict_proba(X_all)[:, 1]

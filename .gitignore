@@ -75,3 +75,6 @@ data/
 # 목업 — 생성물과 업로드 스테이징
 docs/development/*/mockup/preview.html
 docs/development/*/mockup/assets/
+
+# macOS
+.DS_Store

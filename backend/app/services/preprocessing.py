@@ -21,8 +21,11 @@ def preprocess_data(config: dict) -> None:
         for idx, item in enumerate(all_data):
             title = item.get("title", "")
             desc = item.get("desc", "")
+            body = item.get("body", "")
             link = item.get("link", "")
-            if any(ad.lower() in (title + " " + desc).lower() for ad in ad_filter):
+            # Use body for filtering if available, otherwise title + desc
+            filter_text = body if body else (title + " " + desc)
+            if any(ad.lower() in filter_text.lower() for ad in ad_filter):
                 continue
             cafe = item.get("cafe", "").lower()
             if exclude_cafes and any(ex.lower() in cafe for ex in exclude_cafes):
@@ -31,7 +34,8 @@ def preprocess_data(config: dict) -> None:
                 continue
             seen.add(link)
             item["idx"] = idx
-            if len(title) < 5 and len(desc) < 10:
+            # Skip length check if body is present (already substantial)
+            if not body and len(title) < 5 and len(desc) < 10:
                 continue
             filtered.append(item)
 

@@ -2,6 +2,7 @@ from app.services.s3 import load_data
 from app.services.voyage import get_embeddings
 from app.config import settings
 from app.jobs.manager import job_manager
+from app.utils.text import get_text
 
 
 def run_embedding(config: dict) -> None:
@@ -37,7 +38,7 @@ def run_embedding(config: dict) -> None:
         batch_size = 50
         for i in range(0, len(data), batch_size):
             batch = data[i : i + batch_size]
-            texts = [f"{d.get('title', '')} {d.get('desc', '')}" for d in batch]
+            texts = [get_text(d) for d in batch]
             embeddings = get_embeddings(texts)
 
             vectors = []

@@ -31,7 +31,9 @@ export const suggestWords = (body: { bk: string; problemDef: string; category: s
 export const startCrawl = (body: Record<string, unknown>) =>
   request("/crawl", { method: "POST", body: JSON.stringify(body) });
 export const getCrawlStatus = (sid: string) =>
-  request<{ status: string; total: number; cafe_stats: { cafe: string; count: number }[]; error?: string }>(`/status/${sid}`);
+  request<import("./types").CrawlStatusResponse>(`/status/${sid}`);
+export const stopCrawl = (sid: string) =>
+  request<{ status: string }>(`/stop-crawl/${sid}`, { method: "POST" });
 
 // Preprocessing
 export const startPreprocess = (body: Record<string, unknown>) =>

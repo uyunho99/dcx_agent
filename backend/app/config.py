@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     pinecone_api_key: str = "x"
     voyage_api_key: str = "x"
 
+    # Crawl4AI 튜닝
+    crawl4ai_concurrency: int = 5
+    crawl4ai_min_delay: float = 1.0
+    crawl4ai_max_delay: float = 3.0
+    crawl4ai_max_retries: int = 3
+
     # 배포 설정
     cors_origins: str = "*"  # 프로덕션: "https://your-domain.com"
 

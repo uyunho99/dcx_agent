@@ -46,6 +46,28 @@ export interface CafeStats {
   count: number;
 }
 
+export type CrawlMode = "api_only" | "api_crawl4ai";
+
+export interface MetaSummary {
+  avg_views?: number;
+  avg_comments?: number;
+  avg_likes?: number;
+  top_boards?: { board: string; count: number }[];
+  unique_authors?: number;
+}
+
+export interface CrawlStatusResponse {
+  status: "running" | "done" | "error" | "stopped" | "not_found";
+  total: number;
+  cafe_stats: CafeStats[];
+  error?: string;
+  phase?: "api_collecting" | "body_crawling" | "done";
+  body_crawled?: number;
+  body_failed?: number;
+  avg_body_length?: number;
+  meta_summary?: MetaSummary;
+}
+
 export interface ClusterInfo {
   id?: number;
   size: number;

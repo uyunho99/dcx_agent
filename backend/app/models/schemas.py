@@ -11,6 +11,8 @@ class CrawlRequest(BaseModel):
     cafes: str | list = ""
     excludeCafes: str | list = ""
     adFilter: str | list = ""
+    mode: str = "api_only"          # "api_only" | "api_crawl4ai"
+    cookies: str | None = None      # Naver login cookies for Crawl4AI
 
 
 class PreprocessRequest(BaseModel):

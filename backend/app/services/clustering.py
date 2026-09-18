@@ -7,6 +7,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from app.services.s3 import load_data, save_jsonl
 from app.services.voyage import get_embeddings
 from app.jobs.manager import job_manager
+from app.utils.text import get_text
 
 
 def run_clustering(config: dict) -> None:
@@ -25,7 +26,7 @@ def run_clustering(config: dict) -> None:
 
         job_manager.update("cluster", sid, progress=10, phase="embedding")
 
-        texts = [f"{d.get('title', '')} {d.get('desc', '')}" for d in data]
+        texts = [get_text(d) for d in data]
         embeddings = get_embeddings(texts)
         X = np.array(embeddings)
 
@@ -116,7 +117,7 @@ def refine_clusters(config: dict) -> dict:
         for item in all_data:
             item["cluster"] = cmap.get(item.get("cluster", -1), 0)
 
-        texts = [f"{d.get('title', '')} {d.get('desc', '')}" for d in all_data]
+        texts = [get_text(d) for d in all_data]
         vec = TfidfVectorizer(max_features=3000, ngram_range=(1, 2), min_df=2, max_df=0.95)
         X = vec.fit_transform(texts)
         fnames = list(vec.get_feature_names_out())

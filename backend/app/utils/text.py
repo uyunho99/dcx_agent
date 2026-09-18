@@ -15,11 +15,20 @@ def clean_text(t: str) -> str:
     return t.strip()
 
 
+def get_text(item: dict) -> str:
+    """Best available text: body (Crawl4AI) > title+desc (API)."""
+    body = item.get("body", "")
+    if body and len(body) > 20:
+        return body
+    return f"{item.get('title', '')} {item.get('desc', '')}"
+
+
 def get_llm_predictions(batch: list, bk: str, problem_def: str) -> list[int]:
     try:
         prompt = f'제품: "{bk}"\n문제정의: {problem_def}\n\n아래 글들이 해당 제품 관련인지 판단. 1(관련) 또는 0(무관)으로만.\n\n'
         for j, item in enumerate(batch):
-            prompt += f"{j+1}. {item.get('title','')} - {item.get('desc','')[:100]}\n"
+            text = get_text(item)[:200]
+            prompt += f"{j+1}. {text}\n"
         prompt += "\n답변: 1,0,1,0,..."
         resp = requests.post(
             "https://api.anthropic.com/v1/messages",

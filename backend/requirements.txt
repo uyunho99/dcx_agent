@@ -8,3 +8,5 @@ voyageai
 pinecone-client
 scikit-learn
 gunicorn
+crawl4ai
+playwright
