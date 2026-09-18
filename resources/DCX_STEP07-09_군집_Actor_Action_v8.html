@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<title>DCX · STEP 07–09 관련된 근거를 찾는 것에서, 아직 모르는 근거를 찾는 것으로</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",Pretendard,"Malgun Gothic",sans-serif;background:#fff;color:#1c1c1e;-webkit-font-smoothing:antialiased}
+.fig{max-width:980px;padding:30px 34px 34px}
+h2{font-size:19px;font-weight:700;letter-spacing:-.3px;color:#111}
+.sub{font-size:12.5px;color:#8e8e93;margin-top:7px;line-height:1.6;letter-spacing:-.1px}
+
+/* 섹션 헤더 */
+.sec{font-size:12.5px;font-weight:700;color:#3a3a3c;letter-spacing:-.15px;margin:28px 0 11px;display:flex;align-items:center;gap:8px}
+.sec .n{display:inline-flex;width:17px;height:17px;border-radius:5px;background:#ececee;color:#6c6c70;font-size:10.5px;align-items:center;justify-content:center;font-weight:700;flex:0 0 auto}
+.sec .q{font-weight:400;color:#8e8e93}
+.sec .sp{margin-left:auto;display:flex;gap:4px;align-items:center}
+
+/* 레이아웃 */
+.row{display:flex;align-items:stretch;gap:13px}
+.row.mid{align-items:center}
+.col{display:flex;flex-direction:column;gap:6px}
+.card{border-radius:10px;border:1px solid;padding:15px 17px}
+.blue{background:#f4f7fd;border-color:#d3e0f5}
+.orange{background:#fff9f3;border-color:#f2ddc4}
+.gray{background:#fafafa;border-color:#e5e5e7}
+.green{background:#f4faf6;border-color:#d2e7d8}
+.pink{background:#fdf4f4;border-color:#f2d6d6}
+.purple{background:#faf7fd;border-color:#e3d8f2}
+.ch{font-size:13.5px;font-weight:700;letter-spacing:-.2px;margin-bottom:8px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.blue .ch{color:#2c5aa8}.orange .ch{color:#b3701f}.green .ch{color:#2f7a45}.pink .ch{color:#b23b3b}.gray .ch{color:#3a3a3c}.purple .ch{color:#6b4fa8}
+.cs{font-size:12.5px;color:#48484a;line-height:1.55;letter-spacing:-.1px}
+.cap{font-size:11.5px;line-height:1.55;margin-top:10px;letter-spacing:-.1px}
+.blue .cap{color:#4a7fd4}.orange .cap{color:#c9822f}.green .cap{color:#3f8f57}.pink .cap{color:#c05555}.gray .cap{color:#8e8e93}.purple .cap{color:#8a6bc4}
+.box{background:#fff;border:1px solid #e5e5e7;border-radius:7px;padding:8px 11px;font-size:12.5px;color:#3a3a3c;letter-spacing:-.1px;line-height:1.5}
+.box.b{border-color:#dae4f6}.box.o{border-color:#f2e0c8}.box.g{border-color:#d2e7d8}.box.p{border-color:#f2d6d6}.box.v{border-color:#e3d8f2}
+.box .m{color:#8e8e93}
+
+/* 배지 */
+.tag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:5px;letter-spacing:-.1px;white-space:nowrap}
+.tg-b{background:#e9f0fc;color:#2c5aa8}.tg-o{background:#fdf0e0;color:#b3701f}.tg-g{background:#e8f4ec;color:#2f7a45}
+.tg-r{background:#fbe9e9;color:#b23b3b}.tg-n{background:#f0f0f2;color:#6c6c70}.tg-v{background:#f2ecfb;color:#6b4fa8}
+.tg-amb{background:#fdf3dd;color:#8a6a15}
+.tg-t{background:#fdf0e0;color:#b3701f}
+
+/* 유형 배지 — 치환/신설/유지 */
+.ty{display:inline-block;font-size:10px;font-weight:700;padding:2.5px 8px;border-radius:5px;letter-spacing:.2px;white-space:nowrap}
+.ty-r{background:#f2ecfb;color:#6b4fa8}
+.ty-n{background:#e9f0fc;color:#2c5aa8}
+.ty-k{background:#f0f0f2;color:#8e8e93}
+
+/* 변경 지도 */
+.map{border:1px solid #e5e5e7;border-radius:10px;overflow:hidden;margin-top:15px}
+.map .mh{display:grid;grid-template-columns:22px 46px 1fr 70px;gap:11px;padding:8px 14px;background:#fafafa;border-bottom:1px solid #ececee;font-size:10.5px;font-weight:700;color:#8e8e93;letter-spacing:-.1px}
+.map .mr{display:grid;grid-template-columns:22px 46px 1fr 70px;gap:11px;padding:9px 14px;border-bottom:1px solid #f4f4f6;align-items:center;font-size:12px;color:#3a3a3c;letter-spacing:-.1px}
+.map .mr:last-child{border-bottom:none}
+.map .mr .no{color:#b0b0b5;font-size:11px;font-weight:700}
+.map .mr b{font-weight:700}
+.map .mr .d{color:#8e8e93;font-size:11.5px}
+
+/* 신설 카드 */
+.nw{border:1px solid #d3e0f5;background:#f8fafe;border-radius:10px;overflow:hidden}
+.nw.o{border-color:#f2ddc4;background:#fffcf8}
+.nw>.hd{display:flex;align-items:center;gap:7px;padding:10px 15px;background:#eff4fd;border-bottom:1px solid #e2ebf9;flex-wrap:wrap}
+.nw.o>.hd{background:#fdf6ec;border-bottom-color:#f3e6d2}
+.nw>.hd .ttl{font-size:13px;font-weight:700;color:#2c5aa8;letter-spacing:-.2px}
+.nw.o>.hd .ttl{color:#b3701f}
+.nw>.bd{padding:2px 15px 11px}
+.kv{display:grid;grid-template-columns:44px 1fr;gap:11px;padding:8px 0;border-bottom:1px solid #edf1f8;align-items:start}
+.nw.o .kv{border-bottom-color:#f5eadb}
+.kv:last-child{border-bottom:none}
+.kv .k{font-size:10.5px;font-weight:700;color:#9a9aa0;padding-top:2px;letter-spacing:.2px}
+.kv .v{font-size:12.3px;color:#3a3a3c;line-height:1.58;letter-spacing:-.1px}
+.kv .v b{color:#1c1c1e}
+
+/* 배선 칩 */
+.wire{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:11.5px;color:#48484a;line-height:1.9}
+.stg{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:5px;background:#e9f0fc;color:#2c5aa8;white-space:nowrap}
+.stg.g{background:#e8f4ec;color:#2f7a45}.stg.o{background:#fdf0e0;color:#b3701f}.stg.n{background:#f0f0f2;color:#6c6c70}
+.fld{font-family:ui-monospace,Menlo,monospace;font-size:10.8px;background:#f1f1f5;border-radius:4px;padding:1.5px 5px;color:#48484a;white-space:nowrap}
+.wa{color:#c7c7cc;font-size:11px;padding:0 1px}
+
+/* 화살표 */
+.arw{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:5px}
+.line{width:32px;height:1px;background:#c7c7cc;position:relative}
+.line::after{content:"";position:absolute;right:0;top:-3.5px;border-left:6px solid #c7c7cc;border-top:3.5px solid transparent;border-bottom:3.5px solid transparent}
+.al{font-size:10.5px;color:#8e8e93;letter-spacing:-.1px;white-space:nowrap}
+.strike{text-decoration:line-through;color:#b0b0b5}
+
+/* AS-IS / TO-BE 행 대조 */
+.vs{display:grid;grid-template-columns:78px 1fr 24px 1.2fr;gap:9px;align-items:center}
+.vsl{font-size:11.5px;font-weight:700;color:#6c6c70;letter-spacing:-.1px;text-align:right;line-height:1.4}
+.vsa{color:#c7c7cc;text-align:center;font-size:13px}
+.vsb{border-radius:8px;border:1px solid;padding:10px 13px;font-size:12px;line-height:1.55;letter-spacing:-.1px}
+
+/* 스택바 · 진행률 */
+.sbar{display:flex;height:28px;border-radius:6px;overflow:hidden;font-size:10.5px;font-weight:700;color:#fff;letter-spacing:-.1px}
+.sbar>div{display:flex;align-items:center;justify-content:center;white-space:nowrap}
+
+/* 표 */
+.rt{width:100%;border-collapse:collapse;font-size:12px}
+.rt td,.rt th{padding:8px 9px;border-bottom:1px solid #f0f0f2;color:#48484a;letter-spacing:-.1px;line-height:1.55;vertical-align:top;text-align:left}
+.rt th{font-size:11px;font-weight:700;color:#8e8e93;background:#fafafa}
+.rt tr:last-child td{border-bottom:none}
+.rt .ax{font-weight:700;color:#3a3a3c}
+.rt .src{font-size:11px;color:#9a9aa0;line-height:1.5}
+.tw{border:1px solid #e5e5e7;border-radius:10px;overflow:hidden}
+
+/* 스텝 */
+.steps{display:flex;flex-direction:column}
+.st{display:grid;grid-template-columns:24px 1fr;gap:11px;padding:9px 0;border-bottom:1px solid #f0f0f2;align-items:start}
+.st:last-child{border-bottom:none}
+.st .no{width:21px;height:21px;border-radius:6px;background:#e9f0fc;color:#2c5aa8;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.st .no.h{background:#fdf0e0;color:#b3701f}
+.st .tx{font-size:12.5px;color:#3a3a3c;line-height:1.58;letter-spacing:-.1px}
+.st .tx .m{color:#8e8e93;font-size:11.5px}
+
+/* 파이프라인 */
+.pipe{display:flex;align-items:stretch;gap:0;margin-top:6px;flex-wrap:wrap}
+.pbox{flex:1;min-width:140px;background:#fafafa;border:1px solid #e5e5e7;border-radius:8px;padding:9px 10px;text-align:center}
+.pbox.e{background:#f4faf6;border-color:#d2e7d8}
+.pbox.n{background:#f4f7fd;border-color:#d3e0f5}
+.pbox .t{font-size:10.5px;color:#8e8e93}
+.pbox .v{font-size:12.3px;font-weight:700;margin:2px 0;letter-spacing:-.15px}
+.pbox .s{font-size:10.5px;color:#a0a0a5;line-height:1.45}
+.par{display:flex;align-items:center;color:#c7c7cc;padding:0 6px;font-size:13px}
+
+/* 코드 */
+pre{background:#f7f7f9;border:1px solid #e5e5e7;border-radius:8px;padding:11px 13px;margin:8px 0 0;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.2px;line-height:1.65;
+  white-space:pre-wrap;color:#2a2a30;overflow-x:auto;letter-spacing:-.1px}
+pre .an{color:#b23b3b} pre .ab{color:#2c5aa8} pre .ag{color:#2f7a45} pre .cm{color:#a0a0a5}
+code{font-family:ui-monospace,Menlo,monospace;font-size:11.3px;background:#f1f1f5;padding:1px 4px;border-radius:3px}
+
+/* 밴드 · 노트 */
+.nbox{border-radius:8px;padding:11px 14px;font-size:12px;line-height:1.65;letter-spacing:-.1px;margin-top:11px}
+.nb-r{background:#fdf4f4;color:#a34444}.nb-g{background:#f4faf6;color:#357a4c}.nb-b{background:#f4f7fd;color:#2c5aa8}
+.nb-o{background:#fff9f3;color:#a96a1e}.nb-n{background:#fafafa;color:#6c6c70}.nb-v{background:#faf7fd;color:#6b4fa8}
+.notes{border-top:1px solid #ececee;margin-top:28px;padding-top:17px;display:flex;flex-direction:column;gap:9px}
+.nt{font-size:12.5px;font-weight:700;color:#3a3a3c;letter-spacing:-.15px}
+.nsm{font-size:12px;color:#6c6c70;letter-spacing:-.1px;line-height:1.65}
+.nsm b{color:#3a3a3c}
+.src{color:#a0a0a5;font-size:11px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:#8e8e93;margin-top:13px;align-items:center}
+</style>
+<style>
+/* ── DCX 1.0 11-STEP 스파인 (추가 블록 · 기존 규칙 미수정) ── */
+.s11-hb{display:inline-block;font-size:11px;font-weight:700;letter-spacing:-.1px;
+  background:#2c5aa8;color:#fff;padding:3px 9px;border-radius:6px;margin-right:9px;
+  vertical-align:middle;position:relative;top:-1.5px}
+.s11-wrap{margin-top:16px;border:1px solid #e5e5e7;border-radius:11px;overflow:hidden;background:#fcfcfd}
+.s11-bar{display:flex;align-items:center;gap:9px;padding:11px 13px 12px;border-bottom:1px solid #ececee;background:#fff}
+.s11-lab{flex:0 0 auto;font-size:10.5px;font-weight:700;color:#8e8e93;letter-spacing:-.1px;
+  padding-right:10px;border-right:1px solid #ececee;line-height:1.35}
+.s11-rail{display:flex;align-items:stretch;gap:3px;flex:1;flex-wrap:nowrap}
+.s11-rs{flex:1 1 0;min-width:0;border-radius:6px;border:1px solid #ececee;background:#fafafa;
+  padding:6px 4px;text-align:center;font-size:9.5px;line-height:1.35;color:#b0b0b5;
+  letter-spacing:-.2px;word-break:keep-all}
+.s11-rs .no{display:block;font-size:10px;font-weight:700;color:#c7c7cc;margin-bottom:2px;letter-spacing:0}
+.s11-rs.on{background:#eef3fc;border-color:#c3d5f0;color:#2c5aa8;font-weight:600}
+.s11-rs.on .no{color:#2c5aa8}
+.s11-rs.nc{background:#fff;border-color:#e0e0e3;border-style:dashed;color:#8e8e93;font-weight:600}
+.s11-rs.nc .no{color:#8e8e93}
+.s11-tbl{display:grid;grid-template-columns:172px 1fr 88px 104px;font-size:11.5px}
+.s11-th{background:#f7f7f8;color:#8e8e93;font-weight:700;font-size:10.5px;padding:7px 11px;
+  border-bottom:1px solid #ececee;letter-spacing:-.1px}
+.s11-td{padding:9px 11px;border-bottom:1px solid #f2f2f4;color:#48484a;line-height:1.5;letter-spacing:-.1px}
+.s11-td.k{font-weight:700;color:#3a3a3c}
+.s11-td.k .sn{color:#2c5aa8;font-size:10.5px;font-weight:700;display:block;letter-spacing:0}
+.s11-td.loc{color:#8e8e93;font-size:11px}
+.s11-tbl>div:nth-last-child(-n+4){border-bottom:none}
+.s11-b{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;
+  letter-spacing:-.1px;white-space:nowrap}
+.s11-b.ch{background:#fbe9e9;color:#b23b3b}
+.s11-b.nw{background:#e8f4ec;color:#2f7a45}
+.s11-b.kp{background:#e9f0fc;color:#2c5aa8}
+.s11-b.rv{background:#f0eafa;color:#6b4bb0}
+.s11-b.mv{background:#fdf0e0;color:#b3701f}
+.s11-b.no{background:#f0f0f2;color:#8e8e93}
+.s11-none{margin-top:24px;border:1px dashed #d8d8dc;border-radius:11px;padding:15px 17px;background:#fbfbfc}
+.s11-none .h{font-size:13px;font-weight:700;color:#6c6c70;letter-spacing:-.2px;margin-bottom:7px;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.s11-none .b{font-size:12px;color:#6c6c70;line-height:1.65;letter-spacing:-.1px}
+.s11-none .b b{color:#3a3a3c}
+.s11-none .w{margin-top:9px;font-size:11.5px;color:#a96a1e;background:#fff9f3;border-radius:7px;
+  padding:9px 12px;line-height:1.6;letter-spacing:-.1px}
+</style>
+</head><body>
+
+<div class="fig">
+<h2><span class="s11-hb">STEP 07–09</span>관련된 근거를 찾는 것에서, 아직 모르는 근거를 찾는 것으로</h2>
+<div class="sub">v7까지 STEP 09의 목표는 <b>“이 Context를 설명하는 관련 원문”</b>을 잘 찾는 것이었다. 그런데 관련성이 가장 높은 원문은 대개 실무자가 이미 아는 이야기라, 근거로는 맞고 인사이트로는 0이다. v8은 목표를 한 칸 옮긴다 — <b>관련성은 전제로 깔고, 그 위에서 “아직 모르는 것”을 골라내는 신호를 5종 도입한다.</b> 동시에 파이프라인에 공존하던 두 차원 체계(5-Dim / 6-Dim)의 역할을 먼저 고정해, STEP 05–06과 STEP 09가 서로 다른 필드를 만드는 일을 막는다.</div>
+<div class="s11-wrap">
+<div class="s11-bar"><div class="s11-lab">DCX 1.0<br>11 STEP</div><div class="s11-rail"><div class="s11-rs"><span class="no">01</span>비즈니스<br>문제 정의</div><div class="s11-rs"><span class="no">02</span>타겟 대상<br>· 채널</div><div class="s11-rs"><span class="no">03</span>카테고리<br>· 키워드</div><div class="s11-rs"><span class="no">04</span>소셜 데이터<br>수집</div><div class="s11-rs"><span class="no">05</span>데이터<br>전처리</div><div class="s11-rs"><span class="no">06</span>삼중<br>준지도 학습</div><div class="s11-rs on"><span class="no">07</span>군집<br>Touch Point</div><div class="s11-rs on"><span class="no">08</span>SNA<br>Actor</div><div class="s11-rs on"><span class="no">09</span>LDA<br>Action</div><div class="s11-rs"><span class="no">10</span>CAM<br>기회 영역</div><div class="s11-rs"><span class="no">11</span>인사이트<br>경험 컨셉</div></div></div>
+<div class="s11-tbl">
+<div class="s11-th">1.0 STEP (AS-IS)</div><div class="s11-th">개정안 대응 (TO-BE)</div><div class="s11-th">변화</div><div class="s11-th">본문 위치</div>
+<div class="s11-td k"><span class="sn">STEP 07</span>Ward Clustering → Touch Point</div>
+<div class="s11-td"><b>Cluster 층</b>. 1.0의 Ward 계층군집 + 실루엣(내부 5 + 외부 3 = 8 Touch Point)을 폐기하지 않고, <b>기존 방법(Ward 덴드로그램 ∥ SNA 모듈성 ∥ LDA)과 수정 방법(임베딩 3단 sub K-means)을 나란히 병행</b>한다. ID 발급은 한쪽에서만</div>
+<div class="s11-td"><span class="s11-b ch">치환</span></div>
+<div class="s11-td loc">§1 · §2 · §3 · §4</div>
+<div class="s11-td k"><span class="sn">STEP 08</span>SNA → 마이크로 세그먼트 → Actor</div>
+<div class="s11-td"><b>Persona(Actor) 층</b>. 한 번 사라졌던 1.0의 Actor 층을 <b>되살린 것</b>이며 신설이 아니다. 아이겐벡터 중심성 모듈성 → Desire 해석의 수작업 자리를 <b>P1 확정 절차</b>가 대신한다</div>
+<div class="s11-td"><span class="s11-b rv">복원</span></div>
+<div class="s11-td loc">§1 · §4</div>
+<div class="s11-td k"><span class="sn">STEP 09</span>세그먼트별 LDA → Action</div>
+<div class="s11-td"><b>3층 sub 군집</b>이 LDA를 대체한다. 다만 층 이름이 <code>Context</code>이고 <b>Action은 층이 아니라 그 안의 행동 기술 속성</b>이다 — 1.0처럼 Action이 독립 레이어가 아니다</div>
+<div class="s11-td"><span class="s11-b ch">치환</span></div>
+<div class="s11-td loc">§0 · §1</div>
+<div class="s11-td k"><span class="sn">STEP 09</span>원문 직접 열람으로 근거 수집</div>
+<div class="s11-td"><b>RAG 검색</b> — 1.0에서 분석가가 원문을 손으로 뒤져 근거를 모으던 작업을 자동화하고, 거기서 한 칸 더 나간다. 경험가설 2층 쿼리 · 리랭킹 재정의 · <b>새로움 신호 5종</b>으로 “관련된 근거”가 아니라 “아직 모르는 근거”를 고른다</div>
+<div class="s11-td"><span class="s11-b nw">신설</span></div>
+<div class="s11-td loc">§6 · §7 · §8 · §9 · §10</div>
+</div></div>
+
+
+<div class="legend">
+  <span><span class="ty ty-r">치환</span> AS-IS가 있고 대체된다</span>
+  <span><span class="ty ty-n">신설</span> AS-IS 없음 · 새로 꽂는다</span>
+  <span><span class="ty ty-k">유지</span> 기존 확정 재확인</span>
+  <span><span class="tag tg-amb">v7→v8</span> v7 확정안에서 또 바뀐 지점</span>
+</div>
+
+<div class="map">
+  <div class="mh"><div>#</div><div>유형</div><div>무엇을 다루는가</div><div>상태</div></div>
+  <div class="mr"><div class="no">0</div><div><span class="ty ty-n">신설</span></div><div><b>두 차원 체계의 역할 분리</b> <span class="d">— 5-Dim은 구조, 6-Dim은 태그. 먼저 고정해야 할 선결 항목</span></div><div><span class="tag tg-g">확정제안</span></div></div>
+  <div class="mr"><div class="no">1</div><div><span class="ty ty-k">유지</span></div><div><b>층 정의</b> <span class="d">— Cluster &gt; Persona(Actor) &gt; Context. Action은 층이 아니라 속성</span></div><div><span class="tag tg-b">확정기존</span></div></div>
+  <div class="mr"><div class="no">2</div><div><span class="ty ty-k">유지</span></div><div><b>두 갈래 병행</b> <span class="d">— 기존 방법 ∥ 수정 방법, ID는 한쪽에서만 발급</span></div><div><span class="tag tg-b">확정기존</span></div></div>
+  <div class="mr"><div class="no">3</div><div><span class="ty ty-k">유지</span></div><div><b>Cluster Quality 3축</b> <span class="d">— Validity · Stability · Coherence, 지표마다 출처</span></div><div><span class="tag tg-t">임계값 튠</span></div></div>
+  <div class="mr"><div class="no">4</div><div><span class="ty ty-n">신설</span></div><div><b>STEP 07 추가 4항목</b> <span class="d">— modifier seed · <code>max_sim_to_known</code> 병기 · <code>combo_rarity</code> · Context dims 요약</span></div><div><span class="tag tg-g">확정제안</span></div></div>
+  <div class="mr"><div class="no">5</div><div><span class="ty ty-n">신설</span></div><div><b>STEP 09 · Core dims 추출</b> <span class="d">— Pinecone metadata 계약 확정</span></div><div><span class="tag tg-g">확정제안</span></div></div>
+  <div class="mr"><div class="no">6</div><div><span class="ty ty-r">치환</span></div><div><b>STEP 09 쿼리 2층</b> <span class="d">— 키워드 검색 → HyDE 경험가설 문장 검색 + 코드 검증 4항목</span></div><div><span class="tag tg-g">확정제안</span></div></div>
+  <div class="mr"><div class="no">7</div><div><span class="ty ty-r">치환</span></div><div><b>리랭킹 재정의</b> <span class="d">— quality 산식 교체 · MMR → DPP · rare 쿼터는 fallback으로 강등</span></div><div><span class="tag tg-t">w 튠</span></div></div>
+  <div class="mr"><div class="no">8</div><div><span class="ty ty-n">신설</span></div><div><b>새로움 신호 5종</b> <span class="d">— 이번 개편의 본체. 무엇을 “아직 모르는 것”으로 볼 것인가</span></div><div><span class="tag tg-g">확정제안</span></div></div>
+  <div class="mr"><div class="no">9</div><div><span class="ty ty-r">치환</span></div><div><b>2차 프롬프트(지연 태깅)</b> <span class="d">— Core는 <code>situation</code> 스킵 · <code>relevant:false</code>에 사유 부여 · Act 교차검증</span></div><div><span class="tag tg-g">확정제안</span></div></div>
+  <div class="mr"><div class="no">10</div><div><span class="ty ty-k">유지</span></div><div><b>Evidence Package</b> <span class="d">— STEP 10·11과의 유일한 계약. <code>novelty</code> 컬럼만 추가</span></div><div><span class="tag tg-b">확정기존</span></div></div>
+  <div class="mr"><div class="no">11</div><div><span class="ty ty-n">신설</span></div><div><b>산출 계약 · 튜닝값 · 미결</b> <span class="d">— <code>stage_6.json</code> · <code>stage_7.json</code></span></div><div><span class="tag tg-g">확정제안</span></div></div>
+</div>
+
+<div class="nbox nb-b" style="margin-top:14px"><b>횡단 규칙.</b> 1차·2차 프롬프트의 <code>&lt;컨텍스트&gt;</code> 첫 줄은 STEP 01·02 <code>one_liner</code>다. 용어는 <b>기존 방법 / 수정 방법</b>으로 쓴다(정본·대조본 금지) — 어느 쪽이 맞는지는 아직 데이터로 결정되지 않았으므로, 이미 결정된 것처럼 읽히는 명칭을 쓰지 않는다. Persona 층은 <b>신설이 아니라</b> 1.0 Actor의 명칭 정리다.</div>
+
+<!-- 0 -->
+<div class="sec"><span class="n">0</span>두 차원 체계 <span class="q">— 먼저 고정하지 않으면 STEP 05–06과 STEP 09가 다른 필드를 만든다</span><span class="sp"><span class="ty ty-n">신설</span></span></div>
+<div class="row">
+  <div class="card blue" style="flex:1">
+    <div class="ch">Context 5-Dimension <span class="tag tg-b">구조 · 상황</span></div>
+    <div class="cs" style="font-size:12px">원문이 <b>어떤 상황인가</b>를 구조로 기술한다</div>
+    <div class="col" style="margin-top:9px">
+      <div class="box b">Environment <span class="m">— 시간 · 장소 · 채널</span></div>
+      <div class="box b">Internal State <span class="m">— 감정 · 판단</span></div>
+      <div class="box b">Task · Goal <span class="m">— Occasion · 하려던 일</span></div>
+      <div class="box b">Activity · Response <span class="m">— 실제로 한 행동</span></div>
+      <div class="box b">Resource · Constraint <span class="m">— 막은 조건</span></div>
+    </div>
+    <div class="cap" style="margin-top:10px"><b>생성 시점</b> — STEP 03 키워드 카테고리 · STEP 06 Evidence 판정 기준 · STEP 09 Core 원문 추출<br><b>저장</b> — <code>allKw[].dim</code> · 라벨 <code>context_dims</code> · Pinecone <code>context_dims</code></div>
+  </div>
+  <div class="card green" style="flex:1">
+    <div class="ch">Experience 6-Dimension <span class="tag tg-g">태그 · 경험</span></div>
+    <div class="cs" style="font-size:12px">원문이 <b>어떻게 경험되었나</b>를 태그로 붙인다</div>
+    <div class="col" style="margin-top:9px">
+      <div class="box g">Sense <span class="m">— 감각</span></div>
+      <div class="box g">Feel <span class="m">— 감정</span></div>
+      <div class="box g">Think <span class="m">— 인지</span></div>
+      <div class="box g">Act <span class="m">— 행동</span></div>
+      <div class="box g">Relate <span class="m">— 관계</span></div>
+      <div class="box g">Outcome <span class="m">— 결과</span></div>
+    </div>
+    <div class="cap" style="margin-top:10px"><b>생성 시점</b> — STEP 09 HyDE 쿼리 축 · STEP 09 지연 태깅(2차 프롬프트)<br><b>저장</b> — Pinecone <code>dims6</code> · STEP 10·11 Experience Coverage</div>
+  </div>
+</div>
+<div class="nw" style="margin-top:12px">
+  <div class="hd"><span class="ty ty-n">신설</span><span class="ttl">2차 프롬프트의 <code>situation</code>은 별도 추출이 아니라 5-Dim에서 파생한다</span><span class="tag tg-g">확정제안</span></div>
+  <div class="bd">
+    <div class="kv"><div class="k">문제</div><div class="v">두 체계를 방치하면 <b>같은 원문의 상황을 두 번 추출</b>하게 된다. STEP 09가 <code>context_dims</code>를 뽑아두었는데, STEP 09 2차 프롬프트가 <code>situation{state, emotion, barrier}</code>를 또 생성한다 — 토큰이 두 배로 들고, 두 결과가 불일치하면 STEP 10·11 CCM이 어느 쪽을 쓸지 알 수 없다.</div></div>
+    <div class="kv"><div class="k">처방</div><div class="v">매핑으로 채운다. <b>Core 원문은 2차 프롬프트에서 <code>situation</code> 출력을 스킵</b>하고, Supporting 원문만 직접 생성한다.
+<pre style="margin-top:9px">situation.state   ← Environment + Task·Goal      <span class="cm">예: "새벽 취침" = Environment.Time + Task.수면</span>
+situation.emotion ← Internal State
+situation.barrier ← Resource·Constraint
+CCM Action 행     ← Activity·Response             <span class="cm">Experience의 Act 태그와 교차 검증</span>
+CCM Artifact 행   ← artifacts[]                   <span class="cm">5-Dim에 없음 · 2차 프롬프트가 유일한 원천 — 유지</span></pre></div></div>
+    <div class="kv"><div class="k">연결</div><div class="v"><div class="wire">
+      <span class="stg">STEP 09</span><span class="fld">context_dims{5}</span><span class="wa">→</span>
+      <span class="wa">입력에 dims가 있으면</span><span class="stg o">STEP 09 2차 프롬프트</span><span class="wa">situation 출력 생략</span><span class="wa">→</span>
+      <span class="stg g">STEP 10·11 CCM</span><span class="wa">Context 행</span>
+    </div></div></div>
+    <div class="kv"><div class="k">효과</div><div class="v">Core 원문에서 <b>중복 추출이 사라지고</b>, CCM의 Context 행과 Pinecone의 <code>context_dims</code>가 <b>정의상 일치</b>한다. 두 값이 어긋날 여지 자체가 없어진다.</div></div>
+  </div>
+</div>
+
+<!-- 1 -->
+<div class="sec"><span class="n">1</span>층 정의 <span class="q">— 1.0 장표와 1:1</span><span class="sp"><span class="ty ty-k">유지</span></span></div>
+<div class="row">
+  <div class="card gray" style="flex:1;padding:12px 15px">
+    <div class="cs" style="font-size:11px;color:#a0a0a5;font-weight:700;letter-spacing:.7px">L1</div>
+    <div class="ch" style="font-size:15px;margin:1px 0 5px">Cluster</div>
+    <div class="box b" style="display:inline-block;font-family:ui-monospace,Menlo,monospace;font-size:11px;padding:1px 6px;color:#2c5aa8">CL0</div>
+    <div class="cs" style="font-size:11.5px;margin-top:6px">1.0의 <b>Touch point</b>. “각 Cluster의 원문과 TF-IDF로 고객 Touch Point 확인”이 이 층이다</div>
+  </div>
+  <div class="card gray" style="flex:1;padding:12px 15px">
+    <div class="cs" style="font-size:11px;color:#a0a0a5;font-weight:700;letter-spacing:.7px">L2</div>
+    <div class="ch" style="font-size:15px;margin:1px 0 5px">Persona</div>
+    <div class="box b" style="display:inline-block;font-family:ui-monospace,Menlo,monospace;font-size:11px;padding:1px 6px;color:#2c5aa8">CL0-P1</div>
+    <div class="cs" style="font-size:11.5px;margin-top:6px">1.0의 <b>Actor</b> = micro segment. 클러스터 안에서 SNA 모듈성으로 갈라지던 층</div>
+  </div>
+  <div class="card gray" style="flex:1;padding:12px 15px">
+    <div class="cs" style="font-size:11px;color:#a0a0a5;font-weight:700;letter-spacing:.7px">L3</div>
+    <div class="ch" style="font-size:15px;margin:1px 0 5px">Context</div>
+    <div class="box b" style="display:inline-block;font-family:ui-monospace,Menlo,monospace;font-size:11px;padding:1px 6px;color:#2c5aa8">CL0-P1-C2</div>
+    <div class="cs" style="font-size:11.5px;margin-top:6px">1.0의 <b>Context</b> = LDA topic. <code>Action</code>은 층이 아니라 이 Context의 <b>행동 서술 속성</b>이다 — CCM Action 행</div>
+  </div>
+</div>
+<div class="nbox nb-n">ID · filter · metadata · 계층 표기는 <code>context_id</code> · <code>CL0-P1-C2</code>로 통일한다. Action·상황(state→emotion→barrier)은 각 Context의 <b>속성</b>이며, 이 속성의 원천이 0절의 매핑이다.</div>
+
+<!-- 2 -->
+<div class="sec"><span class="n">2</span>두 갈래로 산출한다 <span class="q">— 기존 방법을 그대로 두고, 수정 방법을 나란히 놓는다</span><span class="sp"><span class="ty ty-k">유지</span></span></div>
+<div class="tw">
+<table class="rt">
+  <tr><th style="width:88px">층</th><th style="width:44%">기존 방법 · 1.0</th><th>수정 방법 · 임베딩</th></tr>
+  <tr><td class="ax">L1 Cluster</td><td>Ward 계층군집 덴드로그램 + 실루엣·Elbow로 k 진단 → K-means · TF-IDF</td><td>임베딩 K-means 자동 <code>k</code>(실루엣 최대, <code>k∈3~14</code>) + c-TF-IDF 상위 10</td></tr>
+  <tr><td class="ax">L2 Persona</td><td>명사 동시출현 행렬(상위 ≈300) → 네트워크 → 모듈성 분할 → Desire 유사한 것 통합</td><td>클러스터 내부 임베딩 서브 K-means(<code>k 2~3</code>) + c-TF-IDF</td></tr>
+  <tr><td class="ax">L3 Context</td><td>micro segment 내부 gensim LDA · <code>topic_num 2~10</code> 스캔 → Coherence↑·Perplexity↓</td><td>페르소나 내부 임베딩 서브 K-means + c-TF-IDF</td></tr>
+  <tr><td class="ax">공통</td><td colspan="2">L2에서 <b>Eigenvector centrality 상위 16 = “Desire가 드러나는 키워드”</b> — 어느 방법으로 경계를 잡았든 같은 방식으로 뽑으므로 장표 51·52p 화면은 양쪽 모두 재현된다</td></tr>
+</table>
+</div>
+<div class="nbox nb-b"><b>ID는 한 갈래에서만 발급한다.</b> 두 갈래가 동시에 발급하면 같은 <code>persona_id</code>가 두 뜻을 갖고 STEP 09 filter가 무너진다. 세션마다 발급 갈래를 고르고(<code>primary_method: embedding | legacy</code>), 나머지는 비교 화면에만 나온다. 스키마가 동일하므로 <b>선택은 세션 단위로 되돌릴 수 있다.</b></div>
+<div class="row" style="margin-top:12px">
+  <div class="card green" style="flex:1">
+    <div class="ch" style="font-size:12.5px">둘 다 돌려서 얻는 것</div>
+    <div class="cs" style="font-size:12px">두 결과의 <b>ARI · NMI · 최대겹침 매칭표</b>가 곧 <b>1.0 재현성</b> 지표가 된다. “클러스터를 가로지르는 페르소나를 허용할 것인가” 같은 질문도 회의가 아니라 겹침표로 닫힌다 — 기존 방법은 클러스터 교차 통합을 하고 수정 방법은 하지 않으므로 <b>차이가 그대로 답</b>이다</div>
+  </div>
+  <div class="card orange" style="flex:1">
+    <div class="ch" style="font-size:12.5px">둘 다 돌리는 비용</div>
+    <div class="cs" style="font-size:12px">계산 2배 · 화면 2배 · HITL 확정 대상 21개 → <b>48개</b>. STEP 05에 형태소 토큰 산출이 붙는다</div>
+    <div class="cap">토큰은 기존 방법 전용이므로, 수정 방법으로 확정한 뒤에는 그 단계를 끌 수 있다</div>
+  </div>
+</div>
+
+<!-- 3 -->
+<div class="sec"><span class="n">3</span>Cluster Quality Report <span class="q">— 지표마다 출처가 있다</span><span class="sp"><span class="tag tg-t">임계값 튠</span><span class="ty ty-k">유지</span></span></div>
+<div class="tw">
+<table class="rt">
+  <tr><th style="width:62px">축</th><th style="width:112px">지표</th><th>계산과 의미</th><th style="width:26%">학술적 출처</th></tr>
+  <tr><td class="ax">Validity</td><td class="ax">Experience Cohesion</td><td>문서 벡터와 센트로이드의 <b>평균 코사인</b>. 낮으면 한 클러스터에 이질적 경험이 섞였다 <span class="tag tg-n">0.6 미만 → 분리 권장</span></td><td class="src">코사인 기반 응집도 · 벡터 공간 모델 <b>Salton &amp; McGill (1983)</b></td></tr>
+  <tr><td class="ax">Validity</td><td class="ax">Boundary Clarity</td><td><b>실루엣이 음수인 문서 비율.</b> 자기 클러스터보다 다른 클러스터에 더 가까운 문서를 직접 센다 <span class="tag tg-n">15% 초과 → 경계 검토</span></td><td class="src">실루엣 계수 <b>Rousseeuw (1987)</b></td></tr>
+  <tr><td class="ax">Stability</td><td class="ax">재현성 ARI</td><td>일부를 재표집해 재군집한 뒤 원래 군집과의 일치도. 흔들리면 데이터 구조가 아니라 초기값의 산물이다 <span class="tag tg-n">L1 0.7 · L2 0.6 미만 → 불안정</span></td><td class="src">ARI <b>Hubert &amp; Arabie (1985)</b> · 재표집 안정성 <b>Ben-Hur et al. (2002)</b></td></tr>
+  <tr><td class="ax">Stability</td><td class="ax">1.0 재현성</td><td><b>두 갈래 결과의 ARI · NMI · 최대겹침 매칭표.</b> 군집 수가 다를 수 있어 우연 보정(ARI)과 정보량(NMI)을 함께 본다</td><td class="src">NMI <b>Strehl &amp; Ghosh (2002)</b> · 지표 선택 기준 <b>Vinh et al. (2010)</b></td></tr>
+  <tr><td class="ax">Coherence</td><td class="ax">NPMI / C_v</td><td><b>Context</b> 상위 어휘가 실제 말뭉치에서 함께 등장하는지. 서브 K-means + c-TF-IDF와 LDA를 <b>같은 잣대</b>에 놓는다</td><td class="src">NPMI <b>Bouma (2009)</b> · C_v 최고 상관 <b>Röder et al. (2015)</b></td></tr>
+  <tr><td class="ax">제약</td><td class="ax">Experience Granularity</td><td>Cluster 3~8 · Persona 클러스터당 2~3 · Context 페르소나당 2~4. <b>통계적 최적값이 아니라 사람이 해석 가능한 범위의 규약</b>이다</td><td class="src">통계적 적합도와 사람 해석의 괴리 <b>Chang et al. (2009)</b></td></tr>
+  <tr><td class="ax">전처리</td><td class="ax">Noise &amp; Outlier</td><td>하위 <code>relevance_score</code> + 센트로이드 거리 상위 5%. <b>K-means에는 노이즈 개념이 없다</b> — 삭제하지 않고 <b>반례 후보로 보존</b>한다</td><td class="src">noise 개념 <b>Ester et al. (1996)</b> · 부정 사례 분석 <b>Lincoln &amp; Guba (1985)</b></td></tr>
+</table>
+</div>
+<div class="nbox nb-o"><b>지표는 문헌에서 왔지만 임계값은 아니다.</b> Cohesion 0.6 · 음수 실루엣 15% · ARI L1 0.7 / L2 0.6은 설계 시작값이다. ARI 기준을 층별로 완화한 이유도 여기 있다 — 아래 층으로 갈수록 문서 수가 줄어 재표집 분산이 커진다. AS-IS에서는 silhouette이 <code>best_k</code> 선택에 내부적으로 쓰인 뒤 <b>폐기</b>됐고 사람은 군집 품질을 알 방법이 없었다. 같은 계산을 <b>사람에게 보여주는 진단</b>으로 되돌린 것이며, 배지는 <b>진단만</b> 하고 Split·Merge를 실행하지 않는다.</div>
+
+<!-- 4 -->
+<div class="sec"><span class="n">4</span>STEP 07 추가 4항목 <span class="q">— 클러스터링 자체는 그대로, 메타만 얹는다</span><span class="sp"><span class="tag tg-amb">v7→v8</span><span class="ty ty-n">신설</span></span></div>
+<div class="row">
+  <div class="nw o" style="flex:1">
+    <div class="hd"><span class="ty ty-n">신설</span><span class="ttl">① Persona seed에 STEP 01·02 modifier 반영</span></div>
+    <div class="bd">
+      <div class="kv"><div class="k">처방</div><div class="v">STEP 01·02 타겟(주부·직장인 등)은 5-Dimension의 축이 아니라 <b>cross-cut 수식어(modifier)</b>로 재정의된다. Persona <b>명명과 Desire 초안의 힌트로만</b> 쓴다.</div></div>
+      <div class="kv"><div class="k">경계</div><div class="v"><b>클러스터링 입력이 아니다.</b> 타겟을 군집 입력에 넣으면 “미리 아는 세그먼트”가 군집을 가르는 축이 되어, 발견해야 할 미지의 소비자가 나오지 않는다 — STEP 01·02 사후 세분화 원칙과 동일한 논리다.</div></div>
+      <div class="kv"><div class="k">연결</div><div class="v"><div class="wire"><span class="stg n">STEP 01·02</span><span class="fld">modifier</span><span class="wa">→</span><span class="stg">STEP 07</span><span class="wa">Persona 명명 · Desire 초안</span></div></div></div>
+    </div>
+  </div>
+  <div class="nw" style="flex:1">
+    <div class="hd"><span class="ty ty-n">신설</span><span class="ttl">② <code>max_sim_to_known</code> 병기</span></div>
+    <div class="bd">
+      <div class="kv"><div class="k">처방</div><div class="v">STEP 05에서 사전 계산한 값을 <b>클러스터 문서 메타에 그대로 실어</b> STEP 09 Pinecone까지 전달한다. <code>dist_centroid</code> 옆자리다.</div></div>
+      <div class="kv"><div class="k">비용</div><div class="v"><b>0.</b> 새로 계산하지 않고 필드를 함께 들고 가기만 한다.</div></div>
+      <div class="kv"><div class="k">연결</div><div class="v"><div class="wire"><span class="stg g">STEP 05</span><span class="fld">max_sim_to_known</span><span class="wa">→</span><span class="stg">STEP 07 메타</span><span class="wa">→</span><span class="stg o">STEP 09 quality</span></div></div></div>
+    </div>
+  </div>
+</div>
+<div class="row" style="margin-top:12px">
+  <div class="nw" style="flex:1.1">
+    <div class="hd"><span class="ty ty-n">신설</span><span class="ttl">③ 조합 희소성 <code>combo_rarity</code></span><span class="tag tg-t">임계 미정</span></div>
+    <div class="bd">
+      <div class="kv"><div class="k">문제</div><div class="v"><code>dist_centroid</code>는 <b>구형(spherical) 거리</b>다. 센트로이드에서 먼 문서를 찾아주지만, <b>각 값은 흔한데 조합이 희소한</b> 문서는 거리상 중앙에 앉아 있어 절대 걸리지 않는다. 그런데 인사이트는 대개 이 조합에서 나온다.</div></div>
+      <div class="kv"><div class="k">처방</div><div class="v">Core 원문의 <code>context_dims</code>에서 <b>(Task·Goal, Constraint)</b> · <b>(Environment, Activity·Response)</b> 쌍의 공출현 빈도를 세고, 빈도가 낮은 조합을 가진 원문에 <code>combo_rarity</code>를 부여한다. <b>Core 한정</b> — 다른 등급은 dims가 비어 있어 조합을 셀 수 없다.</div></div>
+      <div class="kv"><div class="k">예시</div><div class="v">“분유 타기”(흔함) × “정수기 온도 고정”(흔함) → <b>조합은 희소</b> · 거리상 중앙 · <code>combo_rarity</code> 高</div></div>
+      <div class="kv"><div class="k">연결</div><div class="v"><div class="wire"><span class="stg">6.5</span><span class="fld">context_dims</span><span class="wa">→</span><span class="stg">STEP 07</span><span class="fld">combo_rarity</span><span class="wa">→</span><span class="stg o">STEP 09</span><span class="wa">quality 보너스 항</span></div></div></div>
+    </div>
+  </div>
+  <div class="nw o" style="flex:1">
+    <div class="hd"><span class="ty ty-n">신설</span><span class="ttl">④ Context 정의에 5-Dim 요약 첨부</span></div>
+    <div class="bd">
+      <div class="kv"><div class="k">처방</div><div class="v">각 Context(<code>CL0-P1-C2</code>)에 소속 Core 원문 dims의 <b>최빈값 요약</b>을 붙인다. 1차 프롬프트 <code>&lt;컨텍스트&gt;</code>의 Context 목록 행에 <code>action</code> 옆 <code>dominant_constraint</code>가 추가된다.</div></div>
+      <div class="kv"><div class="k">효과</div><div class="v">교차 앵커의 <b>재료가 늘어난다.</b> 제약이 명시되면 <code>context_query</code>의 Counter·Act 문장이 “~해서 불편”에서 <b>“~라는 제약 때문에 ~로 우회”</b>로 구체화된다.</div></div>
+      <div class="kv"><div class="k">연결</div><div class="v"><div class="wire"><span class="stg">STEP 07</span><span class="fld">dominant_constraint</span><span class="wa">→</span><span class="stg o">STEP 09-1 1차 프롬프트</span><span class="wa">Context 목록 행</span></div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 5 -->
+<div class="sec"><span class="n">5</span>STEP 09 · Core dims 추출과 metadata 계약 <span class="q">— 무엇이 언제 어디서 채워지는가</span><span class="sp"><span class="ty ty-n">신설</span></span></div>
+<div class="row">
+  <div class="card green" style="flex:.85">
+    <div class="ch" style="font-size:12.5px">Core 원문 5-Dim 추출 <span class="tag tg-g">LLM · Core 한정</span></div>
+    <div class="cs" style="font-size:12px">임베딩은 <b>재계산하지 않는다</b>(STEP 05 산출물 사용). 이 단계가 하는 유일한 LLM 작업은 Core 원문에서 <code>context_dims</code> 5키를 <b>관측된 것만</b> 뽑는 것이다.</div>
+    <div class="wire" style="margin-top:10px">
+      <span class="stg o">STEP 06</span><span class="wa">라벨의 빈</span><span class="fld">context_dims</span><span class="wa">→</span>
+      <span class="stg g">6.5</span><span class="wa">채움</span><span class="wa">→</span>
+      <span class="stg">Pinecone metadata</span>
+    </div>
+    <div class="cap">전량 LLM 추출 기각 결정이 여기서 지켜진다 — 대상이 Core로 좁혀져 있어야 이 호출이 성립한다</div>
+  </div>
+  <div class="card blue" style="flex:1.15;padding:9px 11px">
+    <div class="ch" style="font-size:12.5px;padding:5px 6px 0">Pinecone metadata · 문서 1건</div>
+    <table class="rt">
+      <tr><th style="width:44%">필드</th><th style="width:26%">원천</th><th>시점</th></tr>
+      <tr><td><code>cluster_id</code> <code>persona_id</code> <code>context_id</code></td><td>STEP 07</td><td>적재 시</td></tr>
+      <tr><td><code>evidence_level</code> <code>reason_code</code> <code>confidence</code></td><td>STEP 06</td><td>적재 시</td></tr>
+      <tr><td><code>context_dims{5}</code></td><td>6.5 <span class="src">Core만</span></td><td>적재 시</td></tr>
+      <tr><td><code>dist_centroid</code> <code>pred_entropy</code> <code>band</code></td><td>6 · STEP 06</td><td>적재 시</td></tr>
+      <tr><td><code>max_sim_to_known</code> <code>combo_rarity</code></td><td>3 · STEP 07</td><td>적재 시</td></tr>
+      <tr><td><code>kw</code> <code>dim</code> <code>cafe</code> <code>date</code> <code>title</code> <code>desc</code></td><td>STEP 04</td><td>적재 시</td></tr>
+      <tr style="background:#fafbfe"><td><code>dims6[]</code> <code>polarity</code> <code>pain_point</code> <code>unmet_need</code> <code>situation</code> <code>artifacts[]</code> <code>relevant</code></td><td>STEP 09 2차 프롬프트</td><td><b>지연 태깅 후 캐시백</b></td></tr>
+    </table>
+  </div>
+</div>
+<div class="nbox nb-n">마지막 행만 <b>시점이 다르다.</b> 적재 시점에는 비어 있고, STEP 09에서 검색 후보로 올라온 문서에 한해 채워진 뒤 되돌아와 캐시된다. 그래서 같은 문서가 다음 Context 검색에 다시 걸리면 태깅을 건너뛴다 — <b>지연 태깅이 비용을 O(N)에서 O(Context 수 × M)으로 낮추는 지점</b>이다.</div>
+
+<!-- 6 -->
+<div class="sec"><span class="n">6</span>STEP 09 쿼리 2층 <span class="q">— 주제가 비슷한 글이 아니라, 니즈가 드러난 글</span><span class="sp"><span class="ty ty-r">치환</span></span></div>
+<div class="row">
+  <div class="card pink" style="flex:.85">
+    <div class="ch" style="font-size:12.5px">AS-IS · 키워드 검색</div>
+<pre>query = 클러스터 TF-IDF 상위 5 키워드
+      = "러닝 워치 이어폰 심박 운동"
+
+search_similar(query)         <span class="an">← filter 없음</span>
+  → 인덱스 <span class="an">전체</span>에서 코사인 Top-10</pre>
+    <div class="cap">주제가 비슷한 문서가 온다. 클러스터 3의 근거에 클러스터 7 문서가 섞이고, 어느 구획에서 왔는지 추적할 스키마도 없다</div>
+  </div>
+  <div class="card green" style="flex:1.15">
+    <div class="ch" style="font-size:12.5px">TO-BE · 2층 HyDE 쿼리</div>
+<pre><span class="ag">persona_query</span> = Desire 정의문 검증 + Artifact 수집
+  "이어폰 하나로 운동과 통화를 다 해결하고 싶다"
+
+<span class="ag">context_query</span> = 경험차원 가설 6종 + 반례 + Residual
+  Sense   "러닝할 때 이어폰이 땀 때문에 미끄러진다"
+  Feel    "워치랑 이어폰 둘 다 챙기는 게 귀찮다"
+  Think   "이어폰으로 심박이 측정되면 워치를 안 차도 될 것 같다"
+  Act     "운동 중 심박 확인하려고 워치를 따로 착용한다"
+  Relate  "러닝 크루에서 다들 워치를 쓴다"
+  Outcome "번거로워서 결국 심박은 포기한다"
+  반례      "이어폰 센서는 정확도 이슈가 클 것 같다"
+  Residual  "다들 뛸 때 심박 뭘로 보세요? 전 그냥 감으로"  <span class="cm">← 은어·간접 표현</span>
+
+index.query(vector,
+  filter={<span class="ab">cluster_id, persona_id, context_id</span>}, top_k=50)</pre>
+    <div class="cap"><b>차원별로 검색하는 것 자체가 Coverage를 보장한다.</b> 6개 차원으로 나눠 검색하면 근거가 한 차원에 몰리지 않는다 — Re-ranker 이전에 검색 설계에서 먼저 해결하는 편이 값싸다. filter는 옵션이 아니라 <b>필수</b>이고 <b>3키</b>다</div>
+  </div>
+</div>
+<div class="nw" style="margin-top:12px">
+  <div class="hd"><span class="ty ty-n">신설</span><span class="ttl">1차 프롬프트에 반영할 3항목</span><span class="tag tg-g">확정제안</span></div>
+  <div class="bd">
+    <div class="kv"><div class="k">헤더</div><div class="v"><code>&lt;컨텍스트&gt;</code> 첫 줄이 STEP 01·02 <code>one_liner</code>를 참조한다. 현재 <code>{one_liner}</code> 플레이스홀더로 존재하며, STEP 01·02 필드 신설로 <b>실체화</b>된다.</div></div>
+    <div class="kv"><div class="k">목록 행</div><div class="v"><code>{c.context_id} · {c.action} · 주된 제약: {c.dominant_constraint} · 키워드: …</code> — 4번 항목 ④의 산출이 여기 꽂힌다.</div></div>
+    <div class="kv"><div class="k">코드 검증</div><div class="v">생성 결과를 LLM에게 다시 묻지 않고 <b>코드로 검사</b>한다.
+      <div class="col" style="margin-top:7px;gap:5px">
+        <div class="box b"><b>(a)</b> <code>anchor_context_ids</code> 합집합 = Context 전체 <span class="m">— 층 분리로 한쪽이 통째로 누락되는 것을 차단</span></div>
+        <div class="box b"><b>(b)</b> <code>context_query</code> 8문장에 dim 누락 없음</div>
+        <div class="box b"><b>(c)</b> 분석 용어 금지어 정규식 <span class="m">— “페르소나는”, “클러스터” 같은 말이 쿼리 문장에 들어가면 임베딩이 소비자 언어에서 멀어진다</span></div>
+        <div class="box b"><b>(d)</b> 미달 시 <b>부족 항목을 명시해 1회 재생성</b> → 실패하면 <code>stage_7.json</code>에 <code>query_gen_fail</code> 기록</div>
+      </div></div></div>
+    <div class="kv"><div class="k">효과</div><div class="v">쿼리 품질이 <b>모델의 그날 컨디션이 아니라 계약</b>이 된다. 실패가 조용히 지나가지 않고 로그에 남으므로, 프롬프트 개선의 근거 데이터가 세션마다 쌓인다.</div></div>
+  </div>
+</div>
+
+<!-- 7 -->
+<div class="sec"><span class="n">7</span>리랭킹 재정의 <span class="q">— 후보 50에서 노출 10으로 좁히는 규칙이 바뀐다</span><span class="sp"><span class="tag tg-amb">v7→v8</span><span class="ty ty-r">치환</span></span></div>
+<div class="pipe">
+  <div class="pbox"><div class="t">P1 · 필터 검색</div><div class="v">후보 M = 50</div><div class="s">Context마다 · 3키 필수 filter<br>선택 filter <code>task_goal</code> <code>resource_constraint</code></div></div>
+  <div class="par">→</div>
+  <div class="pbox"><div class="t">P2 · 지연 태깅</div><div class="v">태그 없는 문서만</div><div class="s">Core는 <code>situation</code> 스킵 · 캐시백</div></div>
+  <div class="par">→</div>
+  <div class="pbox n"><div class="t">P3 · 리랭킹</div><div class="v">quality × DPP</div><div class="s">MMR λ=0.7 → DPP 집합 선택</div></div>
+  <div class="par">→</div>
+  <div class="pbox e"><div class="t">노출</div><div class="v">10건</div><div class="s">rare ≥2는 fallback 제약<br>+ LLM novelty 판정</div></div>
+</div>
+<div class="row" style="margin-top:12px">
+  <div class="card blue" style="flex:1.05">
+    <div class="ch" style="font-size:12.5px">quality 항 재정의 <span class="tag tg-t">w_k = 0.5 · w_r = 0.3</span></div>
+<pre>quality = relevance
+        × (1 − w_k · <span class="ab">max_sim_to_known</span>)     <span class="cm">← 실무자가 아는 것에 페널티</span>
+        × (1 + w_r · <span class="ag">combo_rarity</span>)         <span class="cm">← 조합 희소에 보너스</span></pre>
+    <div class="cap">relevance 단독이던 자리에 <b>두 개의 곱셈 항</b>이 붙는다. 관련성이 아무리 높아도 기지 인사이트와 거의 같은 문서는 순위가 내려가고, 관련성이 중간이어도 조합이 희소하면 올라온다</div>
+  </div>
+  <div class="card orange" style="flex:1">
+    <div class="ch" style="font-size:12.5px">MMR → DPP <span class="tag tg-amb">v7→v8</span></div>
+    <div class="cs" style="font-size:12px">v7은 <b>MMR(λ=0.7)로 다양성</b>을 확보하고, MMR이 못 잡는 꼬리를 <b>rare_evidence 하드 쿼터(10 중 ≥2)</b>로 강제했다 — 두 장치가 서로 다른 목적함수로 따로 돌았다.</div>
+    <div class="cs" style="font-size:12px;margin-top:8px">v8은 <b>quality + 다양성 kernel을 하나의 목적함수</b>로 묶어 DPP로 집합을 고른다. <b>쿼터는 fallback 제약으로 강등</b> — DPP 결과가 rare 최소치에 미달할 때만 발동한다.</div>
+    <div class="cap"><b>왜 바꾸는가.</b> 하드 쿼터는 “2건을 억지로 끼워 넣는” 장치라, DPP가 이미 좋은 꼬리를 골랐어도 또 끼워 넣어 상위 8건을 밀어낸다. 집합 선택 문제로 통합하면 그 충돌이 사라지고, 쿼터는 안전망으로만 남는다</div>
+  </div>
+</div>
+<div class="row" style="margin-top:12px">
+  <div class="card gray" style="flex:1">
+    <div class="ch" style="font-size:12.5px">선택 필터 <span class="tag tg-n">Core만 값 존재</span></div>
+    <div class="cs" style="font-size:12px"><code>task_goal</code> · <code>resource_constraint</code>로 후보를 좁힐 수 있다. 단 <b>Counter(반례) 쿼리에 한해</b> <code>evidence_level ∈ {core, supporting}</code>로 완화하는 것을 검토한다 — 반례는 본래 희소해서 Core만으로는 후보가 안 모인다.</div>
+  </div>
+  <div class="card gray" style="flex:1">
+    <div class="ch" style="font-size:12.5px">Re-ranker 4지표 <span class="tag tg-n">유지</span></div>
+    <div class="col" style="gap:5px">
+      <div class="box"><b>Representative Richness</b> <span class="m">경험차원 태그 수 0~6 + 구체성 보정</span></div>
+      <div class="box"><b>Experience Coverage</b> <span class="m">선정 세트 태그 합집합 ÷ 6 · 4/6 미만이면 자동 보충 검색</span></div>
+      <div class="box"><b>Evidence Diversity</b> <span class="m">DPP kernel로 흡수</span> <span class="src">Carbonell &amp; Goldstein (1998)</span></div>
+      <div class="box"><b>Traceable Support</b> <span class="m">인용 원문으로 지지되는 필드 비율 · 미달 시 STEP 10-A 등급 하향</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- 8 -->
+<div class="sec"><span class="n">8</span>새로움 신호 5종 <span class="q">— 이번 개편의 본체</span><span class="sp"><span class="ty ty-n">신설</span></span></div>
+<div class="cs" style="margin-bottom:11px">“센트로이드에서 멀다”는 <b>비전형</b>을 가리킬 뿐 <b>새로움</b>을 가리키지 않는다. 멀리 있는 문서 대부분은 그냥 이상한 글이다. 서로 다른 축의 신호를 여러 개 겹쳐야 “아직 모르는데 진짜인 것”이 남는다.</div>
+<div class="tw">
+<table class="rt">
+  <tr><th style="width:132px">신호</th><th style="width:13%">축</th><th style="width:12%">계산 위치</th><th style="width:11%">비용</th><th>무엇을 가리키는가</th></tr>
+  <tr>
+    <td class="ax"><code>dist_centroid</code> <span class="tag tg-n">기존</span></td><td>기하</td><td>STEP 07 부산물</td><td>0</td>
+    <td>소속 Context 전형에서 얼마나 먼가. <b>Core ≤P50 / Fringe P50–P90 / Edge &gt;P90</b> 밴드의 기준</td>
+  </tr>
+  <tr>
+    <td class="ax"><code>pred_entropy</code> <span class="tag tg-n">기존</span></td><td>모델</td><td>STEP 06 부산물</td><td>0</td>
+    <td>분류기가 얼마나 헷갈렸나. 거리와 <b>다른 축으로</b> 비전형 문서를 가리킨다</td>
+  </tr>
+  <tr>
+    <td class="ax"><code>max_sim_to_known</code> <span class="tag tg-g">신설</span></td><td>기지 대비</td><td>STEP 05 사전계산</td><td>≈0</td>
+    <td><b>실무자가 이미 아는 것과 얼마나 겹치나.</b> 유일하게 “조직이 무엇을 아는가”를 반영하는 축이다</td>
+  </tr>
+  <tr>
+    <td class="ax"><code>combo_rarity</code> <span class="tag tg-g">신설</span></td><td>조합</td><td>STEP 07 집계</td><td>낮음</td>
+    <td>각 값은 흔한데 <b>조합이 희소한가.</b> 거리의 맹점(중앙에 앉은 희소 조합)을 덮는다</td>
+  </tr>
+  <tr>
+    <td class="ax"><code>emerging</code> · <code>lexical_surprise</code> <span class="tag tg-g">신설</span></td><td>시간 · 어휘</td><td>STEP 07–09 집계</td><td>낮음</td>
+    <td><code>emerging</code> = 최근 <code>date</code> × 저빈도 <span class="src">— 지금 막 생기는 중인 현상</span><br><code>lexical_surprise</code> = 문서 내 고빈도 ∧ 클러스터 c-TF-IDF 저빈도 단어 <span class="src">— 남들이 안 쓰는 말로 말하는 문서</span></td>
+  </tr>
+</table>
+</div>
+<div class="nw" style="margin-top:12px">
+  <div class="hd"><span class="ty ty-n">신설</span><span class="ttl">LLM Novelty Cross-check — 최종 10건에만 거는 마지막 관문</span><span class="tag tg-t">판정 임계 튠</span></div>
+  <div class="bd">
+    <div class="kv"><div class="k">문제</div><div class="v">위 5종은 모두 <b>대리 지표</b>다. 거리가 멀고 조합이 희소해도, 읽어보면 그냥 이미 아는 이야기의 변형일 수 있다. 대리 지표만으로 “새롭다”고 STEP 10·11에 넘기면 검증 없는 주장이 된다.</div></div>
+    <div class="kv"><div class="k">처방</div><div class="v">최종 노출 10건에 대해서만 <b>“클러스터 Core 대표 5건 + <code>known_insights</code>”와 직접 비교</b>시켜 novelty를 STEP 06으로 판정한다. 결과는 STEP 10·11 Evidence Package의 <code>novelty</code> 컬럼이 된다.</div></div>
+    <div class="kv"><div class="k">비용</div><div class="v"><b>Context당 1회.</b> 10건 전체를 한 프롬프트에 넣어 상대 비교시키므로 문서 수만큼 호출이 늘지 않는다. 대리 지표로 후보를 좁힌 뒤 마지막에만 LLM을 쓰는 순서라 총량이 통제된다.</div></div>
+    <div class="kv"><div class="k">연결</div><div class="v"><div class="wire">
+      <span class="stg o">STEP 09</span><span class="fld">novelty</span><span class="wa">→</span>
+      <span class="stg g">STEP 10·11</span><span class="wa">Evidence Package 컬럼</span><span class="wa">+</span><span class="wa">Opportunity Map</span>
+      <span class="fld">novelty 高 ∧ ODI 高</span><span class="wa">사분면 별도 마커</span>
+    </div></div></div>
+  </div>
+</div>
+<div class="nbox nb-g"><b>에스컬레이션 경로는 유지된다.</b> 같은 방향의 rare가 <b>3건 이상</b> 모이면 “미분화 Context 후보” 플래그를 올려 STEP 09 HITL의 수동 생성 검토로 보낸다 — <b>Edge에서 새 세그먼트가 태어나는 경로</b>다. 노이즈와 희소 신호를 가르는 것은 지연 태깅이다: 멀리 있는 문서 중 <code>relevant</code>이고 pain/unmet이 있는 것만 rare로 남고, 나머지는 Noise &amp; Outlier의 반례 후보 보존과 합류한다.</div>
+
+<!-- 9 -->
+<div class="sec"><span class="n">9</span>2차 프롬프트 · 지연 태깅 <span class="q">— 세 군데를 고친다</span><span class="sp"><span class="ty ty-r">치환</span></span></div>
+<div class="row">
+  <div class="card green" style="flex:1">
+    <div class="ch" style="font-size:12.5px">유지되는 것</div>
+    <div class="col" style="gap:5px">
+      <div class="box g">few-shot 8건 내장 <span class="m">— 도메인 분산</span></div>
+      <div class="box g">pain_point(관측) / unmet_need(추론) 분리 <span class="m">— STEP 10-A 인식론 등급의 원천</span></div>
+      <div class="box g">polarity ∈ [−1, 1] <span class="m">— ODI Satisfaction 원료</span></div>
+      <div class="box g">situation + artifacts 동시 출력 · 캐시백</div>
+    </div>
+  </div>
+  <div class="card orange" style="flex:1.25">
+    <div class="ch" style="font-size:12.5px">바뀌는 것 3가지</div>
+    <div class="col" style="gap:6px">
+      <div class="box o"><b>① Core 원문 <code>situation</code> 스킵</b> <span class="m">— 입력에 <code>context_dims</code>가 있으면 출력 생략 지시. 0절 매핑으로 채운다 → 토큰·불일치 동시 절감</span></div>
+      <div class="box o"><b>② <code>relevant: false</code> → <code>reason_code</code> 동반 출력</b> <span class="m">— 2차 프롬프트가 무관이라 판정한 건은 <b>STEP 06 오분류 신호</b>다. 사유를 함께 받아 <code>stage_7.json</code>에 집계하고 재캘리브레이션 입력으로 넘긴다</span></div>
+      <div class="box o"><b>③ Act 태그 ↔ <code>activity_response</code> 교차검증</b> <span class="m">— Core에서 <code>dims6</code>에 Act가 있는데 <code>context_dims.activity_response</code>가 비었거나 그 역이면 <b>불일치 플래그</b> → 감사 샘플 우선 대상</span></div>
+    </div>
+    <div class="cap">②와 ③은 STEP 09가 <b>STEP 06으로 되먹임</b>하는 경로다. 라벨 품질이 한 번 확정되고 끝나는 것이 아니라, 하류에서 발견된 오분류가 상류 재캘리브레이션 트리거로 돌아간다</div>
+  </div>
+</div>
+
+<!-- 10 -->
+<div class="sec"><span class="n">10</span>Evidence Package <span class="q">— STEP 10·11과의 유일한 계약</span><span class="sp"><span class="ty ty-k">유지</span></span></div>
+<div class="row">
+  <div class="card gray" style="flex:1.12;padding:9px 11px">
+<pre>EvidencePackage {
+
+  <span class="ab">persona_evidence</span> {
+    cluster_id, persona_id, persona_name,
+    desire, goal [],
+    desire_support  [{ doc_id, quote_span, tags }],
+    artifacts       [{ name, mention_count }],   <span class="cm">← 1.0 Artifact 필드</span>
+    metrics { importance, satisfaction, odi, doc_count, author_count },
+    quality { separation, reproducibility_ari, reproducibility_nmi }
+  },
+
+  <span class="ab">context_evidence</span> [{
+    context_id, context_name,
+    action  "행동 요약 1문장",                     <span class="cm">← CCM Action 행 · Activity·Response</span>
+    situation { state, emotion, barrier },       <span class="cm">← CCM Context 행 · 0절 매핑</span>
+    dominant_constraint,                        <span class="cm">← 신설 · STEP 09 dims 최빈값</span>
+    keywords [],
+    metrics { importance, satisfaction, odi, doc_count, author_count,
+              quality { cohesion, boundary, stability, npmi } },
+    evidence         [{ doc_id, quote_span, tags, polarity, <span class="ag">novelty</span>, role: support }],
+    counter_evidence [{ doc_id, quote_span, tags, polarity, role: counter }],
+    rare_evidence    [{ doc_id, quote_span, tags, polarity,
+                        dist_centroid, <span class="ag">combo_rarity</span>, <span class="ag">max_sim_to_known</span>, role: rare }],
+    trace            [{ claim_field, evidence_type, doc_ids, tag_grade }]
+  }]
+}</pre>
+  </div>
+  <div class="card blue" style="flex:.88">
+    <div class="ch" style="font-size:12.5px">1.0 장표 수치가 여기서 확정된다</div>
+    <div class="col" style="gap:5px">
+      <div class="box b"><b>Importance</b> <span class="m">Context 문서 수 × Coverage · min-max 정규화</span></div>
+      <div class="box b"><b>Satisfaction</b> <span class="m"><code>polarity</code> 평균 · 표본 20건 이상일 때만 대표 표기</span></div>
+      <div class="box b"><b>ODI</b> <span class="m">Importance + max(Importance − Satisfaction, 0)</span></div>
+      <div class="box p"><b>Persona 집계값</b> <span class="m">소속 Context의 문서 수 가중 평균 <span style="color:#b23b3b">★ 산식 미결</span></span></div>
+    </div>
+    <div class="cap">Opportunity Map은 별도 모듈이 아니라 <b>STEP 07 구획 × STEP 09 태그의 집계 뷰</b>다. 점의 단위는 Context, 색이 Persona이며, v8에서 <b><code>novelty</code> 高 ∧ ODI 高 사분면에 별도 마커</b>가 추가된다 — “실무자가 몰랐고 기회도 큰” 지점</div>
+  </div>
+</div>
+<div class="nbox nb-o"><b>스케일 경고.</b> Satisfaction·ODI 절대값은 1.0(SentiWord 사전 기반)과 스케일이 다르다. 2.0은 min-max 정규화 0~10이므로 <b>1.0 장표 수치와 직접 비교하면 안 된다.</b></div>
+
+<!-- 11 -->
+<div class="sec"><span class="n">11</span>산출 계약 · 튜닝값 · 미결<span class="sp"><span class="tag tg-t">튠</span><span class="tag tg-n">보류</span></span></div>
+<div class="row">
+  <div class="card blue" style="flex:1.1;padding:9px 11px">
+    <table class="rt">
+      <tr><th style="width:96px">파일</th><th>담는 값</th></tr>
+      <tr><td><code>stage_6.json</code></td><td>두 방법의 3축 지표 · k · 밴드 분포 · Persona·Context 목록(Desire/Goal 포함)</td></tr>
+      <tr><td><code>stage_7.json</code></td><td>Context별 Experience Coverage(x/6) · Residual 보충 발동 수 · 밴드별 노출 비율 · <code>novelty</code> 분포 · 에스컬레이션 후보 · <code>relevant=false</code> 건수와 <code>reason_code</code> · <code>query_gen_fail</code></td></tr>
+    </table>
+  </div>
+  <div class="card orange" style="flex:.8;padding:9px 11px">
+    <table class="rt">
+      <tr><th>파라미터</th><th style="width:88px">초기값</th></tr>
+      <tr><td>밴드 경계</td><td><b>P50 / P90</b></td></tr>
+      <tr><td>rare 쿼터 (fallback)</td><td><b>10 중 ≥2</b></td></tr>
+      <tr><td>에스컬레이션 동방향</td><td><b>≥3</b></td></tr>
+      <tr><td><code>w_k</code> · <code>w_r</code></td><td><b>0.5 / 0.3</b></td></tr>
+      <tr><td>DPP kernel 폭</td><td>미정</td></tr>
+      <tr><td><code>combo_rarity</code> 임계</td><td>분포 확인 후</td></tr>
+      <tr><td>novelty 판정 임계</td><td><b>high 이상</b></td></tr>
+    </table>
+  </div>
+</div>
+<div class="row" style="margin-top:12px">
+  <div class="card pink" style="flex:1">
+    <div class="ch" style="font-size:12.5px">미결 <span class="tag tg-r">답이 필요한 것</span></div>
+    <div class="col" style="gap:5px">
+      <div class="box p"><b>★ 조합 희소성 저장소</b> <span class="m">— Pinecone metadata로 버틸지 그래프 DB를 별도 도입할지. 쌍 공출현을 메타데이터 필드로 쌓으면 조합 축이 늘 때마다 필드가 늘어난다</span></div>
+      <div class="box p"><b>★ Persona 단위 Importance·Satisfaction 집계 산식</b> <span class="m">— Underserved 판정이 직접 의존한다</span></div>
+      <div class="box p"><b>★ L3 k 결정 방식</b> <span class="m">— 문서 수가 적어 실루엣이 불안정하다. Granularity 하한과 실루엣 중 무엇을 우선할지</span></div>
+      <div class="box p"><b>★ centrality 산식</b> <span class="m">— 정규화 방식과 표시 개수. 적용 층이 L2인 것까지가 확정</span></div>
+      <div class="box p"><b>★ 반례 Context의 Granularity 예외</b> <span class="m">— 근거 10건 하한을 반례 성격 Context에도 적용할지</span></div>
+    </div>
+  </div>
+  <div class="card green" style="flex:1">
+    <div class="ch" style="font-size:12.5px">닫힌 것 <span class="tag tg-g">재론하지 않는다</span></div>
+    <div class="col" style="gap:5px">
+      <div class="box g"><b>✓ L3 층 명칭</b> <span class="m">— Context. Action은 각 Context의 행동 서술 속성</span></div>
+      <div class="box g"><b>✓ Touch point 층</b> <span class="m">— Cluster가 Touch point다</span></div>
+      <div class="box g"><b>✓ Artifact 필드</b> <span class="m">— 각 Context의 필드. 2차 프롬프트가 <code>artifacts[]</code>로 추출하는 유일한 원천</span></div>
+      <div class="box g"><b>✓ Desire / Goal 분리</b> <span class="m">— Persona 헤더 2층 표시, L2에서 산출</span></div>
+      <div class="box g"><b>✓ Persona–Cluster 대응</b> <span class="m">— Persona는 클러스터의 자식이고 클러스터당 2~3개</span></div>
+      <div class="box g"><b>✓ merge / split / move</b> <span class="m">— 포스트 MVP 부록. 인덱스 재배치를 동반해 되돌리기 어렵다</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="notes">
+  <div class="nt">왜 이렇게 기획했는가</div>
+  <div class="nsm"><b>관련성 최적화의 천장.</b> RAG 품질 지표는 대개 “질문에 답하는 근거를 가져왔는가”를 잰다. 그런데 소비자 인사이트 과업에서 성공은 <b>“실무자가 몰랐던 것을 가져왔는가”</b>다. 이 둘은 상관이 있지만 같지 않고, 관련성만 최적화하면 결과가 기지 사실 재확인으로 수렴한다. 그래서 조직이 무엇을 아는가(<code>known_insights</code>)를 시스템에 입력받아 목적함수에 넣었다 — 이 축이 없으면 새로움을 정의할 기준점 자체가 없다.</div>
+  <div class="nsm"><b>거리 하나로는 꼬리를 못 잡는 이유.</b> <code>dist_centroid</code>는 구형 거리라 “모든 축에서 평균적으로 먼” 문서를 찾는다. 반면 실제 인사이트는 각 속성이 평범한데 <b>조합이 드문</b> 지점에서 자주 나오고, 그런 문서는 거리상 정확히 중앙에 앉는다. <code>combo_rarity</code>는 이 사각을 겨냥해 5-Dim 값 쌍의 공출현 빈도를 직접 센다. 두 신호는 대체재가 아니라 서로의 맹점을 덮는 보완재다.</div>
+  <div class="nsm"><b>MMR을 DPP로 바꾸는 이유.</b> MMR은 <b>중복 제거</b>지 꼬리 겨냥이 아니다 — 유사도 기준이라 결국 센트로이드 부근에서 다양해질 뿐이다. 그래서 v7은 하드 쿼터를 덧붙였는데, 두 장치가 서로 다른 목적함수로 돌아 충돌했다. DPP는 quality와 다양성을 하나의 집합 선택 문제로 푼다. 쿼터를 fallback으로 내린 것은 안전망을 버린 게 아니라, 평상시에 상위 항목을 밀어내지 않게 위치를 바꾼 것이다.</div>
+  <div class="nsm"><b>1차 클러스터링에 태그를 넣지 않는 이유.</b> 임베딩이 이미 그 정보를 암묵적으로 인코딩하고 있고, 정밀 태그는 부분 커버리지다. 커버리지가 불균등한 태그를 군집 입력으로 쓰면 “태그가 있느냐 없느냐”가 군집을 가르는 축이 되어버린다. 군집은 임베딩 단독으로 완결시키고, 태그는 근거를 고를 때만 쓴다.</div>
+  <div class="nsm"><b>기존 방법을 지우지 않는 이유.</b> 1.0 결과물은 이미 검증된 산출이고, 임베딩 기반 분할이 그 결과를 얼마나 보존하는지는 아직 아무도 모른다. 한쪽을 지우면 그 질문을 영구히 답할 수 없다. 두 갈래를 나란히 두면 차이 자체가 지표가 되고, 나중에 어느 쪽으로 좁힐지도 데이터로 정할 수 있다.</div>
+  <div class="nsm"><b>c-TF-IDF를 쓰는 이유.</b> 클러스터를 하나의 문서로 합쳐 TF-IDF를 계산하면 그 클러스터를 <b>구별하는</b> 어휘가 뽑힌다. 클러스터마다 빈도 상위 어휘를 따로 뽑으면 “좋다·많다” 같은 공통어가 전부 올라와 구별이 되지 않는다. <span class="src">Grootendorst (2022) BERTopic</span></div>
+</div>
+
+</div>
+
+</body></html>

@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>DCX · STEP 03–04 키워드 설계</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",Pretendard,"Malgun Gothic",sans-serif;background:#fff;color:#1c1c1e;-webkit-font-smoothing:antialiased}
+.fig{max-width:960px;padding:30px 34px 34px}
+h2{font-size:19px;font-weight:700;letter-spacing:-.3px;color:#111}
+.sub{font-size:12.5px;color:#8e8e93;margin-top:7px;line-height:1.6;letter-spacing:-.1px}
+.sec{font-size:12.5px;font-weight:700;color:#3a3a3c;letter-spacing:-.15px;margin:26px 0 11px;display:flex;align-items:center;gap:8px}
+.sec .n{display:inline-flex;width:17px;height:17px;border-radius:5px;background:#ececee;color:#6c6c70;font-size:10.5px;align-items:center;justify-content:center;font-weight:700}
+.sec .q{font-weight:400;color:#8e8e93}
+.row{display:flex;align-items:stretch;gap:13px}
+.row.mid{align-items:center}
+.col{display:flex;flex-direction:column;gap:6px}
+.card{border-radius:10px;border:1px solid;padding:15px 17px}
+.blue{background:#f4f7fd;border-color:#d3e0f5}
+.orange{background:#fff9f3;border-color:#f2ddc4}
+.gray{background:#fafafa;border-color:#e5e5e7}
+.green{background:#f4faf6;border-color:#d2e7d8}
+.pink{background:#fdf4f4;border-color:#f2d6d6}
+.ch{font-size:13.5px;font-weight:700;letter-spacing:-.2px;margin-bottom:8px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.blue .ch{color:#2c5aa8}.orange .ch{color:#b3701f}.green .ch{color:#2f7a45}.pink .ch{color:#b23b3b}.gray .ch{color:#3a3a3c}
+.cs{font-size:12.5px;color:#48484a;line-height:1.55;letter-spacing:-.1px}
+.cap{font-size:11.5px;line-height:1.55;margin-top:10px;letter-spacing:-.1px}
+.blue .cap{color:#4a7fd4}.orange .cap{color:#c9822f}.green .cap{color:#3f8f57}.pink .cap{color:#c05555}.gray .cap{color:#8e8e93}
+.box{background:#fff;border:1px solid #e5e5e7;border-radius:7px;padding:8px 11px;font-size:12.5px;color:#3a3a3c;letter-spacing:-.1px;line-height:1.5}
+.box.b{border-color:#dae4f6}.box.o{border-color:#f2e0c8}.box.p{border-color:#f2d6d6}
+.box .m{color:#8e8e93}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:5px;letter-spacing:-.1px;white-space:nowrap}
+.tg-b{background:#e9f0fc;color:#2c5aa8}.tg-o{background:#fdf0e0;color:#b3701f}.tg-g{background:#e8f4ec;color:#2f7a45}.tg-r{background:#fbe9e9;color:#b23b3b}.tg-n{background:#f0f0f2;color:#6c6c70}
+.arw{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:5px}
+.line{width:32px;height:1px;background:#c7c7cc;position:relative}
+.line::after{content:"";position:absolute;right:0;top:-3.5px;border-left:6px solid #c7c7cc;border-top:3.5px solid transparent;border-bottom:3.5px solid transparent}
+.line.dash{background:none;border-top:1px dashed #c7c7cc}
+.al{font-size:10.5px;color:#8e8e93;letter-spacing:-.1px;white-space:nowrap}
+.pre{background:#fbfbfc;border:1px solid #e5e5e7;border-radius:8px;padding:13px 15px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;line-height:1.85;color:#3a3a3c;white-space:pre-wrap;letter-spacing:-.1px}
+.pre .an{color:#c9822f;font-weight:600}
+.pre .cm{color:#a0a0a5}
+.pre .hl{color:#2c5aa8;font-weight:600}
+.pre .del{color:#c88;text-decoration:line-through}
+.notes{border-top:1px solid #ececee;margin-top:26px;padding-top:17px;display:flex;flex-direction:column;gap:9px}
+.nt{font-size:12.5px;font-weight:700;color:#3a3a3c;letter-spacing:-.15px}
+.nsm{font-size:12px;color:#6c6c70;letter-spacing:-.1px;line-height:1.65}
+.nsm b{color:#3a3a3c}
+.src{color:#a0a0a5;font-size:11px}
+.nbox{border-radius:8px;padding:11px 14px;font-size:12px;line-height:1.65;letter-spacing:-.1px}
+.nb-r{background:#fdf4f4;color:#a34444}.nb-g{background:#f4faf6;color:#357a4c}.nb-b{background:#f4f7fd;color:#2c5aa8}.nb-o{background:#fff9f3;color:#a96a1e}
+.ax{display:flex;gap:11px}
+.ax>div{flex:1}
+.axh{font-size:12.5px;font-weight:700;margin-bottom:7px}
+.axl{font-size:11.5px;color:#48484a;line-height:1.7;letter-spacing:-.1px}
+.axl .g{color:#8e8e93}
+</style>
+<style>
+/* ── DCX 1.0 11-STEP 스파인 (추가 블록 · 기존 규칙 미수정) ── */
+.s11-hb{display:inline-block;font-size:11px;font-weight:700;letter-spacing:-.1px;
+  background:#2c5aa8;color:#fff;padding:3px 9px;border-radius:6px;margin-right:9px;
+  vertical-align:middle;position:relative;top:-1.5px}
+.s11-wrap{margin-top:16px;border:1px solid #e5e5e7;border-radius:11px;overflow:hidden;background:#fcfcfd}
+.s11-bar{display:flex;align-items:center;gap:9px;padding:11px 13px 12px;border-bottom:1px solid #ececee;background:#fff}
+.s11-lab{flex:0 0 auto;font-size:10.5px;font-weight:700;color:#8e8e93;letter-spacing:-.1px;
+  padding-right:10px;border-right:1px solid #ececee;line-height:1.35}
+.s11-rail{display:flex;align-items:stretch;gap:3px;flex:1;flex-wrap:nowrap}
+.s11-rs{flex:1 1 0;min-width:0;border-radius:6px;border:1px solid #ececee;background:#fafafa;
+  padding:6px 4px;text-align:center;font-size:9.5px;line-height:1.35;color:#b0b0b5;
+  letter-spacing:-.2px;word-break:keep-all}
+.s11-rs .no{display:block;font-size:10px;font-weight:700;color:#c7c7cc;margin-bottom:2px;letter-spacing:0}
+.s11-rs.on{background:#eef3fc;border-color:#c3d5f0;color:#2c5aa8;font-weight:600}
+.s11-rs.on .no{color:#2c5aa8}
+.s11-rs.nc{background:#fff;border-color:#e0e0e3;border-style:dashed;color:#8e8e93;font-weight:600}
+.s11-rs.nc .no{color:#8e8e93}
+.s11-tbl{display:grid;grid-template-columns:172px 1fr 88px 104px;font-size:11.5px}
+.s11-th{background:#f7f7f8;color:#8e8e93;font-weight:700;font-size:10.5px;padding:7px 11px;
+  border-bottom:1px solid #ececee;letter-spacing:-.1px}
+.s11-td{padding:9px 11px;border-bottom:1px solid #f2f2f4;color:#48484a;line-height:1.5;letter-spacing:-.1px}
+.s11-td.k{font-weight:700;color:#3a3a3c}
+.s11-td.k .sn{color:#2c5aa8;font-size:10.5px;font-weight:700;display:block;letter-spacing:0}
+.s11-td.loc{color:#8e8e93;font-size:11px}
+.s11-tbl>div:nth-last-child(-n+4){border-bottom:none}
+.s11-b{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;
+  letter-spacing:-.1px;white-space:nowrap}
+.s11-b.ch{background:#fbe9e9;color:#b23b3b}
+.s11-b.nw{background:#e8f4ec;color:#2f7a45}
+.s11-b.kp{background:#e9f0fc;color:#2c5aa8}
+.s11-b.rv{background:#f0eafa;color:#6b4bb0}
+.s11-b.mv{background:#fdf0e0;color:#b3701f}
+.s11-b.no{background:#f0f0f2;color:#8e8e93}
+.s11-none{margin-top:24px;border:1px dashed #d8d8dc;border-radius:11px;padding:15px 17px;background:#fbfbfc}
+.s11-none .h{font-size:13px;font-weight:700;color:#6c6c70;letter-spacing:-.2px;margin-bottom:7px;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.s11-none .b{font-size:12px;color:#6c6c70;line-height:1.65;letter-spacing:-.1px}
+.s11-none .b b{color:#3a3a3c}
+.s11-none .w{margin-top:9px;font-size:11.5px;color:#a96a1e;background:#fff9f3;border-radius:7px;
+  padding:9px 12px;line-height:1.6;letter-spacing:-.1px}
+</style>
+</head><body>
+
+<div class="fig">
+<h2><span class="s11-hb">STEP 03–04</span>키워드 설계 — 라운드마다 다른 기법, 라운드를 넘어 누적되는 지시</h2>
+<div class="sub">AS-IS는 코드 분기가 <b>round==1</b>과 <b>else</b> 둘뿐이라 R2·R3·R4가 모두 같은 확장 프롬프트를 탔다. 라운드를 반복해도 유사 결과가 나오고, 문서가 설명하는 발산 → 수렴 → 재발산 흐름이 실제로 구현되지 않았다.</div>
+<div class="s11-wrap">
+<div class="s11-bar"><div class="s11-lab">DCX 1.0<br>11 STEP</div><div class="s11-rail"><div class="s11-rs"><span class="no">01</span>비즈니스<br>문제 정의</div><div class="s11-rs"><span class="no">02</span>타겟 대상<br>· 채널</div><div class="s11-rs on"><span class="no">03</span>카테고리<br>· 키워드</div><div class="s11-rs nc"><span class="no">04</span>소셜 데이터<br>수집</div><div class="s11-rs"><span class="no">05</span>데이터<br>전처리</div><div class="s11-rs"><span class="no">06</span>삼중<br>준지도 학습</div><div class="s11-rs"><span class="no">07</span>군집<br>Touch Point</div><div class="s11-rs"><span class="no">08</span>SNA<br>Actor</div><div class="s11-rs"><span class="no">09</span>LDA<br>Action</div><div class="s11-rs"><span class="no">10</span>CAM<br>기회 영역</div><div class="s11-rs"><span class="no">11</span>인사이트<br>경험 컨셉</div></div></div>
+<div class="s11-tbl">
+<div class="s11-th">1.0 STEP (AS-IS)</div><div class="s11-th">개정안 대응 (TO-BE)</div><div class="s11-th">변화</div><div class="s11-th">본문 위치</div>
+<div class="s11-td k"><span class="sn">STEP 03</span>카테고리 / 키워드 선정</div>
+<div class="s11-td"><b>R1~R4 라운드</b> — 브레인스토밍 3라운드(22→20→8 카테고리)로 발산·수렴하던 수작업을 <b>라운드별 기법이 분화된 LLM 절차</b>로 치환. 분류 체계도 7개 flat 카테고리 → <b>물리 · 심리 · 행동 3축</b></div>
+<div class="s11-td"><span class="s11-b ch">치환</span></div>
+<div class="s11-td loc">§1 · §2 · §4</div>
+<div class="s11-td k"><span class="sn">STEP 03</span>3V 데이터 타당성 검토</div>
+<div class="s11-td"><b>Volume</b>은 네이버 검색량 자동 스코어링으로 코드화. <b>Variety</b>(연관어 맥락 검증)는 §3 HITL 승인 게이트로 흡수. <b>Velocity</b>(트렌드 추세 검증)는 <b>현재 대응 없음</b> — 미결</div>
+<div class="s11-td"><span class="s11-b ch">부분 치환</span></div>
+<div class="s11-td loc">§3 · 미결</div>
+<div class="s11-td k"><span class="sn">STEP 04</span>소셜 리스닝 데이터 수집</div>
+<div class="s11-td">크롤링 모듈이 그대로 승계 — 이번 개정 대상 아님 (하단 카드 참조)</div>
+<div class="s11-td"><span class="s11-b no">수정사항 없음</span></div>
+<div class="s11-td loc">하단 카드</div>
+</div></div>
+
+
+<div class="sec"><span class="n">1</span>프롬프트 골격 <span class="q">— 역할을 주는 대신 절차를 준다</span></div>
+<div class="row">
+  <div class="card pink" style="flex:1">
+    <div class="ch">AS-IS</div>
+    <div class="pre">타겟: {target_desc}
+
+<span class="del">당신은 소비자 경험(CX) 리서치 전문가입니다.</span>
+네이버 카페에서 소비자의 숨겨진 경험과
+니치한 맥락을 발굴하기 위한 검색 키워드를
+생성하세요.
+
+<span class="cm">## 키워드 방향</span>
+<span class="del">- 에어컨 예시: 습도, 온도, 추위, 환기, 소음</span>
+<span class="del">- 보험 예시: 누수, 화재, 침수, 균열, 도난</span>
+
+<span class="cm">## 카테고리 분류</span>
+상황맥락 / 감정표현 / 문제상황 / 숨은니즈 /
+타겟특화 / 시즌시간 / 공간장소</div>
+    <div class="cap">역할 부여로 시작하고, 사고 절차 없이 곧바로 단어 나열을 요구한다. 고정 도메인 예시가 다른 제품에도 특정 방향으로 편향을 유도한다.</div>
+  </div>
+
+  <div class="arw" style="align-self:center"><div class="line"></div></div>
+
+  <div class="card green" style="flex:1.1">
+    <div class="ch">TO-BE</div>
+    <div class="pre">탐색 목적: {exploration_goal}   <span class="an">← 컨텍스트 저장소에서 주입</span>
+타겟(시드): {target_seed}       <span class="an">← 제약이 아닌 참고 시드</span>
+
+<span class="cm">## 임무</span>
+위 문제정의를 탐색하기 위한 검색 키워드를
+설계한다.                       <span class="an">← 태스크 프레이밍</span>
+
+<span class="cm">## 사고 절차 (반드시 순서대로)</span>
+1) 문제정의에서 소비자가 처하는 상황을
+   떠올린다
+2) 그 상황을 <span class="hl">누가 / 언제 / 어디서 /
+   무엇을 / 왜 / 어떻게</span> 겪는지 전개한다  <span class="an">← 5W1H</span>
+3) 소비자가 실제로 <span class="hl">"해결하려는 일(job)"</span>이
+   무엇인지 규정한다              <span class="an">← Jobs-to-be-Done</span>
+4) 그 상황·job을 드러내는 구체적
+   사물·현상 단어로 좁힌다
+
+<span class="cm">## 키워드 형태 규칙</span>
+- 좋은 예: 누수, 화재, 단열, 소음, 곰팡이
+  나쁜 예: 보험 후기, 보험 비교      <span class="an">← 형태 예시만 유지</span></div>
+    <div class="cap">5W1H와 JTBD는 별도 지시문이 아니라 사고 절차 2·3단계 그 자리에 들어간다. 상황을 6하원칙으로 펼친 뒤 “해결하려는 일”을 규정하게 만들어, 단어 나열로 점프하는 것을 막는다.</div>
+  </div>
+</div>
+
+<div class="sec"><span class="n">2</span>라운드별 기법 분화 <span class="q">— 발산 · 인접 확장 · 수렴 · 재발산</span></div>
+<div class="row">
+  <div class="card blue" style="flex:1">
+    <div class="ch">R1 <span class="tag tg-b">초기 발산</span></div>
+    <div class="cs" style="font-weight:600">5W1H · Jobs-to-be-Done</div>
+    <div class="cap">사고 절차 4단계를 프롬프트에 명시<br>Pain Point 단어 필수 — 불편 · 실패 · 후회 · 걱정 · 고장 · 분쟁</div>
+    <div class="box b" style="margin-top:10px">70개 이상</div>
+  </div>
+  <div class="arw" style="align-self:center"><div class="line"></div></div>
+  <div class="card blue" style="flex:1">
+    <div class="ch">R2 <span class="tag tg-b">인접 확장</span></div>
+    <div class="cs" style="font-weight:600">SCAMPER 대체 · 결합 · 응용</div>
+    <div class="cap"><b>대체</b> 기존 키워드의 대상·상황을 다른 것으로<br><b>결합</b> 두 키워드 맥락을 합친 새 상황<br><b>응용</b> 유사 상황·인접 카테고리로 확장</div>
+    <div class="box b" style="margin-top:10px">100개 이상</div>
+  </div>
+  <div class="arw" style="align-self:center"><div class="line"></div></div>
+  <div class="card orange" style="flex:1">
+    <div class="ch">R3 <span class="tag tg-o">수렴 · 균형</span></div>
+    <div class="cs" style="font-weight:600">발산-수렴 이론의 수렴 단계</div>
+    <div class="cap">프롬프트에 두 값이 들어온다<br><b>{category_distribution}</b> 축별 현재 분포<br><b>{rejection_signals}</b> 사용자 거절 신호</div>
+    <div class="box o" style="margin-top:10px">부족 축 위주 60개 이상</div>
+  </div>
+  <div class="arw" style="align-self:center"><div class="line"></div></div>
+  <div class="card orange" style="flex:1">
+    <div class="ch">R4 <span class="tag tg-o">재발산</span></div>
+    <div class="cs" style="font-weight:600">SCAMPER 역발상 · 제거 + 극단 사용자 + 부정 공간</div>
+    <div class="cap"><b>역발상</b> 안 쓰는 · 반대로 쓰는 상황<br><b>제거</b> 특정 기능이 없을 때 생기는 맥락<br><b>부정 공간</b> 대체 · 전환 · 이탈 지점</div>
+    <div class="box o" style="margin-top:10px">60개 이상</div>
+  </div>
+</div>
+
+<div class="sec"><span class="n">3</span>HITL <span class="q">— 인간은 방향과 판단, 에이전트는 생성</span></div>
+<div class="card gray">
+  <div class="row mid">
+    <div class="box" style="flex:1"><b>① 사전 · 방향 지시</b><br><span style="color:#8e8e93">“영유아 관련 맥락을 더 발산해줘”<br>“광고성 맥락은 빼줘”</span></div>
+    <div class="arw"><div class="line"></div></div>
+    <div class="box" style="flex:1"><b>② 생성 · 에이전트 발산</b><br><span style="color:#8e8e93">지시를 반영해 생성</span></div>
+    <div class="arw"><div class="line"></div></div>
+    <div class="box" style="flex:1.15"><b>③ 사후 · 승인 / 거절 + 이유</b><br><span style="color:#8e8e93">태그(관련성 낮음 · 흔함 · 문장형 · 오분류)<br>+ 자유 텍스트로 직접 이유·방향 입력</span></div>
+    <div class="arw"><div class="al">R3에 주입</div><div class="line dash" style="width:74px"></div><div class="al">라운드 넘어 누적</div></div>
+    <div class="box o" style="flex:0 0 128px"><b>④ 반영 · 다음 라운드</b><br><span style="color:#8e8e93">같은 유형은 덜, 원하는 맥락은 더</span></div>
+  </div>
+  <div class="cap" style="color:#8e8e93">AS-IS는 검색량 점수만 보고 on·off로 승인·거절했고, 그 판단 신호는 다음 라운드에 반영되지 않고 버려졌다. 검색량은 데이터 확보 가능성일 뿐 목적 관련성이 아니다.</div>
+</div>
+
+<div class="sec"><span class="n">4</span>분류 체계 <span class="q">— 7개 flat 카테고리를 물리 · 심리 · 행동 3축으로</span></div>
+<div class="card pink" style="padding:13px 16px;margin-bottom:11px">
+  <div class="cs" style="font-size:12px"><span class="tag tg-r">AS-IS</span> &nbsp; 상황맥락 / 감정표현 / 문제상황 / 숨은니즈 / <b>타겟특화</b> / 시즌시간 / 공간장소 &nbsp;— 물리적 시간·공간과 심리적 감정·니즈가 같은 층에 섞여 구조적 탐색이 어렵고, <b>타겟특화</b>는 “어떤 맥락인가”가 아니라 “누구인가”라 나머지 여섯과 축이 다르다</div>
+</div>
+<div class="ax">
+  <div class="card blue">
+    <div class="axh" style="color:#2c5aa8">물리적 맥락</div>
+    <div class="axl">시간 <span class="g">계절 · 요일 · 특정 시기</span><br>공간 <span class="g">장소 · 환경</span><br>사회적 환경 <span class="g">가족 · 관계 · 동반자</span><br>감각 <span class="g">소음 · 냄새 · 열 · 빛 · 진동 · 촉감</span><br>신체 상태 <span class="g">임신 · 부상 · 알러지 · 체형 · 노화</span><br>제품-물리 상호작용 <span class="g">설치 · 부피 · 휴대 · 청소</span></div>
+  </div>
+  <div class="card blue">
+    <div class="axh" style="color:#2c5aa8">심리적 맥락</div>
+    <div class="axl">감정 <span class="g">사전 기대·불안 / 사후 후회·안도</span><br>표면적 목표 → 기능적 결과 → 숨은 니즈<br><span class="g">means-end 사다리로 중간층을 둔다</span><br>심리적 장벽 <span class="g">인지된 위험 6종 — 재무 · 성능 · 신체 · 사회 · 심리 · 시간</span><br>인지 · 신념 <span class="g">“전기세 많이 나온다더라”</span><br>자아 · 정체성 <span class="g">사회적 자아 · 죄책감 · 자기정당화</span></div>
+  </div>
+  <div class="card blue">
+    <div class="axh" style="color:#2c5aa8">행동 맥락</div>
+    <div class="axl">기존 행동 · 문제 발생 상황 · 트리거<br>제약 <span class="g">물리 / 심리 / 금전 / 시간</span><br>대처 · 우회 행동 <span class="g">선풍기로 버티기 · 수건 대기</span><br>정보탐색 행동 <span class="g">검색 · 카페 눈팅 · 지인 문의</span><br>전환 · 이탈 행동 <span class="g">대체재 스위칭 · 해지 · 반품</span></div>
+  </div>
+</div>
+<div class="nbox nb-b" style="margin-top:11px">경험 단계(구매 전 · 중 · 후)는 <b>키워드 축에서 제외</b>했다. 고객 여정은 다단계·비선형이라 하나의 키워드에 단일 구매 단계를 라벨링하면 범주 오류가 된다. 이 축은 STEP 10·11 여정 분포로 옮겨 다룬다.</div>
+
+<div class="notes">
+  <div class="nt">왜 이렇게 기획했는가</div>
+  <div class="nsm"><b>역할 부여를 걷어낸 이유.</b> 시스템 프롬프트에 역할이나 페르소나를 부여해도 성능이 안정적으로 향상되지 않고 오히려 저하될 수 있다. 대신 수행할 과업을 프레이밍하면 목적 적합성이 높아진다. 다만 일부 추론 과제에서는 role-play가 도움이 되므로 무조건 제거가 아니라 A/B로 검증한다. <span class="src">Zheng et al. (2024) · Kong et al. (2024)</span></div>
+  <div class="nsm"><b>사고 절차를 명시한 이유.</b> 중간 추론 단계를 유도하면 복합 과제의 생성 품질이 향상된다. “문제정의 → 상황 → 사물·현상 → 키워드”를 사슬로 박아 곧바로 단어 나열로 점프하지 않게 한다. <span class="src">Wei et al. (2022) · Kojima et al. (2022)</span></div>
+  <div class="nsm"><b>도메인 예시를 제거한 이유.</b> few-shot 예시는 성능을 올리지만 예시의 도메인과 순서로 출력이 크게 치우친다. 에어컨·보험 예시를 빼고 형태 예시만 남긴다. <span class="src">Brown et al. (2020) · Zhao et al. (2021)</span></div>
+  <div class="nsm"><b>라운드를 나눈 이유.</b> 창의적 사고는 아이디어 생성(발산)과 평가·선택(수렴)이라는 서로 다른 인지 과정으로 나뉜다. R1·R2를 발산, R3를 수렴, R4를 재발산으로 갈라 각 라운드에 다른 SCAMPER 조작을 적용한다. 판단을 유보하고 양을 추구한 뒤 사람이 선별하는 구조는 유지한다. <span class="src">Guilford (1967) · Runco &amp; Acar (2012) · Eberle (1996) · Osborn (1953)</span></div>
+  <div class="nsm"><b>타겟을 시드로만 쓴 이유.</b> 기존 고객 세그먼트에만 최적화하면 잠재 시장인 비고객을 놓친다. 타겟 정보를 제약이 아니라 시드로 두고 컨텍스트 저장소에서 참조한다. <span class="src">Kim &amp; Mauborgne (2005)</span></div>
+  <div class="nsm"><b>3축으로 재편한 이유.</b> 소비 상황은 물리적 환경 · 사회적 환경 · 시간 관점 · 과업 정의 · 선행 심리 상태로 규정된다. 이를 물리 · 심리 · 행동 3축으로 묶고 사회와 시간을 물리 하위에 뒀다. 심리적 장벽은 인지된 위험 6종으로, 제약은 역량·기회·동기 관점에서 네 갈래로 하위화했다. <span class="src">Belk (1975) · Bauer (1960) · Jacoby &amp; Kaplan (1972) · Gutman (1982) · Michie et al. (2011)</span></div>
+  <div class="nsm"><b>HITL을 방향 지시로 바꾼 이유.</b> 인간이 방향을 제시하고 AI가 생성을 담당하는 혼합 주도 방식이 공동 창작의 결과를 개선한다. 사용자가 매 라운드 결과를 수동으로 해석해 고르는 부담을 지는 대신, 원하는 방향을 말로 주면 에이전트가 발산·수렴을 스스로 조정한다. <span class="src">Yannakakis, Liapis &amp; Alexopoulos (2014)</span></div>
+</div>
+
+
+<div class="s11-none">
+  <div class="h">STEP 04 · 소셜 리스닝 데이터 수집 <span class="s11-b no">수정사항 없음</span></div>
+  <div class="b">1.0에서 채널별로 수기 크롤링하던 자리를 <b>크롤링 모듈이 그대로 승계</b>한다. 검색 쿼리 조합(<code>{제품명} {키워드}</code>), 날짜 범위, 광고 필터, 포함·제외 카페, <code>link</code> 기준 중복 제거, 500건 배치 저장 — <b>이번 개정 대상이 아니며 기존 확정안을 유지</b>한다.</div>
+  <div class="w"><b>단, 한 가지는 미결이다.</b> 1.0은 <b>제목 + 본문 + 댓글</b>을 하나의 document로 묶어 이후 전 STEP의 분석 단위로 삼았는데, 현행 크롤은 <code>title</code> + <code>desc</code>만 수집한다. 댓글이 빠지면 STEP 10 CAM의 <code>situation{state, emotion, barrier}</code>를 채울 원문 밀도가 1.0보다 얇아진다. <b>댓글 수집 여부는 확정 필요.</b></div>
+</div>
+
+</div>
+</body></html>

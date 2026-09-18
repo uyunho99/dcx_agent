@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>DCX · STEP 01–02 입력 선언</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",Pretendard,"Malgun Gothic",sans-serif;background:#fff;color:#1c1c1e;-webkit-font-smoothing:antialiased}
+.fig{max-width:960px;padding:30px 34px 34px}
+h2{font-size:19px;font-weight:700;letter-spacing:-.3px;color:#111}
+.sub{font-size:12.5px;color:#8e8e93;margin-top:7px;line-height:1.6;letter-spacing:-.1px}
+.sec{font-size:12.5px;font-weight:700;color:#3a3a3c;letter-spacing:-.15px;margin:26px 0 11px;display:flex;align-items:center;gap:8px}
+.sec .n{display:inline-flex;width:17px;height:17px;border-radius:5px;background:#ececee;color:#6c6c70;font-size:10.5px;align-items:center;justify-content:center;font-weight:700}
+.sec .q{font-weight:400;color:#8e8e93}
+.row{display:flex;align-items:stretch;gap:13px}
+.row.mid{align-items:center}
+.col{display:flex;flex-direction:column;gap:6px}
+.card{border-radius:10px;border:1px solid;padding:15px 17px}
+.blue{background:#f4f7fd;border-color:#d3e0f5}
+.orange{background:#fff9f3;border-color:#f2ddc4}
+.gray{background:#fafafa;border-color:#e5e5e7}
+.green{background:#f4faf6;border-color:#d2e7d8}
+.pink{background:#fdf4f4;border-color:#f2d6d6}
+.ch{font-size:13.5px;font-weight:700;letter-spacing:-.2px;margin-bottom:8px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.blue .ch{color:#2c5aa8}.orange .ch{color:#b3701f}.green .ch{color:#2f7a45}.pink .ch{color:#b23b3b}.gray .ch{color:#3a3a3c}
+.cs{font-size:12.5px;color:#48484a;line-height:1.55;letter-spacing:-.1px}
+.cap{font-size:11.5px;line-height:1.55;margin-top:10px;letter-spacing:-.1px}
+.blue .cap{color:#4a7fd4}.orange .cap{color:#c9822f}.green .cap{color:#3f8f57}.pink .cap{color:#c05555}.gray .cap{color:#8e8e93}
+.box{background:#fff;border:1px solid #e5e5e7;border-radius:7px;padding:8px 11px;font-size:12.5px;color:#3a3a3c;letter-spacing:-.1px;line-height:1.5}
+.box.b{border-color:#dae4f6}.box.o{border-color:#f2e0c8}.box.g{border-color:#d2e7d8}.box.p{border-color:#f2d6d6}
+.box .m{color:#8e8e93}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:5px;letter-spacing:-.1px;white-space:nowrap}
+.tg-b{background:#e9f0fc;color:#2c5aa8}.tg-o{background:#fdf0e0;color:#b3701f}.tg-g{background:#e8f4ec;color:#2f7a45}.tg-r{background:#fbe9e9;color:#b23b3b}.tg-n{background:#f0f0f2;color:#6c6c70}
+.arw{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:5px}
+.line{width:34px;height:1px;background:#c7c7cc;position:relative}
+.line::after{content:"";position:absolute;right:0;top:-3.5px;border-left:6px solid #c7c7cc;border-top:3.5px solid transparent;border-bottom:3.5px solid transparent}
+.line.dash{background:none;border-top:1px dashed #c7c7cc}
+.al{font-size:10.5px;color:#8e8e93;letter-spacing:-.1px;white-space:nowrap}
+.dead{font-size:11.5px;color:#b23b3b;letter-spacing:-.1px}
+.gate{display:grid;grid-template-columns:96px 1fr 1fr;gap:8px}
+.gh{font-size:11.5px;font-weight:600;color:#8e8e93;display:flex;align-items:center;justify-content:center;letter-spacing:-.1px}
+.gr{font-size:11.5px;font-weight:600;color:#6c6c70;display:flex;align-items:center;letter-spacing:-.1px}
+.gc{border-radius:9px;border:1px solid;padding:11px 12px;font-size:12px;line-height:1.5;letter-spacing:-.1px}
+.gc .t{font-weight:700;font-size:12.5px;margin-bottom:3px}
+.strike{text-decoration:line-through;color:#b0b0b5}
+.rt{width:100%;border-collapse:collapse;font-size:12px}
+.rt td{padding:7px 0;border-bottom:1px solid #f0f0f2;color:#48484a;letter-spacing:-.1px;line-height:1.5;vertical-align:top}
+.rt tr:last-child td{border-bottom:none}
+.rt td:first-child{width:196px;font-weight:600;color:#3a3a3c;padding-right:14px}
+.rt .ar{color:#c7c7cc;width:16px;text-align:center}
+.notes{border-top:1px solid #ececee;margin-top:26px;padding-top:17px;display:flex;flex-direction:column;gap:9px}
+.nt{font-size:12.5px;font-weight:700;color:#3a3a3c;letter-spacing:-.15px}
+.nsm{font-size:12px;color:#6c6c70;letter-spacing:-.1px;line-height:1.65}
+.nsm b{color:#3a3a3c}
+.src{color:#a0a0a5;font-size:11px}
+.nbox{border-radius:8px;padding:11px 14px;font-size:12px;line-height:1.65;letter-spacing:-.1px}
+.nb-r{background:#fdf4f4;color:#a34444}.nb-g{background:#f4faf6;color:#357a4c}.nb-b{background:#f4f7fd;color:#2c5aa8}.nb-o{background:#fff9f3;color:#a96a1e}
+</style>
+<style>
+/* ── DCX 1.0 11-STEP 스파인 (추가 블록 · 기존 규칙 미수정) ── */
+.s11-hb{display:inline-block;font-size:11px;font-weight:700;letter-spacing:-.1px;
+  background:#2c5aa8;color:#fff;padding:3px 9px;border-radius:6px;margin-right:9px;
+  vertical-align:middle;position:relative;top:-1.5px}
+.s11-wrap{margin-top:16px;border:1px solid #e5e5e7;border-radius:11px;overflow:hidden;background:#fcfcfd}
+.s11-bar{display:flex;align-items:center;gap:9px;padding:11px 13px 12px;border-bottom:1px solid #ececee;background:#fff}
+.s11-lab{flex:0 0 auto;font-size:10.5px;font-weight:700;color:#8e8e93;letter-spacing:-.1px;
+  padding-right:10px;border-right:1px solid #ececee;line-height:1.35}
+.s11-rail{display:flex;align-items:stretch;gap:3px;flex:1;flex-wrap:nowrap}
+.s11-rs{flex:1 1 0;min-width:0;border-radius:6px;border:1px solid #ececee;background:#fafafa;
+  padding:6px 4px;text-align:center;font-size:9.5px;line-height:1.35;color:#b0b0b5;
+  letter-spacing:-.2px;word-break:keep-all}
+.s11-rs .no{display:block;font-size:10px;font-weight:700;color:#c7c7cc;margin-bottom:2px;letter-spacing:0}
+.s11-rs.on{background:#eef3fc;border-color:#c3d5f0;color:#2c5aa8;font-weight:600}
+.s11-rs.on .no{color:#2c5aa8}
+.s11-rs.nc{background:#fff;border-color:#e0e0e3;border-style:dashed;color:#8e8e93;font-weight:600}
+.s11-rs.nc .no{color:#8e8e93}
+.s11-tbl{display:grid;grid-template-columns:172px 1fr 88px 104px;font-size:11.5px}
+.s11-th{background:#f7f7f8;color:#8e8e93;font-weight:700;font-size:10.5px;padding:7px 11px;
+  border-bottom:1px solid #ececee;letter-spacing:-.1px}
+.s11-td{padding:9px 11px;border-bottom:1px solid #f2f2f4;color:#48484a;line-height:1.5;letter-spacing:-.1px}
+.s11-td.k{font-weight:700;color:#3a3a3c}
+.s11-td.k .sn{color:#2c5aa8;font-size:10.5px;font-weight:700;display:block;letter-spacing:0}
+.s11-td.loc{color:#8e8e93;font-size:11px}
+.s11-tbl>div:nth-last-child(-n+4){border-bottom:none}
+.s11-b{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;
+  letter-spacing:-.1px;white-space:nowrap}
+.s11-b.ch{background:#fbe9e9;color:#b23b3b}
+.s11-b.nw{background:#e8f4ec;color:#2f7a45}
+.s11-b.kp{background:#e9f0fc;color:#2c5aa8}
+.s11-b.rv{background:#f0eafa;color:#6b4bb0}
+.s11-b.mv{background:#fdf0e0;color:#b3701f}
+.s11-b.no{background:#f0f0f2;color:#8e8e93}
+.s11-none{margin-top:24px;border:1px dashed #d8d8dc;border-radius:11px;padding:15px 17px;background:#fbfbfc}
+.s11-none .h{font-size:13px;font-weight:700;color:#6c6c70;letter-spacing:-.2px;margin-bottom:7px;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.s11-none .b{font-size:12px;color:#6c6c70;line-height:1.65;letter-spacing:-.1px}
+.s11-none .b b{color:#3a3a3c}
+.s11-none .w{margin-top:9px;font-size:11.5px;color:#a96a1e;background:#fff9f3;border-radius:7px;
+  padding:9px 12px;line-height:1.6;letter-spacing:-.1px}
+</style>
+</head><body>
+
+<div class="fig">
+<h2><span class="s11-hb">STEP 01–02</span>입력 선언 — 한 번 쓰이고 버려지던 입력을, 끝까지 따라가는 맥락으로</h2>
+<div class="sub">AS-IS의 타겟 3필드는 R1 키워드 프롬프트의 타겟 묘사에만 쓰이고 그 자리에서 끝났다. TO-BE는 프로젝트의 목적을 파이프라인 전체가 계속 참조하도록 개요와 분석 대상을 구체적 필드로 나눠 선언받고, 그 맥락이 키워드 발산 → RAG 근거 선정 → 페르소나 인사이트까지 이어진다.</div>
+<div class="s11-wrap">
+<div class="s11-bar"><div class="s11-lab">DCX 1.0<br>11 STEP</div><div class="s11-rail"><div class="s11-rs on"><span class="no">01</span>비즈니스<br>문제 정의</div><div class="s11-rs on"><span class="no">02</span>타겟 대상<br>· 채널</div><div class="s11-rs"><span class="no">03</span>카테고리<br>· 키워드</div><div class="s11-rs"><span class="no">04</span>소셜 데이터<br>수집</div><div class="s11-rs"><span class="no">05</span>데이터<br>전처리</div><div class="s11-rs"><span class="no">06</span>삼중<br>준지도 학습</div><div class="s11-rs"><span class="no">07</span>군집<br>Touch Point</div><div class="s11-rs"><span class="no">08</span>SNA<br>Actor</div><div class="s11-rs"><span class="no">09</span>LDA<br>Action</div><div class="s11-rs"><span class="no">10</span>CAM<br>기회 영역</div><div class="s11-rs"><span class="no">11</span>인사이트<br>경험 컨셉</div></div></div>
+<div class="s11-tbl">
+<div class="s11-th">1.0 STEP (AS-IS)</div><div class="s11-th">개정안 대응 (TO-BE)</div><div class="s11-th">변화</div><div class="s11-th">본문 위치</div>
+<div class="s11-td k"><span class="sn">STEP 01</span>비즈니스 문제 정의</div>
+<div class="s11-td"><b>프로젝트 개요 7필드</b> — 한줄 정의 · 리서치 질문 · 프로젝트 성격 · 분석 목적 · 핵심 지표 · 사내 제약 · 브랜드 포지셔닝. 문서·회의로 끝나던 선언을 전 STEP 프롬프트에 상주하는 가드레일로 고정</div>
+<div class="s11-td"><span class="s11-b ch">치환</span></div>
+<div class="s11-td loc">§1 · §2 좌 · §3</div>
+<div class="s11-td k"><span class="sn">STEP 02</span>타겟 대상 선정</div>
+<div class="s11-td"><b>분석 대상 6필드</b> — 제품군 계층 · 연령 · 성별 · 가구 형태 · 생애주기 · 미래 고객 정의. 하드 필터가 아닌 <b>소프트 스코프</b>로 주입하고 STEP 10·11에서 대조</div>
+<div class="s11-td"><span class="s11-b ch">치환</span></div>
+<div class="s11-td loc">§2 우 · §3</div>
+<div class="s11-td k"><span class="sn">STEP 02</span>타겟 채널 선정</div>
+<div class="s11-td">선행연구로 11개 채널을 수기 선정하던 스텝이 <b>소멸</b>한다 — 네이버 카페 단일 채널로 고정되고, 채널 선택은 STEP 04 크롤 설정의 <code>cafes</code> / <code>excludeCafes</code> 필터로 이동</div>
+<div class="s11-td"><span class="s11-b mv">이동</span></div>
+<div class="s11-td loc">본 문서 범위 밖</div>
+</div></div>
+
+
+<div class="sec"><span class="n">1</span>입력이 어디까지 가는가 <span class="q">— 필드 수가 아니라 도달 범위가 바뀐다</span></div>
+<div class="row">
+  <div class="card pink" style="flex:1">
+    <div class="ch">AS-IS <span class="tag tg-r">3필드</span></div>
+    <div class="col">
+      <div class="box p"><b>bk</b> <span class="m">— 제품명 문자열 1개</span></div>
+      <div class="box p"><b>problemDef</b> <span class="m">— 자유 텍스트, 예시 1개만 제공</span></div>
+      <div class="box p"><b>ages · ageRange · gens</b> <span class="m">— 직업·가구·생애주기가 한 축에 혼재</span></div>
+    </div>
+    <div class="row mid" style="margin-top:12px;gap:9px">
+      <div class="tag tg-r">도달</div>
+      <div class="cs" style="font-size:12px">R1 프롬프트의 타겟 묘사 한 곳</div>
+      <div class="arw"><div class="line" style="width:26px"></div></div>
+      <div class="dead">여기서 끝 · 이후 단계로 전파되지 않음</div>
+    </div>
+    <div class="cap">동일 제품이라도 리뉴얼과 신규기획은 탐색할 경험이 다른데 이를 구분할 정보가 없고, 목적·지표·제약이 없으니 최종 인사이트가 조직 맥락과 분리된 일반론이 된다</div>
+  </div>
+
+  <div class="arw" style="align-self:center"><div class="line"></div></div>
+
+  <div class="card green" style="flex:1.25">
+    <div class="ch">TO-BE <span class="tag tg-g">13필드</span> <span class="tag tg-n">STEP 01 7필드 + STEP 02 6필드</span></div>
+    <table class="rt">
+      <tr><td>한줄 정의</td><td class="ar">→</td><td>STEP 03 · 07 · 09 · 10·11 프롬프트 <b>헤더로 상주</b></td></tr>
+      <tr><td>리서치 질문</td><td class="ar">→</td><td>STEP 03 R1~R4 발산의 핵심 입력</td></tr>
+      <tr><td>프로젝트 성격</td><td class="ar">→</td><td>STEP 03 발산 톤 분기</td></tr>
+      <tr><td>제품군 계층</td><td class="ar">→</td><td>STEP 03 발산 프레임 · STEP 10·11 카테고리 앵커</td></tr>
+      <tr><td>타겟 스코프</td><td class="ar">→</td><td>STEP 03 소프트 시드 · STEP 11-D 대조</td></tr>
+      <tr><td>분석 목적</td><td class="ar">→</td><td>STEP 09 가설 쿼리 방향 · STEP 10·11 처방 방향</td></tr>
+      <tr><td>핵심 지표 · 사내 제약</td><td class="ar">→</td><td>STEP 10·11 처방의 지표 앵커와 부정 제약</td></tr>
+      <tr><td>미래 고객 정의</td><td class="ar">→</td><td>STEP 10·11 FUTURE 판정 기준</td></tr>
+    </table>
+    <div class="cap">한줄 정의가 전 단계 헤더로 상주하기 때문에, STEP 09 경험가설 쿼리와 STEP 10·11 해석·처방까지 같은 프로젝트 맥락 위에서 생성된다</div>
+  </div>
+</div>
+
+<div class="sec"><span class="n">2</span>왜 0-A와 0-B로 나눴는가 <span class="q">— 하나는 지켜지는 값, 하나는 대조되는 값</span></div>
+<div class="row">
+  <div class="card blue" style="flex:1">
+    <div class="ch">STEP 01 프로젝트 개요 <span class="tag tg-b">가드레일</span></div>
+    <div class="cs">회사가 <b>확실히 아는 사실</b>과 프로젝트 프레이밍. 무조건 입력받고, 이후 전 단계에서 <b>지켜져야 하는 제약</b>으로 상주한다. 생성 결과가 이 선언을 벗어나면 그것은 오류다.</div>
+    <div class="col" style="margin-top:11px">
+      <div class="box b">한줄 정의 <span class="m">— 프로젝트 맥락 앵커</span></div>
+      <div class="box b">리서치 질문 <span class="m">— problemDef 승계, 템플릿 제공</span></div>
+      <div class="box b">프로젝트 성격 <span class="m">— 브랜딩 / 신규기획 / 리뉴얼 / UX개선</span></div>
+      <div class="box b">분석 목적 <span class="m">— 니즈탐색 / 마케팅전략 / 컨셉발굴 / 세그먼트개척</span></div>
+      <div class="box b">핵심 지표 <span class="m">— 측정이 아니라 방향 지시자로 한정</span></div>
+      <div class="box b">사내 제약 <span class="m">— 실행 불가능한 처방을 차단하는 부정 제약</span></div>
+      <div class="box b">브랜드 포지셔닝 <span class="m">— 프리미엄·가성비 × 리더·챌린저·신규</span></div>
+    </div>
+    <div class="cap">리더는 미사용층, 챌린저는 경쟁사 사용층 — 포지션에 따라 겨냥할 미래 고객이 달라지므로 포지셔닝이 처방 톤을 보정한다</div>
+  </div>
+
+  <div class="card orange" style="flex:1">
+    <div class="ch">STEP 02 분석 대상 <span class="tag tg-o">초기 기준선</span></div>
+    <div class="cs">처음에 <b>기준으로 잡아둔 가설</b>. 전부 선택 항목이고 하드 필터가 아니다. 지켜야 하는 값이 아니라, STEP 10·11에서 발견된 결과와 <b>대조되어 격차를 드러내는</b> 기준선이다.</div>
+    <div class="col" style="margin-top:11px">
+      <div class="box o">제품군 대 › 중 › 소 <span class="m">— 대분류만 필수, 발산 프레임 고정</span></div>
+      <div class="box o">연령대 / 성별 <span class="m">— 미선택은 전체</span></div>
+      <div class="box o">가구 형태 <span class="m">— 1인 / 신혼 / 영유아 / 학령기 / 시니어동거</span></div>
+      <div class="box o">생애주기 <span class="m">— 학생 / 사회초년생 / 육아기 / 자녀독립 / 은퇴</span></div>
+      <div class="box o">미래 고객 정의 <span class="m">— 경쟁·대체재 사용층 / 관망층 / 이탈 재유입 / 인접니즈</span></div>
+    </div>
+    <div class="cap">주입 문구 — “이 범위를 우선 탐색하되 범위 밖 발견도 배제하지 말 것”</div>
+    <div class="cs" style="margin-top:11px;font-size:12px;color:#8e8e93">기존 <b style="color:#6c6c70">ages</b>(주부·직장인·1인가구)는 가구 형태와 생애주기 축으로 분해 흡수했다. 소득은 관측 불가·거짓 정밀도 우려로 입력에서 빼고 STEP 10·11 가격 감도 등급으로 대체한다.</div>
+  </div>
+</div>
+
+<div class="row mid" style="margin-top:13px;gap:11px">
+  <div class="card blue" style="flex:1;padding:12px 15px">
+    <div class="cs" style="font-size:12px"><span class="tag tg-b">STEP 01</span> &nbsp;→&nbsp; 전 단계 프롬프트에 상주하며 <b>위반을 차단</b>한다 &nbsp;·&nbsp; STEP 10·11 처방이 사내 제약을 넘으면 걸린다</div>
+  </div>
+  <div class="card orange" style="flex:1;padding:12px 15px">
+    <div class="cs" style="font-size:12px"><span class="tag tg-o">STEP 02</span> &nbsp;→&nbsp; 해석에는 개입하지 않고 <b>맨 끝에서 한 번 대조</b>된다 &nbsp;·&nbsp; 선언 밖 발견이면 FUTURE 판정</div>
+  </div>
+</div>
+
+<div class="sec"><span class="n">3</span>필드를 가른 판별 질문 <span class="q">— “이 값을 분석가가 지금 아는가, 아니면 이게 바로 알아내려는 것인가”</span></div>
+<div class="gate">
+  <div class="gh"></div>
+  <div class="gh">확실한 사실</div>
+  <div class="gh">임시 가설</div>
+
+  <div class="gr">회사 · 프로젝트</div>
+  <div class="gc blue"><div class="t" style="color:#2c5aa8">STEP 01 선언 · 가드레일</div>제품 · 목적 · 지표 · 제약 · 포지셔닝</div>
+  <div class="gc blue"><div class="t" style="color:#2c5aa8">STEP 01 선언 · 가드레일</div>분석 목적처럼 가설이어도 우리가 정하는 값이다</div>
+
+  <div class="gr">소비자</div>
+  <div class="gc gray"><div class="t" style="color:#8e8e93">존재 불가</div><span class="strike">사용맥락 · 여정 · 감도 · 가치지향</span> &nbsp;→ STEP 10·11에서 발견</div>
+  <div class="gc orange"><div class="t" style="color:#b3701f">STEP 02 기준선</div>연령 · 성별 · 가구형태 · 생애주기 &nbsp;→ STEP 10·11에서 대조</div>
+</div>
+<div class="nbox nb-r" style="margin-top:11px"><b>소비자 속성을 사실로 입력하면 두 가지가 깨진다.</b> 알아내려는 것을 미리 답으로 넣는 순환이 되고, 그 가정이 분석을 편향시켜 정작 발견해야 할 미지의 소비자가 나오지 않는다. 그래서 STEP 02 값은 STEP 10·11 해석 생성에 개입시키지 않고 대조에만 쓴다 — 프롬프트에 “이 가설로 상태·감정·장벽 해석을 조정하지 말 것”을 명시한다.</div>
+
+<div class="notes">
+  <div class="nt">왜 이렇게 기획했는가</div>
+  <div class="nsm"><b>사후(post-hoc) 세분화 구조로 규정했다.</b> 시장 세분화는 분석가가 기준을 미리 정하는 사전 세분화와 데이터에서 세그먼트를 도출하는 사후 세분화로 나뉘고, 사후 세분화에서는 프로파일링 변수가 세분화가 끝난 뒤 데이터로부터 유도된다. DCX는 후자이므로 미리 선언할 변수(STEP 01·02)와 데이터로 발견할 변수(STEP 10·11)를 갈라야 한다. <span class="src">Wedel &amp; Kamakura (2000) · Dolnicar (2003)</span></div>
+  <div class="nsm"><b>타겟을 하드 필터로 두지 않은 이유.</b> 촘촘히 명세할수록 발산이 이미 아는 세그먼트로 과적합되어 “미래 고객 발굴” 목적과 충돌한다. 초기 초점은 두되 데이터가 드러내는 방향으로 표본을 넓히는 이론적 표집 전략을 따라 소프트 스코프로 주입한다. <span class="src">Glaser &amp; Strauss (1967) · Kim &amp; Mauborgne (2005)</span></div>
+  <div class="nsm"><b>목적·지표·제약을 받는 이유.</b> 인사이트가 실행으로 이어지지 못하는 격차의 핵심 원인은 인사이트가 조직의 목적·제약과 분리된 채 도출되기 때문이다. 그래서 이 세 값은 STEP 10·11 처방 층에만 주입해 부정 제약과 지표 방향으로 인사이트를 구속한다. <span class="src">insight-to-action gap</span></div>
+  <div class="nsm"><b>사용 맥락을 입력에서 뺀 이유.</b> 소비 상황은 물리적 환경 · 사회적 환경 · 시간 관점 · 과업 정의 · 선행 심리 상태로 규정되는데, 이 맥락 속성은 분석가가 미리 아는 값이 아니다. 따라서 STEP 01·02 입력이 아니라 STEP 10·11 발견 변수로 배치한다. <span class="src">Belk (1975)</span></div>
+</div>
+
+<div class="notes" style="border-top:none;padding-top:0;margin-top:14px">
+  <div class="nbox nb-o"><b>★ 확인이 필요한 지점.</b> 첨부 와이어프레임은 프로젝트 성격과 분석 목적을 한 필드 자유서술로, 타겟 스코프를 한 줄 텍스트로 받고 있다. 종합안은 선택형 분기를 요구한다 — 선택형이어야 STEP 03 발산 톤 분기(리뉴얼은 기존 불만, 신규기획은 미충족 니즈)와 STEP 10·11 대조가 코드로 성립한다. 선택 + 보충 서술 하이브리드를 권한다.</div>
+</div>
+
+</div>
+</body></html>

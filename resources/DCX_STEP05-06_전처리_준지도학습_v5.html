@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<title>DCX · STEP 05–06 사람이 몇 건을 봐야 하는지를 “감”이 아니라 목표 오류율이 정한다</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",Pretendard,"Malgun Gothic",sans-serif;background:#fff;color:#1c1c1e;-webkit-font-smoothing:antialiased}
+.fig{max-width:980px;padding:30px 34px 34px}
+h2{font-size:19px;font-weight:700;letter-spacing:-.3px;color:#111}
+.sub{font-size:12.5px;color:#8e8e93;margin-top:7px;line-height:1.6;letter-spacing:-.1px}
+
+/* 섹션 헤더 */
+.sec{font-size:12.5px;font-weight:700;color:#3a3a3c;letter-spacing:-.15px;margin:28px 0 11px;display:flex;align-items:center;gap:8px}
+.sec .n{display:inline-flex;width:17px;height:17px;border-radius:5px;background:#ececee;color:#6c6c70;font-size:10.5px;align-items:center;justify-content:center;font-weight:700;flex:0 0 auto}
+.sec .q{font-weight:400;color:#8e8e93}
+.sec .sp{margin-left:auto;display:flex;gap:4px;align-items:center}
+
+/* 레이아웃 */
+.row{display:flex;align-items:stretch;gap:13px}
+.row.mid{align-items:center}
+.col{display:flex;flex-direction:column;gap:6px}
+.card{border-radius:10px;border:1px solid;padding:15px 17px}
+.blue{background:#f4f7fd;border-color:#d3e0f5}
+.orange{background:#fff9f3;border-color:#f2ddc4}
+.gray{background:#fafafa;border-color:#e5e5e7}
+.green{background:#f4faf6;border-color:#d2e7d8}
+.pink{background:#fdf4f4;border-color:#f2d6d6}
+.purple{background:#faf7fd;border-color:#e3d8f2}
+.ch{font-size:13.5px;font-weight:700;letter-spacing:-.2px;margin-bottom:8px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.blue .ch{color:#2c5aa8}.orange .ch{color:#b3701f}.green .ch{color:#2f7a45}.pink .ch{color:#b23b3b}.gray .ch{color:#3a3a3c}.purple .ch{color:#6b4fa8}
+.cs{font-size:12.5px;color:#48484a;line-height:1.55;letter-spacing:-.1px}
+.cap{font-size:11.5px;line-height:1.55;margin-top:10px;letter-spacing:-.1px}
+.blue .cap{color:#4a7fd4}.orange .cap{color:#c9822f}.green .cap{color:#3f8f57}.pink .cap{color:#c05555}.gray .cap{color:#8e8e93}.purple .cap{color:#8a6bc4}
+.box{background:#fff;border:1px solid #e5e5e7;border-radius:7px;padding:8px 11px;font-size:12.5px;color:#3a3a3c;letter-spacing:-.1px;line-height:1.5}
+.box.b{border-color:#dae4f6}.box.o{border-color:#f2e0c8}.box.g{border-color:#d2e7d8}.box.p{border-color:#f2d6d6}.box.v{border-color:#e3d8f2}
+.box .m{color:#8e8e93}
+
+/* 배지 */
+.tag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:5px;letter-spacing:-.1px;white-space:nowrap}
+.tg-b{background:#e9f0fc;color:#2c5aa8}.tg-o{background:#fdf0e0;color:#b3701f}.tg-g{background:#e8f4ec;color:#2f7a45}
+.tg-r{background:#fbe9e9;color:#b23b3b}.tg-n{background:#f0f0f2;color:#6c6c70}.tg-v{background:#f2ecfb;color:#6b4fa8}
+.tg-amb{background:#fdf3dd;color:#8a6a15}
+.tg-t{background:#fdf0e0;color:#b3701f}
+
+/* 유형 배지 — 치환/신설/유지 */
+.ty{display:inline-block;font-size:10px;font-weight:700;padding:2.5px 8px;border-radius:5px;letter-spacing:.2px;white-space:nowrap}
+.ty-r{background:#f2ecfb;color:#6b4fa8}
+.ty-n{background:#e9f0fc;color:#2c5aa8}
+.ty-k{background:#f0f0f2;color:#8e8e93}
+
+/* 변경 지도 */
+.map{border:1px solid #e5e5e7;border-radius:10px;overflow:hidden;margin-top:15px}
+.map .mh{display:grid;grid-template-columns:22px 46px 1fr 70px;gap:11px;padding:8px 14px;background:#fafafa;border-bottom:1px solid #ececee;font-size:10.5px;font-weight:700;color:#8e8e93;letter-spacing:-.1px}
+.map .mr{display:grid;grid-template-columns:22px 46px 1fr 70px;gap:11px;padding:9px 14px;border-bottom:1px solid #f4f4f6;align-items:center;font-size:12px;color:#3a3a3c;letter-spacing:-.1px}
+.map .mr:last-child{border-bottom:none}
+.map .mr .no{color:#b0b0b5;font-size:11px;font-weight:700}
+.map .mr b{font-weight:700}
+.map .mr .d{color:#8e8e93;font-size:11.5px}
+
+/* 신설 카드 */
+.nw{border:1px solid #d3e0f5;background:#f8fafe;border-radius:10px;overflow:hidden}
+.nw.o{border-color:#f2ddc4;background:#fffcf8}
+.nw>.hd{display:flex;align-items:center;gap:7px;padding:10px 15px;background:#eff4fd;border-bottom:1px solid #e2ebf9;flex-wrap:wrap}
+.nw.o>.hd{background:#fdf6ec;border-bottom-color:#f3e6d2}
+.nw>.hd .ttl{font-size:13px;font-weight:700;color:#2c5aa8;letter-spacing:-.2px}
+.nw.o>.hd .ttl{color:#b3701f}
+.nw>.bd{padding:2px 15px 11px}
+.kv{display:grid;grid-template-columns:44px 1fr;gap:11px;padding:8px 0;border-bottom:1px solid #edf1f8;align-items:start}
+.nw.o .kv{border-bottom-color:#f5eadb}
+.kv:last-child{border-bottom:none}
+.kv .k{font-size:10.5px;font-weight:700;color:#9a9aa0;padding-top:2px;letter-spacing:.2px}
+.kv .v{font-size:12.3px;color:#3a3a3c;line-height:1.58;letter-spacing:-.1px}
+.kv .v b{color:#1c1c1e}
+
+/* 배선 칩 */
+.wire{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:11.5px;color:#48484a;line-height:1.9}
+.stg{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:5px;background:#e9f0fc;color:#2c5aa8;white-space:nowrap}
+.stg.g{background:#e8f4ec;color:#2f7a45}.stg.o{background:#fdf0e0;color:#b3701f}.stg.n{background:#f0f0f2;color:#6c6c70}
+.fld{font-family:ui-monospace,Menlo,monospace;font-size:10.8px;background:#f1f1f5;border-radius:4px;padding:1.5px 5px;color:#48484a;white-space:nowrap}
+.wa{color:#c7c7cc;font-size:11px;padding:0 1px}
+
+/* 화살표 */
+.arw{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:5px}
+.line{width:32px;height:1px;background:#c7c7cc;position:relative}
+.line::after{content:"";position:absolute;right:0;top:-3.5px;border-left:6px solid #c7c7cc;border-top:3.5px solid transparent;border-bottom:3.5px solid transparent}
+.al{font-size:10.5px;color:#8e8e93;letter-spacing:-.1px;white-space:nowrap}
+.strike{text-decoration:line-through;color:#b0b0b5}
+
+/* AS-IS / TO-BE 행 대조 */
+.vs{display:grid;grid-template-columns:78px 1fr 24px 1.2fr;gap:9px;align-items:center}
+.vsl{font-size:11.5px;font-weight:700;color:#6c6c70;letter-spacing:-.1px;text-align:right;line-height:1.4}
+.vsa{color:#c7c7cc;text-align:center;font-size:13px}
+.vsb{border-radius:8px;border:1px solid;padding:10px 13px;font-size:12px;line-height:1.55;letter-spacing:-.1px}
+
+/* 스택바 · 진행률 */
+.sbar{display:flex;height:28px;border-radius:6px;overflow:hidden;font-size:10.5px;font-weight:700;color:#fff;letter-spacing:-.1px}
+.sbar>div{display:flex;align-items:center;justify-content:center;white-space:nowrap}
+
+/* 표 */
+.rt{width:100%;border-collapse:collapse;font-size:12px}
+.rt td,.rt th{padding:8px 9px;border-bottom:1px solid #f0f0f2;color:#48484a;letter-spacing:-.1px;line-height:1.55;vertical-align:top;text-align:left}
+.rt th{font-size:11px;font-weight:700;color:#8e8e93;background:#fafafa}
+.rt tr:last-child td{border-bottom:none}
+.rt .ax{font-weight:700;color:#3a3a3c}
+.rt .src{font-size:11px;color:#9a9aa0;line-height:1.5}
+.tw{border:1px solid #e5e5e7;border-radius:10px;overflow:hidden}
+
+/* 스텝 */
+.steps{display:flex;flex-direction:column}
+.st{display:grid;grid-template-columns:24px 1fr;gap:11px;padding:9px 0;border-bottom:1px solid #f0f0f2;align-items:start}
+.st:last-child{border-bottom:none}
+.st .no{width:21px;height:21px;border-radius:6px;background:#e9f0fc;color:#2c5aa8;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.st .no.h{background:#fdf0e0;color:#b3701f}
+.st .tx{font-size:12.5px;color:#3a3a3c;line-height:1.58;letter-spacing:-.1px}
+.st .tx .m{color:#8e8e93;font-size:11.5px}
+
+/* 파이프라인 */
+.pipe{display:flex;align-items:stretch;gap:0;margin-top:6px;flex-wrap:wrap}
+.pbox{flex:1;min-width:140px;background:#fafafa;border:1px solid #e5e5e7;border-radius:8px;padding:9px 10px;text-align:center}
+.pbox.e{background:#f4faf6;border-color:#d2e7d8}
+.pbox.n{background:#f4f7fd;border-color:#d3e0f5}
+.pbox .t{font-size:10.5px;color:#8e8e93}
+.pbox .v{font-size:12.3px;font-weight:700;margin:2px 0;letter-spacing:-.15px}
+.pbox .s{font-size:10.5px;color:#a0a0a5;line-height:1.45}
+.par{display:flex;align-items:center;color:#c7c7cc;padding:0 6px;font-size:13px}
+
+/* 코드 */
+pre{background:#f7f7f9;border:1px solid #e5e5e7;border-radius:8px;padding:11px 13px;margin:8px 0 0;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.2px;line-height:1.65;
+  white-space:pre-wrap;color:#2a2a30;overflow-x:auto;letter-spacing:-.1px}
+pre .an{color:#b23b3b} pre .ab{color:#2c5aa8} pre .ag{color:#2f7a45} pre .cm{color:#a0a0a5}
+code{font-family:ui-monospace,Menlo,monospace;font-size:11.3px;background:#f1f1f5;padding:1px 4px;border-radius:3px}
+
+/* 밴드 · 노트 */
+.nbox{border-radius:8px;padding:11px 14px;font-size:12px;line-height:1.65;letter-spacing:-.1px;margin-top:11px}
+.nb-r{background:#fdf4f4;color:#a34444}.nb-g{background:#f4faf6;color:#357a4c}.nb-b{background:#f4f7fd;color:#2c5aa8}
+.nb-o{background:#fff9f3;color:#a96a1e}.nb-n{background:#fafafa;color:#6c6c70}.nb-v{background:#faf7fd;color:#6b4fa8}
+.notes{border-top:1px solid #ececee;margin-top:28px;padding-top:17px;display:flex;flex-direction:column;gap:9px}
+.nt{font-size:12.5px;font-weight:700;color:#3a3a3c;letter-spacing:-.15px}
+.nsm{font-size:12px;color:#6c6c70;letter-spacing:-.1px;line-height:1.65}
+.nsm b{color:#3a3a3c}
+.src{color:#a0a0a5;font-size:11px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:#8e8e93;margin-top:13px;align-items:center}
+</style>
+<style>
+/* ── DCX 1.0 11-STEP 스파인 (추가 블록 · 기존 규칙 미수정) ── */
+.s11-hb{display:inline-block;font-size:11px;font-weight:700;letter-spacing:-.1px;
+  background:#2c5aa8;color:#fff;padding:3px 9px;border-radius:6px;margin-right:9px;
+  vertical-align:middle;position:relative;top:-1.5px}
+.s11-wrap{margin-top:16px;border:1px solid #e5e5e7;border-radius:11px;overflow:hidden;background:#fcfcfd}
+.s11-bar{display:flex;align-items:center;gap:9px;padding:11px 13px 12px;border-bottom:1px solid #ececee;background:#fff}
+.s11-lab{flex:0 0 auto;font-size:10.5px;font-weight:700;color:#8e8e93;letter-spacing:-.1px;
+  padding-right:10px;border-right:1px solid #ececee;line-height:1.35}
+.s11-rail{display:flex;align-items:stretch;gap:3px;flex:1;flex-wrap:nowrap}
+.s11-rs{flex:1 1 0;min-width:0;border-radius:6px;border:1px solid #ececee;background:#fafafa;
+  padding:6px 4px;text-align:center;font-size:9.5px;line-height:1.35;color:#b0b0b5;
+  letter-spacing:-.2px;word-break:keep-all}
+.s11-rs .no{display:block;font-size:10px;font-weight:700;color:#c7c7cc;margin-bottom:2px;letter-spacing:0}
+.s11-rs.on{background:#eef3fc;border-color:#c3d5f0;color:#2c5aa8;font-weight:600}
+.s11-rs.on .no{color:#2c5aa8}
+.s11-rs.nc{background:#fff;border-color:#e0e0e3;border-style:dashed;color:#8e8e93;font-weight:600}
+.s11-rs.nc .no{color:#8e8e93}
+.s11-tbl{display:grid;grid-template-columns:172px 1fr 88px 104px;font-size:11.5px}
+.s11-th{background:#f7f7f8;color:#8e8e93;font-weight:700;font-size:10.5px;padding:7px 11px;
+  border-bottom:1px solid #ececee;letter-spacing:-.1px}
+.s11-td{padding:9px 11px;border-bottom:1px solid #f2f2f4;color:#48484a;line-height:1.5;letter-spacing:-.1px}
+.s11-td.k{font-weight:700;color:#3a3a3c}
+.s11-td.k .sn{color:#2c5aa8;font-size:10.5px;font-weight:700;display:block;letter-spacing:0}
+.s11-td.loc{color:#8e8e93;font-size:11px}
+.s11-tbl>div:nth-last-child(-n+4){border-bottom:none}
+.s11-b{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;
+  letter-spacing:-.1px;white-space:nowrap}
+.s11-b.ch{background:#fbe9e9;color:#b23b3b}
+.s11-b.nw{background:#e8f4ec;color:#2f7a45}
+.s11-b.kp{background:#e9f0fc;color:#2c5aa8}
+.s11-b.rv{background:#f0eafa;color:#6b4bb0}
+.s11-b.mv{background:#fdf0e0;color:#b3701f}
+.s11-b.no{background:#f0f0f2;color:#8e8e93}
+.s11-none{margin-top:24px;border:1px dashed #d8d8dc;border-radius:11px;padding:15px 17px;background:#fbfbfc}
+.s11-none .h{font-size:13px;font-weight:700;color:#6c6c70;letter-spacing:-.2px;margin-bottom:7px;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.s11-none .b{font-size:12px;color:#6c6c70;line-height:1.65;letter-spacing:-.1px}
+.s11-none .b b{color:#3a3a3c}
+.s11-none .w{margin-top:9px;font-size:11.5px;color:#a96a1e;background:#fff9f3;border-radius:7px;
+  padding:9px 12px;line-height:1.6;letter-spacing:-.1px}
+</style>
+</head><body>
+
+<div class="fig">
+<h2><span class="s11-hb">STEP 05–06</span>사람이 몇 건을 봐야 하는지를 “감”이 아니라 목표 오류율이 정한다</h2>
+<div class="sub">v4까지는 <b>사람이 라벨의 주체</b>이고 AI가 보조였다. v5는 뒤집는다 — <b>AI가 전량 판정하고, 사람은 기준을 세우는 캘리브레이션과 AI가 자신 없어 올린 건만 본다.</b> 대신 “AI 라벨을 그냥 믿는다”가 되지 않도록, 채택된 라벨의 오류율이 목표치 α 이하임을 통계적으로 보장하는 절차를 끼워 넣는다. 그래서 사람 검수량은 협상이 아니라 α의 함수가 된다.</div>
+<div class="s11-wrap">
+<div class="s11-bar"><div class="s11-lab">DCX 1.0<br>11 STEP</div><div class="s11-rail"><div class="s11-rs"><span class="no">01</span>비즈니스<br>문제 정의</div><div class="s11-rs"><span class="no">02</span>타겟 대상<br>· 채널</div><div class="s11-rs"><span class="no">03</span>카테고리<br>· 키워드</div><div class="s11-rs"><span class="no">04</span>소셜 데이터<br>수집</div><div class="s11-rs on"><span class="no">05</span>데이터<br>전처리</div><div class="s11-rs on"><span class="no">06</span>삼중<br>준지도 학습</div><div class="s11-rs"><span class="no">07</span>군집<br>Touch Point</div><div class="s11-rs"><span class="no">08</span>SNA<br>Actor</div><div class="s11-rs"><span class="no">09</span>LDA<br>Action</div><div class="s11-rs"><span class="no">10</span>CAM<br>기회 영역</div><div class="s11-rs"><span class="no">11</span>인사이트<br>경험 컨셉</div></div></div>
+<div class="s11-tbl">
+<div class="s11-th">1.0 STEP (AS-IS)</div><div class="s11-th">개정안 대응 (TO-BE)</div><div class="s11-th">변화</div><div class="s11-th">본문 위치</div>
+<div class="s11-td k"><span class="sn">STEP 05</span>데이터 전처리 — 필터 규칙</div>
+<div class="s11-td">동일 규칙 승계 (광고 · 제외 카페 · 중복 · 저품질 컷)</div>
+<div class="s11-td"><span class="s11-b no">수정사항 없음</span></div>
+<div class="s11-td loc">하단 카드</div>
+<div class="s11-td k"><span class="sn">STEP 05</span>데이터 전처리 — 자연어 정제</div>
+<div class="s11-td">1.0의 <b>OKT 형태소 분해가 제거</b>되고 <b>Voyage 의미 임베딩</b>이 대신한다. STEP 07·09에 중복 호출되던 임베딩을 <b>STEP 05 한 자리로 이동</b>(작업 신설이 아니라 위치 이동)</div>
+<div class="s11-td"><span class="s11-b ch">치환</span></div>
+<div class="s11-td loc">§3</div>
+<div class="s11-td k"><span class="sn">STEP 05</span>— (AS-IS 없음)</div>
+<div class="s11-td"><b><code>known_insights</code> 임베딩</b> — 실무자가 이미 아는 것에 좌표를 부여해 STEP 09의 새로움 신호가 참조할 기준점을 만든다</div>
+<div class="s11-td"><span class="s11-b nw">신설</span></div>
+<div class="s11-td loc">§4</div>
+<div class="s11-td k"><span class="sn">STEP 06</span>삼중 준지도 학습</div>
+<div class="s11-td">주체가 뒤집힌다 — 사람 3% 표본 라벨 → <b>AI 전량 판정 + 목표 오류율 α가 검수량을 결정</b>(conformal risk control). 스키마도 <code>Informative/Uninformative</code> 2분류 → <b><code>evidence_level</code> 3-class(Core/Supporting/Non) + <code>reason_code</code></b></div>
+<div class="s11-td"><span class="s11-b ch">치환</span></div>
+<div class="s11-td loc">§1 · §2 · §5~§11</div>
+</div></div>
+
+
+<div class="legend">
+  <span><span class="ty ty-r">치환</span> AS-IS가 있고 대체된다</span>
+  <span><span class="ty ty-n">신설</span> AS-IS 없음 · 새로 꽂는다</span>
+  <span><span class="ty ty-k">유지</span> 기존 확정 재확인</span>
+  <span><span class="tag tg-amb">v4→v5</span> v4 확정안에서 또 바뀐 지점</span>
+</div>
+
+<div class="map">
+  <div class="mh"><div>#</div><div>유형</div><div>무엇을 다루는가</div><div>상태</div></div>
+  <div class="mr"><div class="no">1</div><div><span class="ty ty-r">치환</span></div><div><b>세 단계를 한 장에</b> <span class="d">— 1.0 대비 무엇이 어떻게 바뀌는가</span></div><div><span class="tag tg-g">확정제안</span></div></div>
+  <div class="mr"><div class="no">2</div><div><span class="ty ty-r">치환</span></div><div><b>주체 전환</b> <span class="d">— 사람 주체(v4) → AI 전량 판정 + 선택적 사람 검수(v5)</span></div><div><span class="tag tg-g">확정제안</span></div></div>
+  <div class="mr"><div class="no">3</div><div><span class="ty ty-k">유지</span></div><div><b>STEP 05 · 임베딩 한 벌</b> <span class="d">— STEP 07·09 중복 호출 제거, 위치만 이동</span></div><div><span class="tag tg-b">확정기존</span></div></div>
+  <div class="mr"><div class="no">4</div><div><span class="ty ty-n">신설</span></div><div><b><code>known_insights</code> 임베딩</b> <span class="d">— 실무자가 이미 아는 것에 좌표를 준다</span></div><div><span class="tag tg-g">확정제안</span></div></div>
+  <div class="mr"><div class="no">5</div><div><span class="ty ty-r">치환</span></div><div><b>라벨 스키마</b> <span class="d">— 5-class → <code>evidence_level</code> 3-class + <code>reason_code</code></span></div><div><span class="tag tg-g">확정제안</span></div></div>
+  <div class="mr"><div class="no">6</div><div><span class="ty ty-n">신설</span></div><div><b>Core / Supporting 경계</b> <span class="d">— 재구성 테스트. 사람·AI가 같은 규칙을 쓴다</span></div><div><span class="tag tg-g">확정제안</span></div></div>
+  <div class="mr"><div class="no">7</div><div><span class="ty ty-n">신설</span></div><div><b>AI-first 신뢰도 6절차</b> <span class="d">— 캘리브레이션 → 전량 판정 → conformal → 라우팅 → 감사 → 재캘리브레이션</span></div><div><span class="tag tg-g">확정제안</span></div></div>
+  <div class="mr"><div class="no">8</div><div><span class="ty ty-n">신설</span></div><div><b>Simulated Annotators</b> <span class="d">— confidence를 어디서 얻는가</span></div><div><span class="tag tg-t">튠 k</span></div></div>
+  <div class="mr"><div class="no">9</div><div><span class="ty ty-r">치환</span></div><div><b>60/20/15/5 재해석 · 3모드 재매핑</b> <span class="d">— 레시피는 남기고 의미만 갈아끼운다</span></div><div><span class="tag tg-g">확정제안</span></div></div>
+  <div class="mr"><div class="no">10</div><div><span class="ty ty-r">치환</span></div><div><b>STEP 06 학습 · 캐스케이드</b> <span class="d">— 양성 정의 교체, <code>pred_entropy</code> 원천 확정</span></div><div><span class="tag tg-g">확정제안</span></div></div>
+  <div class="mr"><div class="no">11</div><div><span class="ty ty-n">신설</span></div><div><b>산출 계약 · 영향 범위</b> <span class="d">— <code>stage_3.json</code> · <code>stage_5.json</code> · 코드 경로</span></div><div><span class="tag tg-g">확정제안</span></div></div>
+</div>
+
+<div class="nbox nb-b" style="margin-top:14px"><b>횡단 규칙.</b> 이 단계의 모든 LLM 호출(캘리브레이션 근거 · Simulated Annotator · 캐스케이드 LLM-B)은 프롬프트 첫 줄에 STEP 01·02 <code>one_liner</code>를 헤더로 싣는다. 도메인 few-shot을 프롬프트에 박지 않는 이유도 같다 — 도메인은 <code>one_liner</code> + <code>bk</code>가 준다.</div>
+
+<!-- 1 -->
+<div class="sec"><span class="n">1</span>세 단계를 한 장에 <span class="q">— 1.0 대비 무엇이 어떻게 바뀌는가</span><span class="sp"><span class="ty ty-r">치환</span></span></div>
+<div class="vs">
+  <div class="vsl">STEP 05<br>전처리</div>
+  <div class="vsb pink"><b>벡터도 토큰도 만들지 않는다.</b> 필요한 단계마다 각자 만든다</div>
+  <div class="vsa">→</div>
+  <div class="vsb green"><b>임베딩 한 벌 + 형태소 토큰 한 벌을 여기서 만들어 저장한다.</b> 이후 단계는 계산하지 않고 가져다 쓴다 <span class="tag tg-amb">v4→v5</span> <span style="color:#3f8f57">여기에 <code>known_insights</code> 임베딩과 <code>max_sim_to_known</code> 사전 계산이 붙는다</span></div>
+
+  <div class="vsl">STEP 06<br>라벨링</div>
+  <div class="vsb pink"><b>무작위 2% · 이진 · 한 번에 20건.</b> 100만 건이면 20,000건을 사람이 봐야 한다. 판정 기준 문서가 없고, 최소 5건이면 학습이 진행되며, 일괄 저장이라 중단하면 처음부터다</div>
+  <div class="vsa">→</div>
+  <div class="vsb green"><b>AI 전량 판정 · 사람은 캘리브레이션 300~500건 + escalate 건만.</b> 라벨은 3-class(<code>evidence_level</code>) + 무관 사유(<code>reason_code</code>)이고, 채택 라벨의 오류율 상한 α를 conformal로 보장한다 <span class="tag tg-amb">v4→v5</span> <span style="color:#3f8f57">v4의 “목표 1,000건 사람 라벨”이 “캘리브레이션 + escalate”로 재정의됐다</span></div>
+
+  <div class="vsl">STEP 06<br>학습</div>
+  <div class="vsb pink"><b>텍스트를 토크나이즈해 LSTM · CNN · GRU 앙상블.</b> 3모델 확률을 산술평균하고 임계값 0.5로 이진 판정한다. 산출은 <code>relevance_score</code> 하나뿐이다</div>
+  <div class="vsb" style="grid-column:3/5;border:none;background:none;padding:0"><div style="display:flex;gap:9px;align-items:center"><span class="vsa">→</span><div class="vsb green" style="flex:1"><b>임베딩 입력 · 3-class 분류기 · 신뢰도 3단 캐스케이드.</b> 확신 구간은 분류기가 끝내고 애매 구간만 LLM-B가 다시 본다. 산출은 <code>evidence_level_pred</code> + <code>confidence</code>이고, 이것이 STEP 07–09 <code>pred_entropy</code>의 원천이 된다</div></div></div>
+</div>
+
+<!-- 2 -->
+<div class="sec"><span class="n">2</span>주체 전환 <span class="q">— v4에서 무엇이 또 바뀌었나</span><span class="sp"><span class="tag tg-amb">v4→v5</span><span class="ty ty-r">치환</span></span></div>
+<div class="row">
+  <div class="card orange" style="flex:1">
+    <div class="ch">v4 확정안 <span class="tag tg-o">사람이 주체 · AI가 보조</span></div>
+    <div class="col">
+      <div class="box o">캘리브레이션 스프린트 → gold set + proxy</div>
+      <div class="box o">연속 배치 라벨링 <span class="m">60 / 20 / 15 / 5</span></div>
+      <div class="box o">사람이 목표 1,000건을 <b>직접 라벨</b></div>
+      <div class="box o">AI는 시드 후보 생성 · 불일치 대조 · 근거 표시</div>
+    </div>
+    <div class="cap">문제는 “1,000건”의 근거다. 왜 1,000건인가에 답이 없다 — 정확도가 정체하면 멈춘다는 경험칙뿐이고, <b>채택된 라벨이 얼마나 틀렸는지는 끝까지 모른다</b></div>
+  </div>
+  <div class="arw" style="align-self:center"><div class="al">주체 반전</div><div class="line"></div></div>
+  <div class="card green" style="flex:1.15">
+    <div class="ch">v5 전환 <span class="tag tg-g">AI가 전량 판정 · 사람은 두 곳만</span></div>
+    <div class="col">
+      <div class="box g"><b>(a) 캘리브레이션셋</b> <span class="m">300~500건 · 2인 이중 라벨 → κ<sub>human</sub> 측정 · 기준을 만드는 구간</span></div>
+      <div class="box g"><b>(b) escalate 건</b> <span class="m">AI가 저신뢰이거나 Core–Supporting 경계에 붙은 건만</span></div>
+      <div class="box g">그 외 전량 <span class="m">AI 판정을 채택하되, 채택분의 오류율 ≤ α를 보장</span></div>
+      <div class="box g">감사 샘플 <span class="m">채택분에서 랜덤 n건 → κ<sub>AI</sub> 추이 감시</span></div>
+    </div>
+    <div class="cap"><b>핵심은 검수량의 결정 방식이 바뀐다는 것이다.</b> “몇 건 보면 되냐”는 협상이 아니라, 목표 오류율 α를 정하면 escalate 비율이 따라 나오는 계산 결과가 된다</div>
+  </div>
+</div>
+<div class="nbox nb-v"><b>왜 지금 뒤집는가.</b> v4 설계 당시에도 전수 LLM 라벨링은 기각했다 — 비용과 “무검수 라벨이 학습에 섞이는 위험” 때문이었다. v5는 그 두 기각 사유를 각각 해소한다. 비용은 <b>3-tier 캐스케이드</b>가(전량이 LLM으로 가지 않는다), 무검수 위험은 <b>conformal / selective risk control</b>이(채택분의 오류율에 상한을 건다) 받는다. 기각 결정이 뒤집힌 게 아니라, 기각의 전제가 사라진 것이다.</div>
+
+<!-- 3 -->
+<div class="sec"><span class="n">3</span>STEP 05 · 임베딩을 앞으로 <span class="q">— 새 작업이 아니라, 하던 일을 앞으로 옮긴 것</span><span class="sp"><span class="ty ty-k">유지</span></span></div>
+<div class="row mid">
+  <div class="card pink" style="flex:1">
+    <div class="ch" style="font-size:12.5px">AS-IS · 필요한 곳마다 각자 만든다</div>
+    <div class="col">
+      <div class="box p">STEP 06 <span class="m">토크나이즈 → 모델 내부 임베딩 레이어 학습</span></div>
+      <div class="box p">STEP 07 <span class="m">Voyage 호출 · 클러스터링용</span></div>
+      <div class="box p">STEP 09 <span class="m">Voyage 재호출 · Pinecone 적재용</span></div>
+    </div>
+    <div class="cap">벡터 공간이 서로 달라 공유가 불가능하고, 라벨링 중에는 벡터가 아예 없어서 문서를 고를 근거가 없다</div>
+  </div>
+  <div class="arw"><div class="al">위치만 이동</div><div class="line"></div></div>
+  <div class="card green" style="flex:1.1">
+    <div class="ch" style="font-size:12.5px">TO-BE · 앞에서 한 벌 만들어 공유한다</div>
+    <div class="box g" style="margin-bottom:7px">STEP 05 <span class="m">Voyage · 1024D · 한 번</span></div>
+    <div class="wire" style="margin-bottom:4px">
+      <span class="stg n">STEP 05 임베딩 1벌</span><span class="wa">→</span>
+      <span class="stg">STEP 06 프록시</span><span class="stg">STEP 06 분류기</span><span class="stg">STEP 07 K-means</span><span class="stg">STEP 09 Pinecone</span>
+    </div>
+    <div class="cap">총 계산량은 늘지 않는다. 오히려 중복 호출이 사라진다. 형태소 토큰(<code>tokens/{sid}/</code>)은 <b>기존 방법(SNA·LDA) 전용 원재료</b>로 같은 자리에서 함께 만든다 — 두 갈래 비교가 같은 입력에서 출발해야 하기 때문이다</div>
+  </div>
+</div>
+
+<!-- 4 -->
+<div class="sec"><span class="n">4</span><code>known_insights</code> 임베딩 <span class="q">— 실무자가 이미 아는 것에 좌표를 준다</span><span class="sp"><span class="ty ty-n">신설</span></span></div>
+<div class="nw">
+  <div class="hd"><span class="ty ty-n">신설</span><span class="ttl">문서마다 <code>max_sim_to_known</code>을 미리 계산해 붙인다</span><span class="tag tg-g">확정제안</span></div>
+  <div class="bd">
+    <div class="kv"><div class="k">문제</div><div class="v">STEP 09 RAG는 “질문에 관련된” 문서를 잘 찾는다. 그런데 관련성이 가장 높은 문서는 대개 <b>실무자가 이미 아는 이야기</b>다 — 근거로는 맞지만 인사이트로는 0이다. 현재 파이프라인에는 “이건 이미 아는 것”을 판별할 장치가 아예 없다.</div></div>
+    <div class="kv"><div class="k">처방</div><div class="v">STEP 01·02에서 실무자가 <code>known_insights[]</code>(5~10문장)를 입력받는다. STEP 05에서 <b>문서와 동일한 모델·동일 공간으로</b> 임베딩하고, 각 문서에 대해 <code>max_sim_to_known</code>(기지 인사이트와의 최대 코사인)을 사전 계산해 문서 필드에 저장한다.</div></div>
+    <div class="kv"><div class="k">연결</div><div class="v"><div class="wire">
+      <span class="stg n">STEP 01·02</span><span class="fld">known_insights[]</span><span class="wa">→</span>
+      <span class="stg g">STEP 05</span><span class="fld">max_sim_to_known</span><span class="wa">→</span>
+      <span class="stg">STEP 07</span><span class="wa">메타 병기</span><span class="wa">→</span>
+      <span class="stg">STEP 09 Pinecone metadata</span><span class="wa">→</span>
+      <span class="stg o">STEP 09 리랭킹</span><span class="fld">quality = relevance × (1 − w_k·max_sim_to_known) × (1 + w_r·combo_rarity)</span>
+    </div></div></div>
+    <div class="kv"><div class="k">효과</div><div class="v">“아는 것”에 페널티가 걸리므로 RAG 결과가 기지 사실 재확인에서 벗어난다. 세션이 끝나면 STEP 11-E 확정 인사이트를 <code>known_insights</code>에 append하므로, <b>다음 세션의 기준선이 자동으로 올라간다.</b></div></div>
+    <div class="kv"><div class="k">비용</div><div class="v">추가 임베딩 호출은 <b>5~10문장뿐</b>이고, 유사도는 문서 임베딩 배치 루프 안에서 행렬 곱 한 번으로 끝난다. STEP 05에서 계산하지 않으면 STEP 09에서 문서마다 다시 재야 하므로, 오히려 이 위치가 가장 싸다.</div></div>
+  </div>
+</div>
+<div class="nbox nb-o"><b>★ 보류 · 공유 범위.</b> <code>known_insights</code>를 제품(<code>bk</code>) 단위로 누적할지 전사 풀로 둘지 미결이다. 전사 풀이면 다른 제품에서 나온 인사이트가 이 세션의 novelty를 깎는다 — 카테고리가 다르면 과도한 페널티가 된다. bk 단위 누적 + 전사 풀은 참고 표시만 하는 절충안이 유력하다.</div>
+
+<!-- 5 -->
+<div class="sec"><span class="n">5</span>라벨 스키마 <span class="q">— 5-class에서 3-class + 사유로</span><span class="sp"><span class="tag tg-amb">v4→v5</span><span class="ty ty-r">치환</span></span></div>
+<div class="row">
+  <div class="card orange" style="flex:.92">
+    <div class="ch" style="font-size:12.5px">v4 · 5-class 평면</div>
+    <div class="col">
+      <div class="box o">relevant</div>
+      <div class="box o">ad</div>
+      <div class="box o">no-needs</div>
+      <div class="box o">pure criticism</div>
+      <div class="box o">other</div>
+    </div>
+    <div class="cap">“관련”이 한 덩어리다. 그런데 STEP 07·09·10·11이 필요로 하는 것은 <b>관련이냐</b>가 아니라 <b>이 원문 하나로 상황을 재구성할 수 있느냐</b>다 — 그 구분이 스키마에 없다</div>
+  </div>
+  <div class="arw" style="align-self:center"><div class="al">분할 + 강하</div><div class="line"></div></div>
+  <div class="card green" style="flex:1.35">
+    <div class="ch" style="font-size:12.5px">v5 · 3-class + 무관 사유 <span class="tag tg-g">충돌 없는 재배치</span></div>
+    <div class="row" style="gap:7px;margin-bottom:8px">
+      <div class="box g" style="flex:1;text-align:center"><b>core</b><br><span class="m" style="font-size:11px">상황 재구성 가능</span></div>
+      <div class="box g" style="flex:1;text-align:center"><b>supporting</b><br><span class="m" style="font-size:11px">단서는 있음</span></div>
+      <div class="box p" style="flex:1;text-align:center"><b>non</b><br><span class="m" style="font-size:11px">+ reason_code</span></div>
+    </div>
+    <div class="cs" style="font-size:12px"><b>relevant</b> → <code>core</code> + <code>supporting</code>으로 분할 · 나머지 4 class → <code>non</code>의 <code>reason_code</code>로 강하. 정보 손실이 없으므로 <b>기존 라벨은 마이그레이션 없이 읽힌다.</b></div>
+    <div class="cap"><b>분류기는 3-class만 학습한다.</b> <code>reason_code</code>는 <code>non</code> 내부 2차 분류로 분리해 광고 필터 개선에 재사용한다 — 5갈래를 한 모델에 밀어 넣으면 희소 클래스(other)가 학습을 망친다</div>
+  </div>
+</div>
+<div class="row" style="margin-top:12px">
+  <div class="card gray" style="flex:1.05;padding:9px 11px">
+<pre>{
+  "evidence_level": "core | supporting | non",
+  "reason_code":    "ad | plain_eval | pure_criticism | no_experience | other",   <span class="cm">// non일 때만</span>
+  "context_dims":   { "environment": "...", "internal_state": "...", "task_goal": "...",
+                      "activity_response": "...", "resource_constraint": "..." },  <span class="cm">// core만 · 관측된 키만</span>
+  "confidence":     0.0,          <span class="cm">// Simulated Annotator 일치율</span>
+  "source":         "ai | human | human_override",
+  "annotator_votes": ["core","core","supporting"]   <span class="cm">// 감사용</span>
+}</pre>
+  </div>
+  <div class="card blue" style="flex:.8">
+    <div class="ch" style="font-size:12.5px">주의 · <code>context_dims</code>는 여기서 채우지 않는다</div>
+    <div class="cs" style="font-size:12px">라벨 단계에서는 <b>빈 칸으로 둔다.</b> Core로 판정된 문서에 한해 <b>STEP 09에서 LLM이 추출</b>해 채운다.</div>
+    <div class="wire" style="margin-top:9px">
+      <span class="stg">STEP 06</span><span class="wa">core 판정</span><span class="wa">→</span>
+      <span class="stg g">STEP 09</span><span class="wa">LLM 추출</span><span class="wa">→</span>
+      <span class="fld">context_dims{5}</span>
+    </div>
+    <div class="cap">전량 LLM 추출을 기각한 결정은 유지된다. 100만 건에서 5-Dim을 뽑으면 비용이 감당되지 않고, Core가 아닌 문서는 애초에 채울 차원이 0~2개뿐이라 뽑을 것도 없다</div>
+  </div>
+</div>
+
+<!-- 6 -->
+<div class="sec"><span class="n">6</span>Core / Supporting 경계 <span class="q">— 재구성 테스트. 사람과 AI가 같은 문장을 쓴다</span><span class="sp"><span class="ty ty-n">신설</span></span></div>
+<div class="nw o">
+  <div class="hd"><span class="ty ty-n">신설</span><span class="ttl">“이 원문 하나로 5-Dimension 중 몇 개를 채울 수 있는가”</span><span class="tag tg-g">확정제안</span></div>
+  <div class="bd">
+    <div class="kv"><div class="k">문제</div><div class="v">v4의 판정 기준은 “경험차원 6종 중 구체적 단서 1개 이상이면 관련”이었다. 이 기준은 <b>관련/무관은 가르지만 Core/Supporting은 못 가른다.</b> 그런데 STEP 09 RAG 필터와 STEP 10·11 CCM은 Core 원문에만 의존한다.</div></div>
+    <div class="kv"><div class="k">처방</div><div class="v"><b>Core</b> — 원문만으로 5 Dim 중 <b>≥3개</b>를 채울 수 있고, 그중 <b>Task·Goal 또는 Resource·Constraint를 포함</b> / <b>Supporting</b> — 1~2개 / <b>Non</b> — 0개, <code>reason_code</code> 부여. 사람 캘리브레이션과 AI 프롬프트가 <b>이 한 문장을 동일하게</b> 쓴다.</div></div>
+    <div class="kv"><div class="k">왜 3개 · 왜 Task·Goal ∨ Constraint</div><div class="v">개수만 보면 “새벽에 · 짜증나서 · 그냥 껐다”처럼 <b>정황만 있고 목적도 제약도 없는</b> 원문이 3개를 채워 Core가 된다. 이런 문서로는 CCM의 Action·Barrier 행을 쓸 수 없다. 그래서 개수 조건에 <b>목적축(Task·Goal) 또는 제약축(Resource·Constraint) 필수</b>를 걸어 “무엇을 하려다 무엇에 막혔나”가 있는 원문만 Core로 올린다.</div></div>
+    <div class="kv"><div class="k">연결</div><div class="v"><div class="wire">
+      <span class="stg n">STEP 03</span><span class="wa">5-Dim 키워드 발산</span><span class="wa">→</span>
+      <span class="stg o">STEP 06</span><span class="wa">재구성 테스트</span><span class="wa">→</span>
+      <span class="stg g">STEP 09</span><span class="wa">Core만 dims 추출</span><span class="wa">→</span>
+      <span class="stg">STEP 09</span><span class="wa">선택 필터</span><span class="fld">task_goal</span><span class="fld">resource_constraint</span>
+    </div></div></div>
+  </div>
+</div>
+<div class="tw" style="margin-top:12px">
+<table class="rt">
+  <tr><th style="width:31%">원문</th><th style="width:7%">Env</th><th style="width:7%">Int</th><th style="width:7%">Task</th><th style="width:7%">Act</th><th style="width:7%">Con</th><th style="width:8%">채움</th><th>판정</th></tr>
+  <tr>
+    <td>“새벽에 애 깨워서 분유 타는데 온도 맞추느라 매번 끓였다 식혀요”</td>
+    <td style="color:#2f7a45">✓</td><td style="color:#c7c7cc">·</td><td style="color:#2f7a45">✓</td><td style="color:#2f7a45">✓</td><td style="color:#2f7a45">✓</td>
+    <td><b>4</b></td>
+    <td><b style="color:#2f7a45">core</b> <span class="src">— Task·Goal 포함 · 상황 재구성 가능</span></td>
+  </tr>
+  <tr>
+    <td>“새벽에 쓰는데 좀 시끄럽긴 하네요”</td>
+    <td style="color:#2f7a45">✓</td><td style="color:#2f7a45">✓</td><td style="color:#c7c7cc">·</td><td style="color:#c7c7cc">·</td><td style="color:#c7c7cc">·</td>
+    <td><b>2</b></td>
+    <td><b style="color:#b3701f">supporting</b> <span class="src">— 단서는 있으나 목적·제약이 없다</span></td>
+  </tr>
+  <tr>
+    <td>“그냥 쓰레기”</td>
+    <td style="color:#c7c7cc">·</td><td style="color:#c7c7cc">·</td><td style="color:#c7c7cc">·</td><td style="color:#c7c7cc">·</td><td style="color:#c7c7cc">·</td>
+    <td><b>0</b></td>
+    <td><b style="color:#b23b3b">non</b> <span class="fld">pure_criticism</span></td>
+  </tr>
+  <tr>
+    <td>“역대급 특가 링크 ↓”</td>
+    <td style="color:#c7c7cc">·</td><td style="color:#c7c7cc">·</td><td style="color:#c7c7cc">·</td><td style="color:#c7c7cc">·</td><td style="color:#c7c7cc">·</td>
+    <td><b>0</b></td>
+    <td><b style="color:#b23b3b">non</b> <span class="fld">ad</span></td>
+  </tr>
+</table>
+</div>
+<div class="nbox nb-n">이 표가 곧 <b>캘리브레이션 교재</b>이자 <b>Simulated Annotator 프롬프트의 few-shot</b>이다. 사람이 기준을 다듬으면 같은 표를 통해 AI 판정에 즉시 전파된다 — 기준이 두 벌로 갈라지지 않는 구조적 장치다.</div>
+
+<!-- 7 -->
+<div class="sec"><span class="n">7</span>AI-first 신뢰도 6절차 <span class="q">— 검수량을 α가 정하게 만든다</span><span class="sp"><span class="ty ty-n">신설</span></span></div>
+<div class="card gray" style="padding:13px 18px">
+  <div class="steps">
+    <div class="st"><div class="no h">①</div><div class="tx"><b>캘리브레이션 스프린트</b> <span class="tag tg-o">사람</span> — 300~500건을 <code>kw.dim</code> × 카페로 계층 샘플링해 <b>2인 이중 라벨</b>. <span class="m">여기서 나온 κ<sub>human</sub>이 “사람끼리도 이 정도는 안 맞는다”는 바닥선이 된다. AI 성능은 이 바닥선과 비교되어야 의미가 있다</span></div></div>
+    <div class="st"><div class="no">②</div><div class="tx"><b>AI 전량 판정</b> <span class="tag tg-b">AI · cascade 3-tier</span> — Haiku 단계에서 <b>Simulated Annotators를 k회</b> 돌리고, 관점이 다른 k개 판정의 <b>일치율을 <code>confidence</code>로</b> 삼는다. <span class="m">단일 호출의 self-reported 확률은 과신 편향이 심해 라우팅 기준으로 못 쓴다 · 8절</span></div></div>
+    <div class="st"><div class="no">③</div><div class="tx"><b>Conformal / selective risk control</b> — ①의 gold로 임계 <b>τ를 캘리브레이션</b>한다. 산출 보장은 <b>“채택된 AI 라벨 중 오류율 ≤ α”</b>. <span class="m">τ를 감으로 정하는 게 아니라, α를 정하면 τ가 데이터에서 나온다. 이것이 v4와 v5를 가르는 유일한 통계적 장치다</span></div></div>
+    <div class="st"><div class="no">④</div><div class="tx"><b>라우팅</b> — <code>confidence ≥ τ</code> → 채택 / <code>&lt; τ</code> → <b>escalate</b> / Core–Supporting <b>경계 근접</b>(채움 표 차이 ≤ 1) → escalate. <span class="m">경계 근접을 따로 두는 이유 — confidence는 높은데 규칙상 경계에 붙은 건은 신뢰도로 걸러지지 않는다</span></div></div>
+    <div class="st"><div class="no h">⑤</div><div class="tx"><b>감사 샘플</b> <span class="tag tg-o">사람</span> — 채택분에서 <b>랜덤 n건</b>을 뽑아 κ<sub>AI</sub>를 측정하고 배치별 추이를 남긴다. <span class="m">escalate 건만 보면 “AI가 자신 있게 틀린 구간”은 영원히 안 보인다. 무작위여야만 그 맹점이 드러난다</span></div></div>
+    <div class="st"><div class="no">⑥</div><div class="tx"><b>재캘리브레이션 트리거</b> — κ<sub>AI</sub>가 <b>두 배치 연속 하락</b>하거나 <b>클래스 분포가 급변</b>하면 ①로 돌아가 gold를 갱신한다. <span class="m">키워드 라운드가 R3·R4로 넘어가며 수집 문서 성격이 바뀌면 분포가 흔들린다 — 그때 τ가 낡는다</span></div></div>
+  </div>
+</div>
+<div class="row" style="margin-top:12px;gap:11px">
+  <div class="card green" style="flex:1;padding:12px 14px">
+    <div class="ch" style="font-size:12.5px;margin-bottom:4px">채택 <span class="tag tg-g">confidence ≥ τ</span></div>
+    <div class="cs" style="font-size:12px">사람이 보지 않는다. 대신 <b>이 집합의 오류율이 α 이하임이 ③으로 보장</b>된다</div>
+  </div>
+  <div class="card orange" style="flex:1;padding:12px 14px">
+    <div class="ch" style="font-size:12.5px;margin-bottom:4px">escalate <span class="tag tg-o">사람 큐</span></div>
+    <div class="cs" style="font-size:12px">저신뢰 + 경계 근접 + <code>reason_code</code>별 최소 n건. <b>사람 검수량 = 이 큐의 크기</b></div>
+  </div>
+  <div class="card blue" style="flex:1;padding:12px 14px">
+    <div class="ch" style="font-size:12.5px;margin-bottom:4px">감사 <span class="tag tg-b">랜덤 n</span></div>
+    <div class="cs" style="font-size:12px">채택분에서 무작위. 정확도 측정과 ⑥ 트리거의 <b>유일한 신뢰 표본</b></div>
+  </div>
+</div>
+<div class="nbox nb-g"><b>α를 낮추면 어떻게 되는가.</b> α = 0.10에서 0.05로 조이면 τ가 올라가고 → 채택 집합이 줄고 → escalate 큐가 커진다. 즉 <b>“품질을 높인다”는 결정이 곧 “사람이 더 본다”는 결정</b>임이 화면에 숫자로 보인다. 이전에는 이 트레이드오프가 어디에도 표시되지 않았다.</div>
+
+<!-- 8 -->
+<div class="sec"><span class="n">8</span>Simulated Annotators <span class="q">— confidence를 어디서 얻는가</span><span class="sp"><span class="tag tg-t">튠 k</span><span class="ty ty-n">신설</span></span></div>
+<div class="nw">
+  <div class="hd"><span class="ty ty-n">신설</span><span class="ttl">관점이 다른 라벨러 페르소나 k개로 같은 문서를 판정시킨다</span><span class="tag tg-t">k = 3 · 경계 건 5</span></div>
+  <div class="bd">
+    <div class="kv"><div class="k">문제</div><div class="v">AI 라벨을 라우팅하려면 “이 판정을 얼마나 믿는가”가 필요하다. 그런데 LLM에게 직접 확률을 물으면 <b>거의 항상 높게 답한다</b>(과신). 로짓 기반 확률도 지시문 형식에 크게 흔들려 임계값 기준으로 쓰기 어렵다.</div></div>
+    <div class="kv"><div class="k">처방</div><div class="v">한 문서를 <b>관점이 다른 k개 페르소나 프롬프트</b>로 각각 판정시키고, <b>판정 간 일치율을 <code>confidence</code></b>로 쓴다. 사람 2인 이중 라벨에서 κ를 얻는 것과 같은 논리를, 라벨러를 프롬프트로 바꿔 적용한 것이다.</div></div>
+    <div class="kv"><div class="k">페르소나</div><div class="v"><div class="row" style="gap:7px">
+      <div class="box b" style="flex:1"><b>CX 리서처</b><br><span class="m" style="font-size:11.5px">니즈 중심 — 미충족이 읽히는가</span></div>
+      <div class="box b" style="flex:1"><b>제품 QA</b><br><span class="m" style="font-size:11.5px">문제 중심 — 재현 가능한 결함인가</span></div>
+      <div class="box b" style="flex:1"><b>일반 소비자</b><br><span class="m" style="font-size:11.5px">체감 중심 — 나도 겪을 일인가</span></div>
+    </div></div></div>
+    <div class="kv"><div class="k">함정</div><div class="v"><b>페르소나 다양성이 낮으면 일치율이 과대평가된다.</b> 같은 관점을 세 번 물으면 당연히 세 번 같은 답이 나오고, confidence가 전부 1.0으로 몰려 τ가 무력화된다. 그래서 프롬프트 간 <b>판정 근거축 자체가 달라야</b> 한다 — 문체만 바꾸는 것은 실패한 설계다. ①의 gold에서 <b>“페르소나 간 불일치가 실제 오답과 상관되는가”</b>를 먼저 검증하고 k를 확정한다.</div></div>
+    <div class="kv"><div class="k">비용</div><div class="v">캐스케이드 <b>Haiku 단계에만</b> 적용한다. 전 구간 k회가 아니라, 값싼 tier에서 k회를 돌려 confidence를 만들고 그 값으로 상위 tier 호출 여부를 정하는 구조라 <b>총 호출은 오히려 준다.</b> 경계 근접 건만 k=5로 올린다.</div></div>
+  </div>
+</div>
+
+<!-- 9 -->
+<div class="sec"><span class="n">9</span>60/20/15/5 재해석 · 3모드 재매핑 <span class="q">— 레시피는 남기고 의미만 갈아끼운다</span><span class="sp"><span class="tag tg-amb">v4→v5</span><span class="ty ty-r">치환</span></span></div>
+<div class="sbar">
+  <div style="width:60%;background:#7fa4dd">60% · 프록시 선별</div>
+  <div style="width:20%;background:#a9c4e8">20% · 층화 무작위</div>
+  <div style="width:15%;background:#c9d9ef;color:#3a5d90">15% · LLM 시드</div>
+  <div style="width:5%;background:#e2eaf6;color:#3a5d90">5%</div>
+</div>
+<div class="tw" style="margin-top:11px">
+<table class="rt">
+  <tr><th style="width:16%">v4 성분</th><th style="width:30%">v5에서의 의미</th><th>왜 이 재해석이 성립하는가</th></tr>
+  <tr>
+    <td class="ax">프록시 선별 60%</td>
+    <td><b style="color:#2c5aa8">escalate 건</b><br><span class="src">저신뢰 + 경계 근접 + <code>reason_code</code>별 최소 n</span></td>
+    <td>v4의 “프록시가 헷갈리는 문서”와 v5의 “AI confidence가 낮은 문서”는 <b>같은 대상을 가리킨다.</b> 선별 주체가 로지스틱 프록시에서 Simulated Annotator 불일치로 바뀌었을 뿐, “경계 근처를 사람에게 준다”는 원리는 동일하다</td>
+  </tr>
+  <tr>
+    <td class="ax">층화 무작위 20%</td>
+    <td><b style="color:#2c5aa8">감사 샘플 ⑤</b><br><span class="src">채택분에서 무작위 → κ<sub>AI</sub></span></td>
+    <td>v4에서도 이 20%는 “선별분은 편향 표본이라 정확도 측정에 못 쓴다”는 이유로 존재했다. v5에서 측정 대상이 프록시 정확도 → <b>채택 라벨의 실제 오류율</b>로 바뀌었을 뿐 역할이 같다</td>
+  </tr>
+  <tr>
+    <td class="ax">LLM 시드 15%</td>
+    <td><span class="tag tg-n">유지</span> 초반 물량 · 일치율 실측</td>
+    <td>캘리브레이션 ①이 끝나기 전 구간을 메우고, 사람–AI 일치율 실측 표본이 된다</td>
+  </tr>
+  <tr>
+    <td class="ax">재발행 5%</td>
+    <td><span class="tag tg-n">유지</span> 자기 일관성 감시</td>
+    <td>1인 검수 체제의 기준 드리프트를 잡는다. 재캘리브레이션 ⑥의 보조 신호</td>
+  </tr>
+</table>
+</div>
+<div class="row" style="margin-top:12px">
+  <div class="card blue" style="flex:1">
+    <div class="ch" style="font-size:12.5px">3모드 UX 재매핑 <span class="tag tg-b">화면은 그대로, 배치되는 절차만 바뀐다</span></div>
+    <div class="col" style="margin-top:2px">
+      <div class="box b"><b>calibration</b> <span class="m">= 절차 ① — LLM 근거를 보면서 판단. 기준을 만드는 구간에서만</span></div>
+      <div class="box b"><b>independent</b> <span class="m">= 절차 ⑤ — 근거를 숨기고 사람이 먼저 판단, 제출 후 불일치 시에만 노출</span></div>
+      <div class="box b"><b>re-issue</b> <span class="m">= 절차 ⑥ — 재발행으로 자기 일관성 측정, 하락 시 ① 트리거</span></div>
+    </div>
+    <div class="cap">앵커링은 <b>판단 전 노출</b>에서 생긴다. 그래서 근거를 숨기는 것이 아니라 <b>보여주는 시점을 제출 뒤로</b> 미룬다 — 이 원칙은 v4에서 그대로 승계된다</div>
+  </div>
+  <div class="card orange" style="flex:1">
+    <div class="ch" style="font-size:12.5px">라벨링 UI가 받아야 하는 것</div>
+    <div class="col" style="margin-top:2px">
+      <div class="box o"><b>3버튼</b> <span class="m">core / supporting / non — non 선택 시 <code>reason_code</code> 서브 선택</span></div>
+      <div class="box o"><b>confidence 표시</b> <span class="m">AI 판정과 k개 <code>annotator_votes</code>를 제출 후에만 노출</span></div>
+      <div class="box o"><b>escalate 큐</b> <span class="m">큐 잔량 · 처리 속도 · 예상 소요를 상단에 상주</span></div>
+      <div class="box o"><b>α 다이얼</b> <span class="m">α를 바꾸면 예상 escalate 건수가 즉시 갱신</span></div>
+    </div>
+    <div class="cap">마지막 항목이 이번 전환의 UX 핵심이다 — 품질 목표와 노동량의 교환비를 <b>사람이 눈으로 보고 정하게</b> 만든다</div>
+  </div>
+</div>
+
+<!-- 10 -->
+<div class="sec"><span class="n">10</span>STEP 06 학습 · 캐스케이드 <span class="q">— 무엇을 양성으로 볼지가 바뀐다</span><span class="sp"><span class="ty ty-r">치환</span></span></div>
+<div class="row">
+  <div class="card green" style="flex:1">
+    <div class="ch" style="font-size:12.5px">학습 계약 변경 3줄</div>
+    <div class="col" style="margin-top:2px">
+      <div class="box g"><b>양성 정의</b> <span class="m">— <code>label == 1</code> 판정을 <code>evidence_level ∈ {core, supporting}</code>으로 교체</span></div>
+      <div class="box g"><b>산출 확장</b> <span class="m">— <code>relevance_score</code> 옆에 <code>evidence_level_pred</code> · <code>confidence</code> 병기</span></div>
+      <div class="box g"><b>하류 계약</b> <span class="m">— 이 <code>confidence</code>가 STEP 07–09 <code>pred_entropy</code>의 원천이다</span></div>
+    </div>
+    <div class="wire" style="margin-top:10px">
+      <span class="stg g">STEP 06</span><span class="fld">confidence</span><span class="wa">→</span>
+      <span class="stg">STEP 07</span><span class="fld">pred_entropy</span><span class="wa">+</span><span class="fld">dist_centroid</span><span class="wa">→</span>
+      <span class="stg o">STEP 09</span><span class="wa">rare_evidence 밴드</span>
+    </div>
+  </div>
+  <div class="card gray" style="flex:1.05">
+    <div class="ch" style="font-size:12.5px">3-tier 캐스케이드 <span class="tag tg-n">유지 · 에어팟 세션 실측 예</span></div>
+    <div class="sbar" style="margin-top:4px">
+      <div style="width:81%;background:#86b394">분류기 판정 채택 &nbsp;약 81%</div>
+      <div style="width:17.8%;background:#dda76a">LLM-B &nbsp;약 18%</div>
+      <div style="width:1.2%;background:#cf8b8b"></div>
+    </div>
+    <div class="cs" style="font-size:12px;margin-top:10px">확신 구간은 분류기가 끝내고, 애매 구간만 LLM-B가 재판정한다. <b>애매한 문서는 곧 경계적·복합적 문서</b>라 태깅해서 얻을 정보 가치도 가장 높은 구간이다.</div>
+    <div class="cap" style="color:#8e8e93">임계값은 temperature scaling으로 <b>보정된 확률</b> 기준이다 — 보정 없이는 “애매 구간 15~20%” 추정이 어긋나 LLM-B 비용 계산이 무너진다</div>
+  </div>
+</div>
+
+<!-- 11 -->
+<div class="sec"><span class="n">11</span>산출 계약 · 영향 범위 <span class="q">— report.json으로 흘려보낼 결정론적 수치</span><span class="sp"><span class="ty ty-n">신설</span></span></div>
+<div class="row">
+  <div class="card blue" style="flex:1;padding:9px 11px">
+    <div class="ch" style="font-size:12.5px;padding:5px 6px 0">단계별 JSON</div>
+    <table class="rt">
+      <tr><th style="width:96px">파일</th><th>담는 값</th></tr>
+      <tr><td><code>stage_3.json</code></td><td>원본/후 건수 · 제거율 · 임베딩 실패(0벡터 폴백) 건수</td></tr>
+      <tr><td><code>stage_5.json</code></td><td>κ<sub>human</sub> · κ<sub>AI</sub> · 클래스 분포 · conformal 커버리지(채택률) · α · escalate 건수 · cascade 단계별 처리량</td></tr>
+    </table>
+  </div>
+  <div class="card gray" style="flex:1">
+    <div class="ch" style="font-size:12.5px">코드 영향 범위</div>
+    <div class="col" style="margin-top:2px;gap:5px">
+      <div class="box"><code>routers/labeling.py</code> <span class="m">스키마 · 샘플 라우팅(escalate 큐)</span></div>
+      <div class="box"><code>session.json.labeledData[].label</code> <span class="m">0/1 → 객체. 읽기 호환 매핑 필요</span></div>
+      <div class="box"><code>services/training.py</code> <span class="m">양성 판정 교체 · 3-class</span></div>
+      <div class="box"><code>services/claude.py</code> <span class="m">Simulated Annotator k회 배치 호출</span></div>
+      <div class="box">라벨링 UI <span class="m">3버튼 + reason_code + confidence + escalate 큐 + α 다이얼</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- 튜닝 -->
+<div class="sec"><span class="n">12</span>튜닝값과 미결 <span class="q">— 확정이 아닌 것</span><span class="sp"><span class="tag tg-t">튠</span><span class="tag tg-n">보류</span></span></div>
+<div class="row">
+  <div class="card orange" style="flex:1;padding:9px 11px">
+    <table class="rt">
+      <tr><th>파라미터</th><th style="width:104px">초기값</th></tr>
+      <tr><td>Simulated Annotator k</td><td><b>3</b> <span class="src">· 경계 건 5</span></td></tr>
+      <tr><td>목표 오류율 α</td><td><b>0.10</b></td></tr>
+      <tr><td>캘리브레이션셋</td><td><b>300~500</b></td></tr>
+      <tr><td>κ 하한 (재캘리브레이션)</td><td><b>0.75</b></td></tr>
+      <tr><td>경계 근접 판정</td><td>채움 표 차이 <b>≤ 1</b></td></tr>
+      <tr><td>캐스케이드 컷</td><td><b>0.2 / 0.8</b> <span class="src">· 보정 후</span></td></tr>
+    </table>
+  </div>
+  <div class="card gray" style="flex:1">
+    <div class="ch" style="font-size:12.5px">미결</div>
+    <div class="col" style="margin-top:2px;gap:6px">
+      <div class="box p"><b>★ 임베딩 저장 포맷</b> <span class="m">— 100만 건 × 1024D(float32) ≈ 4GB. 단일 <code>.npy</code>는 부분 로딩 불가. 샤딩 + 인덱스 맵 vs Parquet를 <b>선행 결정</b>해야 한다</span></div>
+      <div class="box p"><b>★ <code>known_insights</code> 공유 범위</b> <span class="m">— bk 단위 누적 vs 전사 풀</span></div>
+      <div class="box p"><b>★ Simulated Annotator 유효성</b> <span class="m">— 페르소나 간 불일치가 실제 오답과 상관되는지 ①의 gold로 먼저 검증. 상관이 약하면 confidence 원천을 재설계해야 한다</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="notes">
+  <div class="nt">왜 이렇게 기획했는가</div>
+  <div class="nsm"><b>“몇 건을 봐야 하는가”에 답이 있어야 한다.</b> v4의 1,000건은 정확도 정체를 보고 멈추는 경험칙이었고, 멈춘 시점의 라벨이 얼마나 틀렸는지는 측정되지 않았다. selective prediction / conformal risk control 계열은 이 질문을 뒤집는다 — 허용 오류율 α를 먼저 정하고, 그 α를 만족하는 임계 τ를 캘리브레이션 데이터에서 구한다. 사람 검수량이 결과이지 입력이 아니게 된다.</div>
+  <div class="nsm"><b>LLM의 자기보고 확률을 신뢰도로 쓰지 않는 이유.</b> 지시-튜닝된 모델은 자기 판단에 과도한 확신을 보고하는 경향이 있고, 그 값은 프롬프트 형식에 따라 크게 흔들린다. 반면 <b>관점이 다른 복수 판정 간의 불일치</b>는 문서 자체의 모호성과 상관이 높다. 사람 라벨링에서 κ가 신뢰도 지표인 것과 같은 이유로, 라벨러를 프롬프트로 치환해 같은 구조를 만든 것이다. <span class="src">inter-annotator agreement · Cohen (1960)</span></div>
+  <div class="nsm"><b>Core / Supporting을 “재구성 가능성”으로 가른 이유.</b> 하류가 요구하는 것이 관련성이 아니라 <b>재구성 가능성</b>이다. STEP 10·11 CCM은 한 Context에 대해 상황·행동·장벽·산출물 행을 채워야 하는데, 이것은 원문 하나가 최소한의 구조를 갖추고 있어야 가능하다. 그래서 “차원을 몇 개 채우는가”라는 기계적으로 검증 가능한 테스트로 경계를 정의했다 — 사람과 AI가 같은 규칙을 쓰려면 규칙이 검증 가능해야 한다.</div>
+  <div class="nsm"><b><code>context_dims</code>를 라벨 단계에서 뽑지 않는 이유.</b> 전량 LLM 추출 기각 결정은 그대로 유지된다. 라벨 단계는 <b>“몇 개를 채울 수 있는가”만 판정</b>하고(세는 것은 싸다), 실제 값 추출은 Core로 확정된 소수 문서에 대해 STEP 09에서 한 번만 한다. 판정과 추출을 분리한 덕분에 STEP 06은 3-class 분류라는 가벼운 문제로 남는다.</div>
+  <div class="nsm"><b>감사 샘플을 무작위로 유지하는 이유.</b> escalate 큐만 보면 “AI가 자신 있게 틀린 구간”은 구조적으로 관측되지 않는다. 이 구간은 선별로는 절대 걸리지 않고 무작위 표본에서만 드러나며, 동시에 재캘리브레이션 트리거의 유일한 신뢰 가능한 입력이다. v4에서 층화 무작위 20%를 둔 논리가 그대로 승계된다.</div>
+</div>
+
+
+<div class="s11-none">
+  <div class="h">STEP 05 · 데이터 전처리 — 필터 규칙 자체는 <span class="s11-b no">수정사항 없음</span></div>
+  <div class="b">1.0의 3종 전처리(① 광고·타겟 무관 게시글 제거 ② 채널 특정 반복어 제거 ③ 자연어 정제) 중 <b>①·②는 동일하게 수행</b>되며 이번 개정 대상이 아니다. 광고 필터 · 제외 카페 · 링크 중복 제거 · 저품질 컷(제목 5자 미만 AND 설명 10자 미만) 모두 기존 확정안 유지.</div>
+  <div class="b" style="margin-top:8px">바뀐 것은 <b>③ 자연어 정제뿐</b>이다 — 1.0의 <b>OKT 형태소 분해</b>가 사라지고 의미 임베딩이 그 자리를 대신한다. 형태소 층이 없어지면서 1.0에서 형태소에 의존하던 두 계산(c-TF-IDF 키워드, 감성사전 기반 polarity)의 입력이 바뀌므로, <b>STEP 07 키워드 추출과 STEP 10 만족도 계산의 대체 경로가 각 문서에 명시되어야 한다.</b></div>
+</div>
+
+</div>
+
+</body></html>
