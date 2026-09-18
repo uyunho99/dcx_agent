@@ -1,0 +1,730 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>STEP 07 — 군집</title>
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
+  <style>
+/* Person A 디자인 시스템 — DESIGN.persona.md 기준
+   토큰·스케일·규칙을 그대로 구현한다. 레거시 변수명(--fg/--sec/--panel …)은
+   기존 화면 마크업이 쓰고 있으므로 새 토큰에 별칭으로 연결한다. */
+:root{
+  /* brand — 로고·선택 상태·히어로에만. 버튼 채움·아이콘 금지 */
+  --persona-blue-100:#37b7f8; --persona-blue-soft:#e4f5fe; --persona-graphite-100:#68696e;
+  /* action — 제품 UI의 액션 색 */
+  --action:#0a73b5; --action-hover:#085d93; --action-soft:#e8f4fc; --on-action:#ffffff;
+  /* surface & line */
+  --surface:#f6f7f9; --surface-raised:#ffffff; --surface-sunken:#eceef1;
+  --line:#e1e4e8; --line-strong:#7f838b;
+  /* ink — 세 단계 */
+  --ink:#1c1e22; --ink-secondary:#55585f; --ink-subtle:#6a6e76;
+  /* status — 항상 -soft 배경과 짝으로 */
+  --success:#1b7446; --success-soft:#e6f6ec;
+  --warning:#9a5b00; --warning-soft:#fff3dc;
+  --danger:#c62828;  --danger-soft:#fdeaea;
+  /* spacing 4px base */
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px;
+  --space-6:24px; --space-8:32px; --space-12:48px;
+  --radius-sm:6px; --radius-md:10px; --radius-full:999px;
+  --shadow-sm:0 1px 2px rgba(28,30,34,.06);
+  --shadow-md:0 8px 24px rgba(28,30,34,.12),0 1px 2px rgba(28,30,34,.06);
+  --font-sans:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",system-ui,sans-serif;
+  --font-mono:"SF Mono",Menlo,Consolas,"D2Coding",monospace;
+  --ease:150ms ease-out;
+
+  /* ── 레거시 별칭 ── 기존 마크업이 참조하는 이름들 */
+  --canvas:var(--surface); --panel:var(--surface-raised); --raise:var(--surface-raised);
+  --sunk:var(--surface-sunken);
+  --fg:var(--ink); --sec:var(--ink-secondary); --mut:var(--ink-secondary); --qui:var(--ink-subtle);
+  --line2:var(--line-strong);
+  --act:var(--action); --act-fg:var(--on-action);
+  --indigo:var(--persona-blue-100);      /* 채움·마크 전용 */
+  --ind-fg:var(--action);                /* 글자·링크 */
+  --ind-deep:var(--action-hover);
+  --ind-bg:var(--action-soft); --ind-ln:var(--action);
+  --obs:var(--success); --inf:var(--warning); --spe:var(--danger);
+  --obs-bg:var(--success-soft); --inf-bg:var(--warning-soft); --spe-bg:var(--danger-soft);
+  --obs-ln:var(--success); --inf-ln:var(--warning); --spe-ln:var(--danger);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--surface);color:var(--ink);font-family:var(--font-sans);
+  font-size:14px;line-height:20px;-webkit-font-smoothing:antialiased;
+  word-break:keep-all;overflow-wrap:break-word}
+a{color:var(--action);text-decoration:none}a:hover{color:var(--action-hover)}
+:focus-visible{outline:2px solid var(--action);outline-offset:2px}
+.mono{font-family:var(--font-mono);font-size:13px;line-height:20px;
+  font-variant-numeric:tabular-nums;word-break:normal;white-space:nowrap}
+
+/* ---------- artboard ---------- */
+.art{width:1440px;background:var(--surface);display:flex;flex-direction:column}
+.app{display:flex;flex-direction:column;flex:1;min-height:0}
+
+/* ---------- app header ---------- */
+.top{height:52px;flex:none;display:flex;align-items:center;gap:var(--space-3);
+  padding:0 var(--space-4);border-bottom:1px solid var(--line);background:var(--surface-raised)}
+.brand{display:flex;align-items:center;gap:var(--space-2);font-size:14px;font-weight:700;
+  color:var(--ink);white-space:nowrap}
+.brand .dot{width:18px;height:18px;border-radius:5px;background:var(--persona-blue-100)}
+.top .sep{width:1px;height:18px;background:var(--line)}
+.pill{display:inline-flex;align-items:center;gap:var(--space-1);height:28px;padding:0 var(--space-3);
+  border-radius:var(--radius-sm);font-size:13px;line-height:18px;font-weight:500;
+  color:var(--ink-secondary);background:transparent;border:1px solid transparent;white-space:nowrap;
+  transition:background var(--ease)}
+.pill:hover{background:var(--surface-sunken)}
+.pill.on{background:var(--surface-sunken);color:var(--ink);border-color:var(--line)}
+.grow{flex:1}
+
+/* ---------- buttons (§7.1) ---------- */
+.btn{display:inline-flex;align-items:center;gap:var(--space-2);height:36px;padding:0 var(--space-4);
+  border-radius:var(--radius-sm);font-size:14px;font-weight:600;line-height:20px;
+  border:1px solid var(--line-strong);background:var(--surface-raised);color:var(--ink);
+  white-space:nowrap;transition:background var(--ease),border-color var(--ease)}
+.btn:hover{background:var(--action-soft)}
+.btn.pri{background:var(--action);color:var(--on-action);border-color:var(--action)}
+.btn.pri:hover{background:var(--action-hover);border-color:var(--action-hover)}
+.btn.gho{background:transparent;border-color:transparent;color:var(--action)}
+.btn.gho:hover{background:var(--action-soft)}
+.btn.lg{height:40px;padding:0 var(--space-6)}
+.btn.sm{height:28px;padding:0 var(--space-3);font-size:13px}
+
+/* ---------- body split (§4.4) ---------- */
+.body{display:flex;flex:1;min-height:0}
+.side{width:240px;flex:none;border-right:1px solid var(--line);background:var(--surface);
+  padding:var(--space-3) var(--space-2);overflow:hidden}
+.side .grp{font-size:12px;line-height:16px;font-weight:600;color:var(--ink-subtle);
+  padding:var(--space-4) var(--space-3) var(--space-2)}
+.step{display:flex;align-items:center;gap:var(--space-2);height:34px;padding:0 var(--space-3);
+  border-radius:var(--radius-sm);font-size:13px;line-height:18px;font-weight:500;
+  color:var(--ink-secondary);white-space:nowrap;transition:background var(--ease)}
+.step:hover{background:var(--surface-sunken)}
+.step.on{background:var(--persona-blue-soft);color:var(--ink)}
+.step .no{font-size:12px;color:var(--ink-subtle);width:36px;flex:none;font-variant-numeric:tabular-nums}
+.step.on .no{color:var(--action)}
+.step .st{margin-left:auto;width:8px;height:8px;border-radius:var(--radius-full);
+  background:var(--line-strong);flex:none;opacity:.45}
+.step .st.done{background:var(--success);opacity:1}
+.step .st.run{background:var(--warning);opacity:1}
+.step .st.cur{background:var(--action);opacity:1}
+.side .note{margin:var(--space-3) var(--space-2);padding:var(--space-3);
+  border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-raised)}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--surface)}
+.mhead{flex:none;padding:var(--space-6) var(--space-8) var(--space-4);border-bottom:1px solid var(--line)}
+.mhead h1{margin:0;font-size:24px;line-height:32px;font-weight:700;letter-spacing:-.01em}
+.mhead .sub{margin-top:var(--space-2);font-size:14px;line-height:20px;color:var(--ink-secondary)}
+.mbody{flex:1;min-height:0;padding:var(--space-6) var(--space-8);
+  display:flex;flex-direction:column;gap:var(--space-4)}
+
+/* ---------- context panel (§4.4) ---------- */
+.chat{width:320px;flex:none;border-left:1px solid var(--line);background:var(--surface-raised);
+  display:flex;flex-direction:column}
+.chat.rail{width:52px;align-items:center;padding-top:var(--space-3);gap:var(--space-4)}
+.chat .chead{flex:none;height:48px;display:flex;align-items:center;gap:var(--space-2);
+  padding:0 var(--space-4);border-bottom:1px solid var(--line);
+  font-size:16px;line-height:24px;font-weight:600;white-space:nowrap}
+.chat .cbody{flex:1;min-height:0;padding:var(--space-4);display:flex;flex-direction:column;
+  gap:var(--space-3);overflow:hidden}
+.chat .cfoot{flex:none;padding:var(--space-3) var(--space-4);border-top:1px solid var(--line)}
+.msg{border:1px solid var(--line);border-radius:var(--radius-md);padding:var(--space-3);
+  background:var(--surface-raised);font-size:14px;line-height:20px;color:var(--ink)}
+.msg.me{background:var(--action-soft);border-color:var(--action-soft)}
+.msg .who{display:block;font-size:12px;line-height:16px;color:var(--ink-subtle);
+  margin-bottom:var(--space-1)}
+.input{height:36px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);
+  background:var(--surface-raised);display:flex;align-items:center;padding:0 var(--space-3);
+  font-size:14px;color:var(--ink-subtle)}
+
+/* ---------- cards (§7.3) — 보더로 구분, 그림자 없음 ---------- */
+.card{border:1px solid var(--line);border-radius:var(--radius-md);
+  background:var(--surface-raised);overflow:hidden}
+.card.sunk{background:var(--surface-sunken)}
+.card>.ch{display:flex;align-items:center;gap:var(--space-2);
+  padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--line)}
+.card>.ch h3{margin:0;font-size:16px;line-height:24px;font-weight:600;white-space:nowrap}
+.card>.cc{padding:var(--space-4)}
+.lab{font-size:13px;line-height:18px;font-weight:500;color:var(--ink-secondary);white-space:nowrap}
+.row{display:flex;gap:var(--space-4)}
+.row>*{min-width:0}
+.col{display:flex;flex-direction:column;gap:var(--space-4);min-width:0}
+.sm{font-size:14px;line-height:20px;color:var(--ink-secondary)}
+.xs{font-size:12px;line-height:16px;color:var(--ink-secondary)}
+.mu,.qu{color:var(--ink-subtle)} .fg{color:var(--ink)}
+
+/* ---------- badges (§7.4) — 색은 보조, 텍스트가 의미 ---------- */
+.b{display:inline-flex;align-items:center;gap:var(--space-1);height:22px;padding:0 var(--space-2);
+  border-radius:var(--radius-sm);font-size:13px;line-height:18px;font-weight:500;
+  background:var(--surface-sunken);color:var(--ink-secondary);border:1px solid transparent;
+  white-space:nowrap;flex:none}
+.b.ind{background:var(--action-soft);color:var(--action)}
+.b.obs{background:var(--success-soft);color:var(--success)}
+.b.inf{background:var(--warning-soft);color:var(--warning)}
+.b.spe{background:var(--danger-soft);color:var(--danger)}
+.b.brand{background:var(--persona-blue-soft);color:var(--ink)}
+.b.solid{background:var(--ink);color:var(--on-action)}
+.b.pill{border-radius:var(--radius-full)}
+.dotg{width:8px;height:8px;border-radius:var(--radius-full);display:inline-block;flex:none}
+.dotg.o{background:var(--success)} .dotg.i{background:var(--warning)} .dotg.s{background:var(--danger)}
+
+/* ---------- tables (§7.5) — dense: 로그·관리 화면 ---------- */
+table{width:100%;border-collapse:collapse;background:var(--surface-raised)}
+th,td{text-align:left;font-size:13px;line-height:18px;padding:var(--space-2) var(--space-3);
+  border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--ink-secondary);background:var(--surface-sunken);white-space:nowrap}
+td{color:var(--ink)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:none}
+
+/* ---------- meters ---------- */
+.bar{height:8px;border-radius:var(--radius-full);background:var(--surface-sunken);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--persona-blue-100)}
+.bar>i.n{background:var(--line-strong)} .bar>i.o{background:var(--success)} .bar>i.w{background:var(--warning)}
+.kv{display:flex;align-items:baseline;gap:var(--space-2)}
+.kv b{font-size:24px;line-height:32px;font-weight:700;letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums;white-space:nowrap;flex:none}
+.kpi{display:flex;flex-direction:column;gap:var(--space-1);padding:var(--space-4);
+  border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-raised)}
+.kpi .v{font-size:24px;line-height:32px;font-weight:700;letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:var(--space-1);height:28px;padding:0 var(--space-3);
+  border-radius:var(--radius-sm);border:1px solid var(--line-strong);background:var(--surface-raised);
+  font-size:13px;line-height:18px;font-weight:500;color:var(--ink);white-space:nowrap;
+  transition:background var(--ease)}
+.chip.on{background:var(--persona-blue-soft);border-color:var(--action);color:var(--ink)}
+.chip.off{color:var(--ink-subtle);border-color:var(--line);background:var(--surface-sunken)}
+.wrap{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.fld{border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface-raised);
+  padding:var(--space-2) var(--space-3);font-size:14px;line-height:20px;color:var(--ink);min-height:36px}
+.fld.ph{color:var(--ink-subtle);background:var(--surface-sunken);border-color:var(--line)}
+.seg{display:inline-flex;padding:2px;border:1px solid var(--line);border-radius:var(--radius-sm);
+  background:var(--surface-sunken)}
+.seg>span{height:28px;display:inline-flex;align-items:center;padding:0 var(--space-3);
+  border-radius:4px;font-size:13px;line-height:18px;font-weight:500;color:var(--ink-secondary);
+  white-space:nowrap;transition:background var(--ease)}
+.seg>span.on{background:var(--surface-raised);color:var(--ink);box-shadow:var(--shadow-sm)}
+
+/* ---------- annotation pins ---------- */
+.pin{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;
+  border-radius:var(--radius-full);background:var(--action-soft);color:var(--action);
+  font-size:12px;line-height:16px;font-weight:600;flex:none;font-variant-numeric:tabular-nums}
+.pin.fl{position:absolute;z-index:5;background:var(--surface-raised);color:var(--action);
+  border:1px solid var(--action);box-shadow:0 0 0 3px var(--surface)}
+.rel{position:relative}
+.ann{flex:none;border-top:1px solid var(--line);background:var(--surface-sunken);
+  padding:var(--space-6) var(--space-8)}
+.ann h4{margin:0 0 var(--space-1);font-size:16px;line-height:24px;font-weight:600}
+.ann .lead{margin:0 0 var(--space-4);font-size:12px;line-height:16px;color:var(--ink-secondary)}
+.ann .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-3) var(--space-6)}
+.ann .it{display:flex;gap:var(--space-2)}
+.ann .it p{margin:0;font-size:12px;line-height:16px;color:var(--ink-secondary)}
+.ann .it p em{font-style:normal;color:var(--ink-subtle)}
+.ann .it p b{font-weight:600;color:var(--ink)}
+.tag{display:inline-block;font-size:12px;line-height:16px;font-weight:500;padding:1px var(--space-2);
+  border-radius:var(--radius-sm);background:var(--surface-sunken);color:var(--ink-secondary);
+  margin-right:var(--space-1);white-space:nowrap}
+.tag.rep{background:var(--action-soft);color:var(--action)}
+.tag.new{background:var(--success-soft);color:var(--success)}
+.tag.keep{background:var(--surface-sunken);color:var(--ink-secondary)}
+.tag.open{background:var(--danger-soft);color:var(--danger)}
+
+/* ---------- keyword board ---------- */
+.kw{display:inline-flex;align-items:center;gap:var(--space-1);height:28px;padding:0 var(--space-3);
+  border-radius:var(--radius-full);font-size:13px;line-height:18px;font-weight:500;
+  border:1px solid var(--line);background:var(--surface-raised);color:var(--ink);white-space:nowrap}
+.kw.old{background:var(--surface-sunken);color:var(--ink-secondary)}
+.kw.new{background:var(--action-soft);border-color:var(--action);color:var(--action)}
+.kw.rej{background:transparent;color:var(--ink-subtle);text-decoration:line-through;
+  border-color:var(--line);border-style:dashed}
+.kw.man{background:var(--success-soft);border-color:var(--success);color:var(--success)}
+.kw.sug{background:var(--persona-blue-soft);border-color:var(--persona-blue-100);color:var(--ink)}
+.kw .sc{font-size:12px;line-height:16px;font-weight:600;padding:0 var(--space-1);
+  border-radius:var(--radius-sm);font-variant-numeric:tabular-nums}
+.kw .sc.hi{background:var(--success-soft);color:var(--success)}
+.kw .sc.mid{background:var(--warning-soft);color:var(--warning)}
+.kw .sc.lo{background:var(--danger-soft);color:var(--danger)}
+.axis{border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-raised);overflow:hidden}
+.axis>.ah{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-3) var(--space-4);
+  background:var(--surface-sunken);border-bottom:1px solid var(--line);
+  font-size:13px;line-height:18px;font-weight:600;white-space:nowrap}
+.sub{display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-3) var(--space-4);
+  border-bottom:1px solid var(--line)}
+.sub:last-child{border-bottom:none}
+.sub>.sh{display:flex;align-items:center;gap:var(--space-2);font-size:13px;line-height:18px;
+  color:var(--ink-secondary);white-space:nowrap}
+.sub>.sh .car{color:var(--ink-subtle);font-size:10px;width:10px}
+.sub>.sh .cnt{color:var(--ink-subtle);font-variant-numeric:tabular-nums}
+.drop{border:1px dashed var(--action);background:var(--action-soft);border-radius:var(--radius-md)}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Liquid Glass — DESIGN.apple.md + DESIGN copy.md 오버레이
+   _shell.css(Linear) 위에 표면 언어만 덮어쓴다. 구조·밀도는 Linear 유지.
+
+   두 문서를 이렇게 나눠 적용한다:
+   · DESIGN.apple.md  → 지면 · 색 · 타이포 · 라운드 · 버튼 문법 (규율)
+   · DESIGN copy.md   → 블록의 재질 (리퀴드 글래스)
+
+   Apple md의 "장식적 그라디언트 금지"를 따라 지면은 평평한 파치먼트로 비운다.
+   떠 보이는 힘은 배경이 아니라 블록 자체의 재질에서 나온다 —
+   상단 스페큘러 · 림 굴절 · 하단 두께 · 접지 그림자 4겹.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root{
+  /* 단일 액센트 = Persona Blue. Apple의 Action Blue 자리를 브랜드가 대신한다.
+     #37B7F8은 흰 배경 2.26:1이라 채움 전용이고, 글자·테두리는 같은 hue의 #0678B1이 맡는다. */
+  --indigo:#37B7F8; --ind-fg:#0678B1; --ind-deep:#055D8A; --focus:#0892D9;
+  --ind-bg:rgba(55,183,248,.16); --ind-ln:rgba(6,120,177,.38);
+
+  /* Apple md — ink / muted 계단 */
+  --fg:#1B1C20; --sec:#3A3B40; --mut:#55565B; --qui:#68696E;
+  --line:#E2E3E7; --line2:#CFD0D5;
+
+  /* Apple md — 파치먼트 지면 · 펄 버튼 */
+  --canvas:#f2f2f5; --pearl:#fafafc; --hairline:#e0e0e0; --divider:#f0f0f0;
+  --act:#1d1d1f; --act-fg:#ffffff;
+
+  /* 유리 */
+  --glass:rgba(255,255,255,.62);
+  --panel:var(--glass); --raise:rgba(255,255,255,.80); --sunk:rgba(255,255,255,.34);
+  --blur:blur(30px) saturate(190%);
+
+  /* Apple md — radius scale */
+  --r-sm:8px; --r-md:11px; --r-lg:18px; --r-pill:9999px;
+
+  /* 세 등급은 데이터 인코딩이라 남긴다 — 다만 Apple 톤에 맞춰 채도를 낮춘다 */
+  --obs:oklch(0.48 0.10 158); --inf:oklch(0.52 0.11 68); --spe:oklch(0.50 0.15 22);
+  --obs-bg:oklch(0.48 0.10 158 / 0.11); --inf-bg:oklch(0.52 0.11 68 / 0.12); --spe-bg:oklch(0.50 0.15 22 / 0.10);
+  --obs-ln:oklch(0.48 0.10 158 / 0.32); --inf-ln:oklch(0.52 0.11 68 / 0.34); --spe-ln:oklch(0.50 0.15 22 / 0.30);
+}
+
+/* ── 타이포 ── SF Pro → Inter 대체. Apple 가중치 사다리 300/400/600/700 (500 없음) */
+body{font-family:"SF Pro Display","SF Pro Text",system-ui,-apple-system,BlinkMacSystemFont,
+  'Inter','Noto Sans KR','Apple SD Gothic Neo',sans-serif}
+.mono{font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,monospace}
+.brand,.side .grp,.mhead h1,.card>.ch h3,.lab,th,.kv b,.kpi .v,.pin,
+.ann h4,.ann .it p b,.tag,.kw .sc,.axis>.ah,.chat .chead{font-weight:600}
+.btn,.kw,.step.on,.msg .who{font-weight:400}
+.mhead h1{letter-spacing:-.5px}          /* Apple tight */
+.kpi .v,.kv b{letter-spacing:-.5px}
+
+/* ── 지면 ── 장식적 그라디언트가 아니라 '표면색 변화'로 층을 만든다.
+   Apple md: 높이감은 (a) 표면색 변화 (b) backdrop-blur에서 온다.
+   하드 스톱이라 워시가 아니라 타일이다 — 유리판이 타일 경계를 가로지를 때
+   그 단차가 판을 통과해 비쳐서 비로소 '굴절'이 보인다. */
+.art{background:var(--canvas)}
+.main{background:transparent}
+.mbody{background:repeating-linear-gradient(180deg,
+  #f0f0f4 0, #f0f0f4 470px, #f7f7fa 470px, #f7f7fa 940px)}
+.mhead{background:#fafafc;border-bottom:1px solid var(--line)}
+
+/* ── 글로벌 내비 ── Apple md: 진짜 검정, 12px 조용한 링크 */
+.top{background:#000;border-bottom:none}
+.top .sep{background:rgba(255,255,255,.22)}
+.brand{color:#fff;font-size:13px}
+.brand .dot{background:var(--indigo);border-radius:5px;box-shadow:none}
+.pill{color:rgba(255,255,255,.72);font-size:12px;letter-spacing:-.12px;border-radius:var(--r-sm)}
+.pill:hover{background:rgba(255,255,255,.10);color:#fff}
+.pill.on{background:rgba(255,255,255,.12);color:#fff;border-color:transparent}
+.top .btn{background:#1d1d1f;border:none;color:#fff;border-radius:var(--r-sm);box-shadow:none}
+.top .btn.pri{background:var(--ind-fg);border-radius:var(--r-pill);padding:0 18px}
+
+/* ── 사이드 · 채팅 ── 얇은 유리 */
+.side{background:rgba(237,238,242,.88);border-right:1px solid var(--line);
+  -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.chat{background:rgba(237,238,242,.88);border-left:1px solid var(--line);
+  -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.chat .chead,.chat .cfoot{border-color:var(--line)}
+.step{border-radius:var(--r-md);transition:background 240ms ease}
+.step:hover{background:rgba(0,0,0,.035)}
+.step.on{background:rgba(55,183,248,.20);color:var(--fg)}
+.step.on .no{color:var(--indigo)}
+.step .st.cur{background:var(--indigo);box-shadow:0 0 0 3px rgba(55,183,248,.30)}
+.side .note{border-radius:var(--r-lg);background:rgba(255,255,255,.62);border-color:var(--line)}
+
+/* ══════════════════════════════════════════════════════════════
+   리퀴드 글래스 블록 — 이 테마의 전부
+   지면이 평평하므로 떠 보이는 힘은 전적으로 재질에서 나온다.
+   ① 상단 스페큘러  ② 림 굴절  ③ 하단 두께  ④ 접지 그림자
+   ══════════════════════════════════════════════════════════════ */
+.card,.kpi,.axis{
+  position:relative;
+  border:none;
+  border-radius:var(--r-lg);
+  background:linear-gradient(176deg,
+      rgba(255,255,255,.96) 0%,
+      rgba(250,251,254,.72) 14%,
+      rgba(246,248,252,.62) 52%,
+      rgba(249,250,253,.70) 88%,
+      rgba(255,255,255,.92) 100%);
+  -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,1),               /* ① 상단 스페큘러 */
+    inset 0 20px 26px -18px rgba(255,255,255,1),       /* ① 상단 렌즈 */
+    inset 0 -18px 28px -18px rgba(29,29,31,.26),       /* ③ 하단 두께 */
+    inset 0 -1px 0 rgba(255,255,255,.80),
+    inset 0 0 0 .5px rgba(255,255,255,.70),            /* ② 안쪽 림 */
+    0 0 0 .5px rgba(29,29,31,.13),                     /* 유리판 절단면 */
+    0 2px 3px rgba(29,29,31,.07),                      /* ④ 근접 접지 */
+    0 20px 46px -16px rgba(29,29,31,.30);              /* ④ 원거리 접지 */
+  transition:box-shadow 480ms cubic-bezier(.22,1,.36,1),
+             transform 480ms cubic-bezier(.22,1,.36,1);
+}
+/* ② 림 굴절 — 테두리를 따라 도는 밝은 띠. 유리가 빛을 꺾는 자리다. */
+.card::before,.kpi::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:3;
+  padding:1.5px;
+  background:linear-gradient(142deg,
+      rgba(255,255,255,1) 0%,
+      rgba(255,255,255,.92) 12%,
+      rgba(255,255,255,.18) 33%,
+      rgba(29,29,31,.10) 52%,
+      rgba(255,255,255,.28) 74%,
+      rgba(255,255,255,.98) 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+          mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+          mask-composite:exclude;
+}
+.card:hover{
+  transform:translateY(-1px);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,1),
+    inset 0 20px 26px -18px rgba(255,255,255,1),
+    inset 0 -18px 28px -18px rgba(29,29,31,.26),
+    inset 0 -1px 0 rgba(255,255,255,.80),
+    inset 0 0 0 .5px rgba(255,255,255,.70),
+    0 0 0 .5px rgba(29,29,31,.13),
+    0 4px 7px rgba(29,29,31,.09),
+    0 34px 66px -18px rgba(29,29,31,.36);
+}
+/* 유리 안에 잠긴 판 — 얕게, 테두리 없이 */
+.card.sunk{
+  background:rgba(255,255,255,.26);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.8),
+    inset 0 -1px 0 rgba(255,255,255,.4),
+    inset 0 -8px 14px -12px rgba(29,29,31,.16),
+    0 0 0 .5px rgba(29,29,31,.10);
+}
+.card.sunk::before{display:none}
+.card>.ch{border-bottom:1px solid rgba(29,29,31,.07);background:transparent}
+.kpi{padding:12px 14px}
+
+/* ── 표 ── 평평한 지면 덕에 별도 배킹이 필요 없다. 헤더만 살짝 눌러 둔다. */
+table{background:transparent}
+th{background:rgba(29,29,31,.035);color:var(--mut);border-bottom:1px solid rgba(29,29,31,.10);
+  text-transform:uppercase;letter-spacing:.03em}
+th,td{border-bottom:1px solid rgba(29,29,31,.06)}
+td{color:var(--sec)}
+
+/* ── 버튼 ── Apple md의 3문법: 블루 필 · 고스트 필 · 펄 캡슐 */
+.btn{                                   /* 펄 캡슐 */
+  background:var(--pearl);border:1px solid var(--divider);border-radius:var(--r-md);
+  color:var(--sec);box-shadow:0 0 0 2px var(--divider);
+  transition:transform 180ms cubic-bezier(.22,1,.36,1)}
+.btn:active{transform:scale(.95)}
+.btn.pri{                               /* 블루 필 */
+  background:var(--ind-fg);color:#fff;border:none;border-radius:var(--r-pill);
+  padding:0 20px;box-shadow:none}
+.btn.gho{                               /* 고스트 필 */
+  background:transparent;border:1px solid var(--ind-fg);color:var(--ind-fg);
+  border-radius:var(--r-pill);padding:0 18px;box-shadow:none}
+.top .btn:active{transform:scale(.95)}
+
+/* ── 칩 · 세그먼트 · 입력 ── 필 문법 */
+.chip{border-radius:var(--r-pill);background:rgba(255,255,255,.72);border-color:var(--line2);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
+.chip.on{background:rgba(55,183,248,.22);border:1.5px solid var(--ind-fg);color:var(--ind-deep);
+  font-weight:600;padding:0 9px}
+.chip.off{background:transparent;box-shadow:none}
+.seg{border-radius:var(--r-pill);background:rgba(29,29,31,.05);border:none;padding:2px}
+.seg>span{border-radius:var(--r-pill);transition:all 320ms cubic-bezier(.22,1,.36,1)}
+.seg>span.on{background:#fff;color:var(--fg);
+  box-shadow:0 1px 3px rgba(29,29,31,.10),inset 0 1px 0 rgba(255,255,255,1)}
+.input{border-radius:var(--r-pill);background:#fff;border:1px solid rgba(0,0,0,.08);
+  box-shadow:none}
+.fld{border-radius:var(--r-md);background:rgba(255,255,255,.78);border:1px solid var(--line2);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
+.fld.ph{background:rgba(255,255,255,.44)}
+
+/* ── 배지 · 마커 ── */
+.b{border-radius:5px;background:rgba(255,255,255,.72);border-color:var(--line2)}
+.b.solid{background:var(--act);border-color:transparent}
+.b.ind{background:rgba(55,183,248,.22);border-color:var(--ind-fg);color:var(--ind-deep)}
+.tag{border-radius:5px;background:rgba(255,255,255,.72)}
+.tag.keep{background:rgba(29,29,31,.05)}
+.bar{background:rgba(29,29,31,.09);border-radius:var(--r-pill);box-shadow:none}
+.bar>i{background:var(--indigo)}
+.bar>i.n{background:var(--qui)}
+.msg{border-radius:var(--r-md);background:rgba(255,255,255,.62);border-color:var(--line)}
+.msg.me{background:var(--ind-bg);border-color:var(--ind-ln)}
+.kw{background:rgba(255,255,255,.72);border-color:var(--line2)}
+.kw.old{background:rgba(29,29,31,.05)}
+.drop{border-radius:var(--r-lg);background:rgba(55,183,248,.10)}
+.axis>.ah{background:transparent;border-bottom:1px solid rgba(29,29,31,.07)}
+
+/* 핀 — 작은 유리 알갱이 */
+.pin{border-radius:50%;background:var(--ind-bg);border-color:var(--ind-ln);color:var(--ind-deep)}
+.pin.fl{background:#fff;border:.5px solid rgba(27,28,32,.14);color:var(--ind-fg);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,1),0 1px 2px rgba(29,29,31,.10),
+             0 6px 14px -6px rgba(29,29,31,.30)}
+
+/* ── 주석 스트립 ── 파치먼트, 평평하게 */
+.ann{background:#e9e9ee;border-top:1px solid rgba(29,29,31,.12)}
+
+/* ── SVG 중립 마크만 Apple 톤으로 ── 블루는 parts가 이미 브랜드 색을 들고 있다 */
+[stroke="#D5D6DA"],[stroke="#C6C7CB"]{stroke:rgba(27,28,32,.14)}
+[stroke="#A8A9AE"],[fill="#A8A9AE"]{stroke:rgba(27,28,32,.28);fill:rgba(27,28,32,.28)}
+[fill="#9A9BA0"]{fill:rgba(27,28,32,.30)}
+[fill="#68696E"],[stroke="#68696E"]{fill:#68696E;stroke:#68696E}
+[fill="#55565B"],[stroke="#55565B"]{fill:#55565B;stroke:#55565B}
+[fill="#3A3B40"]{fill:#3A3B40}
+[fill="#1B1C20"]{fill:#1B1C20}
+
+  </style>
+</helmet>
+<div class="art glass" style="width: 1440px; height: 2300px;">
+  <div class="app">
+    <header class="top">
+  <div class="brand"><span class="dot"></span>DCX Agent</div>
+  <span class="sep"></span>
+  <span class="pill on">에어팟 프로 3 · 운동·건강 맥락 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg></span>
+  <span class="pill">세션 3개</span>
+  <span class="grow"></span>
+  <span class="pill">작업 2건 실행 중</span>
+  <span class="pill">문서 검색</span>
+  <span class="btn gho">내보내기</span>
+  <span class="btn pri">세션 저장</span>
+</header>
+    <div class="body">
+      <nav class="side"><div class="grp">Data Defining</div><div class="step"><span class="no">00</span><span>세션</span><span class="st done"></span></div><div class="step"><span class="no">01·02</span><span>입력 선언</span><span class="st done"></span></div><div class="step"><span class="no">03</span><span>키워드 설계</span><span class="st done"></span></div><div class="step"><span class="no">04</span><span>데이터 수집</span><span class="st done"></span></div><div class="grp">Data Sensing</div><div class="step"><span class="no">05</span><span>전처리 · 임베딩</span><span class="st done"></span></div><div class="step"><span class="no">06</span><span>근거 판정</span><span class="st done"></span></div><div class="step on"><span class="no">07</span><span>군집</span><span class="st cur"></span></div><div class="step"><span class="no">08</span><span>페르소나</span><span class="st "></span></div><div class="step"><span class="no">09</span><span>근거 수집</span><span class="st "></span></div><div class="grp">Data Shaping</div><div class="step"><span class="no">10-A</span><span>Customer Action Map</span><span class="st "></span></div><div class="step"><span class="no">10-B</span><span>기회 영역</span><span class="st "></span></div><div class="step"><span class="no">11-A</span><span>인사이트 도출</span><span class="st "></span></div><div class="step"><span class="no">11-B</span><span>경험 디자인 컨셉</span><span class="st "></span></div><div class="grp">운영</div><div class="step"><span class="no">ADM</span><span>프롬프트 관리</span><span class="st "></span></div><div class="note"><div class="lab">활성 선언</div>
+    <p class="xs" style="margin:6px 0 0;color:var(--sec)">무선 이어폰을 운동·건강 맥락에서 재정의할 미충족 니즈를 찾는다</p>
+    <p class="xs" style="margin:6px 0 0">STEP 01 한줄 정의 · 전 단계 프롬프트 헤더로 상주</p></div></nav>
+      <main class="main">
+        <div class="mhead"><h1>STEP 07 — 군집</h1><div class="sub">기존 방법을 지우지 않고, 수정 방법을 나란히 놓는다 · ID는 한쪽에서만 발급한다 · 1.0 Touch Point 장표는 구조를 그대로 승계한다</div></div>
+        <div class="mbody">
+<div class="row rel" style="flex:none;gap:12px;align-items:stretch">
+  <span class="pin fl" style="top:-8px;left:-9px">1</span>
+  <div class="card" style="flex:1.45;border-color:var(--ind-ln);background:rgba(55,183,248,.045)"><div class="cc" style="padding:12px 15px;display:flex;align-items:center;gap:14px">
+    <div><div class="lab" style="color:#085d93">ID 발급 갈래 <span class="mono qu" style="text-transform:none;letter-spacing:0;font-weight:400">primary_method</span></div>
+      <div class="xs" style="margin-top:4px">나머지 갈래는 비교 화면에만 나온다 · 세션 단위로 되돌릴 수 있다</div></div>
+    <span class="grow"></span>
+    <span class="seg"><span class="on">수정 방법</span><span>기존 방법</span></span>
+  </div></div>
+  <div class="kpi" style="flex:.44"><span class="lab">L1 Cluster</span><span class="v">6</span><span class="xs">실루엣 최대 k · 3~14 탐색</span></div>
+  <div class="kpi" style="flex:.44"><span class="lab">L2 Persona</span><span class="v">14</span><span class="xs">클러스터당 2~3</span></div>
+  <div class="kpi" style="flex:.44"><span class="lab">L3 Context</span><span class="v">38</span><span class="xs">페르소나당 2~4</span></div>
+  <div class="kpi" style="flex:.66"><span class="lab">1.0 재현성</span><span class="v">.58<span class="xs" style="font-weight:400"> ARI · .66 NMI</span></span><span class="xs">두 갈래 최대겹침 매칭</span></div>
+</div>
+
+<div class="row" style="flex:none;min-height:0">
+  <div class="card" style="flex:1">
+    <div class="ch"><h3>기존 방법 · 1.0</h3><span class="b">Ward + SNA + LDA</span><span class="grow"></span><span class="xs">형태소 토큰 입력</span></div>
+    <div class="cc">
+      <svg viewBox="0 0 320 132" width="100%" height="132" style="display:block">
+        <g stroke="#a9adb4" stroke-width="1.2" fill="none">
+          <path d="M14 126V96h28v30M14 96h28"/><path d="M56 126V104h28v22M56 104h28"/>
+          <path d="M28 96V74h42v30M28 74h42"/>
+          <path d="M104 126V110h26v16M104 110h26"/><path d="M146 126V100h26v26M146 100h26"/>
+          <path d="M117 110V80h38v20M117 80h38"/>
+          <path d="M49 74V50h87v30M49 50h87"/>
+          <path d="M196 126V106h30v20M196 106h30"/><path d="M244 126V112h30v14M244 112h30"/>
+          <path d="M211 106V78h44v34M211 78h44"/>
+          <path d="M92 50V30h141v48M92 30h141"/>
+        </g>
+        <line x1="0" y1="62" x2="320" y2="62" stroke="#0a73b5" stroke-width="1" stroke-dasharray="4 3"/>
+        <text x="322" y="60" font-size="9" fill="#55585f" text-anchor="end">cut k=6</text>
+      </svg>
+      <div style="margin-top:8px;display:flex;gap:12px;align-items:flex-end;border-top:1px solid var(--line);padding-top:9px">
+        <div style="flex:none;width:150px">
+          <div class="lab" style="margin-bottom:3px">실루엣 스코어 그래프</div>
+          <svg viewBox="0 0 150 46" width="150" height="46" style="display:block">
+            <polyline points="8,38 25,26 42,14 59,10 76,18 93,25 110,31 127,36 142,40" fill="none" stroke="#0a73b5" stroke-width="1.6"/>
+            <circle cx="59" cy="10" r="3.4" fill="#0a73b5"/>
+            <line x1="59" y1="10" x2="59" y2="42" stroke="#0a73b5" stroke-width=".9" stroke-dasharray="3 2"/>
+            <g stroke="#e1e4e8" stroke-width="1"><line x1="4" y1="42" x2="146" y2="42"/></g>
+            <g font-size="8" fill="#6a6e76"><text x="4" y="52">3</text><text x="56" y="52">6</text><text x="138" y="52">14</text></g>
+            <text x="64" y="12" font-size="8.5" fill="#085d93">최대 0.31</text>
+          </svg>
+        </div>
+        <div class="xs" style="flex:1;display:flex;flex-direction:column;gap:3px">
+          <span>채택 k <span class="mono fg">6</span> · Elbow와 일치</span>
+          <span>TF-IDF 상위 10 · 명사</span>
+          <span class="rel" style="color:var(--spe)">1.0 실측 실루엣 <span class="mono">0.044 / 0.036</span> — 내부·외부를 사람이 나눠 돌린 값<span class="pin fl" style="top:-2px;right:-9px">6</span></span>
+        </div>
+      </div>
+      <div class="xs qu" style="margin-top:7px">L2는 명사 동시출현 행렬(상위 ≈300) → 모듈성 분할 → Desire 유사한 것 통합. L3는 micro segment 내부 gensim LDA, topic_num 2~10 스캔.</div>
+    </div>
+  </div>
+
+  <div class="card rel" style="flex:1">
+    <span class="pin fl" style="top:12px;left:-9px">3</span>
+    <div class="ch"><h3>수정 방법 · 임베딩</h3><span class="b ind">ID 발급</span><span class="grow"></span><span class="xs">Voyage 1024D 입력</span></div>
+    <div class="cc">
+      <svg viewBox="0 0 320 132" width="100%" height="132" style="display:block">
+        <g opacity=".92">
+          <circle cx="58" cy="40" r="20" fill="rgba(55,183,248,.09)"/><circle cx="130" cy="30" r="17" fill="rgba(55,183,248,.09)"/>
+          <circle cx="212" cy="46" r="22" fill="rgba(55,183,248,.09)"/><circle cx="84" cy="98" r="19" fill="rgba(55,183,248,.09)"/>
+          <circle cx="168" cy="100" r="16" fill="rgba(55,183,248,.09)"/><circle cx="256" cy="98" r="18" fill="rgba(55,183,248,.09)"/>
+        </g>
+        <g fill="#55585f">
+          <circle cx="52" cy="36" r="2"/><circle cx="64" cy="44" r="2"/><circle cx="58" cy="30" r="2"/><circle cx="46" cy="47" r="2"/><circle cx="68" cy="33" r="2"/>
+          <circle cx="126" cy="26" r="2"/><circle cx="136" cy="34" r="2"/><circle cx="130" cy="38" r="2"/><circle cx="122" cy="36" r="2"/>
+          <circle cx="206" cy="42" r="2"/><circle cx="218" cy="50" r="2"/><circle cx="212" cy="38" r="2"/><circle cx="222" cy="40" r="2"/><circle cx="204" cy="54" r="2"/>
+          <circle cx="78" cy="94" r="2"/><circle cx="90" cy="102" r="2"/><circle cx="84" cy="90" r="2"/><circle cx="76" cy="105" r="2"/>
+          <circle cx="164" cy="96" r="2"/><circle cx="172" cy="104" r="2"/><circle cx="168" cy="92" r="2"/>
+          <circle cx="250" cy="94" r="2"/><circle cx="262" cy="102" r="2"/><circle cx="256" cy="90" r="2"/>
+        </g>
+        <g fill="#c62828"><circle cx="152" cy="64" r="2.6"/><circle cx="108" cy="66" r="2.6"/><circle cx="232" cy="74" r="2.6"/><circle cx="34" cy="76" r="2.6"/></g>
+        <text x="150" y="126" font-size="9" fill="#c62828">● Edge · dist_centroid &gt; P90 — 삭제하지 않고 반례 후보로 보존</text>
+      </svg>
+      <div class="xs" style="margin-top:9px;display:flex;gap:14px"><span>자동 k <span class="mono fg">6</span> · 실루엣 최대</span><span>c-TF-IDF 상위 10</span></div>
+      <div class="xs qu" style="margin-top:7px">L2·L3는 상위 구획 내부 서브 K-means(k 2~3 / 2~4) + c-TF-IDF. 클러스터를 한 문서로 합쳐 계산하므로 <span class="fg">구별하는 어휘</span>가 뽑힌다.</div>
+    </div>
+  </div>
+
+  <div class="card rel" style="width:360px;flex:none">
+    <span class="pin fl" style="top:12px;left:-9px">2</span>
+    <div class="ch"><h3>Cluster Quality Report</h3><span class="grow"></span><span class="xs">진단만 · 실행하지 않음</span></div>
+    <div class="cc" style="display:flex;flex-direction:column;gap:9px">
+      <div class="xs" style="display:flex;align-items:center;gap:8px"><span style="width:118px" class="sec">Experience Cohesion</span><div class="bar" style="flex:1"><i class="o" style="width:64%"></i></div><span class="mono fg" style="width:42px;text-align:right">0.64</span><span class="b obs">양호</span></div>
+      <div class="xs" style="display:flex;align-items:center;gap:8px"><span style="width:118px">Boundary Clarity</span><div class="bar" style="flex:1"><i class="w" style="width:75%"></i></div><span class="mono fg" style="width:42px;text-align:right">11.2%</span><span class="b">15% 이내</span></div>
+      <div class="xs" style="display:flex;align-items:center;gap:8px"><span style="width:118px">재현성 ARI · L1</span><div class="bar" style="flex:1"><i class="o" style="width:74%"></i></div><span class="mono fg" style="width:42px;text-align:right">0.74</span><span class="b obs">안정</span></div>
+      <div class="xs" style="display:flex;align-items:center;gap:8px"><span style="width:118px">재현성 ARI · L2</span><div class="bar" style="flex:1"><i class="w" style="width:58%"></i></div><span class="mono fg" style="width:42px;text-align:right">0.58</span><span class="b inf">임계 근접</span></div>
+      <div class="xs" style="display:flex;align-items:center;gap:8px"><span style="width:118px">NPMI · C_v</span><div class="bar" style="flex:1"><i class="n" style="width:61%"></i></div><span class="mono fg" style="width:42px;text-align:right">0.61</span><span class="b">LDA 0.57</span></div>
+      <div class="xs" style="display:flex;align-items:center;gap:8px"><span style="width:118px">Noise &amp; Outlier</span><div class="bar" style="flex:1"><i class="n" style="width:50%"></i></div><span class="mono fg" style="width:42px;text-align:right">5.0%</span><span class="b">보존</span></div>
+      <div class="xs" style="border-top:1px solid var(--line);padding-top:9px;margin-top:2px">
+        지표는 문헌에서 왔지만 <span class="fg">임계값은 아니다</span> — Cohesion 0.6, 음수 실루엣 15%, ARI L1 0.7 / L2 0.6은 설계 시작값이다. 아래 층일수록 문서 수가 줄어 재표집 분산이 커지므로 층별로 완화했다.
+      </div>
+      <div class="xs" style="border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--sunk)">
+        AS-IS에서 silhouette은 <span class="mono">best_k</span> 선택에 내부적으로 쓰인 뒤 폐기됐고, 사람은 군집 품질을 알 방법이 없었다. 같은 계산을 <span class="fg">사람에게 보여주는 진단</span>으로 되돌린 것이다.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card rel" style="flex:none">
+  <span class="pin fl" style="top:12px;left:-9px">7</span>
+  <div class="ch"><h3>Touch Point 정의</h3><span class="b ind">1.0 장표 구조 승계</span>
+    <span class="seg" style="margin-left:6px"><span class="on">CL0</span><span>CL1</span><span>CL2</span><span>CL3</span><span>CL4</span><span>CL5</span></span>
+    <span class="grow"></span>
+    <span class="xs">한 줄 정의 — <span class="fg">운동 중 몸 상태를 확인하려다 기기를 두 개 차게 되는 상황을 반복해 겪고, 하나로 줄이고 싶어 한다</span></span></div>
+  <div class="cc" style="display:flex;gap:16px">
+    <div style="width:184px;flex:none">
+      <div class="lab">c-TF-IDF 결과 <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">상위 14</span></div>
+      <table style="margin-top:6px">
+        <tbody>
+          <tr><td class="fg">심박</td><td class="n mono fg">0.704</td></tr>
+          <tr><td class="fg">워치</td><td class="n mono fg">0.695</td></tr>
+          <tr><td class="fg">러닝</td><td class="n mono fg">0.691</td></tr>
+          <tr><td>귀찮다</td><td class="n mono">0.676</td></tr>
+          <tr><td>손목</td><td class="n mono">0.674</td></tr>
+          <tr><td>챙기다</td><td class="n mono">0.666</td></tr>
+          <tr><td>측정</td><td class="n mono">0.665</td></tr>
+          <tr><td>운동</td><td class="n mono">0.649</td></tr>
+          <tr><td>충전</td><td class="n mono">0.634</td></tr>
+          <tr><td class="qu">＋ 5개</td><td class="n mono qu">…</td></tr>
+        </tbody>
+      </table>
+      <div class="xs" style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px">
+        1.0은 클러스터별 <span class="mono">TF-IDF</span>였다. 2.0은 클러스터를 한 문서로 합쳐 계산하는 <span class="mono fg">c-TF-IDF</span>이므로 <span class="fg">다른 클러스터와 구별되는 어휘</span>가 올라온다.
+      </div>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div class="lab">하위 주제별 대표 원문 <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">— 서브 K-means로 자동 분할 · 1.0은 사람이 골랐다</span></div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:7px">
+        <div class="card sunk"><div class="cc" style="padding:10px 11px">
+          <div class="sm fg" style="font-size:12.5px;font-weight:510">기기 중복</div>
+          <div class="xs" style="margin-top:6px">"러닝할 때 워치랑 이어폰 둘 다 챙겨 나가는 거 은근 귀찮잖아요 하나로 되면 좋겠는데"</div>
+          <div class="xs qu" style="margin-top:6px;display:flex;gap:6px"><span class="mono">n 4,120</span><span>·</span><span>Core 72%</span></div>
+        </div></div>
+        <div class="card sunk"><div class="cc" style="padding:10px 11px">
+          <div class="sm fg" style="font-size:12.5px;font-weight:510">측정 기대</div>
+          <div class="xs" style="margin-top:6px">"이어폰으로 심박 체크되면 진짜 편할 듯 워치 없이 이어폰만으로 되면 좋겠는데 될까요"</div>
+          <div class="xs qu" style="margin-top:6px;display:flex;gap:6px"><span class="mono">n 3,860</span><span>·</span><span>Core 68%</span></div>
+        </div></div>
+        <div class="card sunk"><div class="cc" style="padding:10px 11px">
+          <div class="sm fg" style="font-size:12.5px;font-weight:510">착용 지속</div>
+          <div class="xs" style="margin-top:6px">"장시간 끼고 있으면 귀가 아파서 결국 빼게 되는데 그럼 기록이 끊겨요"</div>
+          <div class="xs qu" style="margin-top:6px;display:flex;gap:6px"><span class="mono">n 3,540</span><span>·</span><span>Core 61%</span></div>
+        </div></div>
+        <div class="card sunk" style="border-color:var(--spe-ln)"><div class="cc" style="padding:10px 11px">
+          <div class="sm" style="font-size:12.5px;font-weight:510;color:var(--spe)">정확도 불신 <span class="b spe">반례</span></div>
+          <div class="xs" style="margin-top:6px">"이어폰 센서는 광학이라 흔들리면 튄다던데 그걸 믿고 쓸 수 있나요"</div>
+          <div class="xs qu" style="margin-top:6px;display:flex;gap:6px"><span class="mono">n 1,180</span><span>·</span><span>Edge 34%</span></div>
+        </div></div>
+      </div>
+      <div class="xs" style="margin-top:9px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--sunk)">
+        1.0 장표는 대표 원문을 사람이 읽고 4~6개 소주제로 묶어 배치했다. 2.0은 <span class="fg">L2 서브 K-means의 하위 구획을 그대로 칸으로 쓴다</span> — 배치가 판단이 아니라 계산이 되므로, 같은 입력이면 같은 장표가 다시 나온다. 반례 칸은 삭제 대상이 아니라 <span class="fg">보존 대상</span>이므로 항상 마지막 칸에 남는다.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card rel" style="flex:1;min-height:0;display:flex;flex-direction:column">
+  <span class="pin fl" style="top:12px;left:-9px">5</span>
+  <div class="ch"><h3>Cluster 목록</h3><span class="b ind">수정 방법 갈래 · ID 발급</span><span class="grow"></span>
+    <span class="xs">밴드 = dist_centroid 백분위 · Core ≤P50 / Fringe P50–P90 / Edge &gt;P90</span></div>
+  <div style="flex:1;overflow:hidden">
+    <table>
+      <thead><tr><th style="width:74px">ID</th><th style="width:186px">c-TF-IDF 상위 어휘</th><th style="width:152px">주된 제약 <span class="qu">dominant_constraint</span></th><th class="n" style="width:66px">문서</th><th style="width:150px">밴드 분포</th><th class="n" style="width:96px">max_sim_to_known</th><th class="n" style="width:86px">combo_rarity</th><th style="width:76px">Persona</th></tr></thead>
+      <tbody>
+        <tr><td class="mono" style="color:var(--fg)">CL0</td><td>심박 · 워치 · 러닝 · 귀찮다</td><td class="xs">기기를 늘려야 함</td><td class="n">14,820</td>
+          <td><div style="display:flex;height:6px;border-radius:3px;overflow:hidden"><i style="width:52%;background:var(--mut)"></i><i style="width:36%;background:#a9adb4"></i><i style="width:12%;background:#c62828"></i></div><div class="xs" style="margin-top:3px">52 / 36 / 12</div></td>
+          <td class="n mono">0.41</td><td class="n mono" style="color:var(--obs)">0.68</td><td class="xs">3개</td></tr>
+        <tr><td class="mono" style="color:var(--fg)">CL1</td><td>땀 · 이탈 · 폼팁 · 고정</td><td class="xs">교체로 해결 안 됨</td><td class="n">12,140</td>
+          <td><div style="display:flex;height:6px;border-radius:3px;overflow:hidden"><i style="width:58%;background:var(--mut)"></i><i style="width:33%;background:#a9adb4"></i><i style="width:9%;background:#c62828"></i></div><div class="xs" style="margin-top:3px">58 / 33 / 9</div></td>
+          <td class="n mono" style="color:var(--inf)">0.73</td><td class="n mono">0.22</td><td class="xs">2개</td></tr>
+        <tr><td class="mono" style="color:var(--fg)">CL2</td><td>수면 · 착용 · 배터리 · 알림</td><td class="xs">장시간 착용 부담</td><td class="n">9,460</td>
+          <td><div style="display:flex;height:6px;border-radius:3px;overflow:hidden"><i style="width:46%;background:var(--mut)"></i><i style="width:38%;background:#a9adb4"></i><i style="width:16%;background:#c62828"></i></div><div class="xs" style="margin-top:3px">46 / 38 / 16</div></td>
+          <td class="n mono">0.29</td><td class="n mono" style="color:var(--obs)">0.81</td><td class="xs">3개</td></tr>
+        <tr><td class="mono" style="color:var(--fg)">CL3</td><td>통화 · 풍절음 · 마이크 · 회의</td><td class="xs">환경 소음 제어 불가</td><td class="n">8,220</td>
+          <td><div style="display:flex;height:6px;border-radius:3px;overflow:hidden"><i style="width:61%;background:var(--mut)"></i><i style="width:31%;background:#a9adb4"></i><i style="width:8%;background:#c62828"></i></div><div class="xs" style="margin-top:3px">61 / 31 / 8</div></td>
+          <td class="n mono" style="color:var(--inf)">0.77</td><td class="n mono">0.18</td><td class="xs">2개</td></tr>
+        <tr><td class="mono" style="color:var(--fg)">CL4</td><td>정확도 · 센서 · 불신 · 리뷰</td><td class="xs">검증 수단이 없음</td><td class="n">6,910</td>
+          <td><div style="display:flex;height:6px;border-radius:3px;overflow:hidden"><i style="width:44%;background:var(--mut)"></i><i style="width:39%;background:#a9adb4"></i><i style="width:17%;background:#c62828"></i></div><div class="xs" style="margin-top:3px">44 / 39 / 17</div></td>
+          <td class="n mono">0.34</td><td class="n mono" style="color:var(--obs)">0.74</td><td class="xs">2개</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="cc rel" style="flex:none;border-top:1px solid var(--line);padding:11px 14px;display:flex;gap:16px;align-items:center">
+    <span class="pin fl" style="top:-9px;left:16px">4</span>
+    <span class="xs"><span class="lab">modifier seed</span> STEP 01·02 타겟(사회초년생 · 1인가구)은 <span class="fg">군집 입력이 아니다</span> — Persona 명명과 Desire 초안의 힌트로만 쓴다</span>
+    <span class="grow"></span>
+    <span class="xs qu">타겟을 군집 입력에 넣으면 "미리 아는 세그먼트"가 군집을 가르는 축이 되어 미지의 소비자가 나오지 않는다</span>
+  </div>
+</div>
+        </div>
+      </main>
+      <aside class="chat rail">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#565c66" stroke-width="1.7"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3v-5.5A8 8 0 0 1 11 4h2a8 8 0 0 1 8 8Z"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#747a84" stroke-width="1.7"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#747a84" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </aside>
+    </div>
+  </div>
+  <section class="ann">
+    <h4>1.0 대비 변경점</h4>
+    <p class="lead"><span class="tag rep">치환</span>AS-IS가 있고 대체된다 &nbsp;<span class="tag new">신설</span>AS-IS 없음 · 새로 꽂는다 &nbsp;<span class="tag keep">유지</span>기존 확정 재확인 &nbsp;<span class="tag open">미결</span>답이 필요한 것</p>
+    <div class="grid"><div class="it"><span class="pin">1</span><p><span class="tag rep">치환</span><b>두 갈래 병행.</b> 1.0 결과물은 이미 검증된 산출이고, 임베딩 기반 분할이 그 결과를 얼마나 보존하는지는 아직 아무도 모른다. 한쪽을 지우면 그 질문을 영구히 답할 수 없다. 다만 <b>ID는 한 갈래에서만</b> 발급한다 — 둘 다 발급하면 같은 <em class="mono">persona_id</em>가 두 뜻을 갖고 STEP 09 filter가 무너진다.</p></div>
+<div class="it"><span class="pin">2</span><p><span class="tag rep">치환</span><b>품질 지표를 사람에게 되돌린다.</b> AS-IS의 silhouette은 <em class="mono">best_k</em> 선택에 내부적으로 쓰인 뒤 폐기됐다. 같은 계산을 3축(Validity · Stability · Coherence) 진단으로 노출하되, 배지는 <b>진단만</b> 하고 Split·Merge를 실행하지 않는다.</p></div>
+<div class="it"><span class="pin">3</span><p><span class="tag new">신설</span><b>메타 2종 병기.</b> <em class="mono">max_sim_to_known</em>은 STEP 05에서 계산된 값을 그대로 실어 나르므로 비용 0이다. <em class="mono">combo_rarity</em>는 각 값은 흔한데 <b>조합이 희소한</b> 문서를 잡는다 — 그런 문서는 거리상 중앙에 앉아 있어 <em class="mono">dist_centroid</em>로는 절대 걸리지 않는다.</p></div>
+<div class="it"><span class="pin">4</span><p><span class="tag new">신설</span><b>modifier는 입력이 아니라 힌트.</b> STEP 01·02의 타겟은 5-Dimension의 축이 아니라 cross-cut 수식어로 재정의된다. 사후 세분화 원칙과 같은 논리 — 미리 아는 세그먼트가 군집을 가르면 안 된다.</p></div>
+<div class="it"><span class="pin">5</span><p><span class="tag new">신설</span><b>Context에 5-Dim 요약 첨부.</b> 소속 Core 원문 dims의 최빈값을 <em class="mono">dominant_constraint</em>로 붙인다. 제약이 명시되면 STEP 09의 쿼리 문장이 "~해서 불편"에서 <b>"~라는 제약 때문에 ~로 우회"</b>로 구체화된다.</p></div>
+<div class="it"><span class="pin">6</span><p><span class="tag keep">유지</span><b>실루엣 곡선을 장표 그대로 노출한다.</b> 1.0은 내부·외부를 사람이 나눠 각각 돌렸고 실루엣 계수가 <em class="mono">0.044 / 0.036</em>으로 매우 낮았다. 2.0은 한 번에 돌리고 k 3~14를 스캔해 최댓값을 채택하되, <b>곡선 자체를 보여준다</b> — 최고점이 얼마나 평평한지 보이지 않으면 k=6이 얼마나 임의적인지 알 수 없다.</p></div>
+<div class="it"><span class="pin">7</span><p><span class="tag keep">유지</span><b>Touch Point 정의 장표 승계.</b> 상위 어휘 랭킹 + 하위 주제별 대표 원문 그리드는 1.0 장표의 형식 그대로다. 바뀐 것은 둘 — 어휘가 TF-IDF에서 <b>c-TF-IDF</b>(클러스터를 한 문서로 합쳐 계산)로 바뀌어 구별하는 어휘가 올라오고, 소주제 칸이 사람의 묶음이 아니라 <b>L2 서브 K-means 구획</b>이라 재현된다. 반례 칸은 항상 마지막에 보존한다.</p></div>
+<div class="it"><span class="pin">—</span><p><span class="tag open">미결</span><b>L3 k 결정 · combo_rarity 임계 · centrality 산식.</b> L3는 문서 수가 적어 실루엣이 불안정하다 — Granularity 하한과 실루엣 중 무엇을 우선할지 정해야 한다. 조합 희소성을 Pinecone metadata로 버틸지 그래프 DB를 도입할지도 열려 있다.</p></div></div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2300}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

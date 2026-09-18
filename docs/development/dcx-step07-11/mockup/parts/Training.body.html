@@ -1,0 +1,158 @@
+<!--h:1780-->
+<!--title:STEP 06-A — 모델 학습 · 캘리브레이션-->
+<!--sub:1.0의 3중 앙상블은 유지한다 · 바뀌는 것은 사람이 라벨을 다는 양을 무엇이 정하는가다-->
+<!--chat:rail-->
+
+[[MAIN]]
+<div class="row rel" style="flex:none;gap:var(--space-3);align-items:stretch">
+  <span class="pin fl" style="top:-8px;left:-9px">1</span>
+  <div class="card" style="flex:1.5;border-color:var(--action);background:var(--action-soft)"><div class="cc" style="display:flex;align-items:center;gap:var(--space-4)">
+    <div style="flex:1">
+      <div class="lab" style="color:var(--action)">목표 오류율 <span class="mono">alpha</span> — 이 값이 검수량을 정한다</div>
+      <div class="xs" style="margin-top:var(--space-1)">1.0은 검수량을 먼저 정했다(전체의 3% · 약 11,550건). 2.0은 <b>허용 오류율을 먼저 정하고</b> 그에 필요한 검수량을 계산한다.</div>
+    </div>
+    <span class="seg"><span>1%</span><span class="on">3%</span><span>5%</span><span>10%</span></span>
+  </div></div>
+  <div class="kpi" style="flex:.6"><span class="lab">캘리브레이션</span><span class="v">412</span><span class="xs">목표 300~500 · 완료</span></div>
+  <div class="kpi" style="flex:.6"><span class="lab">에스컬레이션</span><span class="v">1,180</span><span class="xs">자신 없는 건만 사람에게</span></div>
+  <div class="kpi" style="flex:.72"><span class="lab">총 검수량</span><span class="v">1,592</span><span class="xs" style="color:var(--success)">1.0 대비 −86%</span></div>
+</div>
+
+<div class="row" style="flex:none">
+  <div class="card rel" style="flex:1.35">
+    <span class="pin fl" style="top:12px;left:-9px">2</span>
+    <div class="ch"><h3>앙상블 구성</h3><span class="b">1.0 승계 · 산식 동일</span><span class="grow"></span>
+      <span class="xs">385,400 문서 · 학습 42분</span></div>
+    <table>
+      <thead><tr><th style="width:96px">모델</th><th style="width:118px">역할</th><th class="n" style="width:66px">정확도</th><th class="n" style="width:62px">F1</th><th style="width:150px">기여도</th><th>비고</th></tr></thead>
+      <tbody>
+        <tr><td class="mono fg">LSTM</td><td class="xs">순차 문맥</td><td class="n mono">0.887</td><td class="n mono">0.871</td>
+          <td><div class="bar"><i style="width:31%"></i></div><div class="xs" style="margin-top:2px">31%</div></td>
+          <td class="xs">긴 문장의 전후 관계에 강하다</td></tr>
+        <tr><td class="mono fg">CNN</td><td class="xs">국소 n-gram</td><td class="n mono">0.862</td><td class="n mono">0.849</td>
+          <td><div class="bar"><i style="width:24%"></i></div><div class="xs" style="margin-top:2px">24%</div></td>
+          <td class="xs">짧은 제품명·모델명 패턴</td></tr>
+        <tr><td class="mono fg">GRU</td><td class="xs">순차 문맥 경량</td><td class="n mono">0.879</td><td class="n mono">0.864</td>
+          <td><div class="bar"><i style="width:22%"></i></div><div class="xs" style="margin-top:2px">22%</div></td>
+          <td class="xs">LSTM과 상관이 높아 중복 기여</td></tr>
+        <tr style="background:var(--action-soft)"><td class="mono fg">LLM</td><td class="xs">제로샷 판정</td><td class="n mono fg">0.934</td><td class="n mono fg">0.928</td>
+          <td><div class="bar"><i style="width:23%"></i></div><div class="xs" style="margin-top:2px">23%</div></td>
+          <td class="xs">학습 불필요 · 비용이 기여도를 제한한다</td></tr>
+      </tbody>
+    </table>
+    <div class="cc" style="border-top:1px solid var(--line);display:flex;align-items:center;gap:var(--space-3)">
+      <span class="lab">앙상블</span><span class="mono fg">0.951</span><span class="xs qu">가중 투표 · 단일 최고(LLM 0.934) 대비 +1.7%p</span>
+      <span class="grow"></span>
+      <span class="xs" style="color:var(--warning)">GRU는 LSTM과 상관 0.91 — 제거 검토 대상</span>
+    </div>
+  </div>
+
+  <div class="card rel" style="flex:1">
+    <span class="pin fl" style="top:12px;left:-9px">3</span>
+    <div class="ch"><h3>신뢰도 분포와 에스컬레이션 경계</h3></div>
+    <div class="cc">
+      <svg viewBox="0 0 420 190" width="100%" height="190" style="display:block">
+        <g style="fill:var(--success)" opacity=".75">
+          <rect x="250" y="130" width="18" height="46" rx="2"/><rect x="272" y="112" width="18" height="64" rx="2"/>
+          <rect x="294" y="86" width="18" height="90" rx="2"/><rect x="316" y="58" width="18" height="118" rx="2"/>
+          <rect x="338" y="34" width="18" height="142" rx="2"/><rect x="360" y="22" width="18" height="154" rx="2"/>
+          <rect x="382" y="40" width="18" height="136" rx="2"/>
+        </g>
+        <g style="fill:var(--warning)" opacity=".8">
+          <rect x="140" y="148" width="18" height="28" rx="2"/><rect x="162" y="140" width="18" height="36" rx="2"/>
+          <rect x="184" y="134" width="18" height="42" rx="2"/><rect x="206" y="138" width="18" height="38" rx="2"/>
+          <rect x="228" y="142" width="18" height="34" rx="2"/>
+        </g>
+        <g style="fill:var(--line-strong)" opacity=".6">
+          <rect x="30" y="160" width="18" height="16" rx="2"/><rect x="52" y="156" width="18" height="20" rx="2"/>
+          <rect x="74" y="152" width="18" height="24" rx="2"/><rect x="96" y="150" width="18" height="26" rx="2"/>
+          <rect x="118" y="152" width="18" height="24" rx="2"/>
+        </g>
+        <line x1="248" y1="12" x2="248" y2="176" style="stroke:var(--action)" stroke-width="2" stroke-dasharray="5 3"/>
+        <text x="244" y="10" style="fill:var(--action)" font-size="11" text-anchor="end">escalate 임계 0.62</text>
+        <line x1="24" y1="176" x2="408" y2="176" style="stroke:var(--line-strong)"/>
+        <g font-size="10" style="fill:var(--ink-subtle)">
+          <text x="24" y="188">0.0</text><text x="240" y="188">0.6</text><text x="396" y="188">1.0</text>
+        </g>
+      </svg>
+      <div class="xs" style="margin-top:var(--space-2);display:flex;flex-wrap:wrap;gap:var(--space-3)">
+        <span><span class="dotg o"></span> 자동 확정 <span class="mono fg">384,220</span></span>
+        <span><span class="dotg i"></span> 에스컬레이션 <span class="mono fg">1,180</span></span>
+        <span><span class="dotg s" style="background:var(--line-strong)"></span> 반대 라벨 자동 확정</span>
+      </div>
+      <div class="xs" style="margin-top:var(--space-3);border:1px solid var(--line);border-radius:var(--radius-sm);padding:var(--space-2) var(--space-3);background:var(--surface-sunken)">
+        임계선을 왼쪽으로 옮기면 검수량이 줄고 오류율이 오른다. <b>이 슬라이더가 곧 예산이다</b> — 목표 오류율 3%에서 임계 0.62가 계산된 값이고, 사람이 임의로 정하지 않는다.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row" style="flex:1;min-height:0">
+  <div class="card rel" style="flex:1.1;display:flex;flex-direction:column">
+    <span class="pin fl" style="top:12px;left:-9px">4</span>
+    <div class="ch"><h3>오류율 · 검수량 곡선</h3><span class="grow"></span><span class="xs">캘리브레이션 412건으로 추정</span></div>
+    <div class="cc" style="flex:1;display:flex;flex-direction:column">
+      <svg viewBox="0 0 440 210" width="100%" style="flex:1;display:block">
+        <g style="stroke:var(--line)" stroke-width="1">
+          <line x1="48" y1="20" x2="48" y2="176"/><line x1="48" y1="176" x2="420" y2="176"/>
+          <line x1="48" y1="60" x2="420" y2="60" stroke-dasharray="3 4"/>
+          <line x1="48" y1="100" x2="420" y2="100" stroke-dasharray="3 4"/>
+          <line x1="48" y1="140" x2="420" y2="140" stroke-dasharray="3 4"/>
+        </g>
+        <path d="M60 32 L110 58 L160 88 L210 112 L260 132 L310 148 L360 160 L410 168"
+              fill="none" style="stroke:var(--action)" stroke-width="2"/>
+        <circle cx="210" cy="112" r="5" style="fill:var(--action)"/>
+        <line x1="210" y1="112" x2="210" y2="176" style="stroke:var(--action)" stroke-width="1" stroke-dasharray="3 3"/>
+        <text x="216" y="106" font-size="11" style="fill:var(--action)">현재 α 3% · 1,592건</text>
+        <g font-size="10" style="fill:var(--ink-subtle)">
+          <text x="44" y="36" text-anchor="end">12k</text><text x="44" y="104" text-anchor="end">4k</text>
+          <text x="44" y="172" text-anchor="end">0</text>
+          <text x="60" y="190">1%</text><text x="205" y="190">3%</text><text x="355" y="190">8%</text>
+        </g>
+        <text x="234" y="206" font-size="11" style="fill:var(--ink-secondary)" text-anchor="middle">허용 오류율 α</text>
+      </svg>
+      <div class="xs" style="border-top:1px solid var(--line);padding-top:var(--space-3);margin-top:var(--space-2)">
+        곡선이 급격히 꺾이는 구간(1~3%)에서는 오류율을 조금만 풀어도 검수량이 크게 준다. <b>3% 지점이 그 무릎이다.</b> 1% 고집은 검수량을 4배로 만든다.
+      </div>
+    </div>
+  </div>
+
+  <div class="card rel" style="flex:1.15;display:flex;flex-direction:column">
+    <span class="pin fl" style="top:12px;left:-9px">5</span>
+    <div class="ch"><h3>캘리브레이션 세트</h3><span class="b obs">412 / 412 완료</span><span class="grow"></span>
+      <span class="seg"><span class="on">불일치만</span><span>전체</span></span></div>
+    <div style="flex:1;overflow:hidden">
+      <table>
+        <thead><tr><th style="width:62px">문장</th><th>원문</th><th style="width:74px">사람</th><th style="width:74px">앙상블</th><th class="n" style="width:66px">신뢰도</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">40218</td><td>"에어팟 케이스만 따로 파는 데 있나요"<div class="xs qu" style="margin-top:2px">제품 본체가 아니라 부속품 문의</div></td>
+            <td><span class="b obs">관련</span></td><td><span class="b spe">무관</span></td><td class="n mono">0.58</td></tr>
+          <tr><td class="mono">40551</td><td>"이어폰 끼고 자다가 알람 못 들음 ㅋㅋ"<div class="xs qu" style="margin-top:2px">수면 맥락 · 제품명 없음</div></td>
+            <td><span class="b obs">관련</span></td><td><span class="b spe">무관</span></td><td class="n mono">0.44</td></tr>
+          <tr><td class="mono">41007</td><td>"공기청정기 필터 교체 주기 어떻게 되나요"<div class="xs qu" style="margin-top:2px">다른 제품군</div></td>
+            <td><span class="b spe">무관</span></td><td><span class="b obs">관련</span></td><td class="n mono">0.61</td></tr>
+          <tr><td class="mono qu">＋ 26건</td><td class="xs qu" colspan="4">불일치 29 / 412 · 일치율 93.0%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="cc" style="flex:none;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:var(--space-2)">
+      <div class="xs" style="display:flex;align-items:center;gap:var(--space-2)">
+        <span class="lab">불일치 패턴</span>
+        <span class="b inf">부속품 문의 11건</span><span class="b inf">제품명 없는 맥락 9건</span><span class="b">기타 9건</span>
+      </div>
+      <div class="xs">불일치는 모델의 실수만이 아니다 — <b>"부속품 문의를 관련으로 볼 것인가"는 STEP 01 선언이 답할 문제다.</b> 29건 중 20건이 정의가 모호해서 갈렸다. 모델을 고치기 전에 선언을 고쳐야 한다.</div>
+      <div style="display:flex;gap:var(--space-2);align-items:center">
+        <span class="grow"></span>
+        <span class="btn">선언 다시 보기</span><span class="btn pri">임계 확정하고 전량 판정</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+[[ANN]]
+<div class="it"><span class="pin">1</span><p><span class="tag rep">치환</span><b>검수량을 먼저 정하지 않는다.</b> 1.0은 <em>전체의 3%</em>라는 <b>비율</b>을 먼저 못 박고 약 11,550건을 사람이 라벨링했다. 근거는 관행이었고, 데이터가 10배가 되면 검수량도 10배가 된다. 2.0은 <b>허용 오류율 α를 먼저 선언</b>하고 그에 필요한 검수량을 계산한다 — 같은 품질 기준에서 데이터가 늘어도 검수량은 거의 늘지 않는다.</p></div>
+<div class="it"><span class="pin">2</span><p><span class="tag keep">유지</span><b>3중 앙상블은 그대로 둔다.</b> LSTM · CNN · GRU + LLM 구성과 가중 투표는 1.0 산식 그대로다. 바꾸지 않은 이유는 <b>이미 검증된 산출</b>이기 때문이고, 바꿀 근거가 생기면 그때 바꾼다. 다만 <b>모델별 기여도와 상관을 노출</b>한다 — GRU가 LSTM과 상관 0.91이면 계산 비용만 쓰고 있을 수 있다. 1.0에서는 이 질문을 할 수 없었다.</p></div>
+<div class="it"><span class="pin">3</span><p><span class="tag new">신설</span><b>임계선은 사람이 정하지 않는다.</b> escalate 임계 0.62는 목표 오류율 3%에서 <b>계산된 값</b>이다. 슬라이더를 만지는 것은 임계가 아니라 α이고, 임계는 따라온다. 사람이 임계를 직접 만지면 "오늘은 좀 널널하게"가 들어가 세션 간 비교가 깨진다.</p></div>
+<div class="it"><span class="pin">4</span><p><span class="tag new">신설</span><b>무릎을 보여준다.</b> 오류율을 1%에서 3%로 푸는 것만으로 검수량이 4분의 1이 된다. 이 곡선이 없으면 "오류율은 낮을수록 좋다"가 무비판적으로 통과하고, 그 대가가 얼마인지 아무도 말하지 않는다. <b>α는 품질 목표가 아니라 예산 결정이다.</b></p></div>
+<div class="it"><span class="pin">5</span><p><span class="tag new">신설</span><b>불일치를 모델 탓으로 끝내지 않는다.</b> 캘리브레이션 412건 중 29건이 갈렸는데, 그중 20건은 <b>"부속품 문의를 관련으로 볼 것인가"</b>처럼 STEP 01 선언이 답하지 않은 경계다. 모델 정확도 문제가 아니라 <b>정의 문제</b>다. 그래서 이 화면은 선언으로 되돌아가는 경로를 함께 둔다 — 여기서 임계만 올리면 같은 모호함이 38만 건에 그대로 퍼진다.</p></div>
+<div class="it"><span class="pin">—</span><p><span class="tag open">미결</span><b>α 기본값 · 캘리브레이션 표본 추출.</b> α 3%는 1.0의 검수 비율에서 가져온 시작값일 뿐 실측 근거가 없다. 캘리브레이션 300~500건을 <b>어떻게 뽑을지</b>도 열려 있다 — 무작위면 흔한 경우만 보게 되고, 불확실도 기준이면 경계만 보게 된다. 층화 비율을 정해야 한다.</p></div>

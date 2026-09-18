@@ -1,0 +1,81 @@
+<!--h:1258-->
+<!--title:STEP 04 — 데이터 수집-->
+<!--sub:이번 개정 대상이 아니다 · 기존 확정안을 그대로 승계한다-->
+<!--chat:rail-->
+
+[[MAIN]]
+<div class="row" style="flex:none;gap:12px">
+  <div class="kpi" style="flex:1"><span class="lab">확정 키워드</span><span class="v">142</span><span class="xs">R1~R4 승인분 · 3축 전부</span></div>
+  <div class="kpi" style="flex:1"><span class="lab">API 수집</span><span class="v">151,208</span><span class="xs">Phase 1 · 네이버 카페</span></div>
+  <div class="kpi" style="flex:1"><span class="lab">중복 제거 후</span><span class="v">128,400</span><span class="xs mono">link 기준 · −22,808</span></div>
+  <div class="kpi" style="flex:1"><span class="lab">경과 · 예상</span><span class="v">41분<span class="xs" style="font-weight:400"> / 약 52분</span></span><span class="xs">500건 배치 저장 · 재개 가능</span></div>
+</div>
+
+<div class="row" style="flex:1;min-height:0">
+  <div class="card" style="flex:1.5;display:flex;flex-direction:column">
+    <div class="ch"><h3>수집 진행</h3><span class="b ind">Phase 1 · Naver API</span><span class="grow"></span><span class="xs">키워드 142개 중 108개 완료</span></div>
+    <div class="cc" style="flex:none;padding:12px 14px">
+      <div class="bar" style="height:8px"><i style="width:76%"></i></div>
+      <div class="xs" style="margin-top:7px;display:flex;gap:16px">
+        <span><span class="fg">Phase 1</span> 검색 API로 <span class="mono">title · desc · link · date · cafe</span> 수집</span>
+        <span class="qu">Phase 2 본문 크롤링 — 선택 · 현재 비활성</span>
+      </div>
+    </div>
+    <div style="flex:1;overflow:hidden;border-top:1px solid var(--line)">
+      <table>
+        <thead><tr><th>검색 쿼리</th><th style="width:118px">축</th><th class="n" style="width:78px">요청</th><th class="n" style="width:78px">수집</th><th class="n" style="width:78px">중복</th><th style="width:88px">상태</th></tr></thead>
+        <tbody>
+          <tr><td class="mono" style="color:var(--fg)">에어팟 프로 3 땀</td><td class="xs">물리 · 감각</td><td class="n">1,000</td><td class="n">964</td><td class="n">131</td><td><span class="b obs">완료</span></td></tr>
+          <tr><td class="mono" style="color:var(--fg)">에어팟 프로 3 이탈</td><td class="xs">행동 · 전환이탈</td><td class="n">1,000</td><td class="n">812</td><td class="n">96</td><td><span class="b obs">완료</span></td></tr>
+          <tr><td class="mono" style="color:var(--fg)">에어팟 프로 3 심박</td><td class="xs">심리 · means-end</td><td class="n">1,000</td><td class="n">1,000</td><td class="n">204</td><td><span class="b obs">완료</span></td></tr>
+          <tr style="background:color-mix(in srgb, var(--persona-blue-100) 4%, transparent)"><td class="mono" style="color:var(--fg)">에어팟 프로 3 폼팁 교체</td><td class="xs">행동 · 대처우회</td><td class="n">1,000</td><td class="n">418</td><td class="n">52</td><td><span class="b ind">수집 중</span></td></tr>
+          <tr><td class="mono qu">에어팟 프로 3 센서 정확도</td><td class="xs qu">심리 · 장벽</td><td class="n qu">1,000</td><td class="n qu">—</td><td class="n qu">—</td><td><span class="b">대기</span></td></tr>
+          <tr><td class="mono qu">에어팟 프로 3 수면 착용</td><td class="xs qu">물리 · 시간</td><td class="n qu">1,000</td><td class="n qu">—</td><td class="n qu">—</td><td><span class="b">대기</span></td></tr>
+          <tr><td class="mono qu">에어팟 프로 3 한쪽만</td><td class="xs qu">행동 · 대처우회</td><td class="n qu">1,000</td><td class="n qu">—</td><td class="n qu">—</td><td><span class="b">대기</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="col" style="width:400px;flex:none">
+    <div class="card rel">
+      <span class="pin fl" style="top:12px;left:-9px">2</span>
+      <div class="ch"><h3>수집 설정</h3><span class="b">기존 확정안</span></div>
+      <div class="cc" style="display:flex;flex-direction:column;gap:11px">
+        <div><div class="lab">검색 쿼리 조합</div><div class="fld mono" style="margin-top:5px;font-size:12.5px">{제품명} {키워드}</div></div>
+        <div class="row" style="gap:8px">
+          <div style="flex:1"><div class="lab">시작일</div><div class="fld" style="margin-top:5px">2024-01-01</div></div>
+          <div style="flex:1"><div class="lab">종료일</div><div class="fld" style="margin-top:5px">2026-08-31</div></div>
+        </div>
+        <div><div class="lab">포함 카페 <span class="mono qu" style="text-transform:none;letter-spacing:0;font-weight:400">cafes</span></div>
+          <div class="wrap" style="margin-top:6px"><span class="chip on">런닝 크루</span><span class="chip on">애플 사용자</span><span class="chip on">헬스 정보</span><span class="chip off">＋</span></div></div>
+        <div><div class="lab">제외 카페 <span class="mono qu" style="text-transform:none;letter-spacing:0;font-weight:400">excludeCafes</span></div>
+          <div class="wrap" style="margin-top:6px"><span class="chip">공동구매</span><span class="chip">중고거래</span><span class="chip off">＋</span></div></div>
+        <div class="row" style="gap:8px">
+          <div style="flex:1"><div class="lab">광고 필터</div><div class="chip on" style="margin-top:6px">켜짐</div></div>
+          <div style="flex:1"><div class="lab">중복 기준</div><div class="chip on mono" style="margin-top:6px">link</div></div>
+          <div style="flex:1"><div class="lab">배치</div><div class="chip mono" style="margin-top:6px">500건</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card rel" style="flex:1;border-color:color-mix(in srgb, var(--danger) 30%, transparent)">
+      <span class="pin fl" style="top:12px;left:-9px">3</span>
+      <div class="ch" style="background:var(--spe-bg)"><h3 style="color:var(--spe)">★ 확정 필요 · 댓글 수집</h3></div>
+      <div class="cc" style="display:flex;flex-direction:column;gap:10px">
+        <div class="sm">1.0은 <span class="fg">제목 + 본문 + 댓글</span>을 하나의 document로 묶어 이후 전 STEP의 분석 단위로 삼았다. 현행 크롤은 <span class="mono fg">title</span> + <span class="mono fg">desc</span>만 수집한다.</div>
+        <div class="xs" style="border:1px solid var(--line);border-radius:6px;padding:9px 10px;background:var(--sunk)">
+          댓글이 빠지면 STEP 10-A CAM의 <span class="mono fg">situation{state, emotion, barrier}</span>를 채울 원문 밀도가 1.0보다 얇아진다. Core 판정의 재구성 테스트(5-Dim 중 ≥3)도 통과율이 떨어진다.
+        </div>
+        <div class="seg" style="width:100%"><span class="on">title + desc (현행)</span><span>＋ 본문</span><span>＋ 본문 · 댓글</span></div>
+        <div class="xs qu">Phase 2를 켜면 수집 시간이 약 3.4배, 차단 위험이 함께 올라간다</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+[[ANN]]
+<div class="it"><span class="pin">1</span><p><span class="tag keep">유지</span><b>수정사항 없음.</b> 1.0에서 채널별로 수기 크롤링하던 자리를 크롤링 모듈이 그대로 승계한다. 검색 쿼리 조합, 날짜 범위, 광고 필터, 포함·제외 카페, <em class="mono">link</em> 기준 중복 제거, 500건 배치 저장 모두 기존 확정안이다.</p></div>
+<div class="it"><span class="pin">2</span><p><span class="tag rep">치환</span><b>채널 선정이 여기로 내려왔다.</b> 1.0 STEP 02에서 선행연구로 11개 채널을 수기 선정하던 스텝이 소멸하고, 네이버 카페 단일 채널로 고정된다. 채널 선택은 이 화면의 <em class="mono">cafes / excludeCafes</em> 필터가 맡는다.</p></div>
+<div class="it"><span class="pin">3</span><p><span class="tag open">미결</span><b>댓글 수집 여부.</b> 이 결정이 STEP 06 Core 판정률과 STEP 10-A Context 행의 밀도를 동시에 좌우한다. 수집 시간·차단 위험과의 교환이라 화면에서 선택지를 명시했다.</p></div>
+<div class="it"><span class="pin">—</span><p><span class="tag keep">유지</span><b>배치 저장과 재개.</b> 500건 단위로 저장되므로 중단해도 처음부터 다시 돌지 않는다. 상단바의 "작업 2건 실행 중"은 기존 비동기 JobManager를 그대로 쓴다.</p></div>

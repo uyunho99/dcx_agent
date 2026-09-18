@@ -1,0 +1,127 @@
+<!--h:1500-->
+<!--title:STEP 10-B — 기회 영역-->
+<!--sub:별도 모듈이 아니라 STEP 07 구획 × STEP 09 감정 태그의 집계 뷰다 · 새로 계산하는 값이 없다-->
+<!--chat:rail-->
+
+[[MAIN]]
+<div class="row" style="flex:1;min-height:0">
+  <div class="card rel" style="flex:1.45;display:flex;flex-direction:column">
+    <span class="pin fl" style="top:12px;left:-9px">2</span>
+    <div class="ch"><h3>Opportunity Map</h3><span class="b ind">점 = Action · 색 = 페르소나</span><span class="grow"></span>
+      <span class="seg"><span class="on">CL0-P1</span><span>전체</span></span>
+      <span class="chip on" style="margin-left:8px">집계점 표시</span></div>
+    <div class="cc" style="flex:1;display:flex;flex-direction:column">
+      <svg viewBox="0 0 600 344" width="100%" style="flex:1;display:block">
+        <!-- zone grid -->
+        <g stroke-width="1" style="stroke:var(--line)">
+          <rect x="56" y="40" width="520" height="260" fill="none"/>
+          <line x1="229" y1="40" x2="229" y2="300" stroke-dasharray="3 4"/>
+          <line x1="402" y1="40" x2="402" y2="300" stroke-dasharray="3 4"/>
+          <line x1="56" y1="170" x2="576" y2="170" stroke-dasharray="3 4"/>
+        </g>
+        <g font-size="10" style="fill:var(--ink-subtle)">
+          <text x="66" y="56">D Forsaken</text><text x="239" y="56">B Experiencing</text><text x="412" y="56">A Exciting</text>
+          <text x="66" y="294">E Dangling</text><text x="239" y="294">F At-risk</text><text x="412" y="294">C Competitive</text>
+        </g>
+        <!-- baseline -->
+        <line x1="56" y1="300" x2="576" y2="40" stroke-width="1" stroke-dasharray="5 4" opacity=".7"/ style="stroke:var(--action)">
+        <text x="500" y="82" font-size="9.5" style="fill:var(--action-hover)">Satisfaction = Importance · 아래가 Underserved</text>
+        <!-- other personas -->
+        <g style="fill:var(--line-strong)">
+          <circle cx="150" cy="210" r="4.5"/><circle cx="196" cy="128" r="4.5"/><circle cx="286" cy="236" r="4.5"/>
+          <circle cx="330" cy="104" r="4.5"/><circle cx="452" cy="196" r="4.5"/><circle cx="500" cy="118" r="4.5"/>
+          <circle cx="242" cy="176" r="4.5"/><circle cx="380" cy="268" r="4.5"/>
+        </g>
+        <!-- persona aggregate -->
+        <circle cx="405" cy="230" r="15" fill="none" stroke-width="1.2" stroke-dasharray="4 3"/ style="stroke:var(--ink-secondary)">
+        <text x="425" y="234" font-size="9.5" style="fill:var(--ink-secondary)">P1 집계 I 6.72 · S 2.68</text>
+        <!-- actions -->
+        <circle cx="472" cy="274" r="8"/ style="fill:color-mix(in srgb, var(--warning) 95%, transparent)">
+        <circle cx="524" cy="157" r="8"/ style="fill:color-mix(in srgb, var(--warning) 95%, transparent)">
+        <circle cx="352" cy="245" r="8"/ style="fill:color-mix(in srgb, var(--warning) 95%, transparent)">
+        <circle cx="108" cy="265" r="8" fill="none" stroke-width="1.8"/ style="stroke:color-mix(in srgb, var(--warning) 95%, transparent)">
+        <!-- novelty marker -->
+        <path d="M524 141 l4.5 9 10 1.4 -7.2 7 1.7 9.9 -9-4.7 -9 4.7 1.7-9.9 -7.2-7 10-1.4z" opacity=".95" transform="translate(0,-16)"/ style="fill:var(--success)">
+        <g font-size="10" style="fill:var(--ink)">
+          <text x="484" y="278">A1</text><text x="536" y="161">A2</text><text x="364" y="249">A4</text><text x="120" y="269" style="fill:var(--ink-secondary)">A3</text>
+        </g>
+        <!-- axes -->
+        <g font-size="10" style="fill:var(--ink-secondary)">
+          <text x="56" y="320">0</text><text x="300" y="320" text-anchor="middle">Importance — Action 문서 수 min-max</text><text x="576" y="320" text-anchor="end">10</text>
+          <text x="46" y="304" text-anchor="end">0</text><text x="46" y="44" text-anchor="end">10</text>
+        </g>
+        <text x="16" y="170" font-size="10" transform="rotate(-90 16 170)" text-anchor="middle" style="fill:var(--ink-secondary)">Satisfaction — 감정 극성</text>
+      </svg>
+      <div class="xs rel" style="border-top:1px solid var(--line);padding-top:9px;margin-top:6px;display:flex;gap:16px">
+        <span class="pin fl" style="top:2px;right:-9px">3</span>
+        <span><span style="color:var(--warning)">●</span> 현재 페르소나의 Action</span>
+        <span><span style="color:var(--warning)">○</span> 반례 Action</span>
+        <span class="qu">● 세션 전체의 다른 페르소나</span>
+        <span class="qu">⭘ 점선 = 페르소나 집계점</span>
+        <span style="color:var(--success)">★ novelty 高 ∧ ODI 高 — 실무자가 몰랐고 기회도 큰 지점</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col" style="width:352px;flex:none">
+    <div class="card rel" style="flex:none;border-color:color-mix(in srgb, var(--danger) 30%, transparent)">
+      <span class="pin fl" style="top:12px;left:-9px">4</span>
+      <div class="ch" style="background:var(--spe-bg)"><h3 style="color:var(--spe)">★ 구역 표기는 잠정이다</h3></div>
+      <div class="cc"><div class="xs">ODI는 정의되어 있고 좌표로 검산도 맞는데, A부터 F까지 <span class="fg">구역을 가르는 경계 규칙이 없다</span>. Importance 구간과 Satisfaction 대비 관계를 어떻게 조합할지 확정해야 하며, 그때까지 A3처럼 경계 근처 점은 구역을 단정하지 않는다.</div></div>
+    </div>
+
+    <div class="card" style="flex:none">
+      <div class="ch"><h3>ODI</h3><span class="grow"></span><span class="xs">점수 체계 정식화</span></div>
+      <div class="cc">
+        <div class="mono xs" style="border:1px solid var(--line2);border-radius:6px;padding:10px;background:var(--sunk);color:var(--sec);line-height:19px">
+          Importance = Context 문서 수 × Coverage · min-max<br>
+          Satisfaction = polarity 평균 <span class="qu">표본 20건 이상일 때만</span><br>
+          <span class="fg">ODI = I + max(I − S, 0)</span>
+        </div>
+        <div class="xs rel" style="margin-top:9px;border:1px solid color-mix(in srgb, var(--warning) 28%, transparent);background:var(--inf-bg);border-radius:6px;padding:9px 10px;color:var(--sec)">
+          <span class="pin fl" style="top:-9px;right:10px">5</span>
+          ⚠ 스케일 경고 — Satisfaction·ODI 절대값은 1.0(SentiWord 사전 기반)과 스케일이 다르다. 2.0은 min-max 정규화 0~10이므로 <span class="fg">1.0 장표 수치와 직접 비교하면 안 된다.</span>
+        </div>
+        <div class="xs qu" style="margin-top:8px">★ Persona 단위 I·S 집계 산식도 미결 — 소속 Action의 문서 수 가중 평균을 시작값으로 둔다. "중요도 상위 15% · 만족도 하위 20% → Underserved" 판정이 이 값을 쓴다.</div>
+      </div>
+    </div>
+
+    <div class="card rel" style="flex:1;display:flex;flex-direction:column">
+      <span class="pin fl" style="top:12px;left:-9px">6</span>
+      <div class="ch"><h3>SNAGraph</h3><span class="b">계층 구조 뷰</span></div>
+      <div class="cc" style="flex:1;display:flex;flex-direction:column;gap:7px">
+        <div class="xs" style="display:flex;gap:7px;align-items:center"><span class="b solid" style="flex:none">제품</span><span class="qu">에어팟 프로 3</span></div>
+        <div class="xs" style="display:flex;gap:7px;align-items:center;padding-left:14px"><span class="b ind" style="flex:none">Cluster</span><span class="mono">CL0</span><span class="qu">심박 · 워치 · 러닝</span></div>
+        <div class="xs" style="display:flex;gap:7px;align-items:center;padding-left:28px"><span class="b" style="flex:none">Persona</span><span class="mono">CL0-P1</span><span class="qu">귀로 건강 재는 러너</span></div>
+        <div class="xs" style="display:flex;gap:7px;align-items:center;padding-left:42px"><span class="b" style="flex:none">Action</span><span class="mono">A1 A2 A3 A4</span></div>
+        <div class="xs" style="display:flex;gap:7px;align-items:center;padding-left:28px"><span class="b" style="flex:none">Persona</span><span class="mono">CL0-P2</span><span class="qu">밤새 재는 사람</span></div>
+        <div class="xs" style="display:flex;gap:7px;align-items:center;padding-left:14px"><span class="b ind" style="flex:none">Cluster</span><span class="mono">CL1</span><span class="qu">땀 · 이탈 · 폼팁</span></div>
+        <div class="xs" style="margin-top:auto;border-top:1px solid var(--line);padding-top:9px">
+          2층 force graph에서 <span class="fg">3층 트리</span>로 확장한다. 어휘 동시출현 네트워크와 Eigenvector centrality의 본진은 <span class="fg">STEP 08 페르소나 정의 화면</span>으로 이전했다.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card rel" style="flex:none">
+  <span class="pin fl" style="top:12px;left:-9px">1</span>
+  <div class="ch"><h3>Action 집계</h3><span class="grow"></span><span class="xs">두 축 모두 Evidence Package에 이미 들어 있다 — 새로 계산하는 값이 없다</span></div>
+  <table>
+    <thead><tr><th style="width:250px">Action</th><th class="n" style="width:82px">Importance</th><th class="n" style="width:88px">Satisfaction</th><th class="n" style="width:72px">ODI</th><th style="width:132px">구역</th><th class="n" style="width:72px">novelty</th><th>해석</th></tr></thead>
+    <tbody>
+      <tr><td>A1 기기 중복 착용</td><td class="n mono">8.00</td><td class="n mono">1.02</td><td class="n mono" style="color:var(--fg)">14.98</td><td><span class="b spe">F At-risk</span></td><td class="n"><span class="b inf">中</span></td><td class="xs">중요도는 높은데 만족이 바닥 — 가장 큰 미충족</td></tr>
+      <tr><td>A2 심박 측정 기대</td><td class="n mono">9.00</td><td class="n mono">5.51</td><td class="n mono" style="color:var(--fg)">12.49</td><td><span class="b inf">C Competitive</span></td><td class="n"><span class="b obs">高 ★</span></td><td class="xs">기대는 크지만 A3 불신이 전제 조건으로 걸려 있다</td></tr>
+      <tr><td>A3 정확도 불신 <span class="b spe">반례</span></td><td class="n mono">1.00</td><td class="n mono">1.34</td><td class="n mono">1.00</td><td><span class="b">잠정 · 미확정</span></td><td class="n"><span class="b">低</span></td><td class="xs">소수 담론이지만 A2의 수용을 막는 조건</td></tr>
+      <tr><td>A4 땀 · 이탈</td><td class="n mono">5.70</td><td class="n mono">2.10</td><td class="n mono" style="color:var(--fg)">9.30</td><td><span class="b spe">F At-risk</span></td><td class="n"><span class="b obs">高</span></td><td class="xs">폼팁 교체로 해결되지 않는 구조적 제약</td></tr>
+    </tbody>
+  </table>
+</div>
+
+[[ANN]]
+<div class="it"><span class="pin">1</span><p><span class="tag keep">유지</span><b>두 축과 6구역 그대로.</b> 중요도 × 만족도 두 축과 A~F 6개 영역 구획(Underserved / Overserved)은 1.0 장표를 그대로 유지한다. 별도 모듈이 아니라 STEP 07 구획 × STEP 09 감정 태그의 <b>집계 뷰</b>이므로 새로 계산하는 값이 없다.</p></div>
+<div class="it"><span class="pin">2</span><p><span class="tag rep">치환</span><b>점의 단위가 Action, 색이 페르소나.</b> 그리고 점수 체계가 ODI = Importance + max(Importance − Satisfaction, 0)으로 정식화된다. 1.0에서는 배치만 있고 점수 정의가 없었다.</p></div>
+<div class="it"><span class="pin">3</span><p><span class="tag new">신설</span><b>novelty 마커.</b> STEP 09의 LLM Novelty 판정 결과가 <em class="mono">novelty</em> 컬럼으로 올라오고, novelty 高 ∧ ODI 高 사분면에 별도 마커가 붙는다 — <b>"실무자가 몰랐고 기회도 큰"</b> 지점이다. 기존 기회 지도는 "기회가 큰"만 말할 수 있었다.</p></div>
+<div class="it"><span class="pin">4</span><p><span class="tag open">미결</span><b>구역 경계 산식 · Persona 집계 산식.</b> ODI는 정의됐지만 A~F를 가르는 경계 규칙이 없다. Persona 단위 Importance·Satisfaction 집계 산식은 Underserved 판정이 직접 의존하므로 실측으로 확정해야 한다.</p></div>
+<div class="it"><span class="pin">5</span><p><span class="tag open">경고</span><b>1.0 수치와 직접 비교 금지.</b> 1.0의 Satisfaction은 SentiWord 사전 기반이고 2.0은 polarity 평균의 min-max 정규화다. 같은 이름이지만 스케일이 다르다.</p></div>
+<div class="it"><span class="pin">6</span><p><span class="tag rep">치환</span><b>SNAGraph의 역할 축소.</b> 2층 force graph에서 제품 → Cluster → Persona → Action의 3층 트리로 바뀐다. 어휘 동시출현 네트워크와 centrality는 STEP 08 화면으로 이전했으므로, 여기서는 계층 구조만 보여준다.</p></div>

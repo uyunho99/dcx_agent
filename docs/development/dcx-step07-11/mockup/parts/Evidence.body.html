@@ -1,0 +1,235 @@
+<!--h:2260-->
+<!--title:STEP 09 — 근거 수집-->
+<!--sub:1.0 LDA 토픽맵을 승계해 Action을 뽑고, 근거는 관련성 단독이 아니라 감점·가점 두 항을 곱해 추천한다-->
+<!--chat:rail-->
+
+[[MAIN]]
+<div class="row" style="flex:none;gap:12px;align-items:stretch">
+  <div class="card sunk" style="flex:1.4"><div class="cc" style="padding:12px 15px;display:flex;align-items:center;gap:12px">
+    <span class="mono b ind">CL0-P1-C2</span>
+    <div><div class="sm fg" style="font-weight:510">이어팟 심박 측정에 대한 기대</div>
+      <div class="xs">주된 제약: 현재 생체 신호 측정 기능이 없다 · 키워드 #심박 #측정 #생체 #기대</div></div>
+    <span class="grow"></span><span class="seg"><span>C1</span><span class="on">C2</span><span>C3</span><span>C4</span></span>
+  </div></div>
+  <div class="kpi" style="flex:.62"><span class="lab">경험차원 커버리지</span><span class="v">4<span class="xs" style="font-weight:400"> / 6</span></span><span class="xs" style="color:var(--inf)">Think · Relate 비어 있음</span></div>
+  <div class="kpi" style="flex:.62"><span class="lab">후보</span><span class="v">50</span><span class="xs">3키 filter 필수 적용</span></div>
+  <div class="kpi" style="flex:.62"><span class="lab">노출</span><span class="v">10<span class="xs" style="font-weight:400"> + 직접 2</span></span><span class="xs">support 7 · counter 1 · rare 2</span></div>
+</div>
+
+<div class="card rel" style="flex:none">
+  <span class="pin fl" style="top:12px;left:-9px">4</span>
+  <div class="ch"><h3>Action 도출 · 토픽 맵</h3><span class="b ind">1.0 LDAVis 장표 구조 승계</span>
+    <span class="grow"></span>
+    <span class="xs">CL0-P1 내부 · 토픽 수 <span class="mono fg">4</span> <span class="qu">(2~10 스캔 · NPMI 최대)</span></span></div>
+  <div class="cc" style="display:flex;gap:16px">
+
+    <div style="width:290px;flex:none">
+      <div class="lab">토픽 간 거리 <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">원 크기 = 토픽 비중 · 원 거리 = 유사성</span></div>
+      <svg viewBox="0 0 290 178" width="100%" height="178" style="display:block;margin-top:6px">
+        <g stroke-width="1" style="stroke:var(--line)"><line x1="20" y1="94" x2="276" y2="94" stroke-dasharray="3 3"/><line x1="148" y1="12" x2="148" y2="174" stroke-dasharray="3 3"/></g>
+        <circle cx="96" cy="66" r="42" stroke-width="1.2"/ style="fill:color-mix(in srgb, var(--persona-blue-100) 16%, transparent);stroke:var(--action)">
+        <circle cx="186" cy="54" r="27" stroke-width="1.1"/ style="fill:color-mix(in srgb, var(--persona-blue-100) 13%, transparent);stroke:var(--line-strong)">
+        <circle cx="206" cy="128" r="24" stroke-width="1.1"/ style="fill:color-mix(in srgb, var(--persona-blue-100) 13%, transparent);stroke:var(--line-strong)">
+        <circle cx="76" cy="136" r="18" stroke-width="1.1"/ style="fill:color-mix(in srgb, var(--persona-blue-100) 11%, transparent);stroke:var(--line-strong)">
+        <g font-size="11" font-weight="600" text-anchor="middle" style="fill:var(--ink)">
+          <text x="96" y="70">A1</text><text x="186" y="58">A2</text><text x="206" y="132">A3</text><text x="76" y="140">A4</text>
+        </g>
+        <g font-size="8.5" style="fill:var(--ink-secondary)"><text x="20" y="172">PC1</text><text x="262" y="88">PC2</text></g>
+      </svg>
+      <div class="xs" style="margin-top:5px;display:flex;align-items:center;gap:8px">
+        <span class="lab" style="flex:none">λ</span>
+        <div class="bar" style="flex:1"><i style="width:60%"></i></div>
+        <span class="mono fg" style="flex:none">0.60</span>
+      </div>
+      <div class="xs qu" style="margin-top:4px">0에 가까울수록 해당 토픽만의 차별 어휘 · Sievert &amp; Shirley(2014) 권장 0.6</div>
+    </div>
+
+    <div style="width:214px;flex:none;border-left:1px solid var(--line);padding-left:16px">
+      <div class="lab">A1 주도 어휘 <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">relevance 정렬</span></div>
+      <div style="display:flex;flex-direction:column;gap:5px;margin-top:7px">
+        <div class="xs" style="display:flex;gap:7px;align-items:center"><span style="width:44px" class="fg">워치</span><div class="bar" style="flex:1"><i style="width:100%"></i></div></div>
+        <div class="xs" style="display:flex;gap:7px;align-items:center"><span style="width:44px" class="fg">챙기다</span><div class="bar" style="flex:1"><i style="width:88%"></i></div></div>
+        <div class="xs" style="display:flex;gap:7px;align-items:center"><span style="width:44px" class="fg">둘 다</span><div class="bar" style="flex:1"><i style="width:81%"></i></div></div>
+        <div class="xs" style="display:flex;gap:7px;align-items:center"><span style="width:44px">귀찮다</span><div class="bar" style="flex:1"><i class="n" style="width:72%"></i></div></div>
+        <div class="xs" style="display:flex;gap:7px;align-items:center"><span style="width:44px">손목</span><div class="bar" style="flex:1"><i class="n" style="width:64%"></i></div></div>
+        <div class="xs" style="display:flex;gap:7px;align-items:center"><span style="width:44px">충전</span><div class="bar" style="flex:1"><i class="n" style="width:51%"></i></div></div>
+      </div>
+      <div class="xs" style="margin-top:9px;border-top:1px solid var(--line);padding-top:8px">
+        1.0은 이 막대를 사람이 눈으로 읽고 Action 문장을 썼다. λ도 도메인마다 다시 잡아야 했다. 2.0은 막대를 <span class="fg">그대로 두되</span> 문장은 아래 표에서 근거와 함께 확정한다.
+      </div>
+    </div>
+
+    <div style="flex:1;min-width:0;border-left:1px solid var(--line);padding-left:16px">
+      <div class="lab">도출된 Action <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">— 이 페르소나 4개 · 세션 전체 38개</span></div>
+      <table style="margin-top:6px">
+        <thead><tr><th style="width:56px">ID</th><th>Action 문장</th><th class="n" style="width:62px">토픽 비중</th><th class="n" style="width:60px">문서</th><th style="width:66px">근거 수집</th></tr></thead>
+        <tbody>
+          <tr style="background:var(--ind-bg)"><td class="mono fg">A1</td><td class="fg">워치와 이어폰을 함께 챙겨 나가며 둘 다 착용한다</td><td class="n mono">0.38</td><td class="n mono">1,566</td><td><span class="b ind">진행 중</span></td></tr>
+          <tr><td class="mono fg">A2</td><td>이어폰만으로 심박이 측정되는지 찾아보고 묻는다</td><td class="n mono">0.27</td><td class="n mono">1,112</td><td><span class="b obs">완료</span></td></tr>
+          <tr><td class="mono fg">A3</td><td>측정값이 튀는 경험을 공유하며 정확도를 따진다</td><td class="n mono">0.21</td><td class="n mono">865</td><td><span class="b">대기</span></td></tr>
+          <tr><td class="mono fg">A4</td><td>운동 앱과 건강 앱 사이에서 기록을 손으로 옮긴다</td><td class="n mono">0.14</td><td class="n mono">577</td><td><span class="b">대기</span></td></tr>
+        </tbody>
+      </table>
+      <div class="xs" style="margin-top:8px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--sunk)">
+        1.0은 LDA 토픽을 통합해 <span class="fg">59개 Action</span>을 얻고 여기서 멈췄다. 2.0은 Action마다 <b>근거 수집을 한 번 더 돌린다</b> — Action은 토픽 가중치가 만든 라벨이고, 그 라벨이 실제 원문으로 뒷받침되는지는 아직 확인되지 않았기 때문이다.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card rel" style="flex:none">
+  <span class="pin fl" style="top:12px;left:-9px">1</span>
+  <div class="ch"><h3>원문 찾기</h3><span class="grow"></span>
+    <span class="xs">검색 범위</span>
+    <span class="seg"><span>이 Context</span><span>이 Persona</span><span class="on">클러스터 CL0 전체</span><span>세션 전체</span></span></div>
+  <div class="cc" style="display:flex;gap:16px;align-items:stretch">
+    <div style="flex:1.05;display:flex;flex-direction:column;gap:9px">
+      <div style="display:flex;gap:8px">
+        <div class="fld" style="flex:1;display:flex;align-items:center;gap:8px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink-subtle)" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <span>워치를 안 차도 되는지 묻는 글</span>
+        </div>
+        <span class="btn pri" style="height:34px">검색</span>
+      </div>
+      <div class="wrap">
+        <span class="xs qu" style="align-self:center;margin-right:2px">필터</span>
+        <span class="chip on">핵심 근거 <span class="mono xs">core</span></span>
+        <span class="chip">보조 단서 <span class="mono xs">supporting</span></span>
+        <span class="chip on">아직 안 쓴 것</span>
+        <span class="chip">반례만</span>
+        <span class="chip">밴드 Edge</span>
+        <span class="chip">목적축 있음 <span class="mono xs">task_goal</span></span>
+        <span class="chip">제약축 있음 <span class="mono xs">resource_constraint</span></span>
+      </div>
+      <div class="xs" style="margin-top:auto">클러스터 CL0의 <span class="fg">14,820</span>문장에서 <span class="fg">37</span>건 일치 · 이미 노출된 10건은 회색으로 표시</div>
+    </div>
+
+    <div class="card sunk rel" style="flex:1;border-color:var(--ind-ln)"><div class="cc" style="padding:11px 13px">
+      <span class="pin fl" style="top:-9px;left:14px">5</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--action)" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="1.8"/ style="fill:var(--action)"><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3"/></svg>
+        <span class="lab" style="color:var(--ind-fg)">클러스터 중심 문장</span>
+        <span class="b ind mono">dist_centroid 0.041</span>
+        <span class="grow"></span>
+        <span class="xs qu">추천 순위에는 넣지 않는다 — 기준선으로만 고정</span>
+      </div>
+      <div class="sm" style="margin-top:7px;color:var(--fg)">"러닝할 때 워치랑 이어폰 둘 다 챙겨 나가는 게 은근 귀찮은데, 하나로 되면 좋겠어요"</div>
+      <div class="xs" style="margin-top:6px;display:flex;gap:12px;align-items:center">
+        <span class="mono">#77930</span><span>CL0-P1-C1 · Core</span>
+        <span style="color:var(--spe)"><span class="mono">max_sim_to_known 0.88</span> — 이미 아는 이야기</span>
+        <span class="grow"></span>
+        <span class="xs qu">quality <span class="mono">31위</span> / relevance <span class="mono">1위</span></span>
+      </div>
+      <div class="xs" style="margin-top:7px;border-top:1px solid var(--line2);padding-top:7px">
+        이 문장은 <b>이 구획이 무엇에 관한 것인지</b>를 한 줄로 말해 준다. 동시에 정의상 가장 전형적이므로 <b>인사이트로는 0</b>이다. 추천에서 내리되 화면에서 지우지 않는다 — 중심을 모르면 아래 목록이 얼마나 가장자리인지 판단할 수 없다.
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<div class="row" style="flex:1;min-height:0">
+  <div class="card rel" style="flex:1.75;display:flex;flex-direction:column">
+    <span class="pin fl" style="top:12px;left:-9px">6</span>
+    <div class="ch"><h3>추천 순위</h3>
+      <span class="seg"><span class="on">quality</span><span>relevance 단독</span></span>
+      <span class="grow"></span>
+      <span class="mono xs" style="border:1px solid var(--line2);border-radius:5px;padding:3px 8px;background:var(--sunk);color:var(--sec)">quality = relevance × (1 − <span class="fg">0.5</span>·known) × (1 + <span class="fg">0.3</span>·rarity)</span></div>
+    <div style="flex:1;overflow:hidden">
+      <table>
+        <thead><tr>
+          <th style="width:52px">순위</th><th>원문</th>
+          <th class="n" style="width:58px">relev.</th>
+          <th class="n" style="width:64px">known ▼</th>
+          <th class="n" style="width:62px">rarity ▲</th>
+          <th class="n" style="width:60px">quality</th>
+          <th style="width:52px"></th></tr></thead>
+        <tbody>
+          <tr><td><span class="mono fg">1</span> <span class="xs" style="color:var(--obs)">▲23</span></td>
+            <td>"워치 놓고 나갔는데 이어폰만으로 심박 보이면 그날은 진짜 편했을 듯"<div class="xs qu" style="margin-top:2px"><span class="mono">#92418</span> · Think · Feel · Fringe</div></td>
+            <td class="n mono">0.61</td><td class="n mono" style="color:var(--obs)">0.14</td><td class="n mono" style="color:var(--obs)">0.79</td>
+            <td class="n mono fg">0.70</td><td><span class="btn" style="height:24px;padding:0 9px">붙이기</span></td></tr>
+          <tr><td><span class="mono fg">2</span> <span class="xs" style="color:var(--obs)">▲9</span></td>
+            <td>"애초에 손목에 뭘 차는 걸 싫어해서 시계형은 후보에도 없었어요"<div class="xs qu" style="margin-top:2px"><span class="mono">#94233</span> · Feel · Think · <span style="color:var(--spe)">Edge</span></div></td>
+            <td class="n mono">0.58</td><td class="n mono" style="color:var(--obs)">0.11</td><td class="n mono" style="color:var(--obs)">0.84</td>
+            <td class="n mono fg">0.68</td><td><span class="btn" style="height:24px;padding:0 9px">붙이기</span></td></tr>
+          <tr><td><span class="mono fg">3</span> <span class="xs" style="color:var(--obs)">▲16</span></td>
+            <td>"러닝 크루에서 워치 안 찬 사람이 나뿐이라 좀 신경 쓰였어요"<div class="xs qu" style="margin-top:2px"><span class="mono">#90117</span> · Relate · Core</div></td>
+            <td class="n mono">0.52</td><td class="n mono" style="color:var(--obs)">0.19</td><td class="n mono" style="color:var(--obs)">0.71</td>
+            <td class="n mono fg">0.57</td><td><span class="btn" style="height:24px;padding:0 9px">붙이기</span></td></tr>
+          <tr><td><span class="mono fg">4</span> <span class="xs qu">－</span></td>
+            <td>"심박존 알림만 귀로 들려도 화면 볼 일이 없어질 텐데"<div class="xs qu" style="margin-top:2px"><span class="mono">#88902</span> · Think · Outcome · Core</div></td>
+            <td class="n mono">0.66</td><td class="n mono">0.44</td><td class="n mono">0.38</td>
+            <td class="n mono fg">0.41</td><td><span class="btn" style="height:24px;padding:0 9px">붙이기</span></td></tr>
+          <tr style="background:var(--spe-bg)"><td><span class="mono fg">9</span> <span class="xs" style="color:var(--spe)">▼8</span></td>
+            <td>"운동할 때 심박 보려면 결국 워치를 차야 하니까 둘 다 챙기게 돼요"<div class="xs" style="margin-top:2px;color:var(--spe)"><span class="mono">#85014</span> · <b>relevance 정렬에서는 1위였다</b> — 이미 아는 이야기라 감점되어 내려왔다</div></td>
+            <td class="n mono fg">0.94</td><td class="n mono" style="color:var(--spe)">0.91</td><td class="n mono" style="color:var(--spe)">0.08</td>
+            <td class="n mono">0.27</td><td><span class="btn gho" style="height:24px;padding:0 9px">붙이기</span></td></tr>
+          <tr style="opacity:.5"><td><span class="mono">31</span></td>
+            <td>"러닝할 때 워치랑 이어폰 둘 다 챙겨 나가는 게 은근 귀찮은데"<div class="xs qu" style="margin-top:2px"><span class="mono">#77930</span> · 중심 문장 · 위에 기준선으로 고정 노출됨</div></td>
+            <td class="n mono">0.89</td><td class="n mono">0.88</td><td class="n mono">0.05</td>
+            <td class="n mono">0.21</td><td class="xs qu">기준선</td></tr>
+          <tr><td class="mono qu">＋31</td><td class="xs qu" colspan="6">더 보기</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card rel" style="flex:1;display:flex;flex-direction:column">
+    <span class="pin fl" style="top:12px;left:-9px">2</span>
+    <div class="ch"><h3>노출 건</h3><span class="b">STEP 10·11로 넘어간다</span><span class="grow"></span>
+      <span class="seg"><span class="on">전체 12</span><span>자동 10</span><span>직접 2</span></span></div>
+    <div style="flex:1;overflow:hidden">
+      <table>
+        <thead><tr><th style="width:62px">문장</th><th>인용</th><th style="width:66px">역할</th><th style="width:60px">출처</th><th style="width:34px"></th></tr></thead>
+        <tbody>
+          <tr><td class="mono">84117</td><td>"폼팁 사이즈 바꿔봐도 똑같길래 그냥 한쪽만 끼고 뜁니다"</td><td class="xs">support</td><td><span class="b">자동</span></td><td class="xs qu">✕</td></tr>
+          <tr style="background:color-mix(in srgb, var(--persona-blue-100) 5%, transparent)"><td class="mono">91204</td><td>"분유 타듯이 귀에 온도계 꽂는 느낌이라 자꾸 확인하게 돼요"</td><td class="xs" style="color:var(--obs)">rare</td><td><span class="b">자동</span></td><td class="xs qu">✕</td></tr>
+          <tr><td class="mono">77930</td><td>"워치 안 차고 나가면 기록이 안 남으니까 결국 둘 다 챙긴다"</td><td class="xs">support</td><td><span class="b">자동</span></td><td class="xs qu">✕</td></tr>
+          <tr><td class="mono">88451</td><td>"이어폰 센서는 광학이라 흔들리면 튄다던데 믿을 수 있나요"</td><td class="xs" style="color:var(--spe)">counter</td><td><span class="b">자동</span></td><td class="xs qu">✕</td></tr>
+          <tr><td class="mono">95612</td><td>"수면 재려고 꼈다가 새벽에 빠져서 이불 속에서 찾는 게 일"</td><td class="xs" style="color:var(--obs)">rare</td><td><span class="b">자동</span></td><td class="xs qu">✕</td></tr>
+          <tr><td class="mono">80233</td><td>"러닝앱이랑 건강앱이 따로 놀아서 주에 한 번 손으로 옮겨요"</td><td class="xs">support</td><td><span class="b">자동</span></td><td class="xs qu">✕</td></tr>
+          <tr style="background:var(--obs-bg)"><td class="mono">92418</td><td>"워치 놓고 나갔는데 이어폰만으로 심박 보이면 그날은 진짜 편했을 듯"</td><td class="xs">support</td><td><span class="b obs">직접</span></td><td class="xs qu">✕</td></tr>
+          <tr style="background:var(--obs-bg)"><td class="mono">90117</td><td>"러닝 크루에서 워치 안 찬 사람이 나뿐이라 좀 신경 쓰였어요"</td><td class="xs">support</td><td><span class="b obs">직접</span></td><td class="xs qu">✕</td></tr>
+          <tr><td class="mono qu">＋ 4건</td><td class="xs qu">더 보기</td><td></td><td></td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="cc" style="flex:none;border-top:1px solid var(--line);padding:11px 13px;display:flex;flex-direction:column;gap:8px">
+      <div class="xs" style="display:flex;align-items:center;gap:8px">
+        <span class="lab">경험차원 커버리지</span>
+        <span class="b obs">Sense</span><span class="b obs">Feel</span><span class="b obs">Act</span><span class="b obs">Outcome</span>
+        <span class="b">Think</span><span class="b">Relate</span>
+        <span class="grow"></span><span class="fg">4 / 6</span>
+      </div>
+      <div class="xs">직접 붙인 <span class="mono">92418</span>이 Think를, <span class="mono">90117</span>이 Relate를 채우면 <span class="fg">6/6</span>이 되어 자동 보충 검색이 발동하지 않는다.</div>
+      <div class="xs" style="border:1px solid var(--inf-ln);background:var(--inf-bg);border-radius:6px;padding:7px 10px;color:var(--sec)">
+        ⚠ 같은 방향 rare <span class="fg">3건</span> 감지 · <span class="fg">미분화 Context 후보</span>로 올릴까요?
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card sunk rel" style="flex:none">
+  <span class="pin fl" style="top:-8px;left:-9px">3</span>
+  <div class="cc" style="padding:11px 14px;display:flex;align-items:center;gap:14px">
+    <span class="lab">자동 10건은 이렇게 뽑혔다</span>
+    <span class="chip">경험가설 8문장으로 검색</span><span class="xs qu">→</span>
+    <span class="chip">후보 50</span><span class="xs qu">→</span>
+    <span class="chip">지연 태깅 18</span><span class="xs qu">→</span>
+    <span class="chip on">quality × DPP</span><span class="xs qu">→</span>
+    <span class="chip">노출 10</span>
+    <span class="grow"></span>
+    <span class="xs qu">각 단계는 아래 변경점 ④~⑥ 참조 · 사람이 직접 붙인 건은 이 경로를 거치지 않고 <span class="fg">role은 붙일 때 지정</span>한다</span>
+  </div>
+</div>
+
+[[ANN]]
+<div class="it"><span class="pin">1</span><p><span class="tag new">신설</span><b>직접 찾아 붙이기.</b> 1.0에서 분석가가 원문을 손으로 뒤져 근거를 모으던 작업을 자동화하되, <b>그 손을 없애지는 않는다.</b> 같은 클러스터 안의 전체 문서를 대상으로 검색하고(filter 3키와 <em class="mono">evidence_level</em> · 밴드 · 목적축/제약축 선택 필터를 그대로 검색 조건으로 쓴다), 찾은 원문을 노출 건에 붙인다. 붙인 건은 <em class="mono">source: 직접</em>으로 구분돼 Evidence Package에 들어간다.</p></div>
+<div class="it"><span class="pin">2</span><p><span class="tag keep">유지</span><b>Evidence Package는 유일한 계약.</b> AS-IS는 클러스터 요약과 RAG Top-10을 STEP 10·11 프롬프트에 인라인으로 흘려넣었다. 계약 스키마 하나로 교체하면 STEP 10·11 프롬프트를 바꾸지 않고도 STEP 09를 개선할 수 있다. v8에서 추가된 것은 <em class="mono">novelty</em> 컬럼뿐이다.</p></div>
+<div class="it"><span class="pin">3</span><p><span class="tag new">신설</span><b>Experience Coverage와 에스컬레이션.</b> 선정 세트의 경험차원 태그 합집합이 6분의 4 미만이면 자동 보충 검색이 돈다. 같은 방향 rare가 3건 이상 모이면 "미분화 Context 후보" 플래그를 올려 수동 생성 검토로 보낸다 — Edge에서 새 세그먼트가 태어나는 경로다.</p></div>
+<div class="it"><span class="pin">4</span><p><span class="tag keep">유지</span><b>LDA 토픽맵을 지우지 않는다.</b> 1.0은 LDAVis를 사람이 눈으로 읽어 59개 Action을 썼고 λ도 도메인마다 다시 잡아야 했다. 2.0은 <b>토픽맵과 어휘 막대를 그대로 남기되</b> Action 문장을 여기서 끝내지 않는다 — Action은 토픽 가중치가 만든 라벨일 뿐이고, 그 라벨이 실제 원문으로 뒷받침되는지는 아직 확인되지 않았기 때문에 Action마다 근거 수집을 한 번 더 돌린다.</p></div>
+<div class="it"><span class="pin">5</span><p><span class="tag new">신설</span><b>클러스터 중심 문장을 기준선으로 고정한다.</b> centroid에 가장 가까운 문장은 이 구획이 무엇에 관한 것인지를 한 줄로 말해 준다. 동시에 <b>정의상 가장 전형적</b>이므로 <em class="mono">max_sim_to_known</em>이 높고 quality 순위에서는 내려간다(예시에서 31위). 그래서 순위표에 섞지 않고 <b>상단에 별도로 고정</b>한다 — 추천에서는 빼되, 중심을 모르면 아래 목록이 얼마나 가장자리인지 판단할 수 없다.</p></div>
+<div class="it"><span class="pin">6</span><p><span class="tag rep">치환</span><b>관련성 단독 정렬을 버린다.</b> AS-IS는 검색 순위가 <em>관련성 단독</em>으로 정해졌다. 그런데 관련성이 가장 높은 문서는 대개 실무자가 이미 아는 이야기다 — <b>근거로는 맞고 인사이트로는 0</b>이다. TO-BE는 두 항을 곱한다: <em class="mono">(1 − 0.5·max_sim_to_known)</em>은 아는 것과 유사하면 <b>감점</b>, <em class="mono">(1 + 0.3·combo_rarity)</em>는 조합이 희소하면 <b>가점</b>. 화면은 세 항을 컬럼으로 분해해 보여주고 <b>관련성 정렬 대비 순위 이동량</b>(▲23 · ▼8)을 함께 찍는다 — 공식만 적어두면 무슨 일이 일어났는지 아무도 확인할 수 없다. 두 정렬은 토글로 나란히 대조된다.</p></div>
+<div class="it"><span class="pin">—</span><p><span class="tag rep">치환</span><b>쿼리 2층 · HyDE.</b> AS-IS는 클러스터 TF-IDF 상위 5개를 이어 붙인 문자열로 인덱스 <em>전체</em>를 검색했다 — filter가 없어 클러스터 3의 근거에 클러스터 7 문서가 섞였고 추적할 스키마도 없었다. TO-BE는 <em class="mono">persona_query</em>(Desire 정의문 검증)와 <em class="mono">context_query</em>(경험차원 6종 + 반례 + Residual 8문장)로 나누고, filter 3키가 옵션이 아니라 <b>필수</b>다. 차원별로 나눠 검색하는 것 자체가 Coverage를 보장한다.</p></div>
+<div class="it"><span class="pin">—</span><p><span class="tag new">신설</span><b>코드 검증 4항목.</b> 생성된 쿼리를 LLM에게 다시 묻지 않고 코드로 검사한다 — (a) <em class="mono">anchor_context_ids</em> 합집합 = Context 전체 (b) 8문장에 dim 누락 없음 (c) "페르소나는"·"클러스터" 같은 분석 용어 금지어 정규식 (d) 미달 시 1회 재생성, 실패하면 <em class="mono">stage_7.json</em>에 <em class="mono">query_gen_fail</em> 기록. 쿼리 품질이 모델의 그날 컨디션이 아니라 계약이 된다.</p></div>
+<div class="it"><span class="pin">—</span><p><span class="tag rep">치환</span><b>리랭킹 재정의와 새로움 신호 5종.</b> <em class="mono">quality = relevance × (1 − 0.5·max_sim_to_known) × (1 + 0.3·combo_rarity)</em> — 아는 것에 페널티, 조합 희소에 보너스. MMR(λ=0.7) + rare 하드 쿼터가 서로 다른 목적함수로 충돌하던 것을 DPP 집합 선택 하나로 묶고 쿼터는 fallback으로 내렸다. 새로움 신호는 <em class="mono">dist_centroid · pred_entropy</em>(기존) + <em class="mono">max_sim_to_known · combo_rarity · emerging·lexical_surprise</em>(신설) 5종이며, 모두 대리 지표라 최종 10건에만 LLM Novelty Cross-check를 건다.</p></div>

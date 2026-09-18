@@ -1,0 +1,242 @@
+<!--h:2320-->
+<!--title:STEP 10 — Customer Action Map-->
+<!--sub:1.0 CAM의 행 구조를 그대로 승계하고 열의 단위를 Action으로 바꾼다 · 등급은 LLM이 아니라 기계가 판정한다-->
+<!--chat:rail-->
+
+[[MAIN]]
+<div class="card rel" style="flex:none">
+  <span class="pin fl" style="top:12px;left:-9px">1</span>
+  <div class="ch"><h3 style="color:var(--ind-fg)">[Cluster 0 — Persona 1]</h3>
+    <span style="font-size:15px;font-weight:590;letter-spacing:-.2px">귀로 건강 재는 러너</span>
+    <span class="grow"></span>
+    <span class="xs">근거 <span class="fg">27건</span> · 작성자 <span class="fg">15명</span> · Action <span class="fg">4개</span> · 신뢰도 <span class="fg">중</span></span>
+    <span class="seg" style="margin-left:8px"><span>‹</span><span class="on">P1 / 14</span><span>›</span></span></div>
+  <div class="cc" style="display:flex;gap:0">
+    <div style="flex:1.1;padding-right:16px">
+      <div class="lab">Desire <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">— STEP 08에서 확정됨 · 여기서 다시 생성하지 않는다</span></div>
+      <div class="sm" style="margin-top:6px;color:var(--fg)">운동 중 몸 상태를 최소한의 기기로 확인받고 싶어 함</div>
+      <div class="wrap" style="margin-top:9px"><span class="chip on">#심박</span><span class="chip on">#워치</span><span class="chip on">#러닝</span><span class="chip on">#챙기다</span><span class="chip on">#측정</span></div>
+    </div>
+    <div style="width:1px;background:var(--line);flex:none"></div>
+    <div style="flex:1;padding:0 16px">
+      <div class="lab">Goal</div>
+      <div class="xs" style="margin-top:6px;display:flex;flex-direction:column;gap:5px;color:var(--sec)">
+        <span>1. 러닝 흐름을 끊지 않고 심박을 확인한다</span>
+        <span>2. 기기를 늘리지 않고 운동·수면 데이터를 한 곳에 모은다</span>
+      </div>
+    </div>
+    <div style="width:1px;background:var(--line);flex:none"></div>
+    <div style="flex:1.15;padding-left:16px">
+      <div class="lab">Pain Points</div>
+      <div class="xs" style="margin-top:6px;display:flex;flex-direction:column;gap:5px;color:var(--sec)">
+        <span>1. 두 기기를 모두 챙기고 착용해야 하는 물리적 부담</span>
+        <span>2. 이어폰에 실제 측정 기능이 없어 기대가 해소되지 않음</span>
+        <span>3. 센서 정밀도에 대한 사전 불신이 수용을 막음</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card sunk rel" style="flex:none">
+  <span class="pin fl" style="top:-8px;left:-9px">2</span>
+  <div class="cc" style="padding:11px 14px;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap">
+      <span class="lab" style="flex:none">1.0의 4필드 한 번에 → 2.0의 4화면으로 펼침</span>
+      <span class="chip" style="flex:none">① 이름 · Desire <span class="mono xs qu">STEP 08</span></span><span class="xs qu" style="flex:none">→</span>
+      <span class="chip on" style="flex:none">② 상황 → <b>행동</b> → 장벽 <span class="mono xs">STEP 10</span></span><span class="xs qu" style="flex:none">→</span>
+      <span class="chip" style="flex:none">③ 페인포인트 우선순위 <span class="mono xs qu">STEP 10-B</span></span><span class="xs qu" style="flex:none">→</span>
+      <span class="chip" style="flex:none">④ 인사이트 <span class="mono xs qu">STEP 11</span></span>
+      <span class="grow"></span>
+    </div>
+    <div class="xs qu">AS-IS는 이 넷을 한 번의 LLM 호출로 뱉어 <span class="fg">상황과 결론만 있고 그 사이가 비어 있었다</span> — 비어 있던 자리가 아래 <b>행동 · 장벽</b> 행이다</div>
+  </div>
+</div>
+
+<div class="card rel" style="flex:none">
+  <span class="pin fl" style="top:12px;left:-9px">3</span>
+  <div class="ch"><h3>Customer Action Map</h3><span class="b ind">행 구조 1.0 승계 · 열 단위 = Action</span>
+    <span class="grow"></span>
+    <span class="xs"><span class="dotg o"></span> 관측 &nbsp;<span class="dotg i"></span> 추론 &nbsp;<span class="dotg s"></span> 추측</span></div>
+  <table>
+    <thead><tr>
+      <th style="width:92px"></th>
+      <th style="width:23.5%"><span class="fg">A1</span> <span class="qu mono">topic 7</span></th>
+      <th style="width:23.5%"><span class="fg">A2</span> <span class="qu mono">topic 3</span></th>
+      <th style="width:23.5%"><span class="fg">A3</span> <span class="qu mono">topic 6</span></th>
+      <th style="width:23.5%"><span class="fg">A4</span> <span class="qu mono">topic 1</span></th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="lab" style="background:var(--sunk)">상황<br><span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">Context</span></td>
+        <td>러닝 중 심박을 보려면 손목 기기가 필요한 상황이 반복된다 <span class="b obs">관측</span></td>
+        <td>이어폰만으로 측정되는지 확인할 방법이 없다 <span class="b obs">관측</span></td>
+        <td>측정값이 튀는 경험이 커뮤니티에 공유되어 있다 <span class="b obs">관측</span></td>
+        <td>운동 기록과 건강 기록이 서로 다른 앱에 남는다 <span class="b obs">관측</span></td>
+      </tr>
+      <tr style="background:var(--ind-bg)">
+        <td class="lab" style="background:color-mix(in srgb, var(--persona-blue-100) 14%, transparent);color:var(--ind-fg)">행동<br><span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400;color:var(--ind-fg)">Action · 신설</span></td>
+        <td class="fg">워치와 이어폰을 함께 챙겨 나가며 둘 다 착용한다 <span class="b obs">관측</span></td>
+        <td class="fg">이어폰만으로 심박이 측정되는지 찾아보고 커뮤니티에 묻는다 <span class="b obs">관측</span></td>
+        <td class="fg">정확도를 따지며 구매를 미룬다 <span class="b inf">추론</span></td>
+        <td class="fg">주 1회 기록을 손으로 옮긴다 <span class="b obs">관측</span></td>
+      </tr>
+      <tr>
+        <td class="lab" style="background:var(--sunk)">장벽<br><span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">Barrier · 신설</span></td>
+        <td>기기를 줄이면 기록이 끊긴다 — 줄일 수 없는 이유가 있다 <span class="b obs">관측</span></td>
+        <td>현재 이어폰에 측정 기능 자체가 없다 <span class="b obs">관측</span></td>
+        <td>정밀도를 스스로 검증할 수단이 없다 <span class="b inf">추론</span></td>
+        <td>두 앱 사이에 자동 연동 경로가 없다 <span class="b inf">추론</span></td>
+      </tr>
+      <tr>
+        <td class="lab" style="background:var(--sunk)">키워드<br><span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">Keywords</span></td>
+        <td class="xs">#워치 #챙기다 #둘다 #귀찮다</td>
+        <td class="xs">#심박 #측정 #이어폰 #가능</td>
+        <td class="xs">#정확도 #센서 #광학 #불신</td>
+        <td class="xs">#기록 #연동 #앱 #옮기다</td>
+      </tr>
+      <tr>
+        <td class="lab" style="background:var(--sunk)">Artifact</td>
+        <td class="xs">스마트워치, 심박 스트랩, 러닝 앱</td>
+        <td class="xs">광학 심박 센서 이어폰, 심박존 음성 알림</td>
+        <td class="xs">기준기 대조 리포트, 오차 공시</td>
+        <td class="xs">건강 데이터 허브, 자동 동기화</td>
+      </tr>
+      <tr>
+        <td class="lab" style="background:var(--sunk)">Sentiment</td>
+        <td><span class="mono fg">1.02</span><div class="bar" style="margin-top:4px"><i class="n" style="width:10%"></i></div></td>
+        <td><span class="mono fg">5.51</span><div class="bar" style="margin-top:4px"><i class="o" style="width:55%"></i></div></td>
+        <td><span class="mono fg">1.34</span><div class="bar" style="margin-top:4px"><i class="n" style="width:13%"></i></div></td>
+        <td><span class="mono fg">2.10</span><div class="bar" style="margin-top:4px"><i class="n" style="width:21%"></i></div></td>
+      </tr>
+      <tr>
+        <td class="lab" style="background:var(--sunk)">Opportunity<br><span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">ODI · 구역</span></td>
+        <td><span class="mono fg">14.98</span> <span class="b spe">F At-risk</span></td>
+        <td><span class="mono fg">12.49</span> <span class="b inf">C Competitive</span></td>
+        <td><span class="mono">1.00</span> <span class="b">잠정 · 미확정</span></td>
+        <td><span class="mono fg">9.30</span> <span class="b spe">F At-risk</span></td>
+      </tr>
+      <tr>
+        <td class="lab" style="background:var(--sunk)">근거</td>
+        <td class="xs"><span class="fg">11건</span> · 작성자 8 <span class="qu">· 반례 0</span></td>
+        <td class="xs"><span class="fg">12건</span> · 작성자 9 <span class="qu">· 반례 1</span></td>
+        <td class="xs" style="color:var(--spe)"><span class="fg">4건</span> · 작성자 3 · <b>반례 담론</b></td>
+        <td class="xs"><span class="fg">6건</span> · 작성자 5 <span class="qu">· 반례 0</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="row" style="flex:1;min-height:0">
+  <div class="card rel" style="flex:1.5;display:flex;flex-direction:column">
+    <span class="pin fl" style="top:12px;left:-9px">4</span>
+    <div class="ch"><h3>Action 상세</h3><span class="b ind mono">CL0-P1-A1</span>
+      <span class="seg" style="margin-left:6px"><span class="on">A1</span><span>A2</span><span>A3</span><span>A4</span></span>
+      <span class="grow"></span><span class="xs">1.0 장표의 Action 상세 페이지 구조 승계 · Reviews 포함</span></div>
+    <div class="cc" style="flex:1;display:flex;flex-direction:column;gap:0;overflow:hidden">
+      <table style="flex:none">
+        <tbody>
+          <tr><td class="lab" style="width:78px">Keywords</td><td class="xs">#워치 #챙기다 #둘다 #귀찮다</td></tr>
+          <tr><td class="lab">Action</td><td class="fg">워치와 이어폰을 함께 챙겨 나가며 둘 다 착용한다</td></tr>
+          <tr><td class="lab">Context</td><td>러닝 중 심박을 보려면 손목 기기가 필요한 상황이 반복된다</td></tr>
+          <tr><td class="lab">Barrier</td><td>기기를 줄이면 기록이 끊긴다 — 줄일 수 없는 이유가 있다</td></tr>
+          <tr><td class="lab">Artifact</td><td class="xs">스마트워치, 심박 스트랩, 러닝 앱, 암밴드</td></tr>
+          <tr><td class="lab">Sentiment</td><td><span class="mono fg">1.02</span> <span class="qu">/ 10 · 표본 1,566건</span></td></tr>
+        </tbody>
+      </table>
+      <div style="flex:1;min-height:0;border-top:1px solid var(--line);padding-top:10px;margin-top:2px">
+        <div class="lab">Reviews <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">— STEP 09 Evidence Package에서 그대로 올라온다 · 여기서 다시 검색하지 않는다</span></div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:7px">
+          <div class="xs" style="display:flex;gap:8px"><span class="mono qu" style="flex:none;width:44px">77930</span><span>"워치 안 차고 나가면 기록이 안 남으니까 결국 둘 다 챙긴다"</span><span class="b obs" style="flex:none">관측 근거</span></div>
+          <div class="xs" style="display:flex;gap:8px"><span class="mono qu" style="flex:none;width:44px">92418</span><span>"워치 놓고 나갔는데 이어폰만으로 심박 보이면 그날은 진짜 편했을 듯"</span><span class="b obs" style="flex:none">관측 근거</span></div>
+          <div class="xs" style="display:flex;gap:8px"><span class="mono qu" style="flex:none;width:44px">90117</span><span>"러닝 크루에서 워치 안 찬 사람이 나뿐이라 좀 신경 쓰였어요"</span><span class="b obs" style="flex:none">관측 근거</span></div>
+          <div class="xs" style="display:flex;gap:8px"><span class="mono qu" style="flex:none;width:44px">80233</span><span>"러닝앱이랑 건강앱이 따로 놀아서 주에 한 번 손으로 옮겨요"</span><span class="b" style="flex:none">A4로 이관</span></div>
+          <div class="xs" style="margin-top:2px;color:var(--ind-fg)">원문 8건 더 보기 ⌄</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card rel" style="width:390px;flex:none;display:flex;flex-direction:column">
+    <span class="pin fl" style="top:12px;left:-9px">5</span>
+    <div class="ch"><h3>등급 기계 판정</h3><span class="b">LLM은 등급을 매기지 않는다</span></div>
+    <div class="cc" style="flex:1;display:flex;flex-direction:column;gap:10px;overflow:hidden">
+      <div class="mono xs" style="border:1px solid var(--line2);border-radius:6px;padding:10px;background:var(--sunk);color:var(--sec);line-height:19px">
+        hits = retrieve(서술문, scope=이 Action의 Evidence Package)<br>
+        <span style="color:var(--obs)">if</span> hits ≥ 1 ∧ 어휘중첩 ≥ 0.40 → <span class="fg">관측</span> <span class="qu">+ 인용 id 부착</span><br>
+        <span style="color:var(--inf)">elif</span> 상위 서술에서 유도 가능 → <span class="fg">추론</span> <span class="qu">+ 유도 경로 부착</span><br>
+        <span style="color:var(--spe)">else</span> → <span class="fg">추측</span> <span class="qu">+ 근거 없음 표시</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <div class="xs" style="display:flex;align-items:center;gap:8px"><span class="b obs" style="width:44px;justify-content:center">관측</span><div class="bar" style="flex:1"><i class="o" style="width:67%"></i></div><span class="mono fg" style="width:52px;text-align:right">16 / 24</span></div>
+        <div class="xs" style="display:flex;align-items:center;gap:8px"><span class="b inf" style="width:44px;justify-content:center">추론</span><div class="bar" style="flex:1"><i class="w" style="width:25%"></i></div><span class="mono fg" style="width:52px;text-align:right">6 / 24</span></div>
+        <div class="xs" style="display:flex;align-items:center;gap:8px"><span class="b spe" style="width:44px;justify-content:center">추측</span><div class="bar" style="flex:1"><i class="n" style="width:8%"></i></div><span class="mono fg" style="width:52px;text-align:right">2 / 24</span></div>
+      </div>
+      <div class="xs" style="border:1px solid var(--line);border-radius:6px;padding:9px 10px;background:var(--panel)">
+        <span class="lab">판정 예시 — A3 행동</span>
+        <div style="margin-top:5px">"정확도를 따지며 구매를 미룬다"</div>
+        <div style="margin-top:5px;color:var(--inf)">→ 검색 히트 0건. 그러나 상황("측정값이 튀는 경험이 공유되어 있다")과 감정(유보)에서 유도 가능 → <b>추론</b></div>
+        <div class="xs qu" style="margin-top:4px">유도 경로: C3.상황 ∧ C3.감정 ⊢ 구매 유보</div>
+      </div>
+      <div class="xs" style="border:1px solid var(--spe-ln);background:var(--spe-bg);border-radius:6px;padding:9px 10px;color:var(--sec)">
+        <b style="color:var(--spe)">추측 2건은 화면에서 지우지 않는다.</b> 지우면 서술이 매끄러워지지만, 무엇이 근거 없이 쓰였는지 알 수 없게 된다. 추측 비율이 30%를 넘으면 이 페르소나는 <span class="fg">신뢰도 하</span>로 내려가고 STEP 11 종합에서 가중치가 깎인다.
+      </div>
+      <div class="xs" style="margin-top:auto;border-top:1px solid var(--line);padding-top:9px">
+        기회 영역 지도는 <span class="fg">STEP 10-B</span> 화면으로 옮겼다 — 이 화면의 Opportunity 행과 같은 값이라 두 번 그리지 않는다.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row" style="flex:none">
+  <div class="card" style="flex:1">
+    <div class="ch"><h3 style="color:var(--ind-fg)">수렴</h3><span class="xs qu">Action 전체를 하나의 의도로</span></div>
+    <div class="cc" style="display:flex;flex-direction:column;gap:9px">
+      <div style="display:flex;gap:9px;align-items:flex-start">
+        <span class="lab" style="width:34px;flex:none;padding-top:2px">의도</span>
+        <span class="sm" style="flex:1;color:var(--fg)">기기 하나로 운동과 건강 측정을 통합하고 싶어 함</span>
+        <span class="b spe" style="flex:none"><span class="dotg s"></span> 추측</span>
+      </div>
+      <div class="xs" style="margin-top:2px">－ 근거 컨텍스트: <span class="fg">C1</span>(중복 착용 부담) → <span class="fg">C2</span>(측정 기대)</div>
+      <div class="xs">－ 유도 컨텍스트: <span class="fg">C3</span>(정확도 불신) → 의도 실현의 전제 조건</div>
+    </div>
+  </div>
+
+  <div class="card rel" style="flex:1.1">
+    <span class="pin fl" style="top:12px;left:-9px">6</span>
+    <div class="ch"><h3 style="color:var(--ind-fg)">속성</h3></div>
+    <div class="cc">
+      <table>
+        <tbody>
+          <tr><td class="lab" style="width:96px">사용 맥락 / JTBD</td><td style="color:var(--ind-fg)">러닝 · 운동 중 착용 · 운동하는 동안 최소한의 기기로 심박 몸상태를 확인한다</td></tr>
+          <tr><td class="lab">여정 분포</td><td style="color:var(--ind-fg)">인지 50% &nbsp;·&nbsp; 탐색 35% &nbsp;·&nbsp; 비교 15%</td></tr>
+          <tr><td class="lab">감도</td><td style="color:var(--ind-fg)">기능 중 &nbsp;·&nbsp; 가격 중 &nbsp;·&nbsp; 브랜드 중</td></tr>
+          <tr><td class="lab">가치지향</td><td class="mono" style="color:var(--spe)">null</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card rel" style="flex:1.35">
+    <span class="pin fl" style="top:12px;left:-9px">7</span>
+    <div class="ch"><h3 style="color:var(--ind-fg)">처방</h3></div>
+    <div class="cc">
+      <table>
+        <tbody>
+          <tr><td class="lab" style="width:66px">인사이트</td><td>이어폰 단독 심박 측정으로 워치 병용 필요를 제거(C1). 측정 기능에 대한 기대가 이미 형성돼 있어 확장 여지가 큼(C2). 단, 1차는 비의료 심박 · 수면 지표로 제한(Stage 0 사내 제약: 의료적 효과 표현 제한). 핵심 지표인 신규 맥락 유입에 러닝 세그먼트가 기여 가능.</td></tr>
+          <tr><td class="lab">여정(가설)</td><td>ENTRY(운동 심박) &nbsp;→&nbsp; EXPAND(수면 측정) &nbsp;→&nbsp; COMMIT(건강 허브)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+[[ANN]]
+<div class="it"><span class="pin">1</span><p><span class="tag keep">유지</span><b>Actor 헤더는 1.0 CAM 그대로.</b> Desire · Goal · Pain Points 3분할 헤더는 1.0 장표의 형식 그대로다. 다만 이 값들은 여기서 <b>생성되지 않는다</b> — STEP 08에서 확정된 값을 표시만 한다. 서술하는 화면이 정의까지 하면 통계 구획과 산출물이 어긋난다.</p></div>
+<div class="it"><span class="pin">2</span><p><span class="tag rep">치환</span><b>4필드 한 번에 → 4화면으로 펼침.</b> 구현 버전의 LLM은 <em>이름 · 상황 · 페인포인트 · 인사이트</em> 네 필드를 한 번에 뱉었고, 그래서 <b>상황과 결론만 있고 그 사이가 비어 있었다.</b> 넷을 네 화면(08 / 10 / 10-B / 11)으로 펼치면 그 사이가 강제로 채워진다 — 비어 있던 자리가 이 화면의 <b>행동 · 장벽</b> 행이다.</p></div>
+<div class="it"><span class="pin">3</span><p><span class="tag rep">치환</span><b>행 구조 승계 · 열 단위를 Action으로.</b> Action · Context · Keywords · Sentiment · Opportunity 행은 1.0 CAM 그대로이고, Artifact는 1.0 상세 페이지에 있던 행을 매트릭스로 끌어올린 것이다. 바뀐 것은 <b>열의 단위</b>다 — 1.0도 열이 Action이었지만 각 열은 LDA 토픽 라벨일 뿐이었다. 2.0의 열은 <em class="mono">CL0-P1-A1</em>이라는 <b>계층 ID를 가진 구획</b>이라 Evidence Package와 1:1로 붙는다. 신설 행은 <b>장벽(Barrier)</b> 하나뿐이고, 상황 → 행동 → 장벽이 한 열 안에서 세로로 읽힌다.</p></div>
+<div class="it"><span class="pin">4</span><p><span class="tag keep">유지</span><b>Action 상세와 Reviews.</b> 1.0 장표는 Action 하나마다 Keywords · Action · Context · Artifact · Sentiment · Reviews를 담은 상세 페이지를 따로 뒀다. 그 구조를 그대로 승계하되 <b>Reviews를 다시 검색하지 않는다</b> — STEP 09 Evidence Package에서 확정된 인용이 그대로 올라온다. 1.0에서는 상세 페이지의 인용이 어느 절차로 선택됐는지 추적할 수 없었다.</p></div>
+<div class="it"><span class="pin">5</span><p><span class="tag new">신설</span><b>등급을 LLM이 스스로 매기지 않는다.</b> 인용할 원문이 있으면 <b>관측</b>, 유도만 가능하면 <b>추론</b>, 어느 쪽도 아니면 <b>추측</b> — 이 판정은 <em class="mono">retrieve(서술문, scope=이 Action의 Evidence Package)</em>의 히트 여부라는 <b>기계적 사실</b>로 결정된다. 모델에게 "이건 관측인가요"를 묻지 않는다. 물으면 모델은 자기가 방금 쓴 문장을 변호한다. 추측 건은 지우지 않고 남기며, 추측 비율 30% 초과 시 페르소나 신뢰도가 <b>하</b>로 내려가 STEP 11 종합에서 가중치가 깎인다.</p></div>
+<div class="it"><span class="pin">6</span><p><span class="tag rep">교정</span><b>서수 감도 · 분포형 여정 · null 허용.</b> 감도는 "기능 강"이 아니라 서수 <b>상 / 중 / 하</b>다. 여정은 단일 라벨이 범주 오류이므로 분포로 적고, 가치지향은 근거가 부족하면 <em class="mono">null</em>로 비운다 — 채우면 거짓 정밀도가 된다.</p></div>
+<div class="it"><span class="pin">7</span><p><span class="tag new">신설</span><b>처방에만 회사 컨텍스트를 주입한다.</b> 분석 목적 → 처방 방향, 핵심 지표 → 겨냥할 지표, 사내 제약 → 부정 제약. 여정 ENTRY → EXPAND → COMMIT은 예측이 아니라 <b>가설</b>로 표기한다. 해석 층(CAM · 속성)에는 주입하지 않는다 — 넣으면 발견이 가설에 맞춰 오염된다.</p></div>
+<div class="it"><span class="pin">—</span><p><span class="tag keep">이전</span><b>기회 영역 지도는 STEP 10-B로.</b> 이전 와이어프레임은 이 화면에도 Opportunity Map을 그렸는데, CAM의 Opportunity 행과 같은 값이라 두 번 그릴 이유가 없다. 지도는 10-B 한 곳에 두고 이 화면은 행으로만 참조한다.</p></div>
+<div class="it"><span class="pin">—</span><p><span class="tag new">신설</span><b>담론 단위 서술 + 반례 필수.</b> 각 칸은 "이 사람이 이랬다"가 아니라 "이 Action에서 이런 담론이 관측된다"로 쓴다. A3처럼 소수 담론이 <b>반례로 남아 있어야</b> A2의 기대가 무비판적으로 통과하지 않는다.</p></div>

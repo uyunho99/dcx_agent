@@ -1,0 +1,114 @@
+<!--h:1250-->
+<!--title:STEP 05 — 전처리 · 임베딩-->
+<!--sub:필요한 단계마다 각자 만들던 벡터를, 여기서 한 벌 만들어 전 단계가 가져다 쓴다-->
+<!--chat:rail-->
+
+[[MAIN]]
+<div class="row" style="flex:none">
+  <div class="card rel" style="flex:1.35">
+    <span class="pin fl" style="top:12px;left:-9px">4</span>
+    <div class="ch"><h3>필터 규칙</h3><span class="b">①② 기존 확정안 유지</span><span class="grow"></span><span class="xs">1.0 3종 전처리 중 ③만 바뀐다</span></div>
+    <div class="cc" style="display:flex;gap:14px">
+      <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:7px"><span class="b">①</span><span class="sm fg">광고 · 타겟 무관 제거</span><span class="b keep" style="margin-left:auto">유지</span></div>
+        <div class="xs">광고 패턴 정규식 · 제외 카페 · 링크 중복 · 저품질 컷(제목 5자 미만 AND 설명 10자 미만)</div>
+        <div style="display:flex;align-items:center;gap:7px;margin-top:6px"><span class="b">②</span><span class="sm fg">채널 특정 반복어 제거</span><span class="b keep" style="margin-left:auto">유지</span></div>
+        <div class="xs">"카페 회원님", "등업 신청" 등 채널 상투어 — 건수가 아니라 문자열이 줄어든다</div>
+        <div class="rel" style="display:flex;align-items:center;gap:7px;margin-top:6px"><span class="pin fl" style="top:-2px;left:-24px">1</span><span class="b ind">③</span><span class="sm fg">자연어 정제</span><span class="b ind" style="margin-left:auto">치환</span></div>
+        <div class="xs"><span style="text-decoration:line-through;color:var(--qui)">OKT 형태소 분해 → 명사 추출 → 불용어</span><br><span class="fg">Voyage 의미 임베딩 1024D</span>가 그 자리를 대신한다</div>
+      </div>
+      <div style="width:250px;flex:none;border-left:1px solid var(--line);padding-left:14px">
+        <div class="lab">데이터 깔때기</div>
+        <div style="margin-top:9px;display:flex;flex-direction:column;gap:7px">
+          <div><div class="xs" style="display:flex;justify-content:space-between"><span>수집 원본</span><span class="fg mono">128,400</span></div><div class="bar" style="margin-top:3px"><i class="n" style="width:100%"></i></div></div>
+          <div><div class="xs" style="display:flex;justify-content:space-between"><span>① 광고 · 무관 제거</span><span class="mono">−31,050</span></div><div class="bar" style="margin-top:3px"><i class="n" style="width:76%"></i></div></div>
+          <div><div class="xs" style="display:flex;justify-content:space-between"><span>저품질 컷</span><span class="mono">−18,450</span></div><div class="bar" style="margin-top:3px"><i class="n" style="width:61%"></i></div></div>
+          <div><div class="xs" style="display:flex;justify-content:space-between"><span class="fg">잔존 · 임베딩 대상</span><span class="fg mono">78,900</span></div><div class="bar" style="margin-top:3px"><i class="o" style="width:61%"></i></div></div>
+        </div>
+        <div class="xs qu" style="margin-top:9px">원본의 61.4%가 분석에 진입 · 1.0은 전처리 후 61.1%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card rel" style="flex:1">
+    <span class="pin fl" style="top:12px;left:-9px">2</span>
+    <div class="ch"><h3>임베딩 한 벌</h3><span class="b ind">Voyage · 1024D</span><span class="grow"></span><span class="xs">실행 중</span></div>
+    <div class="cc" style="display:flex;flex-direction:column;gap:11px">
+      <div><div class="bar" style="height:8px"><i style="width:84%"></i></div>
+        <div class="xs" style="margin-top:6px;display:flex;justify-content:space-between"><span>66,140 / 78,900</span><span>0벡터 폴백 <span class="fg">12</span>건</span></div></div>
+      <div class="xs" style="border:1px solid var(--line);border-radius:6px;padding:10px;background:var(--sunk)">
+        <div class="lab" style="margin-bottom:6px">한 벌이 어디로 가는가</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span>→ <span class="fg">STEP 06</span> 분류기 입력 · 프록시 선별</span>
+          <span>→ <span class="fg">STEP 07</span> K-means · dist_centroid</span>
+          <span>→ <span class="fg">STEP 09</span> Pinecone 적재 · 재계산 없음</span>
+        </div>
+      </div>
+      <div class="xs">AS-IS는 STEP 06이 모델 내부 임베딩 레이어를, STEP 07과 09가 Voyage를 각각 호출했다. 벡터 공간이 달라 공유가 불가능했고, 라벨링 중에는 벡터가 없어 문서를 고를 근거조차 없었다.</div>
+    </div>
+  </div>
+</div>
+
+<div class="row" style="flex:1;min-height:0">
+  <div class="card rel" style="flex:1">
+    <span class="pin fl" style="top:12px;left:-9px">3</span>
+    <div class="ch"><h3>known_insights 임베딩</h3><span class="b obs">신설</span><span class="grow"></span><span class="xs mono">max_sim_to_known 사전 계산</span></div>
+    <div class="cc" style="display:flex;flex-direction:column;gap:12px">
+      <div class="xs">실무자 문장 <span class="fg">24개</span>를 문서와 <span class="fg">동일 모델 · 동일 공간</span>으로 임베딩하고, 문서마다 기지 인사이트와의 최대 코사인을 미리 붙인다.</div>
+      <div>
+        <div class="lab">max_sim_to_known 분포 · 78,900건</div>
+        <div style="margin-top:9px;display:flex;align-items:flex-end;gap:3px;height:92px">
+          <div style="flex:1;height:14%;background:var(--line2);border-radius:2px 2px 0 0"></div>
+          <div style="flex:1;height:31%;background:var(--line2);border-radius:2px 2px 0 0"></div>
+          <div style="flex:1;height:58%;background:var(--line2);border-radius:2px 2px 0 0"></div>
+          <div style="flex:1;height:86%;background:var(--line-strong);border-radius:2px 2px 0 0"></div>
+          <div style="flex:1;height:100%;background:var(--action);border-radius:2px 2px 0 0"></div>
+          <div style="flex:1;height:74%;background:var(--indigo);border-radius:2px 2px 0 0"></div>
+          <div style="flex:1;height:42%;background:var(--indigo);border-radius:2px 2px 0 0"></div>
+          <div style="flex:1;height:19%;background:var(--indigo);border-radius:2px 2px 0 0"></div>
+        </div>
+        <div class="xs" style="margin-top:5px;display:flex;justify-content:space-between"><span>0.2</span><span class="qu">← 아직 모르는 것</span><span>0.6</span><span class="qu">이미 아는 것 →</span><span>0.9</span></div>
+      </div>
+      <div class="xs" style="border-top:1px solid var(--line);padding-top:10px">
+        STEP 09 리랭킹에서 <span class="mono fg">(1 − 0.5 · max_sim_to_known)</span> 페널티로 쓰인다. 추가 임베딩 호출은 24문장뿐이고 유사도는 문서 배치 루프 안에서 행렬 곱 한 번 — 여기서 계산하지 않으면 STEP 09에서 문서마다 다시 재야 한다.
+      </div>
+    </div>
+  </div>
+
+  <div class="col" style="flex:1">
+    <div class="card rel" style="flex:1">
+      <span class="pin fl" style="top:12px;left:-9px">6</span>
+      <div class="ch"><h3>형태소 토큰</h3><span class="b">기존 방법 전용</span><span class="grow"></span><span class="xs mono">tokens/{sid}/</span></div>
+      <div class="cc" style="display:flex;flex-direction:column;gap:10px">
+        <div class="bar"><i class="n" style="width:100%"></i></div>
+        <div class="xs">78,900건 완료 · SNA 명사 동시출현과 gensim LDA의 원재료. 두 갈래 비교가 <span class="fg">같은 입력에서 출발해야</span> 하므로 같은 자리에서 함께 만든다.</div>
+        <div class="xs" style="border:1px solid color-mix(in srgb, var(--warning) 28%, transparent);background:var(--inf-bg);border-radius:6px;padding:9px 10px;color:var(--sec)">
+          형태소 층이 사라지면서 여기 의존하던 두 계산의 입력이 바뀐다 — <span class="fg">STEP 07 c-TF-IDF 키워드</span>와 <span class="fg">STEP 10 감성사전 polarity</span>. 각 문서에 대체 경로가 명시돼야 한다.
+        </div>
+        <div class="xs qu">수정 방법으로 확정하면 이 단계는 끌 수 있다</div>
+      </div>
+    </div>
+
+    <div class="card rel" style="flex:none;border-color:color-mix(in srgb, var(--danger) 30%, transparent)">
+      <span class="pin fl" style="top:12px;left:-9px">5</span>
+      <div class="ch" style="background:var(--spe-bg)"><h3 style="color:var(--spe)">★ 선행 결정 · 임베딩 저장 포맷</h3></div>
+      <div class="cc"><div class="xs">100만 건 × 1024D(float32) ≈ <span class="fg">4GB</span>. 단일 <span class="mono">.npy</span>는 부분 로딩이 불가해 STEP 06 배치 라우팅과 STEP 09 적재가 모두 전체 로드를 요구한다.
+      <div class="seg" style="margin-top:9px;width:100%"><span class="on">샤딩 + 인덱스 맵</span><span>Parquet</span><span>미정</span></div></div></div>
+    </div>
+
+    <div class="card sunk" style="flex:none">
+      <div class="cc" style="padding:11px 14px;display:flex;align-items:center;gap:14px">
+        <span class="lab">산출 계약</span><span class="mono sm fg">stage_3.json</span>
+        <span class="xs">원본/후 건수 · 제거율 · 임베딩 실패(0벡터 폴백) 건수 — report.json으로 흘려보낼 결정론적 수치</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+[[ANN]]
+<div class="it"><span class="pin">1</span><p><span class="tag rep">치환</span><b>OKT 형태소 → 의미 임베딩.</b> 1.0의 자연어 정제는 형태소 분해가 중심이었다. 2.0은 Voyage 1024D 임베딩이 그 자리를 대신한다. 다만 형태소를 <em>없애지</em> 않고 기존 방법(SNA·LDA) 전용 원재료로 병행 산출한다 — 두 갈래를 비교하려면 같은 입력에서 출발해야 한다.</p></div>
+<div class="it"><span class="pin">2</span><p><span class="tag rep">치환</span><b>작업 신설이 아니라 위치 이동.</b> STEP 06·07·09가 각자 만들던 벡터를 여기 한 자리로 옮겼다. 총 계산량은 늘지 않고 오히려 중복 호출이 사라진다. 벡터 공간이 하나로 통일되면서 라벨링 중에도 문서를 고를 근거가 생긴다.</p></div>
+<div class="it"><span class="pin">3</span><p><span class="tag new">신설</span><b>기지 인사이트에 좌표를 준다.</b> RAG는 "질문에 관련된" 문서를 잘 찾는데, 관련성이 가장 높은 문서는 대개 실무자가 이미 아는 이야기다 — 근거로는 맞고 인사이트로는 0이다. <em class="mono">max_sim_to_known</em>이 그 판별 장치다.</p></div>
+<div class="it"><span class="pin">4</span><p><span class="tag keep">유지</span><b>필터 규칙 ①②.</b> 광고 필터, 제외 카페, 링크 중복 제거, 저품질 컷은 1.0과 동일하게 수행되며 이번 개정 대상이 아니다.</p></div>
+<div class="it"><span class="pin">5</span><p><span class="tag open">미결</span><b>저장 포맷 선행 결정.</b> 샤딩 + 인덱스 맵이냐 Parquet이냐. 이 결정이 STEP 06 escalate 큐의 응답 속도와 STEP 09 적재 방식을 동시에 묶는다.</p></div>
+<div class="it"><span class="pin">6</span><p><span class="tag open">미결</span><b>형태소 제거의 파급.</b> c-TF-IDF 키워드와 감성사전 기반 polarity가 형태소에 의존하고 있었다. STEP 07 키워드 추출과 STEP 10 만족도 계산의 대체 경로를 각 문서에 명시해야 한다.</p></div>

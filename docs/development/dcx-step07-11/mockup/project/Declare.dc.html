@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>STEP 01·02 — 입력 선언</title>
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+/* Person A Design System — handoff 번들의 토큰을 그대로 구현한다.
+   출처: project/styles.css → tokens/{fonts,colors,typography,spacing,base}.css
+   폰트·로고는 아티팩트 에셋으로 업로드해 /_blob/ 주소로 참조한다.
+   기존 화면 마크업이 쓰는 레거시 변수명은 맨 아래에서 이 토큰들에 별칭으로 연결한다. */
+
+/* ── tokens/fonts.css ── UI가 쓰는 400/500/600/700만 싣는다 (§3.1) */
+@font-face{font-family:Pretendard;font-weight:400;font-style:normal;font-display:swap;
+  src:url("/_blob/b61d00bb36beee27cff0927bae844311") format("woff2")}
+@font-face{font-family:Pretendard;font-weight:500;font-style:normal;font-display:swap;
+  src:url("/_blob/d7c65e026fbb548b5fa5045e0d4607aa") format("woff2")}
+@font-face{font-family:Pretendard;font-weight:600;font-style:normal;font-display:swap;
+  src:url("/_blob/cea76f29df8261db72490b8144c866a7") format("woff2")}
+@font-face{font-family:Pretendard;font-weight:700;font-style:normal;font-display:swap;
+  src:url("/_blob/6a3823c062967e5b736dd887f949c066") format("woff2")}
+
+/* ── tokens/colors.css ── */
+:root{
+/* brand */
+--persona-blue-100:#37b7f8;--persona-blue-soft:#e4f5fe;--persona-graphite-100:#68696e;
+/* action */
+--action:#0a73b5;--action-hover:#085d93;--action-soft:#e8f4fc;--on-action:#ffffff;
+/* surface & line */
+--surface:#f6f7f9;--surface-raised:#ffffff;--surface-sunken:#eceef1;--line:#e1e4e8;--line-strong:#7f838b;
+/* ink */
+--ink:#1c1e22;--ink-secondary:#55585f;--ink-subtle:#6a6e76;
+/* status */
+--success:#1b7446;--success-soft:#e6f6ec;--warning:#9a5b00;--warning-soft:#fff3dc;--danger:#c62828;--danger-soft:#fdeaea;
+/* semantic aliases */
+--text-secondary:var(--ink-secondary);--text-subtle:var(--ink-subtle);--text-link:var(--action);
+--surface-page:var(--surface);--surface-card:var(--surface-raised);--surface-header:var(--surface-sunken);
+--border-default:var(--line);--border-control:var(--line-strong);--focus-ring:var(--action);
+--selected-bg:var(--persona-blue-soft);--info:var(--action);--info-soft:var(--action-soft);
+}
+
+/* ── tokens/typography.css ── */
+:root{
+--font-sans:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",system-ui,sans-serif;
+--font-mono:"SF Mono",Menlo,Consolas,"D2Coding",monospace;
+--text-display-lg:700 32px/40px var(--font-sans);--tracking-display-lg:-0.02em;
+--text-display:700 24px/32px var(--font-sans);--tracking-display:-0.01em;
+--text-heading-lg:600 20px/28px var(--font-sans);
+--text-heading:600 16px/24px var(--font-sans);
+--text-body-lg:400 16px/24px var(--font-sans);
+--text-body:400 14px/20px var(--font-sans);
+--text-body-strong:600 14px/20px var(--font-sans);
+--text-label:500 13px/18px var(--font-sans);
+--text-caption:400 12px/16px var(--font-sans);
+--text-code:400 13px/20px var(--font-mono);
+--weight-regular:400;--weight-medium:500;--weight-semibold:600;--weight-bold:700;
+}
+
+/* ── tokens/spacing.css ── */
+:root{
+--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;--space-12:48px;
+--radius-sm:6px;--radius-md:10px;--radius-full:999px;
+--shadow-sm:0 1px 2px rgba(28,30,34,0.06);
+--shadow-md:0 8px 24px rgba(28,30,34,0.12),0 1px 2px rgba(28,30,34,0.06);
+--motion:150ms ease-out;
+--control-md:36px;--control-sm:28px;--badge-h:22px;
+--sidebar-w:240px;--content-max:1200px;--card-min:280px;
+}
+
+/* ── 레거시 별칭 ── 14개 화면 마크업이 참조하는 이름들 */
+:root{
+--canvas:var(--surface);--panel:var(--surface-raised);--raise:var(--surface-raised);--sunk:var(--surface-sunken);
+--fg:var(--ink);--sec:var(--ink-secondary);--mut:var(--ink-secondary);--qui:var(--ink-subtle);
+--line2:var(--line-strong);--act:var(--action);--act-fg:var(--on-action);
+--indigo:var(--persona-blue-100);--ind-fg:var(--action);--ind-deep:var(--action-hover);
+--ind-bg:var(--action-soft);--ind-ln:var(--action);
+--obs:var(--success);--inf:var(--warning);--spe:var(--danger);
+--obs-bg:var(--success-soft);--inf-bg:var(--warning-soft);--spe-bg:var(--danger-soft);
+--obs-ln:var(--success);--inf-ln:var(--warning);--spe-ln:var(--danger);
+}
+
+/* ── tokens/base.css ── */
+*{box-sizing:border-box}
+body{margin:0;font:var(--text-body);color:var(--ink);background:var(--surface);
+  -webkit-font-smoothing:antialiased;word-break:keep-all;overflow-wrap:break-word}
+a{color:var(--action);text-decoration:none}a:hover{color:var(--action-hover);text-decoration:underline}
+:focus-visible{outline:2px solid var(--action);outline-offset:2px}
+.mono{font:var(--text-code);font-variant-numeric:tabular-nums;word-break:normal;white-space:nowrap}
+
+/* ---------- artboard ---------- */
+.art{width:1440px;background:var(--surface);display:flex;flex-direction:column}
+.app{display:flex;flex-direction:column;flex:1;min-height:0}
+
+/* ---------- app header ---------- */
+.top{height:56px;flex:none;display:flex;align-items:center;gap:var(--space-3);
+  padding:0 var(--space-4);border-bottom:1px solid var(--line);background:var(--surface-raised)}
+.brand{display:flex;align-items:center;gap:var(--space-2);font:var(--text-body-strong);
+  color:var(--ink);white-space:nowrap}
+.brand .dot{width:32px;height:32px;flex:none;border-radius:var(--radius-sm);
+  background:url("/_blob/3f933f71922cb48295ada36d5be25263") center/contain no-repeat}
+.top .sep{width:1px;height:18px;background:var(--line)}
+.pill{display:inline-flex;align-items:center;gap:var(--space-1);height:var(--control-sm);
+  padding:0 var(--space-3);border-radius:var(--radius-sm);font:var(--text-label);
+  color:var(--ink-secondary);background:transparent;border:1px solid transparent;
+  white-space:nowrap;transition:background var(--motion)}
+.pill:hover{background:var(--surface-sunken)}
+.pill.on{background:var(--surface-sunken);color:var(--ink);border-color:var(--line)}
+.grow{flex:1}
+
+/* ---------- Button (§7.1) ---------- */
+.btn{display:inline-flex;align-items:center;gap:var(--space-2);height:var(--control-md);
+  padding:0 var(--space-4);border-radius:var(--radius-sm);font:var(--text-body-strong);
+  border:1px solid var(--line-strong);background:var(--surface-raised);color:var(--ink);
+  white-space:nowrap;transition:background var(--motion),border-color var(--motion)}
+.btn:hover{background:var(--action-soft)}
+.btn.pri{background:var(--action);color:var(--on-action);border-color:var(--action)}
+.btn.pri:hover{background:var(--action-hover);border-color:var(--action-hover)}
+.btn.gho{background:transparent;border-color:transparent;color:var(--action)}
+.btn.gho:hover{background:var(--action-soft)}
+.btn.dng{background:var(--danger);color:var(--on-action);border-color:var(--danger)}
+.btn.sm,.btn.lg{height:var(--control-sm);padding:0 var(--space-3);font:var(--text-label)}
+.btn.lg{height:var(--control-md);padding:0 var(--space-6);font:var(--text-body-strong)}
+
+/* ---------- body split (§4.4) ---------- */
+.body{display:flex;flex:1;min-height:0}
+.side{width:var(--sidebar-w);flex:none;border-right:1px solid var(--line);background:var(--surface);
+  padding:var(--space-3) var(--space-2);overflow:hidden}
+.side .grp{font:var(--text-caption);font-weight:var(--weight-semibold);color:var(--ink-subtle);
+  padding:var(--space-4) var(--space-3) var(--space-2)}
+.step{display:flex;align-items:center;gap:var(--space-2);height:34px;padding:0 var(--space-3);
+  border-radius:var(--radius-sm);font:var(--text-label);color:var(--ink-secondary);
+  white-space:nowrap;transition:background var(--motion)}
+.step:hover{background:var(--surface-sunken)}
+.step.on{background:var(--selected-bg);color:var(--ink)}
+.step .no{font:var(--text-caption);color:var(--ink-subtle);width:36px;flex:none;
+  font-variant-numeric:tabular-nums}
+.step.on .no{color:var(--action)}
+.step .st{margin-left:auto;width:8px;height:8px;border-radius:var(--radius-full);
+  background:var(--line-strong);flex:none;opacity:.45}
+.step .st.done{background:var(--success);opacity:1}
+.step .st.run{background:var(--warning);opacity:1}
+.step .st.cur{background:var(--action);opacity:1}
+.side .note{margin:var(--space-3) var(--space-2);padding:var(--space-3);
+  border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-raised)}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--surface)}
+.mhead{flex:none;padding:var(--space-6) var(--space-8) var(--space-4);border-bottom:1px solid var(--line)}
+.mhead h1{margin:0;font:var(--text-display);letter-spacing:var(--tracking-display)}
+.mhead .sub{margin-top:var(--space-2);font:var(--text-body);color:var(--ink-secondary)}
+.mbody{flex:1;min-height:0;padding:var(--space-6) var(--space-8);
+  display:flex;flex-direction:column;gap:var(--space-4)}
+
+/* ---------- context panel ---------- */
+.chat{width:320px;flex:none;border-left:1px solid var(--line);background:var(--surface-raised);
+  display:flex;flex-direction:column}
+.chat.rail{width:52px;align-items:center;padding-top:var(--space-3);gap:var(--space-4)}
+.chat .chead{flex:none;height:48px;display:flex;align-items:center;gap:var(--space-2);
+  padding:0 var(--space-4);border-bottom:1px solid var(--line);font:var(--text-heading);white-space:nowrap}
+.chat .cbody{flex:1;min-height:0;padding:var(--space-4);display:flex;flex-direction:column;
+  gap:var(--space-3);overflow:hidden}
+.chat .cfoot{flex:none;padding:var(--space-3) var(--space-4);border-top:1px solid var(--line)}
+.msg{border:1px solid var(--line);border-radius:var(--radius-md);padding:var(--space-3);
+  background:var(--surface-raised);font:var(--text-body);color:var(--ink)}
+.msg.me{background:var(--action-soft);border-color:var(--action-soft)}
+.msg .who{display:block;font:var(--text-caption);color:var(--ink-subtle);margin-bottom:var(--space-1)}
+.input{height:var(--control-md);border:1px solid var(--line-strong);border-radius:var(--radius-sm);
+  background:var(--surface-raised);display:flex;align-items:center;padding:0 var(--space-3);
+  font:var(--text-body);color:var(--ink-subtle)}
+
+/* ---------- Card (§7.3) — 보더로 구분, 정적 카드에 그림자 없음 ---------- */
+.card{border:1px solid var(--line);border-radius:var(--radius-md);
+  background:var(--surface-raised);overflow:hidden}
+.card.sunk{background:var(--surface-sunken)}
+.card>.ch{display:flex;align-items:center;gap:var(--space-2);
+  padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--line)}
+.card>.ch h3{margin:0;font:var(--text-heading);white-space:nowrap}
+.card>.cc{padding:var(--space-4)}
+.lab{font:var(--text-label);color:var(--ink-secondary);white-space:nowrap}
+.row{display:flex;gap:var(--space-4)}
+.row>*{min-width:0}
+.col{display:flex;flex-direction:column;gap:var(--space-4);min-width:0}
+.sm{font:var(--text-body);color:var(--ink-secondary)}
+.xs{font:var(--text-caption);color:var(--ink-secondary)}
+.mu,.qu{color:var(--ink-subtle)} .fg{color:var(--ink)}
+
+/* ---------- Badge (§7.4) — 텍스트가 의미, 색은 보조 ---------- */
+.b{display:inline-flex;align-items:center;gap:var(--space-1);height:var(--badge-h);
+  padding:0 var(--space-2);border-radius:var(--radius-sm);font:var(--text-label);
+  background:var(--surface-sunken);color:var(--ink-secondary);border:1px solid transparent;
+  white-space:nowrap;flex:none}
+.b.ind{background:var(--info-soft);color:var(--info)}
+.b.obs{background:var(--success-soft);color:var(--success)}
+.b.inf{background:var(--warning-soft);color:var(--warning)}
+.b.spe{background:var(--danger-soft);color:var(--danger)}
+.b.brand{background:var(--persona-blue-soft);color:var(--ink)}
+.b.solid{background:var(--ink);color:var(--on-action)}
+.b.pill{border-radius:var(--radius-full)}
+.dotg{width:8px;height:8px;border-radius:var(--radius-full);display:inline-block;flex:none}
+.dotg.o{background:var(--success)} .dotg.i{background:var(--warning)} .dotg.s{background:var(--danger)}
+
+/* ---------- Table (§7.5) — dense 변형: 로그·관리 화면 ---------- */
+table{width:100%;border-collapse:collapse;background:var(--surface-raised)}
+th,td{text-align:left;font:var(--text-label);font-weight:var(--weight-regular);
+  padding:var(--space-2) var(--space-3);border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:var(--weight-medium);color:var(--ink-secondary);background:var(--surface-sunken);
+  white-space:nowrap}
+td{color:var(--ink)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:none}
+
+/* ---------- meters ---------- */
+.bar{height:8px;border-radius:var(--radius-full);background:var(--surface-sunken);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--persona-blue-100)}
+.bar>i.n{background:var(--line-strong)} .bar>i.o{background:var(--success)} .bar>i.w{background:var(--warning)}
+.kv{display:flex;align-items:baseline;gap:var(--space-2)}
+.kv b{font:var(--text-display);letter-spacing:var(--tracking-display);
+  font-variant-numeric:tabular-nums;white-space:nowrap;flex:none}
+.kpi{display:flex;flex-direction:column;gap:var(--space-1);padding:var(--space-4);
+  border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-raised)}
+.kpi .v{font:var(--text-display);letter-spacing:var(--tracking-display);
+  font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:var(--space-1);height:var(--control-sm);
+  padding:0 var(--space-3);border-radius:var(--radius-sm);border:1px solid var(--line-strong);
+  background:var(--surface-raised);font:var(--text-label);color:var(--ink);white-space:nowrap;
+  transition:background var(--motion)}
+.chip.on{background:var(--selected-bg);border-color:var(--action);color:var(--ink)}
+.chip.off{color:var(--ink-subtle);border-color:var(--line);background:var(--surface-sunken)}
+.wrap{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.fld{border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface-raised);
+  padding:var(--space-2) var(--space-3);font:var(--text-body);color:var(--ink);min-height:var(--control-md)}
+.fld.ph{color:var(--ink-subtle);background:var(--surface-sunken);border-color:var(--line)}
+.seg{display:inline-flex;padding:2px;border:1px solid var(--line);border-radius:var(--radius-sm);
+  background:var(--surface-sunken)}
+.seg>span{height:var(--control-sm);display:inline-flex;align-items:center;padding:0 var(--space-3);
+  border-radius:4px;font:var(--text-label);color:var(--ink-secondary);white-space:nowrap;
+  transition:background var(--motion)}
+.seg>span.on{background:var(--surface-raised);color:var(--ink);box-shadow:var(--shadow-sm)}
+
+/* ---------- annotation pins ---------- */
+.pin{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;
+  border-radius:var(--radius-full);background:var(--action-soft);color:var(--action);
+  font:var(--text-caption);font-weight:var(--weight-semibold);flex:none;font-variant-numeric:tabular-nums}
+.pin.fl{position:absolute;z-index:5;background:var(--surface-raised);color:var(--action);
+  border:1px solid var(--action);box-shadow:0 0 0 3px var(--surface)}
+.rel{position:relative}
+.ann{flex:none;border-top:1px solid var(--line);background:var(--surface-sunken);
+  padding:var(--space-6) var(--space-8)}
+.ann h4{margin:0 0 var(--space-1);font:var(--text-heading)}
+.ann .lead{margin:0 0 var(--space-4);font:var(--text-caption);color:var(--ink-secondary)}
+.ann .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-3) var(--space-6)}
+.ann .it{display:flex;gap:var(--space-2)}
+.ann .it p{margin:0;font:var(--text-caption);color:var(--ink-secondary)}
+.ann .it p em{font-style:normal;color:var(--ink-subtle)}
+.ann .it p b{font-weight:var(--weight-semibold);color:var(--ink)}
+.tag{display:inline-block;font:var(--text-caption);font-weight:var(--weight-medium);
+  padding:1px var(--space-2);border-radius:var(--radius-sm);background:var(--surface-sunken);
+  color:var(--ink-secondary);margin-right:var(--space-1);white-space:nowrap}
+.tag.rep{background:var(--action-soft);color:var(--action)}
+.tag.new{background:var(--success-soft);color:var(--success)}
+.tag.keep{background:var(--surface-sunken);color:var(--ink-secondary)}
+.tag.open{background:var(--danger-soft);color:var(--danger)}
+
+/* ---------- keyword board ---------- */
+.kw{display:inline-flex;align-items:center;gap:var(--space-1);height:var(--control-sm);
+  padding:0 var(--space-3);border-radius:var(--radius-full);font:var(--text-label);
+  border:1px solid var(--line);background:var(--surface-raised);color:var(--ink);white-space:nowrap}
+.kw.old{background:var(--surface-sunken);color:var(--ink-secondary)}
+.kw.new{background:var(--action-soft);border-color:var(--action);color:var(--action)}
+.kw.rej{background:transparent;color:var(--ink-subtle);text-decoration:line-through;
+  border-color:var(--line);border-style:dashed}
+.kw.man{background:var(--success-soft);border-color:var(--success);color:var(--success)}
+.kw.sug{background:var(--persona-blue-soft);border-color:var(--persona-blue-100);color:var(--ink)}
+.kw .sc{font:var(--text-caption);font-weight:var(--weight-semibold);padding:0 var(--space-1);
+  border-radius:var(--radius-sm);font-variant-numeric:tabular-nums}
+.kw .sc.hi{background:var(--success-soft);color:var(--success)}
+.kw .sc.mid{background:var(--warning-soft);color:var(--warning)}
+.kw .sc.lo{background:var(--danger-soft);color:var(--danger)}
+.axis{border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-raised);overflow:hidden}
+.axis>.ah{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-3) var(--space-4);
+  background:var(--surface-sunken);border-bottom:1px solid var(--line);
+  font:var(--text-label);font-weight:var(--weight-semibold);white-space:nowrap}
+.sub{display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-3) var(--space-4);
+  border-bottom:1px solid var(--line)}
+.sub:last-child{border-bottom:none}
+.sub>.sh{display:flex;align-items:center;gap:var(--space-2);font:var(--text-label);
+  color:var(--ink-secondary);white-space:nowrap}
+.sub>.sh .car{color:var(--ink-subtle);width:10px}
+.sub>.sh .cnt{color:var(--ink-subtle);font-variant-numeric:tabular-nums}
+.drop{border:1px dashed var(--action);background:var(--action-soft);border-radius:var(--radius-md)}
+
+  </style>
+</helmet>
+<div class="art" style="width: 1440px; height: 1500px;">
+  <div class="app">
+    <header class="top">
+  <div class="brand"><span class="dot"></span>DCX Agent</div>
+  <span class="sep"></span>
+  <span class="pill on">에어팟 프로 3 · 운동·건강 맥락 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg></span>
+  <span class="pill">세션 3개</span>
+  <span class="grow"></span>
+  <span class="pill">작업 2건 실행 중</span>
+  <span class="pill">문서 검색</span>
+  <span class="btn gho">내보내기</span>
+  <span class="btn pri">세션 저장</span>
+</header>
+    <div class="body">
+      <nav class="side"><div class="grp">Data Defining</div><div class="step"><span class="no">00</span><span>세션</span><span class="st done"></span></div><div class="step on"><span class="no">01·02</span><span>입력 선언</span><span class="st cur"></span></div><div class="step"><span class="no">03</span><span>키워드 설계</span><span class="st "></span></div><div class="step"><span class="no">04</span><span>데이터 수집</span><span class="st "></span></div><div class="grp">Data Sensing</div><div class="step"><span class="no">05</span><span>전처리 · 임베딩</span><span class="st "></span></div><div class="step"><span class="no">06-A</span><span>모델 학습</span><span class="st "></span></div><div class="step"><span class="no">06-B</span><span>근거 판정</span><span class="st "></span></div><div class="step"><span class="no">07</span><span>군집</span><span class="st "></span></div><div class="step"><span class="no">08</span><span>페르소나</span><span class="st "></span></div><div class="step"><span class="no">09</span><span>근거 수집</span><span class="st "></span></div><div class="grp">Data Shaping</div><div class="step"><span class="no">10-A</span><span>Customer Action Map</span><span class="st "></span></div><div class="step"><span class="no">10-B</span><span>기회 영역</span><span class="st "></span></div><div class="step"><span class="no">11-A</span><span>인사이트 도출</span><span class="st "></span></div><div class="step"><span class="no">11-B</span><span>경험 디자인 컨셉</span><span class="st "></span></div><div class="grp">운영</div><div class="step"><span class="no">ADM</span><span>프롬프트 관리</span><span class="st "></span></div><div class="note"><div class="lab">활성 선언</div>
+    <p class="xs" style="margin:6px 0 0;color:var(--sec)">무선 이어폰을 운동·건강 맥락에서 재정의할 미충족 니즈를 찾는다</p>
+    <p class="xs" style="margin:6px 0 0">STEP 01 한줄 정의 · 전 단계 프롬프트 헤더로 상주</p></div></nav>
+      <main class="main">
+        <div class="mhead"><h1>STEP 01·02 — 입력 선언</h1><div class="sub">한 번 쓰이고 버려지던 입력을, 파이프라인 끝까지 따라가는 맥락으로</div></div>
+        <div class="mbody">
+<div class="row" style="flex:1;min-height:0">
+
+  <div class="card rel" style="flex:1.12;display:flex;flex-direction:column">
+    <span class="pin fl" style="top:12px;left:-9px">1</span>
+    <div class="ch"><h3>STEP 01 · 프로젝트 개요</h3><span class="b ind">가드레일</span><span class="grow"></span><span class="xs">7필드 전부 필수 · 전 단계 프롬프트에 상주</span></div>
+    <div class="cc" style="flex:1;display:flex;flex-direction:column;gap:13px;overflow:hidden">
+
+      <div><div class="lab">한줄 정의 <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">— 모든 프롬프트의 첫 줄</span></div>
+        <div class="fld" style="margin-top:6px">무선 이어폰을 운동·건강 맥락에서 재정의할 미충족 니즈를 찾는다</div></div>
+
+      <div><div class="lab">리서치 질문 <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">— 1.0 problemDef 승계</span></div>
+        <div class="fld" style="margin-top:6px;min-height:58px">러너가 운동 중 몸 상태를 확인하려 할 때 기기를 두 개 쓰게 만드는 것은 무엇이고, 그 부담은 어디서 포기로 바뀌는가?</div></div>
+
+      <div><div class="lab">프로젝트 성격</div>
+        <div class="seg" style="margin-top:6px;display:flex"><span style="flex:1;justify-content:center">브랜딩</span><span class="on" style="flex:1;justify-content:center">신규기획</span><span style="flex:1;justify-content:center">리뉴얼</span><span style="flex:1;justify-content:center">UX개선</span></div>
+        <div class="xs" style="margin-top:5px">→ STEP 03 발산 톤 분기 · 신규기획은 미충족 니즈 쪽으로</div></div>
+
+      <div><div class="lab">분석 목적</div>
+        <div class="seg" style="margin-top:6px;display:flex"><span class="on" style="flex:1;justify-content:center">니즈탐색</span><span style="flex:1;justify-content:center">마케팅전략</span><span style="flex:1;justify-content:center">컨셉발굴</span><span style="flex:1;justify-content:center">세그먼트개척</span></div>
+        <div class="xs" style="margin-top:5px">→ STEP 09 가설 쿼리 방향 · STEP 11-D 처방 방향</div></div>
+
+      <div class="row" style="gap:12px">
+        <div style="flex:1"><div class="lab">핵심 지표 <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">— 측정이 아니라 방향 지시자</span></div>
+          <div class="wrap" style="margin-top:6px"><span class="chip on">운동 세션 지속률</span><span class="chip on">헬스 기능 활성화율</span><span class="chip off">＋ 추가</span></div></div>
+        <div style="flex:1"><div class="lab" style="color:var(--spe)">사내 제약 <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">— 부정 제약 · 처방 차단</span></div>
+          <div class="wrap" style="margin-top:6px"><span class="chip">의료적 효과 표현 금지</span><span class="chip">신규 센서 하드웨어 추가 불가</span><span class="chip off">＋ 추가</span></div></div>
+      </div>
+
+      <div><div class="lab">브랜드 포지셔닝</div>
+        <div style="margin-top:6px;display:grid;grid-template-columns:64px repeat(3,minmax(0,1fr));gap:4px">
+          <div></div><div class="xs" style="text-align:center">리더</div><div class="xs" style="text-align:center">챌린저</div><div class="xs" style="text-align:center">신규진입</div>
+          <div class="xs" style="display:flex;align-items:center">프리미엄</div>
+          <div class="chip" style="justify-content:center;height:34px"></div>
+          <div class="chip on" style="justify-content:center;height:34px">선택</div>
+          <div class="chip" style="justify-content:center;height:34px"></div>
+          <div class="xs" style="display:flex;align-items:center">가성비</div>
+          <div class="chip" style="justify-content:center;height:34px"></div>
+          <div class="chip" style="justify-content:center;height:34px"></div>
+          <div class="chip" style="justify-content:center;height:34px"></div>
+        </div>
+        <div class="xs" style="margin-top:6px">리더는 미사용층, 챌린저는 경쟁사 사용층 — 포지션이 STEP 11-D 처방 톤을 보정한다</div></div>
+    </div>
+  </div>
+
+  <div class="col" style="flex:1">
+    <div class="card rel" style="flex:1;display:flex;flex-direction:column">
+      <span class="pin fl" style="top:12px;left:-9px">2</span>
+      <div class="ch"><h3>STEP 02 · 분석 대상</h3><span class="b">초기 기준선</span><span class="grow"></span><span class="xs">전부 선택 · 하드 필터 아님</span></div>
+      <div class="cc" style="flex:1;display:flex;flex-direction:column;gap:12px;overflow:hidden">
+
+        <div><div class="lab">제품군 대 › 중 › 소 <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">— 대분류만 필수</span></div>
+          <div class="row" style="gap:6px;margin-top:6px"><div class="fld" style="flex:1">음향기기</div><div class="fld" style="flex:1">무선이어폰</div><div class="fld ph" style="flex:1">커널형</div></div></div>
+
+        <div class="row" style="gap:12px">
+          <div style="flex:1.3"><div class="lab">연령대</div><div class="wrap" style="margin-top:6px"><span class="chip">10대</span><span class="chip on">20대</span><span class="chip on">30대</span><span class="chip on">40대</span><span class="chip">50대+</span></div></div>
+          <div style="flex:1"><div class="lab">성별</div><div class="wrap" style="margin-top:6px"><span class="chip off">전체</span></div><div class="xs" style="margin-top:5px">미선택은 전체</div></div>
+        </div>
+
+        <div><div class="lab">가구 형태</div><div class="wrap" style="margin-top:6px"><span class="chip on">1인</span><span class="chip on">신혼</span><span class="chip">영유아</span><span class="chip">학령기</span><span class="chip">시니어동거</span></div></div>
+
+        <div><div class="lab">생애주기</div><div class="wrap" style="margin-top:6px"><span class="chip">학생</span><span class="chip on">사회초년생</span><span class="chip">육아기</span><span class="chip">자녀독립</span><span class="chip">은퇴</span></div></div>
+
+        <div><div class="lab">미래 고객 정의 <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">— STEP 11-D FUTURE 판정 기준</span></div>
+          <div class="wrap" style="margin-top:6px"><span class="chip on">경쟁·대체재 사용층</span><span class="chip on">인접 니즈</span><span class="chip">관망층</span><span class="chip">이탈 재유입</span></div></div>
+
+        <div class="rel" style="border:1px solid var(--ind-ln);background:color-mix(in srgb, var(--persona-blue-100) 6%, transparent);border-radius:6px;padding:10px 12px">
+          <div class="lab" style="color:var(--action-hover)">프롬프트 주입 문구</div>
+          <p class="sm" style="margin:5px 0 0;color:var(--fg)">"이 범위를 우선 탐색하되 범위 밖 발견도 배제하지 말 것"</p>
+          <p class="xs" style="margin:5px 0 0">해석에는 개입하지 않는다. STEP 10·11에서 발견과 <span class="fg">맨 끝에서 한 번 대조</span>되어 격차를 드러낸다.</p>
+        </div>
+
+        <div class="xs rel" style="border-top:1px dashed var(--line2);padding-top:9px"><span class="pin fl" style="top:6px;right:-9px">6</span>
+          소득은 입력에서 제외 — 관측 불가이며 거짓 정밀도 우려. STEP 10-C <span class="fg">가격 감도 상·중·하</span>로 대체한다.
+          기존 <span class="mono" style="font-size:11.5px">ages</span>(주부·직장인·1인가구)는 가구 형태와 생애주기 축으로 분해 흡수했다.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row" style="flex:none">
+  <div class="card rel" style="flex:1">
+    <span class="pin fl" style="top:12px;left:-9px">3</span>
+    <div class="ch"><h3>known_insights</h3><span class="b obs">신설</span><span class="grow"></span><span class="xs">5~10문장 · 입력 위치는 STEP 05–06 문서 §4가 "STEP 01·02에서 입력받는다"로 지정한 것 — STEP 01·02 문서의 13필드에는 없다</span></div>
+    <div class="cc" style="display:flex;gap:16px">
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+        <div class="fld">러너는 심박을 보려고 워치를 추가로 착용한다</div>
+        <div class="fld">땀이 많은 사용자는 이어팁 이탈을 가장 큰 불만으로 든다</div>
+        <div class="fld ph">＋ 이미 알고 있는 사실을 한 문장씩 적는다</div>
+      </div>
+      <div class="xs" style="width:420px;border-left:1px solid var(--line);padding-left:16px">
+        여기 적힌 것과 겹치는 문서는 STEP 09 리랭킹에서 페널티를 받는다 —<br>
+        <span class="mono fg" style="font-size:11.5px;white-space:normal">quality = relevance<br>&nbsp;&nbsp;× (1 − 0.5 · max_sim_to_known)<br>&nbsp;&nbsp;× (1 + 0.3 · combo_rarity)</span><br><br>
+        적지 않으면 RAG가 <span class="fg">이미 아는 이야기</span>를 근거로 되돌려준다.
+      </div>
+    </div>
+  </div>
+</div>
+        </div>
+      </main>
+      <aside class="chat"><div class="chead"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-secondary)" stroke-width="1.7"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3v-5.5A8 8 0 0 1 11 4h2a8 8 0 0 1 8 8Z"/></svg>에이전트<span class="grow"></span><span class="b">선언 보조</span></div>
+<div class="cbody">
+  <div class="msg"><span class="who">에이전트</span>리서치 질문 템플릿을 제안합니다.<br><span class="qu">"[대상]이 [상황]에서 [행동]하려 할 때 무엇이 막는가?"</span></div>
+  <div class="msg me"><span class="who">나</span>사내 제약에 뭘 더 넣어야 할까?</div>
+  <div class="msg"><span class="who">에이전트</span>선택하신 성격(신규기획)과 지표를 보면 <span class="fg">장시간 착용 배터리</span> 관련 제약이 빠져 있습니다. STEP 11-F 컨셉 검증에서 걸릴 가능성이 높습니다.</div>
+  <div class="msg" style="border-color:var(--ind-ln)"><span class="who">검증</span>필수 7필드 중 <span class="fg">7개</span> 입력됨 · 선택 6필드 중 5개<br><span class="b obs" style="margin-top:6px">STEP 03 진행 가능</span></div>
+</div>
+<div class="cfoot"><div class="input">방향을 지시하거나 질문하세요</div></div></aside>
+    </div>
+  </div>
+  <section class="ann">
+    <h4>1.0 대비 변경점</h4>
+    <p class="lead"><span class="tag rep">치환</span>AS-IS가 있고 대체된다 &nbsp;<span class="tag new">신설</span>AS-IS 없음 · 새로 꽂는다 &nbsp;<span class="tag keep">유지</span>기존 확정 재확인 &nbsp;<span class="tag open">미결</span>답이 필요한 것</p>
+    <div class="grid"><div class="it"><span class="pin">1</span><p><span class="tag rep">치환</span><b>3필드 → 13필드.</b> 바뀐 것은 필드 수가 아니라 도달 범위다. AS-IS의 <em class="mono">bk · problemDef · ages</em>는 R1 키워드 프롬프트의 타겟 묘사 한 곳에서 끝났다. TO-BE는 한줄 정의가 전 단계 헤더로 상주해 STEP 09 쿼리와 STEP 10·11 처방까지 같은 맥락 위에서 생성된다.</p></div>
+<div class="it"><span class="pin">2</span><p><span class="tag rep">치환</span><b>01은 가드레일, 02는 기준선.</b> STEP 01은 회사가 확실히 아는 사실이라 위반하면 오류다. STEP 02는 소비자에 대한 가설이라 해석에 개입시키지 않고 STEP 10·11에서 대조만 한다 — 알아내려는 것을 미리 답으로 넣으면 순환이 된다(사후 세분화).</p></div>
+<div class="it"><span class="pin">3</span><p><span class="tag new">신설</span><b>known_insights 입력.</b> "이건 이미 아는 것"을 판별할 장치가 파이프라인에 아예 없었다. 5~10문장을 받아 STEP 05에서 좌표를 부여하고, STEP 09 리랭킹의 페널티 항으로 쓴다.</p></div>
+<div class="it"><span class="pin">4</span><p><span class="tag rep">치환</span><b>채널 선정 소멸.</b> 1.0이 선행연구로 11개 채널을 수기 선정하던 스텝이 사라진다. 네이버 카페 단일 채널로 고정되고, 채널 선택은 STEP 04 크롤 설정의 <em class="mono">cafes / excludeCafes</em> 필터로 이동한다.</p></div>
+<div class="it"><span class="pin">5</span><p><span class="tag rep">치환</span><b>자유서술 → 선택형 분기.</b> 기존 와이어프레임은 프로젝트 성격·분석 목적을 한 필드 자유서술로 받았다. 선택형이어야 STEP 03 발산 톤 분기와 STEP 10·11 대조가 코드로 성립한다 — 선택 + 보충 서술 하이브리드.</p></div>
+<div class="it"><span class="pin">6</span><p><span class="tag rep">치환</span><b>소득 제거 · ages 분해.</b> 소득은 소셜 데이터로 관측 불가라 거짓 정밀도가 된다. STEP 10-C 가격 감도 서수(상·중·하)로 대체했고, 직업·가구·생애주기가 한 축에 섞여 있던 <em class="mono">ages</em>는 두 축으로 분해했다.</p></div></div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,225 @@
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Liquid Glass — DESIGN.apple.md + DESIGN copy.md 오버레이
+   _shell.css(Linear) 위에 표면 언어만 덮어쓴다. 구조·밀도는 Linear 유지.
+
+   두 문서를 이렇게 나눠 적용한다:
+   · DESIGN.apple.md  → 지면 · 색 · 타이포 · 라운드 · 버튼 문법 (규율)
+   · DESIGN copy.md   → 블록의 재질 (리퀴드 글래스)
+
+   Apple md의 "장식적 그라디언트 금지"를 따라 지면은 평평한 파치먼트로 비운다.
+   떠 보이는 힘은 배경이 아니라 블록 자체의 재질에서 나온다 —
+   상단 스페큘러 · 림 굴절 · 하단 두께 · 접지 그림자 4겹.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root{
+  /* 단일 액센트 = Persona Blue. Apple의 Action Blue 자리를 브랜드가 대신한다.
+     #37B7F8은 흰 배경 2.26:1이라 채움 전용이고, 글자·테두리는 같은 hue의 #0678B1이 맡는다. */
+  --indigo:#37B7F8; --ind-fg:#0678B1; --ind-deep:#055D8A; --focus:#0892D9;
+  --ind-bg:rgba(55,183,248,.16); --ind-ln:rgba(6,120,177,.38);
+
+  /* Apple md — ink / muted 계단 */
+  --fg:#1B1C20; --sec:#3A3B40; --mut:#55565B; --qui:#68696E;
+  --line:#E2E3E7; --line2:#CFD0D5;
+
+  /* Apple md — 파치먼트 지면 · 펄 버튼 */
+  --canvas:#f2f2f5; --pearl:#fafafc; --hairline:#e0e0e0; --divider:#f0f0f0;
+  --act:#1d1d1f; --act-fg:#ffffff;
+
+  /* 유리 */
+  --glass:rgba(255,255,255,.62);
+  --panel:var(--glass); --raise:rgba(255,255,255,.80); --sunk:rgba(255,255,255,.34);
+  --blur:blur(30px) saturate(190%);
+
+  /* Apple md — radius scale */
+  --r-sm:8px; --r-md:11px; --r-lg:18px; --r-pill:9999px;
+
+  /* 세 등급은 데이터 인코딩이라 남긴다 — 다만 Apple 톤에 맞춰 채도를 낮춘다 */
+  --obs:oklch(0.48 0.10 158); --inf:oklch(0.52 0.11 68); --spe:oklch(0.50 0.15 22);
+  --obs-bg:oklch(0.48 0.10 158 / 0.11); --inf-bg:oklch(0.52 0.11 68 / 0.12); --spe-bg:oklch(0.50 0.15 22 / 0.10);
+  --obs-ln:oklch(0.48 0.10 158 / 0.32); --inf-ln:oklch(0.52 0.11 68 / 0.34); --spe-ln:oklch(0.50 0.15 22 / 0.30);
+}
+
+/* ── 타이포 ── SF Pro → Inter 대체. Apple 가중치 사다리 300/400/600/700 (500 없음) */
+body{font-family:"SF Pro Display","SF Pro Text",system-ui,-apple-system,BlinkMacSystemFont,
+  'Inter','Noto Sans KR','Apple SD Gothic Neo',sans-serif}
+.mono{font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,monospace}
+.brand,.side .grp,.mhead h1,.card>.ch h3,.lab,th,.kv b,.kpi .v,.pin,
+.ann h4,.ann .it p b,.tag,.kw .sc,.axis>.ah,.chat .chead{font-weight:600}
+.btn,.kw,.step.on,.msg .who{font-weight:400}
+.mhead h1{letter-spacing:-.5px}          /* Apple tight */
+.kpi .v,.kv b{letter-spacing:-.5px}
+
+/* ── 지면 ── 장식적 그라디언트가 아니라 '표면색 변화'로 층을 만든다.
+   Apple md: 높이감은 (a) 표면색 변화 (b) backdrop-blur에서 온다.
+   하드 스톱이라 워시가 아니라 타일이다 — 유리판이 타일 경계를 가로지를 때
+   그 단차가 판을 통과해 비쳐서 비로소 '굴절'이 보인다. */
+.art{background:var(--canvas)}
+.main{background:transparent}
+.mbody{background:repeating-linear-gradient(180deg,
+  #f0f0f4 0, #f0f0f4 470px, #f7f7fa 470px, #f7f7fa 940px)}
+.mhead{background:#fafafc;border-bottom:1px solid var(--line)}
+
+/* ── 글로벌 내비 ── Apple md: 진짜 검정, 12px 조용한 링크 */
+.top{background:#000;border-bottom:none}
+.top .sep{background:rgba(255,255,255,.22)}
+.brand{color:#fff;font-size:13px}
+.brand .dot{background:var(--indigo);border-radius:5px;box-shadow:none}
+.pill{color:rgba(255,255,255,.72);font-size:12px;letter-spacing:-.12px;border-radius:var(--r-sm)}
+.pill:hover{background:rgba(255,255,255,.10);color:#fff}
+.pill.on{background:rgba(255,255,255,.12);color:#fff;border-color:transparent}
+.top .btn{background:#1d1d1f;border:none;color:#fff;border-radius:var(--r-sm);box-shadow:none}
+.top .btn.pri{background:var(--ind-fg);border-radius:var(--r-pill);padding:0 18px}
+
+/* ── 사이드 · 채팅 ── 얇은 유리 */
+.side{background:rgba(237,238,242,.88);border-right:1px solid var(--line);
+  -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.chat{background:rgba(237,238,242,.88);border-left:1px solid var(--line);
+  -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.chat .chead,.chat .cfoot{border-color:var(--line)}
+.step{border-radius:var(--r-md);transition:background 240ms ease}
+.step:hover{background:rgba(0,0,0,.035)}
+.step.on{background:rgba(55,183,248,.20);color:var(--fg)}
+.step.on .no{color:var(--indigo)}
+.step .st.cur{background:var(--indigo);box-shadow:0 0 0 3px rgba(55,183,248,.30)}
+.side .note{border-radius:var(--r-lg);background:rgba(255,255,255,.62);border-color:var(--line)}
+
+/* ══════════════════════════════════════════════════════════════
+   리퀴드 글래스 블록 — 이 테마의 전부
+   지면이 평평하므로 떠 보이는 힘은 전적으로 재질에서 나온다.
+   ① 상단 스페큘러  ② 림 굴절  ③ 하단 두께  ④ 접지 그림자
+   ══════════════════════════════════════════════════════════════ */
+.card,.kpi,.axis{
+  position:relative;
+  border:none;
+  border-radius:var(--r-lg);
+  background:linear-gradient(176deg,
+      rgba(255,255,255,.96) 0%,
+      rgba(250,251,254,.72) 14%,
+      rgba(246,248,252,.62) 52%,
+      rgba(249,250,253,.70) 88%,
+      rgba(255,255,255,.92) 100%);
+  -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,1),               /* ① 상단 스페큘러 */
+    inset 0 20px 26px -18px rgba(255,255,255,1),       /* ① 상단 렌즈 */
+    inset 0 -18px 28px -18px rgba(29,29,31,.26),       /* ③ 하단 두께 */
+    inset 0 -1px 0 rgba(255,255,255,.80),
+    inset 0 0 0 .5px rgba(255,255,255,.70),            /* ② 안쪽 림 */
+    0 0 0 .5px rgba(29,29,31,.13),                     /* 유리판 절단면 */
+    0 2px 3px rgba(29,29,31,.07),                      /* ④ 근접 접지 */
+    0 20px 46px -16px rgba(29,29,31,.30);              /* ④ 원거리 접지 */
+  transition:box-shadow 480ms cubic-bezier(.22,1,.36,1),
+             transform 480ms cubic-bezier(.22,1,.36,1);
+}
+/* ② 림 굴절 — 테두리를 따라 도는 밝은 띠. 유리가 빛을 꺾는 자리다. */
+.card::before,.kpi::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:3;
+  padding:1.5px;
+  background:linear-gradient(142deg,
+      rgba(255,255,255,1) 0%,
+      rgba(255,255,255,.92) 12%,
+      rgba(255,255,255,.18) 33%,
+      rgba(29,29,31,.10) 52%,
+      rgba(255,255,255,.28) 74%,
+      rgba(255,255,255,.98) 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+          mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+          mask-composite:exclude;
+}
+.card:hover{
+  transform:translateY(-1px);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,1),
+    inset 0 20px 26px -18px rgba(255,255,255,1),
+    inset 0 -18px 28px -18px rgba(29,29,31,.26),
+    inset 0 -1px 0 rgba(255,255,255,.80),
+    inset 0 0 0 .5px rgba(255,255,255,.70),
+    0 0 0 .5px rgba(29,29,31,.13),
+    0 4px 7px rgba(29,29,31,.09),
+    0 34px 66px -18px rgba(29,29,31,.36);
+}
+/* 유리 안에 잠긴 판 — 얕게, 테두리 없이 */
+.card.sunk{
+  background:rgba(255,255,255,.26);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.8),
+    inset 0 -1px 0 rgba(255,255,255,.4),
+    inset 0 -8px 14px -12px rgba(29,29,31,.16),
+    0 0 0 .5px rgba(29,29,31,.10);
+}
+.card.sunk::before{display:none}
+.card>.ch{border-bottom:1px solid rgba(29,29,31,.07);background:transparent}
+.kpi{padding:12px 14px}
+
+/* ── 표 ── 평평한 지면 덕에 별도 배킹이 필요 없다. 헤더만 살짝 눌러 둔다. */
+table{background:transparent}
+th{background:rgba(29,29,31,.035);color:var(--mut);border-bottom:1px solid rgba(29,29,31,.10);
+  text-transform:uppercase;letter-spacing:.03em}
+th,td{border-bottom:1px solid rgba(29,29,31,.06)}
+td{color:var(--sec)}
+
+/* ── 버튼 ── Apple md의 3문법: 블루 필 · 고스트 필 · 펄 캡슐 */
+.btn{                                   /* 펄 캡슐 */
+  background:var(--pearl);border:1px solid var(--divider);border-radius:var(--r-md);
+  color:var(--sec);box-shadow:0 0 0 2px var(--divider);
+  transition:transform 180ms cubic-bezier(.22,1,.36,1)}
+.btn:active{transform:scale(.95)}
+.btn.pri{                               /* 블루 필 */
+  background:var(--ind-fg);color:#fff;border:none;border-radius:var(--r-pill);
+  padding:0 20px;box-shadow:none}
+.btn.gho{                               /* 고스트 필 */
+  background:transparent;border:1px solid var(--ind-fg);color:var(--ind-fg);
+  border-radius:var(--r-pill);padding:0 18px;box-shadow:none}
+.top .btn:active{transform:scale(.95)}
+
+/* ── 칩 · 세그먼트 · 입력 ── 필 문법 */
+.chip{border-radius:var(--r-pill);background:rgba(255,255,255,.72);border-color:var(--line2);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
+.chip.on{background:rgba(55,183,248,.22);border:1.5px solid var(--ind-fg);color:var(--ind-deep);
+  font-weight:600;padding:0 9px}
+.chip.off{background:transparent;box-shadow:none}
+.seg{border-radius:var(--r-pill);background:rgba(29,29,31,.05);border:none;padding:2px}
+.seg>span{border-radius:var(--r-pill);transition:all 320ms cubic-bezier(.22,1,.36,1)}
+.seg>span.on{background:#fff;color:var(--fg);
+  box-shadow:0 1px 3px rgba(29,29,31,.10),inset 0 1px 0 rgba(255,255,255,1)}
+.input{border-radius:var(--r-pill);background:#fff;border:1px solid rgba(0,0,0,.08);
+  box-shadow:none}
+.fld{border-radius:var(--r-md);background:rgba(255,255,255,.78);border:1px solid var(--line2);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
+.fld.ph{background:rgba(255,255,255,.44)}
+
+/* ── 배지 · 마커 ── */
+.b{border-radius:5px;background:rgba(255,255,255,.72);border-color:var(--line2)}
+.b.solid{background:var(--act);border-color:transparent}
+.b.ind{background:rgba(55,183,248,.22);border-color:var(--ind-fg);color:var(--ind-deep)}
+.tag{border-radius:5px;background:rgba(255,255,255,.72)}
+.tag.keep{background:rgba(29,29,31,.05)}
+.bar{background:rgba(29,29,31,.09);border-radius:var(--r-pill);box-shadow:none}
+.bar>i{background:var(--indigo)}
+.bar>i.n{background:var(--qui)}
+.msg{border-radius:var(--r-md);background:rgba(255,255,255,.62);border-color:var(--line)}
+.msg.me{background:var(--ind-bg);border-color:var(--ind-ln)}
+.kw{background:rgba(255,255,255,.72);border-color:var(--line2)}
+.kw.old{background:rgba(29,29,31,.05)}
+.drop{border-radius:var(--r-lg);background:rgba(55,183,248,.10)}
+.axis>.ah{background:transparent;border-bottom:1px solid rgba(29,29,31,.07)}
+
+/* 핀 — 작은 유리 알갱이 */
+.pin{border-radius:50%;background:var(--ind-bg);border-color:var(--ind-ln);color:var(--ind-deep)}
+.pin.fl{background:#fff;border:.5px solid rgba(27,28,32,.14);color:var(--ind-fg);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,1),0 1px 2px rgba(29,29,31,.10),
+             0 6px 14px -6px rgba(29,29,31,.30)}
+
+/* ── 주석 스트립 ── 파치먼트, 평평하게 */
+.ann{background:#e9e9ee;border-top:1px solid rgba(29,29,31,.12)}
+
+/* ── SVG 중립 마크만 Apple 톤으로 ── 블루는 parts가 이미 브랜드 색을 들고 있다 */
+[stroke="#D5D6DA"],[stroke="#C6C7CB"]{stroke:rgba(27,28,32,.14)}
+[stroke="#A8A9AE"],[fill="#A8A9AE"]{stroke:rgba(27,28,32,.28);fill:rgba(27,28,32,.28)}
+[fill="#9A9BA0"]{fill:rgba(27,28,32,.30)}
+[fill="#68696E"],[stroke="#68696E"]{fill:#68696E;stroke:#68696E}
+[fill="#55565B"],[stroke="#55565B"]{fill:#55565B;stroke:#55565B}
+[fill="#3A3B40"]{fill:#3A3B40}
+[fill="#1B1C20"]{fill:#1B1C20}

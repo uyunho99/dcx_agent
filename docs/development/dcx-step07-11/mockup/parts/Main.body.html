@@ -1,0 +1,83 @@
+<!--h:1150-->
+<!--title:세션-->
+<!--sub:프로젝트 단위 컨텍스트 저장소 · 선언 13필드와 known_insights가 세션에 귀속된다-->
+<!--chat:rail-->
+
+[[MAIN]]
+<div class="row" style="gap:12px">
+  <div class="kpi" style="flex:1"><span class="lab">활성 세션</span><span class="v">3</span><span class="xs">에어팟 프로 3 · 무선주전자 · 공기청정기</span></div>
+  <div class="kpi" style="flex:1"><span class="lab">누적 수집 문서</span><span class="v">412,880</span><span class="xs">3개 세션 합계 · 중복 제거 후</span></div>
+  <div class="kpi" style="flex:1"><span class="lab">확정 인사이트</span><span class="v">19</span><span class="xs">STEP 11-E에서 known_insights로 승격</span></div>
+  <div class="kpi rel" style="flex:1"><span class="pin fl" style="top:-8px;right:-8px">2</span><span class="lab">known_insights 풀</span><span class="v">24<span class="xs" style="font-weight:400"> 문장</span></span><span class="xs">STEP 05 임베딩 기준점으로 주입됨</span></div>
+</div>
+
+<div class="row" style="flex:1;min-height:0">
+  <div class="card rel" style="flex:1;display:flex;flex-direction:column">
+    <span class="pin fl" style="top:10px;left:-9px">1</span>
+    <div class="ch"><h3>세션 목록</h3><span class="b">최근 갱신순</span><span class="grow"></span><span class="chip off">보관됨 4</span></div>
+    <div style="flex:1;overflow:hidden">
+      <table>
+        <thead><tr><th style="width:200px">세션 · 제품군</th><th>한줄 정의 · STEP 01</th><th style="width:112px">진행</th><th class="n" style="width:80px">문서</th><th style="width:86px">상태</th></tr></thead>
+        <tbody>
+          <tr style="background:color-mix(in srgb, var(--persona-blue-100) 4%, transparent)">
+            <td><div style="color:var(--fg);font-weight:510">에어팟 프로 3</div><div class="xs">음향기기 › 무선이어폰 › 커널형</div></td>
+            <td>무선 이어폰을 운동·건강 맥락에서 재정의할 미충족 니즈를 찾는다<div class="xs" style="margin-top:3px">신규기획 · 니즈탐색 · 챌린저/프리미엄</div></td>
+            <td><div class="bar" style="width:92px"><i style="width:78%"></i></div><div class="xs" style="margin-top:4px">STEP 09 근거 수집</div></td>
+            <td class="n">128,400</td>
+            <td><span class="b ind">실행 중</span></td>
+          </tr>
+          <tr>
+            <td><div style="color:var(--fg);font-weight:510">무선 주전자 리뉴얼</div><div class="xs">주방가전 › 전기포트 › 온도조절형</div></td>
+            <td>기존 사용자가 온도 조절 기능을 왜 쓰지 않는지 밝힌다<div class="xs" style="margin-top:3px">리뉴얼 · UX개선 · 리더/가성비</div></td>
+            <td><div class="bar" style="width:92px"><i class="o" style="width:100%"></i></div><div class="xs" style="margin-top:4px">STEP 11 완료</div></td>
+            <td class="n">186,240</td>
+            <td><span class="b">완료</span></td>
+          </tr>
+          <tr>
+            <td><div style="color:var(--fg);font-weight:510">공기청정기 신규</div><div class="xs">생활가전 › 공기청정기 › 대용량</div></td>
+            <td>영유아 가구가 공기질을 판단하는 실제 단서를 찾는다<div class="xs" style="margin-top:3px">신규기획 · 세그먼트개척 · 신규진입</div></td>
+            <td><div class="bar" style="width:92px"><i class="n" style="width:22%"></i></div><div class="xs" style="margin-top:4px">STEP 03 키워드 R2</div></td>
+            <td class="n">98,240</td>
+            <td><span class="b">일시정지</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="border-top:1px solid var(--line);padding:11px 14px;display:flex;align-items:center;gap:10px">
+      <span class="xs">세션을 열면 STEP 01·02 선언이 전 단계 프롬프트 헤더로 다시 주입된다</span>
+      <span class="grow"></span><span class="btn">세션 복제</span><span class="btn pri">새 세션 시작</span>
+    </div>
+  </div>
+
+  <div class="col" style="width:380px;flex:none">
+    <div class="card">
+      <div class="ch"><h3>새 세션 시작</h3><span class="b ind">선언 13필드</span></div>
+      <div class="cc" style="display:flex;flex-direction:column;gap:10px">
+        <div><div class="lab">세션명</div><div class="fld" style="margin-top:5px">에어팟 프로 3 · 운동·건강 맥락</div></div>
+        <div><div class="lab">제품군 대분류 <span style="color:var(--spe)">필수</span></div><div class="fld ph" style="margin-top:5px">음향기기</div></div>
+        <div class="xs" style="border:1px solid var(--line);border-radius:6px;padding:9px 10px;background:var(--sunk)">
+          세션을 만들면 곧바로 <span class="fg">STEP 01·02 입력 선언</span>으로 이동한다. 선언이 비어 있으면 STEP 03 키워드 발산이 시작되지 않는다.
+        </div>
+        <div style="display:flex;gap:8px"><span class="btn gho">취소</span><span class="btn pri" style="flex:1;justify-content:center">생성하고 선언으로 이동</span></div>
+      </div>
+    </div>
+
+    <div class="card rel" style="flex:1;min-height:0;display:flex;flex-direction:column">
+      <span class="pin fl" style="top:10px;left:-9px">3</span>
+      <div class="ch"><h3>known_insights 풀</h3><span class="b">bk 단위 누적</span></div>
+      <div class="cc" style="flex:1;display:flex;flex-direction:column;gap:7px;overflow:hidden">
+        <div class="sm" style="border-left:2px solid var(--ind-ln);padding-left:9px">러너는 심박을 보려고 워치를 추가로 착용한다</div>
+        <div class="sm" style="border-left:2px solid var(--ind-ln);padding-left:9px">땀이 많은 사용자는 이어팁 이탈을 가장 큰 불만으로 든다</div>
+        <div class="sm" style="border-left:2px solid var(--ind-ln);padding-left:9px">수면 측정은 착용 부담 때문에 중도 포기가 잦다</div>
+        <div class="xs" style="border-top:1px dashed var(--line2);padding-top:8px">＋ 21문장 · 전사 풀 6문장은 참고 표시만</div>
+        <div class="xs" style="color:var(--spe)">★ 공유 범위 미결 — 전사 풀을 novelty 계산에 넣으면 카테고리가 다른 인사이트가 과도한 페널티를 준다</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+[[ANN]]
+<div class="it"><span class="pin">1</span><p><span class="tag rep">치환</span><b>세션이 선언을 갖는다.</b> AS-IS 세션은 <em>bk</em> 문자열 하나였다. TO-BE 세션은 STEP 01·02의 13필드를 보유한 컨텍스트 저장소이고, 모든 단계가 여기서 맥락을 읽는다.</p></div>
+<div class="it"><span class="pin">2</span><p><span class="tag new">신설</span><b>known_insights 풀.</b> 실무자가 이미 아는 것에 좌표를 준다. STEP 05에서 문서와 같은 공간에 임베딩되어 <em class="mono">max_sim_to_known</em>의 기준점이 되고, 세션이 끝나면 STEP 11-E 확정 인사이트가 append되어 다음 세션의 기준선이 자동으로 올라간다.</p></div>
+<div class="it"><span class="pin">3</span><p><span class="tag open">미결</span><b>공유 범위.</b> bk 단위 누적이냐 전사 풀이냐. 전사 풀이면 다른 제품의 인사이트가 이 세션의 novelty를 깎는다 — bk 누적 + 전사 풀은 참고 표시만 하는 절충안이 유력하다.</p></div>
+<div class="it"><span class="pin">4</span><p><span class="tag keep">유지</span><b>세션 재개 · 비동기 작업.</b> 세션 목록, 중단 지점 복귀, 상단바의 실행 중 작업 표시는 기존 구조를 그대로 승계한다.</p></div>

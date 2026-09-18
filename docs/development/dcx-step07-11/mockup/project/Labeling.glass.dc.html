@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>STEP 06 — 근거 판정</title>
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
+  <style>
+/* Person A 디자인 시스템 — DESIGN.persona.md 기준
+   토큰·스케일·규칙을 그대로 구현한다. 레거시 변수명(--fg/--sec/--panel …)은
+   기존 화면 마크업이 쓰고 있으므로 새 토큰에 별칭으로 연결한다. */
+:root{
+  /* brand — 로고·선택 상태·히어로에만. 버튼 채움·아이콘 금지 */
+  --persona-blue-100:#37b7f8; --persona-blue-soft:#e4f5fe; --persona-graphite-100:#68696e;
+  /* action — 제품 UI의 액션 색 */
+  --action:#0a73b5; --action-hover:#085d93; --action-soft:#e8f4fc; --on-action:#ffffff;
+  /* surface & line */
+  --surface:#f6f7f9; --surface-raised:#ffffff; --surface-sunken:#eceef1;
+  --line:#e1e4e8; --line-strong:#7f838b;
+  /* ink — 세 단계 */
+  --ink:#1c1e22; --ink-secondary:#55585f; --ink-subtle:#6a6e76;
+  /* status — 항상 -soft 배경과 짝으로 */
+  --success:#1b7446; --success-soft:#e6f6ec;
+  --warning:#9a5b00; --warning-soft:#fff3dc;
+  --danger:#c62828;  --danger-soft:#fdeaea;
+  /* spacing 4px base */
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px;
+  --space-6:24px; --space-8:32px; --space-12:48px;
+  --radius-sm:6px; --radius-md:10px; --radius-full:999px;
+  --shadow-sm:0 1px 2px rgba(28,30,34,.06);
+  --shadow-md:0 8px 24px rgba(28,30,34,.12),0 1px 2px rgba(28,30,34,.06);
+  --font-sans:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",system-ui,sans-serif;
+  --font-mono:"SF Mono",Menlo,Consolas,"D2Coding",monospace;
+  --ease:150ms ease-out;
+
+  /* ── 레거시 별칭 ── 기존 마크업이 참조하는 이름들 */
+  --canvas:var(--surface); --panel:var(--surface-raised); --raise:var(--surface-raised);
+  --sunk:var(--surface-sunken);
+  --fg:var(--ink); --sec:var(--ink-secondary); --mut:var(--ink-secondary); --qui:var(--ink-subtle);
+  --line2:var(--line-strong);
+  --act:var(--action); --act-fg:var(--on-action);
+  --indigo:var(--persona-blue-100);      /* 채움·마크 전용 */
+  --ind-fg:var(--action);                /* 글자·링크 */
+  --ind-deep:var(--action-hover);
+  --ind-bg:var(--action-soft); --ind-ln:var(--action);
+  --obs:var(--success); --inf:var(--warning); --spe:var(--danger);
+  --obs-bg:var(--success-soft); --inf-bg:var(--warning-soft); --spe-bg:var(--danger-soft);
+  --obs-ln:var(--success); --inf-ln:var(--warning); --spe-ln:var(--danger);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--surface);color:var(--ink);font-family:var(--font-sans);
+  font-size:14px;line-height:20px;-webkit-font-smoothing:antialiased;
+  word-break:keep-all;overflow-wrap:break-word}
+a{color:var(--action);text-decoration:none}a:hover{color:var(--action-hover)}
+:focus-visible{outline:2px solid var(--action);outline-offset:2px}
+.mono{font-family:var(--font-mono);font-size:13px;line-height:20px;
+  font-variant-numeric:tabular-nums;word-break:normal;white-space:nowrap}
+
+/* ---------- artboard ---------- */
+.art{width:1440px;background:var(--surface);display:flex;flex-direction:column}
+.app{display:flex;flex-direction:column;flex:1;min-height:0}
+
+/* ---------- app header ---------- */
+.top{height:52px;flex:none;display:flex;align-items:center;gap:var(--space-3);
+  padding:0 var(--space-4);border-bottom:1px solid var(--line);background:var(--surface-raised)}
+.brand{display:flex;align-items:center;gap:var(--space-2);font-size:14px;font-weight:700;
+  color:var(--ink);white-space:nowrap}
+.brand .dot{width:18px;height:18px;border-radius:5px;background:var(--persona-blue-100)}
+.top .sep{width:1px;height:18px;background:var(--line)}
+.pill{display:inline-flex;align-items:center;gap:var(--space-1);height:28px;padding:0 var(--space-3);
+  border-radius:var(--radius-sm);font-size:13px;line-height:18px;font-weight:500;
+  color:var(--ink-secondary);background:transparent;border:1px solid transparent;white-space:nowrap;
+  transition:background var(--ease)}
+.pill:hover{background:var(--surface-sunken)}
+.pill.on{background:var(--surface-sunken);color:var(--ink);border-color:var(--line)}
+.grow{flex:1}
+
+/* ---------- buttons (§7.1) ---------- */
+.btn{display:inline-flex;align-items:center;gap:var(--space-2);height:36px;padding:0 var(--space-4);
+  border-radius:var(--radius-sm);font-size:14px;font-weight:600;line-height:20px;
+  border:1px solid var(--line-strong);background:var(--surface-raised);color:var(--ink);
+  white-space:nowrap;transition:background var(--ease),border-color var(--ease)}
+.btn:hover{background:var(--action-soft)}
+.btn.pri{background:var(--action);color:var(--on-action);border-color:var(--action)}
+.btn.pri:hover{background:var(--action-hover);border-color:var(--action-hover)}
+.btn.gho{background:transparent;border-color:transparent;color:var(--action)}
+.btn.gho:hover{background:var(--action-soft)}
+.btn.lg{height:40px;padding:0 var(--space-6)}
+.btn.sm{height:28px;padding:0 var(--space-3);font-size:13px}
+
+/* ---------- body split (§4.4) ---------- */
+.body{display:flex;flex:1;min-height:0}
+.side{width:240px;flex:none;border-right:1px solid var(--line);background:var(--surface);
+  padding:var(--space-3) var(--space-2);overflow:hidden}
+.side .grp{font-size:12px;line-height:16px;font-weight:600;color:var(--ink-subtle);
+  padding:var(--space-4) var(--space-3) var(--space-2)}
+.step{display:flex;align-items:center;gap:var(--space-2);height:34px;padding:0 var(--space-3);
+  border-radius:var(--radius-sm);font-size:13px;line-height:18px;font-weight:500;
+  color:var(--ink-secondary);white-space:nowrap;transition:background var(--ease)}
+.step:hover{background:var(--surface-sunken)}
+.step.on{background:var(--persona-blue-soft);color:var(--ink)}
+.step .no{font-size:12px;color:var(--ink-subtle);width:36px;flex:none;font-variant-numeric:tabular-nums}
+.step.on .no{color:var(--action)}
+.step .st{margin-left:auto;width:8px;height:8px;border-radius:var(--radius-full);
+  background:var(--line-strong);flex:none;opacity:.45}
+.step .st.done{background:var(--success);opacity:1}
+.step .st.run{background:var(--warning);opacity:1}
+.step .st.cur{background:var(--action);opacity:1}
+.side .note{margin:var(--space-3) var(--space-2);padding:var(--space-3);
+  border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-raised)}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--surface)}
+.mhead{flex:none;padding:var(--space-6) var(--space-8) var(--space-4);border-bottom:1px solid var(--line)}
+.mhead h1{margin:0;font-size:24px;line-height:32px;font-weight:700;letter-spacing:-.01em}
+.mhead .sub{margin-top:var(--space-2);font-size:14px;line-height:20px;color:var(--ink-secondary)}
+.mbody{flex:1;min-height:0;padding:var(--space-6) var(--space-8);
+  display:flex;flex-direction:column;gap:var(--space-4)}
+
+/* ---------- context panel (§4.4) ---------- */
+.chat{width:320px;flex:none;border-left:1px solid var(--line);background:var(--surface-raised);
+  display:flex;flex-direction:column}
+.chat.rail{width:52px;align-items:center;padding-top:var(--space-3);gap:var(--space-4)}
+.chat .chead{flex:none;height:48px;display:flex;align-items:center;gap:var(--space-2);
+  padding:0 var(--space-4);border-bottom:1px solid var(--line);
+  font-size:16px;line-height:24px;font-weight:600;white-space:nowrap}
+.chat .cbody{flex:1;min-height:0;padding:var(--space-4);display:flex;flex-direction:column;
+  gap:var(--space-3);overflow:hidden}
+.chat .cfoot{flex:none;padding:var(--space-3) var(--space-4);border-top:1px solid var(--line)}
+.msg{border:1px solid var(--line);border-radius:var(--radius-md);padding:var(--space-3);
+  background:var(--surface-raised);font-size:14px;line-height:20px;color:var(--ink)}
+.msg.me{background:var(--action-soft);border-color:var(--action-soft)}
+.msg .who{display:block;font-size:12px;line-height:16px;color:var(--ink-subtle);
+  margin-bottom:var(--space-1)}
+.input{height:36px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);
+  background:var(--surface-raised);display:flex;align-items:center;padding:0 var(--space-3);
+  font-size:14px;color:var(--ink-subtle)}
+
+/* ---------- cards (§7.3) — 보더로 구분, 그림자 없음 ---------- */
+.card{border:1px solid var(--line);border-radius:var(--radius-md);
+  background:var(--surface-raised);overflow:hidden}
+.card.sunk{background:var(--surface-sunken)}
+.card>.ch{display:flex;align-items:center;gap:var(--space-2);
+  padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--line)}
+.card>.ch h3{margin:0;font-size:16px;line-height:24px;font-weight:600;white-space:nowrap}
+.card>.cc{padding:var(--space-4)}
+.lab{font-size:13px;line-height:18px;font-weight:500;color:var(--ink-secondary);white-space:nowrap}
+.row{display:flex;gap:var(--space-4)}
+.row>*{min-width:0}
+.col{display:flex;flex-direction:column;gap:var(--space-4);min-width:0}
+.sm{font-size:14px;line-height:20px;color:var(--ink-secondary)}
+.xs{font-size:12px;line-height:16px;color:var(--ink-secondary)}
+.mu,.qu{color:var(--ink-subtle)} .fg{color:var(--ink)}
+
+/* ---------- badges (§7.4) — 색은 보조, 텍스트가 의미 ---------- */
+.b{display:inline-flex;align-items:center;gap:var(--space-1);height:22px;padding:0 var(--space-2);
+  border-radius:var(--radius-sm);font-size:13px;line-height:18px;font-weight:500;
+  background:var(--surface-sunken);color:var(--ink-secondary);border:1px solid transparent;
+  white-space:nowrap;flex:none}
+.b.ind{background:var(--action-soft);color:var(--action)}
+.b.obs{background:var(--success-soft);color:var(--success)}
+.b.inf{background:var(--warning-soft);color:var(--warning)}
+.b.spe{background:var(--danger-soft);color:var(--danger)}
+.b.brand{background:var(--persona-blue-soft);color:var(--ink)}
+.b.solid{background:var(--ink);color:var(--on-action)}
+.b.pill{border-radius:var(--radius-full)}
+.dotg{width:8px;height:8px;border-radius:var(--radius-full);display:inline-block;flex:none}
+.dotg.o{background:var(--success)} .dotg.i{background:var(--warning)} .dotg.s{background:var(--danger)}
+
+/* ---------- tables (§7.5) — dense: 로그·관리 화면 ---------- */
+table{width:100%;border-collapse:collapse;background:var(--surface-raised)}
+th,td{text-align:left;font-size:13px;line-height:18px;padding:var(--space-2) var(--space-3);
+  border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--ink-secondary);background:var(--surface-sunken);white-space:nowrap}
+td{color:var(--ink)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:none}
+
+/* ---------- meters ---------- */
+.bar{height:8px;border-radius:var(--radius-full);background:var(--surface-sunken);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--persona-blue-100)}
+.bar>i.n{background:var(--line-strong)} .bar>i.o{background:var(--success)} .bar>i.w{background:var(--warning)}
+.kv{display:flex;align-items:baseline;gap:var(--space-2)}
+.kv b{font-size:24px;line-height:32px;font-weight:700;letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums;white-space:nowrap;flex:none}
+.kpi{display:flex;flex-direction:column;gap:var(--space-1);padding:var(--space-4);
+  border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-raised)}
+.kpi .v{font-size:24px;line-height:32px;font-weight:700;letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:var(--space-1);height:28px;padding:0 var(--space-3);
+  border-radius:var(--radius-sm);border:1px solid var(--line-strong);background:var(--surface-raised);
+  font-size:13px;line-height:18px;font-weight:500;color:var(--ink);white-space:nowrap;
+  transition:background var(--ease)}
+.chip.on{background:var(--persona-blue-soft);border-color:var(--action);color:var(--ink)}
+.chip.off{color:var(--ink-subtle);border-color:var(--line);background:var(--surface-sunken)}
+.wrap{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.fld{border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface-raised);
+  padding:var(--space-2) var(--space-3);font-size:14px;line-height:20px;color:var(--ink);min-height:36px}
+.fld.ph{color:var(--ink-subtle);background:var(--surface-sunken);border-color:var(--line)}
+.seg{display:inline-flex;padding:2px;border:1px solid var(--line);border-radius:var(--radius-sm);
+  background:var(--surface-sunken)}
+.seg>span{height:28px;display:inline-flex;align-items:center;padding:0 var(--space-3);
+  border-radius:4px;font-size:13px;line-height:18px;font-weight:500;color:var(--ink-secondary);
+  white-space:nowrap;transition:background var(--ease)}
+.seg>span.on{background:var(--surface-raised);color:var(--ink);box-shadow:var(--shadow-sm)}
+
+/* ---------- annotation pins ---------- */
+.pin{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;
+  border-radius:var(--radius-full);background:var(--action-soft);color:var(--action);
+  font-size:12px;line-height:16px;font-weight:600;flex:none;font-variant-numeric:tabular-nums}
+.pin.fl{position:absolute;z-index:5;background:var(--surface-raised);color:var(--action);
+  border:1px solid var(--action);box-shadow:0 0 0 3px var(--surface)}
+.rel{position:relative}
+.ann{flex:none;border-top:1px solid var(--line);background:var(--surface-sunken);
+  padding:var(--space-6) var(--space-8)}
+.ann h4{margin:0 0 var(--space-1);font-size:16px;line-height:24px;font-weight:600}
+.ann .lead{margin:0 0 var(--space-4);font-size:12px;line-height:16px;color:var(--ink-secondary)}
+.ann .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-3) var(--space-6)}
+.ann .it{display:flex;gap:var(--space-2)}
+.ann .it p{margin:0;font-size:12px;line-height:16px;color:var(--ink-secondary)}
+.ann .it p em{font-style:normal;color:var(--ink-subtle)}
+.ann .it p b{font-weight:600;color:var(--ink)}
+.tag{display:inline-block;font-size:12px;line-height:16px;font-weight:500;padding:1px var(--space-2);
+  border-radius:var(--radius-sm);background:var(--surface-sunken);color:var(--ink-secondary);
+  margin-right:var(--space-1);white-space:nowrap}
+.tag.rep{background:var(--action-soft);color:var(--action)}
+.tag.new{background:var(--success-soft);color:var(--success)}
+.tag.keep{background:var(--surface-sunken);color:var(--ink-secondary)}
+.tag.open{background:var(--danger-soft);color:var(--danger)}
+
+/* ---------- keyword board ---------- */
+.kw{display:inline-flex;align-items:center;gap:var(--space-1);height:28px;padding:0 var(--space-3);
+  border-radius:var(--radius-full);font-size:13px;line-height:18px;font-weight:500;
+  border:1px solid var(--line);background:var(--surface-raised);color:var(--ink);white-space:nowrap}
+.kw.old{background:var(--surface-sunken);color:var(--ink-secondary)}
+.kw.new{background:var(--action-soft);border-color:var(--action);color:var(--action)}
+.kw.rej{background:transparent;color:var(--ink-subtle);text-decoration:line-through;
+  border-color:var(--line);border-style:dashed}
+.kw.man{background:var(--success-soft);border-color:var(--success);color:var(--success)}
+.kw.sug{background:var(--persona-blue-soft);border-color:var(--persona-blue-100);color:var(--ink)}
+.kw .sc{font-size:12px;line-height:16px;font-weight:600;padding:0 var(--space-1);
+  border-radius:var(--radius-sm);font-variant-numeric:tabular-nums}
+.kw .sc.hi{background:var(--success-soft);color:var(--success)}
+.kw .sc.mid{background:var(--warning-soft);color:var(--warning)}
+.kw .sc.lo{background:var(--danger-soft);color:var(--danger)}
+.axis{border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-raised);overflow:hidden}
+.axis>.ah{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-3) var(--space-4);
+  background:var(--surface-sunken);border-bottom:1px solid var(--line);
+  font-size:13px;line-height:18px;font-weight:600;white-space:nowrap}
+.sub{display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-3) var(--space-4);
+  border-bottom:1px solid var(--line)}
+.sub:last-child{border-bottom:none}
+.sub>.sh{display:flex;align-items:center;gap:var(--space-2);font-size:13px;line-height:18px;
+  color:var(--ink-secondary);white-space:nowrap}
+.sub>.sh .car{color:var(--ink-subtle);font-size:10px;width:10px}
+.sub>.sh .cnt{color:var(--ink-subtle);font-variant-numeric:tabular-nums}
+.drop{border:1px dashed var(--action);background:var(--action-soft);border-radius:var(--radius-md)}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Liquid Glass — DESIGN.apple.md + DESIGN copy.md 오버레이
+   _shell.css(Linear) 위에 표면 언어만 덮어쓴다. 구조·밀도는 Linear 유지.
+
+   두 문서를 이렇게 나눠 적용한다:
+   · DESIGN.apple.md  → 지면 · 색 · 타이포 · 라운드 · 버튼 문법 (규율)
+   · DESIGN copy.md   → 블록의 재질 (리퀴드 글래스)
+
+   Apple md의 "장식적 그라디언트 금지"를 따라 지면은 평평한 파치먼트로 비운다.
+   떠 보이는 힘은 배경이 아니라 블록 자체의 재질에서 나온다 —
+   상단 스페큘러 · 림 굴절 · 하단 두께 · 접지 그림자 4겹.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root{
+  /* 단일 액센트 = Persona Blue. Apple의 Action Blue 자리를 브랜드가 대신한다.
+     #37B7F8은 흰 배경 2.26:1이라 채움 전용이고, 글자·테두리는 같은 hue의 #0678B1이 맡는다. */
+  --indigo:#37B7F8; --ind-fg:#0678B1; --ind-deep:#055D8A; --focus:#0892D9;
+  --ind-bg:rgba(55,183,248,.16); --ind-ln:rgba(6,120,177,.38);
+
+  /* Apple md — ink / muted 계단 */
+  --fg:#1B1C20; --sec:#3A3B40; --mut:#55565B; --qui:#68696E;
+  --line:#E2E3E7; --line2:#CFD0D5;
+
+  /* Apple md — 파치먼트 지면 · 펄 버튼 */
+  --canvas:#f2f2f5; --pearl:#fafafc; --hairline:#e0e0e0; --divider:#f0f0f0;
+  --act:#1d1d1f; --act-fg:#ffffff;
+
+  /* 유리 */
+  --glass:rgba(255,255,255,.62);
+  --panel:var(--glass); --raise:rgba(255,255,255,.80); --sunk:rgba(255,255,255,.34);
+  --blur:blur(30px) saturate(190%);
+
+  /* Apple md — radius scale */
+  --r-sm:8px; --r-md:11px; --r-lg:18px; --r-pill:9999px;
+
+  /* 세 등급은 데이터 인코딩이라 남긴다 — 다만 Apple 톤에 맞춰 채도를 낮춘다 */
+  --obs:oklch(0.48 0.10 158); --inf:oklch(0.52 0.11 68); --spe:oklch(0.50 0.15 22);
+  --obs-bg:oklch(0.48 0.10 158 / 0.11); --inf-bg:oklch(0.52 0.11 68 / 0.12); --spe-bg:oklch(0.50 0.15 22 / 0.10);
+  --obs-ln:oklch(0.48 0.10 158 / 0.32); --inf-ln:oklch(0.52 0.11 68 / 0.34); --spe-ln:oklch(0.50 0.15 22 / 0.30);
+}
+
+/* ── 타이포 ── SF Pro → Inter 대체. Apple 가중치 사다리 300/400/600/700 (500 없음) */
+body{font-family:"SF Pro Display","SF Pro Text",system-ui,-apple-system,BlinkMacSystemFont,
+  'Inter','Noto Sans KR','Apple SD Gothic Neo',sans-serif}
+.mono{font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,monospace}
+.brand,.side .grp,.mhead h1,.card>.ch h3,.lab,th,.kv b,.kpi .v,.pin,
+.ann h4,.ann .it p b,.tag,.kw .sc,.axis>.ah,.chat .chead{font-weight:600}
+.btn,.kw,.step.on,.msg .who{font-weight:400}
+.mhead h1{letter-spacing:-.5px}          /* Apple tight */
+.kpi .v,.kv b{letter-spacing:-.5px}
+
+/* ── 지면 ── 장식적 그라디언트가 아니라 '표면색 변화'로 층을 만든다.
+   Apple md: 높이감은 (a) 표면색 변화 (b) backdrop-blur에서 온다.
+   하드 스톱이라 워시가 아니라 타일이다 — 유리판이 타일 경계를 가로지를 때
+   그 단차가 판을 통과해 비쳐서 비로소 '굴절'이 보인다. */
+.art{background:var(--canvas)}
+.main{background:transparent}
+.mbody{background:repeating-linear-gradient(180deg,
+  #f0f0f4 0, #f0f0f4 470px, #f7f7fa 470px, #f7f7fa 940px)}
+.mhead{background:#fafafc;border-bottom:1px solid var(--line)}
+
+/* ── 글로벌 내비 ── Apple md: 진짜 검정, 12px 조용한 링크 */
+.top{background:#000;border-bottom:none}
+.top .sep{background:rgba(255,255,255,.22)}
+.brand{color:#fff;font-size:13px}
+.brand .dot{background:var(--indigo);border-radius:5px;box-shadow:none}
+.pill{color:rgba(255,255,255,.72);font-size:12px;letter-spacing:-.12px;border-radius:var(--r-sm)}
+.pill:hover{background:rgba(255,255,255,.10);color:#fff}
+.pill.on{background:rgba(255,255,255,.12);color:#fff;border-color:transparent}
+.top .btn{background:#1d1d1f;border:none;color:#fff;border-radius:var(--r-sm);box-shadow:none}
+.top .btn.pri{background:var(--ind-fg);border-radius:var(--r-pill);padding:0 18px}
+
+/* ── 사이드 · 채팅 ── 얇은 유리 */
+.side{background:rgba(237,238,242,.88);border-right:1px solid var(--line);
+  -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.chat{background:rgba(237,238,242,.88);border-left:1px solid var(--line);
+  -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.chat .chead,.chat .cfoot{border-color:var(--line)}
+.step{border-radius:var(--r-md);transition:background 240ms ease}
+.step:hover{background:rgba(0,0,0,.035)}
+.step.on{background:rgba(55,183,248,.20);color:var(--fg)}
+.step.on .no{color:var(--indigo)}
+.step .st.cur{background:var(--indigo);box-shadow:0 0 0 3px rgba(55,183,248,.30)}
+.side .note{border-radius:var(--r-lg);background:rgba(255,255,255,.62);border-color:var(--line)}
+
+/* ══════════════════════════════════════════════════════════════
+   리퀴드 글래스 블록 — 이 테마의 전부
+   지면이 평평하므로 떠 보이는 힘은 전적으로 재질에서 나온다.
+   ① 상단 스페큘러  ② 림 굴절  ③ 하단 두께  ④ 접지 그림자
+   ══════════════════════════════════════════════════════════════ */
+.card,.kpi,.axis{
+  position:relative;
+  border:none;
+  border-radius:var(--r-lg);
+  background:linear-gradient(176deg,
+      rgba(255,255,255,.96) 0%,
+      rgba(250,251,254,.72) 14%,
+      rgba(246,248,252,.62) 52%,
+      rgba(249,250,253,.70) 88%,
+      rgba(255,255,255,.92) 100%);
+  -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,1),               /* ① 상단 스페큘러 */
+    inset 0 20px 26px -18px rgba(255,255,255,1),       /* ① 상단 렌즈 */
+    inset 0 -18px 28px -18px rgba(29,29,31,.26),       /* ③ 하단 두께 */
+    inset 0 -1px 0 rgba(255,255,255,.80),
+    inset 0 0 0 .5px rgba(255,255,255,.70),            /* ② 안쪽 림 */
+    0 0 0 .5px rgba(29,29,31,.13),                     /* 유리판 절단면 */
+    0 2px 3px rgba(29,29,31,.07),                      /* ④ 근접 접지 */
+    0 20px 46px -16px rgba(29,29,31,.30);              /* ④ 원거리 접지 */
+  transition:box-shadow 480ms cubic-bezier(.22,1,.36,1),
+             transform 480ms cubic-bezier(.22,1,.36,1);
+}
+/* ② 림 굴절 — 테두리를 따라 도는 밝은 띠. 유리가 빛을 꺾는 자리다. */
+.card::before,.kpi::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:3;
+  padding:1.5px;
+  background:linear-gradient(142deg,
+      rgba(255,255,255,1) 0%,
+      rgba(255,255,255,.92) 12%,
+      rgba(255,255,255,.18) 33%,
+      rgba(29,29,31,.10) 52%,
+      rgba(255,255,255,.28) 74%,
+      rgba(255,255,255,.98) 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+          mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+          mask-composite:exclude;
+}
+.card:hover{
+  transform:translateY(-1px);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,1),
+    inset 0 20px 26px -18px rgba(255,255,255,1),
+    inset 0 -18px 28px -18px rgba(29,29,31,.26),
+    inset 0 -1px 0 rgba(255,255,255,.80),
+    inset 0 0 0 .5px rgba(255,255,255,.70),
+    0 0 0 .5px rgba(29,29,31,.13),
+    0 4px 7px rgba(29,29,31,.09),
+    0 34px 66px -18px rgba(29,29,31,.36);
+}
+/* 유리 안에 잠긴 판 — 얕게, 테두리 없이 */
+.card.sunk{
+  background:rgba(255,255,255,.26);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.8),
+    inset 0 -1px 0 rgba(255,255,255,.4),
+    inset 0 -8px 14px -12px rgba(29,29,31,.16),
+    0 0 0 .5px rgba(29,29,31,.10);
+}
+.card.sunk::before{display:none}
+.card>.ch{border-bottom:1px solid rgba(29,29,31,.07);background:transparent}
+.kpi{padding:12px 14px}
+
+/* ── 표 ── 평평한 지면 덕에 별도 배킹이 필요 없다. 헤더만 살짝 눌러 둔다. */
+table{background:transparent}
+th{background:rgba(29,29,31,.035);color:var(--mut);border-bottom:1px solid rgba(29,29,31,.10);
+  text-transform:uppercase;letter-spacing:.03em}
+th,td{border-bottom:1px solid rgba(29,29,31,.06)}
+td{color:var(--sec)}
+
+/* ── 버튼 ── Apple md의 3문법: 블루 필 · 고스트 필 · 펄 캡슐 */
+.btn{                                   /* 펄 캡슐 */
+  background:var(--pearl);border:1px solid var(--divider);border-radius:var(--r-md);
+  color:var(--sec);box-shadow:0 0 0 2px var(--divider);
+  transition:transform 180ms cubic-bezier(.22,1,.36,1)}
+.btn:active{transform:scale(.95)}
+.btn.pri{                               /* 블루 필 */
+  background:var(--ind-fg);color:#fff;border:none;border-radius:var(--r-pill);
+  padding:0 20px;box-shadow:none}
+.btn.gho{                               /* 고스트 필 */
+  background:transparent;border:1px solid var(--ind-fg);color:var(--ind-fg);
+  border-radius:var(--r-pill);padding:0 18px;box-shadow:none}
+.top .btn:active{transform:scale(.95)}
+
+/* ── 칩 · 세그먼트 · 입력 ── 필 문법 */
+.chip{border-radius:var(--r-pill);background:rgba(255,255,255,.72);border-color:var(--line2);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
+.chip.on{background:rgba(55,183,248,.22);border:1.5px solid var(--ind-fg);color:var(--ind-deep);
+  font-weight:600;padding:0 9px}
+.chip.off{background:transparent;box-shadow:none}
+.seg{border-radius:var(--r-pill);background:rgba(29,29,31,.05);border:none;padding:2px}
+.seg>span{border-radius:var(--r-pill);transition:all 320ms cubic-bezier(.22,1,.36,1)}
+.seg>span.on{background:#fff;color:var(--fg);
+  box-shadow:0 1px 3px rgba(29,29,31,.10),inset 0 1px 0 rgba(255,255,255,1)}
+.input{border-radius:var(--r-pill);background:#fff;border:1px solid rgba(0,0,0,.08);
+  box-shadow:none}
+.fld{border-radius:var(--r-md);background:rgba(255,255,255,.78);border:1px solid var(--line2);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
+.fld.ph{background:rgba(255,255,255,.44)}
+
+/* ── 배지 · 마커 ── */
+.b{border-radius:5px;background:rgba(255,255,255,.72);border-color:var(--line2)}
+.b.solid{background:var(--act);border-color:transparent}
+.b.ind{background:rgba(55,183,248,.22);border-color:var(--ind-fg);color:var(--ind-deep)}
+.tag{border-radius:5px;background:rgba(255,255,255,.72)}
+.tag.keep{background:rgba(29,29,31,.05)}
+.bar{background:rgba(29,29,31,.09);border-radius:var(--r-pill);box-shadow:none}
+.bar>i{background:var(--indigo)}
+.bar>i.n{background:var(--qui)}
+.msg{border-radius:var(--r-md);background:rgba(255,255,255,.62);border-color:var(--line)}
+.msg.me{background:var(--ind-bg);border-color:var(--ind-ln)}
+.kw{background:rgba(255,255,255,.72);border-color:var(--line2)}
+.kw.old{background:rgba(29,29,31,.05)}
+.drop{border-radius:var(--r-lg);background:rgba(55,183,248,.10)}
+.axis>.ah{background:transparent;border-bottom:1px solid rgba(29,29,31,.07)}
+
+/* 핀 — 작은 유리 알갱이 */
+.pin{border-radius:50%;background:var(--ind-bg);border-color:var(--ind-ln);color:var(--ind-deep)}
+.pin.fl{background:#fff;border:.5px solid rgba(27,28,32,.14);color:var(--ind-fg);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,1),0 1px 2px rgba(29,29,31,.10),
+             0 6px 14px -6px rgba(29,29,31,.30)}
+
+/* ── 주석 스트립 ── 파치먼트, 평평하게 */
+.ann{background:#e9e9ee;border-top:1px solid rgba(29,29,31,.12)}
+
+/* ── SVG 중립 마크만 Apple 톤으로 ── 블루는 parts가 이미 브랜드 색을 들고 있다 */
+[stroke="#D5D6DA"],[stroke="#C6C7CB"]{stroke:rgba(27,28,32,.14)}
+[stroke="#A8A9AE"],[fill="#A8A9AE"]{stroke:rgba(27,28,32,.28);fill:rgba(27,28,32,.28)}
+[fill="#9A9BA0"]{fill:rgba(27,28,32,.30)}
+[fill="#68696E"],[stroke="#68696E"]{fill:#68696E;stroke:#68696E}
+[fill="#55565B"],[stroke="#55565B"]{fill:#55565B;stroke:#55565B}
+[fill="#3A3B40"]{fill:#3A3B40}
+[fill="#1B1C20"]{fill:#1B1C20}
+
+  </style>
+</helmet>
+<div class="art glass" style="width: 1440px; height: 1720px;">
+  <div class="app">
+    <header class="top">
+  <div class="brand"><span class="dot"></span>DCX Agent</div>
+  <span class="sep"></span>
+  <span class="pill on">에어팟 프로 3 · 운동·건강 맥락 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg></span>
+  <span class="pill">세션 3개</span>
+  <span class="grow"></span>
+  <span class="pill">작업 2건 실행 중</span>
+  <span class="pill">문서 검색</span>
+  <span class="btn gho">내보내기</span>
+  <span class="btn pri">세션 저장</span>
+</header>
+    <div class="body">
+      <nav class="side"><div class="grp">Data Defining</div><div class="step"><span class="no">00</span><span>세션</span><span class="st done"></span></div><div class="step"><span class="no">01·02</span><span>입력 선언</span><span class="st done"></span></div><div class="step"><span class="no">03</span><span>키워드 설계</span><span class="st done"></span></div><div class="step"><span class="no">04</span><span>데이터 수집</span><span class="st done"></span></div><div class="grp">Data Sensing</div><div class="step"><span class="no">05</span><span>전처리 · 임베딩</span><span class="st done"></span></div><div class="step on"><span class="no">06</span><span>근거 판정</span><span class="st cur"></span></div><div class="step"><span class="no">07</span><span>군집</span><span class="st "></span></div><div class="step"><span class="no">08</span><span>페르소나</span><span class="st "></span></div><div class="step"><span class="no">09</span><span>근거 수집</span><span class="st "></span></div><div class="grp">Data Shaping</div><div class="step"><span class="no">10-A</span><span>Customer Action Map</span><span class="st "></span></div><div class="step"><span class="no">10-B</span><span>기회 영역</span><span class="st "></span></div><div class="step"><span class="no">11-A</span><span>인사이트 도출</span><span class="st "></span></div><div class="step"><span class="no">11-B</span><span>경험 디자인 컨셉</span><span class="st "></span></div><div class="grp">운영</div><div class="step"><span class="no">ADM</span><span>프롬프트 관리</span><span class="st "></span></div><div class="note"><div class="lab">활성 선언</div>
+    <p class="xs" style="margin:6px 0 0;color:var(--sec)">무선 이어폰을 운동·건강 맥락에서 재정의할 미충족 니즈를 찾는다</p>
+    <p class="xs" style="margin:6px 0 0">STEP 01 한줄 정의 · 전 단계 프롬프트 헤더로 상주</p></div></nav>
+      <main class="main">
+        <div class="mhead"><h1>STEP 06 — 근거 판정</h1><div class="sub">사람이 몇 문장을 봐야 하는지를 "감"이 아니라 허용 오류율이 정한다</div></div>
+        <div class="mbody">
+<div class="row rel" style="flex:none;gap:12px;align-items:stretch">
+  <span class="pin fl" style="top:-8px;left:-9px">3</span>
+  <div class="card" style="flex:1.5;border-color:var(--ind-ln);background:rgba(55,183,248,.055)">
+    <div class="cc" style="padding:14px 16px">
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span class="lab" style="color:var(--ind-fg)">허용 오류율</span>
+        <span class="mono" style="font-size:24px;font-weight:590;color:var(--fg);white-space:nowrap;flex:none">10%</span>
+        <span class="xs">AI 판정을 그대로 쓸 때, 틀린 게 몇 %까지 섞여도 되는가 <span class="mono qu">α = 0.10</span></span>
+      </div>
+      <div style="margin-top:12px;position:relative;height:6px;border-radius:3px;background:rgba(13,14,17,.08)">
+        <div style="position:absolute;left:0;top:0;height:6px;width:46%;border-radius:3px;background:var(--indigo)"></div>
+        <div style="position:absolute;left:46%;top:-5px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:var(--panel);border:1px solid var(--line2);box-shadow:0 1px 3px rgba(13,14,17,.25)"></div>
+      </div>
+      <div class="xs" style="margin-top:6px;display:flex;justify-content:space-between"><span>2% 엄격</span><span>20% 느슨</span></div>
+      <div class="xs" style="margin-top:11px;border-top:1px dashed var(--line2);padding-top:9px;display:flex;gap:18px">
+        <span>판정 기준선 <span class="mono fg">0.72</span> <span class="qu">— 사람이 정하지 않는다. 허용 오류율에서 계산돼 나온다</span></span>
+      </div>
+      <div class="xs" style="margin-top:7px">
+        <span class="fg">5%</span>로 조이면 → 기준선 <span class="mono fg">0.81</span> · 사람이 볼 문장 <span class="fg">+6,100</span> · 예상 <span class="fg">+10시간</span>.
+        <span class="qu">"품질을 높인다"가 곧 "사람이 더 본다"라는 것이 숫자로 보인다.</span>
+      </div>
+    </div>
+  </div>
+  <div class="kpi" style="flex:.66"><span class="lab">사람이 볼 문장</span><span class="v">3,284</span><span class="xs">전체 14,720 중 · 78% 처리</span></div>
+  <div class="kpi" style="flex:.66"><span class="lab">처리 속도</span><span class="v">214<span class="xs" style="font-weight:400"> 문장/h</span></span><span class="xs">최근 1시간 이동평균</span></div>
+  <div class="kpi" style="flex:.66"><span class="lab">남은 시간</span><span class="v">15h 20m</span><span class="xs">현재 허용 오류율 기준</span></div>
+</div>
+
+<div class="card rel" style="flex:none">
+  <span class="pin fl" style="top:12px;left:-9px">1</span>
+  <div class="ch"><h3>78,900문장이 어디로 가는가</h3><span class="grow"></span><span class="xs">사람은 두 곳만 본다</span></div>
+  <div class="cc" style="display:flex;gap:10px;align-items:stretch">
+    <div style="flex:81.4;border:1px solid var(--line);border-radius:8px;padding:11px 13px;background:var(--sunk)">
+      <div style="display:flex;align-items:baseline;gap:8px"><span class="sm fg" style="font-weight:510">AI 판정 그대로 채택</span><span class="mono fg" style="font-size:17px;font-weight:590">64,180</span><span class="xs">81.4%</span></div>
+      <div class="bar" style="margin-top:7px"><i class="o" style="width:100%"></i></div>
+      <div class="xs" style="margin-top:6px">사람이 보지 않는다. 대신 <span class="fg">이 묶음의 오류율이 10% 이하</span>임이 보장된다 — 그게 허용 오류율의 의미다.</div>
+    </div>
+    <div style="flex:18.6;border:1px solid var(--ind-ln);border-radius:8px;padding:11px 13px;background:rgba(55,183,248,.055)">
+      <div style="display:flex;align-items:baseline;gap:8px"><span class="sm fg" style="font-weight:510">사람이 볼 문장</span><span class="mono fg" style="font-size:17px;font-weight:590">14,720</span><span class="xs">18.6%</span></div>
+      <div class="bar" style="margin-top:7px"><i style="width:100%"></i></div>
+      <div class="xs" style="margin-top:6px">AI 확신도가 기준선 미만이거나, 핵심 근거–보조 단서 경계에 붙은 문장.</div>
+    </div>
+    <div style="width:186px;flex:none;border:1px solid var(--line);border-radius:8px;padding:11px 13px">
+      <div style="display:flex;align-items:baseline;gap:8px"><span class="sm" style="font-weight:510">무작위 점검</span><span class="mono fg" style="font-size:17px;font-weight:590">600</span></div>
+      <div class="bar" style="margin-top:7px"><i class="n" style="width:100%"></i></div>
+      <div class="xs" style="margin-top:6px">채택분에서 무작위로 뽑는다. <span class="fg">"AI가 자신 있게 틀린 구간"</span>은 이것으로만 보인다.</div>
+    </div>
+  </div>
+</div>
+
+<div class="row" style="flex:1;min-height:0">
+  <div class="card rel" style="width:404px;flex:none;display:flex;flex-direction:column">
+    <span class="pin fl" style="top:12px;left:-9px">2</span>
+    <div class="ch"><h3>큐</h3><span class="b ind">3,284</span><span class="grow"></span>
+      <span class="seg"><span class="on">전체</span><span>확신도 낮음</span><span>경계</span></span></div>
+    <div style="flex:1;overflow:hidden">
+      <table>
+        <thead><tr><th style="width:74px">문장</th><th>왜 올라왔나</th><th class="n" style="width:62px">확신도</th></tr></thead>
+        <tbody>
+          <tr style="background:rgba(55,183,248,.05)"><td class="mono" style="color:var(--fg)">84117</td><td><span class="b spe">경계</span> <span class="xs">채움 4개 · 핵심 근거 경계에 붙음</span></td><td class="n mono">0.67</td></tr>
+          <tr><td class="mono">84203</td><td><span class="b inf">확신도 낮음</span> <span class="xs">판정자 3명 중 2:1 갈림</span></td><td class="n mono">0.58</td></tr>
+          <tr><td class="mono">84318</td><td><span class="b inf">확신도 낮음</span> <span class="xs">광고 여부가 모호</span></td><td class="n mono">0.44</td></tr>
+          <tr><td class="mono">84402</td><td><span class="b spe">경계</span> <span class="xs">채움 3개 · 목적축 없음</span></td><td class="n mono">0.71</td></tr>
+          <tr><td class="mono">84517</td><td><span class="b">사유별 최소 표본</span> <span class="xs">무관 사유 <span class="mono">other</span> 배정</span></td><td class="n mono">0.63</td></tr>
+          <tr><td class="mono">84620</td><td><span class="b inf">확신도 낮음</span> <span class="xs">판정자 3명 모두 갈림</span></td><td class="n mono">0.31</td></tr>
+          <tr><td class="mono">84711</td><td><span class="b spe">경계</span> <span class="xs">채움 2개 · 제약축만 있음</span></td><td class="n mono">0.69</td></tr>
+          <tr><td class="mono qu">84802</td><td class="xs qu">＋ 3,277문장</td><td class="n mono qu">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="cc" style="flex:none;border-top:1px solid var(--line);padding:10px 13px">
+      <div class="xs">모드 <span class="seg" style="margin-left:4px"><span>기준 만들기</span><span class="on">혼자 판단</span><span>재확인</span></span></div>
+      <div class="xs qu" style="margin-top:7px">혼자 판단 모드에서는 AI 근거를 <span class="fg">제출 후에만</span> 보여준다 — 판단 전에 보면 그쪽으로 끌려간다.</div>
+    </div>
+  </div>
+
+  <div class="card" style="flex:1;display:flex;flex-direction:column">
+    <div class="ch"><h3>문장 84117</h3><span class="b spe">경계</span><span class="grow"></span>
+      <span class="xs">런닝 크루 카페 · 2026-04-11 · <span class="mono">kw. 폼팁 교체</span></span></div>
+    <div class="cc" style="flex:1;display:flex;flex-direction:column;gap:12px">
+      <p class="sm" style="margin:0;color:var(--fg);font-size:14.5px;line-height:23px;border:1px solid var(--line2);border-radius:8px;padding:12px 14px;background:var(--sunk)">
+        "10km 넘어가면 땀 때문에 오른쪽이 자꾸 헐거워져서, 뛰다가 손으로 밀어 넣는 게 일이에요. 폼팁 사이즈 바꿔봐도 똑같길래 요즘은 그냥 한쪽만 끼고 뜁니다."</p>
+
+      <div class="row" style="gap:14px">
+        <div style="flex:1.05">
+          <div class="lab">이 문장만으로 상황을 몇 개나 채울 수 있나</div>
+          <table style="margin-top:7px">
+            <tbody>
+              <tr><td style="width:104px">언제·어디서</td><td><span class="dotg o"></span></td><td class="xs">10km 지점 · 러닝 중</td></tr>
+              <tr><td>어떤 마음</td><td><span class="dotg o"></span></td><td class="xs">"일이에요" 짜증</td></tr>
+              <tr><td style="color:var(--fg)">무엇을 하려고</td><td><span class="dotg o"></span></td><td class="xs">끊김 없이 계속 뛰기</td></tr>
+              <tr><td>실제 한 행동</td><td><span class="dotg o"></span></td><td class="xs">손으로 밀어넣음 · 한쪽만 착용</td></tr>
+              <tr><td style="color:var(--fg)">무엇에 막혔나</td><td><span class="dotg o"></span></td><td class="xs">폼팁 교체로 해결 안 됨</td></tr>
+            </tbody>
+          </table>
+          <div class="xs" style="margin-top:8px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--sunk)">
+            <span class="fg">핵심 근거</span>: 3개 이상 <span class="fg">그리고</span> "무엇을 하려고" 또는 "무엇에 막혔나"를 포함 ·
+            <span class="fg">보조 단서</span>: 1~2개 · <span class="fg">무관</span>: 0개 + 사유.
+            <span class="qu">사람과 AI가 이 한 문장을 똑같이 쓴다.</span>
+          </div>
+        </div>
+
+        <div style="flex:1;display:flex;flex-direction:column;gap:11px">
+          <div>
+            <div class="lab">판정</div>
+            <div style="display:flex;gap:7px;margin-top:7px">
+              <span class="btn" style="flex:1;flex-direction:column;gap:0;justify-content:center;height:44px;border-color:var(--obs-ln);color:var(--obs);background:var(--obs-bg)">핵심 근거<span class="mono" style="font-size:10px;opacity:.75">core</span></span>
+              <span class="btn" style="flex:1;flex-direction:column;gap:0;justify-content:center;height:44px">보조 단서<span class="mono" style="font-size:10px;opacity:.6">supporting</span></span>
+              <span class="btn gho" style="flex:1;flex-direction:column;gap:0;justify-content:center;height:44px">무관<span class="mono" style="font-size:10px;opacity:.6">non</span></span>
+            </div>
+            <div class="wrap" style="margin-top:7px;opacity:.45">
+              <span class="xs" style="width:100%">무관을 고르면 사유를 함께 받는다</span>
+              <span class="chip">광고</span><span class="chip">단순 평가</span><span class="chip">비난만</span><span class="chip">경험 없음</span><span class="chip">기타</span>
+            </div>
+          </div>
+
+          <div class="rel" style="border:1px solid var(--ind-ln);border-radius:8px;padding:11px 12px;background:rgba(55,183,248,.055)">
+            <span class="pin fl" style="top:-9px;right:10px">4</span>
+            <div class="lab" style="color:var(--ind-fg)">제출 후에만 공개</div>
+            <div class="xs" style="margin-top:6px">AI 판정 <span class="b obs">핵심 근거</span> · 확신도 <span class="mono fg">0.67</span> <span class="qu">— 기준선 0.72 미만이라 큐로 올라옴</span></div>
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
+              <div class="xs" style="display:flex;gap:8px"><span style="width:84px">CX 리서처</span><span class="b obs">핵심 근거</span><span class="qu">미충족이 읽힌다</span></div>
+              <div class="xs" style="display:flex;gap:8px"><span style="width:84px">제품 QA</span><span class="b obs">핵심 근거</span><span class="qu">재현 가능한 결함</span></div>
+              <div class="xs" style="display:flex;gap:8px"><span style="width:84px">일반 소비자</span><span class="b inf">보조 단서</span><span class="qu">흔한 불평으로 읽힘</span></div>
+            </div>
+            <div class="xs" style="margin-top:8px;border-top:1px dashed var(--ind-ln);padding-top:7px">
+              확신도는 AI에게 "얼마나 확신하냐"고 물어서 얻은 값이 아니다. <span class="fg">관점이 다른 판정자 3명</span>에게 같은 문장을 보이고 그 <span class="fg">일치율</span>을 쓴다.
+            </div>
+          </div>
+
+          <div style="margin-top:auto;display:flex;gap:8px;align-items:center">
+            <span class="btn gho">건너뛰기</span><span class="grow"></span><span class="btn pri">제출하고 다음</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+        </div>
+      </main>
+      <aside class="chat rail">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#565c66" stroke-width="1.7"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3v-5.5A8 8 0 0 1 11 4h2a8 8 0 0 1 8 8Z"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#747a84" stroke-width="1.7"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#747a84" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </aside>
+    </div>
+  </div>
+  <section class="ann">
+    <h4>1.0 대비 변경점</h4>
+    <p class="lead"><span class="tag rep">치환</span>AS-IS가 있고 대체된다 &nbsp;<span class="tag new">신설</span>AS-IS 없음 · 새로 꽂는다 &nbsp;<span class="tag keep">유지</span>기존 확정 재확인 &nbsp;<span class="tag open">미결</span>답이 필요한 것</p>
+    <div class="grid"><div class="it"><span class="pin">1</span><p><span class="tag rep">치환</span><b>주체가 뒤집힌다.</b> AS-IS는 무작위 2%를 사람이 이진 라벨링했다 — 100만 건이면 20,000건. TO-BE는 AI가 전량 판정하고 사람은 두 곳만 본다: 기준을 만드는 캘리브레이션 300~500건, 그리고 AI가 자신 없어 올린 문장.</p></div>
+<div class="it"><span class="pin">2</span><p><span class="tag rep">치환</span><b>라벨 스키마 — 2분류 → 3-class + 사유.</b> 하류가 필요로 하는 것은 "관련이냐"가 아니라 <em>이 원문 하나로 상황을 재구성할 수 있느냐</em>다. <em class="mono">relevant</em>를 <em class="mono">core / supporting</em>으로 분할하고 나머지 4 class를 <em class="mono">non</em>의 <em class="mono">reason_code</em>(ad · plain_eval · pure_criticism · no_experience · other)로 강하 — 정보 손실이 없어 기존 라벨은 마이그레이션 없이 읽힌다. <em class="mono">context_dims</em>는 여기서 채우지 않고 STEP 09에서 Core만 추출한다.</p></div>
+<div class="it"><span class="pin">3</span><p><span class="tag new">신설</span><b>α가 검수량을 정한다 (conformal risk control).</b> v4의 "목표 1,000건"에는 근거가 없었다 — 정확도가 정체하면 멈춘다는 경험칙뿐이고, 채택된 라벨이 얼마나 틀렸는지는 끝까지 알 수 없었다. α를 정하면 임계 τ가 캘리브레이션 데이터에서 나오고, 사람 검수량은 입력이 아니라 <em>결과</em>가 된다.</p></div>
+<div class="it"><span class="pin">4</span><p><span class="tag new">신설</span><b>confidence의 출처 — Simulated Annotators.</b> 지시-튜닝 모델은 자기 판단에 과도한 확신을 보고하고 그 값이 프롬프트 형식에 크게 흔들려 라우팅 기준으로 못 쓴다. 그래서 <em>판정 근거축 자체가 다른</em> 페르소나 k=3(CX 리서처 · 제품 QA · 일반 소비자)에게 같은 문서를 판정시키고 일치율을 confidence로 쓴다. 근거는 <b>제출 후에만</b> 노출해 앵커링을 막는다.</p></div>
+<div class="it"><span class="pin">—</span><p><span class="tag new">신설</span><b>AI-first 신뢰도 6절차.</b> ① 캘리브레이션 스프린트(300~500건 2인 이중 라벨 → κ<sub>human</sub>) → ② AI 전량 판정(cascade 3-tier) → ③ conformal로 τ 산출 → ④ 라우팅(채택 / escalate) → ⑤ 감사 샘플(채택분 무작위 → κ<sub>AI</sub>) → ⑥ κ 2배치 연속 하락 또는 분포 급변 시 ①로 재캘리브레이션. ⑤가 무작위인 이유는 escalate 큐만 보면 "AI가 자신 있게 틀린 구간"이 구조적으로 관측되지 않기 때문이다.</p></div>
+<div class="it"><span class="pin">—</span><p><span class="tag rep">치환</span><b>60/20/15/5 재해석과 산출 계약.</b> 레시피는 남기고 의미만 갈아끼운다 — 60% 프록시 선별 → escalate 건 / 20% 층화 무작위 → 감사 샘플 / 15% LLM 시드·5% 재발행은 유지. 화면은 그대로고 배치되는 절차만 바뀐다. <em class="mono">stage_5.json</em>에 κ<sub>human</sub> · κ<sub>AI</sub> · 클래스 분포 · conformal 커버리지 · α · escalate 건수 · cascade 단계별 처리량을 남긴다(분류기 채택 81% · LLM-B 재판정 18%). <span class="tag open">미결</span>페르소나 간 불일치가 실제 오답과 상관되는지 먼저 검증해야 하며 k=3은 잠정값이다.</p></div></div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

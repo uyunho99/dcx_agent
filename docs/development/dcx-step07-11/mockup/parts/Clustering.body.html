@@ -1,0 +1,207 @@
+<!--h:2300-->
+<!--title:STEP 07 — 군집-->
+<!--sub:기존 방법을 지우지 않고, 수정 방법을 나란히 놓는다 · ID는 한쪽에서만 발급한다 · 1.0 Touch Point 장표는 구조를 그대로 승계한다-->
+<!--chat:rail-->
+
+[[MAIN]]
+<div class="row rel" style="flex:none;gap:12px;align-items:stretch">
+  <span class="pin fl" style="top:-8px;left:-9px">1</span>
+  <div class="card" style="flex:1.45;border-color:var(--ind-ln);background:color-mix(in srgb, var(--persona-blue-100) 4%, transparent)"><div class="cc" style="padding:12px 15px;display:flex;align-items:center;gap:14px">
+    <div><div class="lab" style="color:var(--action-hover)">ID 발급 갈래 <span class="mono qu" style="text-transform:none;letter-spacing:0;font-weight:400">primary_method</span></div>
+      <div class="xs" style="margin-top:4px">나머지 갈래는 비교 화면에만 나온다 · 세션 단위로 되돌릴 수 있다</div></div>
+    <span class="grow"></span>
+    <span class="seg"><span class="on">수정 방법</span><span>기존 방법</span></span>
+  </div></div>
+  <div class="kpi" style="flex:.44"><span class="lab">L1 Cluster</span><span class="v">6</span><span class="xs">실루엣 최대 k · 3~14 탐색</span></div>
+  <div class="kpi" style="flex:.44"><span class="lab">L2 Persona</span><span class="v">14</span><span class="xs">클러스터당 2~3</span></div>
+  <div class="kpi" style="flex:.44"><span class="lab">L3 Context</span><span class="v">38</span><span class="xs">페르소나당 2~4</span></div>
+  <div class="kpi" style="flex:.66"><span class="lab">1.0 재현성</span><span class="v">.58<span class="xs" style="font-weight:400"> ARI · .66 NMI</span></span><span class="xs">두 갈래 최대겹침 매칭</span></div>
+</div>
+
+<div class="row" style="flex:none;min-height:0">
+  <div class="card" style="flex:1">
+    <div class="ch"><h3>기존 방법 · 1.0</h3><span class="b">Ward + SNA + LDA</span><span class="grow"></span><span class="xs">형태소 토큰 입력</span></div>
+    <div class="cc">
+      <svg viewBox="0 0 320 132" width="100%" height="132" style="display:block">
+        <g stroke-width="1.2" fill="none" style="stroke:var(--line-strong)">
+          <path d="M14 126V96h28v30M14 96h28"/><path d="M56 126V104h28v22M56 104h28"/>
+          <path d="M28 96V74h42v30M28 74h42"/>
+          <path d="M104 126V110h26v16M104 110h26"/><path d="M146 126V100h26v26M146 100h26"/>
+          <path d="M117 110V80h38v20M117 80h38"/>
+          <path d="M49 74V50h87v30M49 50h87"/>
+          <path d="M196 126V106h30v20M196 106h30"/><path d="M244 126V112h30v14M244 112h30"/>
+          <path d="M211 106V78h44v34M211 78h44"/>
+          <path d="M92 50V30h141v48M92 30h141"/>
+        </g>
+        <line x1="0" y1="62" x2="320" y2="62" stroke-width="1" stroke-dasharray="4 3"/ style="stroke:var(--action)">
+        <text x="322" y="60" font-size="9" text-anchor="end" style="fill:var(--ink-secondary)">cut k=6</text>
+      </svg>
+      <div style="margin-top:8px;display:flex;gap:12px;align-items:flex-end;border-top:1px solid var(--line);padding-top:9px">
+        <div style="flex:none;width:150px">
+          <div class="lab" style="margin-bottom:3px">실루엣 스코어 그래프</div>
+          <svg viewBox="0 0 150 46" width="150" height="46" style="display:block">
+            <polyline points="8,38 25,26 42,14 59,10 76,18 93,25 110,31 127,36 142,40" fill="none" stroke-width="1.6"/ style="stroke:var(--action)">
+            <circle cx="59" cy="10" r="3.4"/ style="fill:var(--action)">
+            <line x1="59" y1="10" x2="59" y2="42" stroke-width=".9" stroke-dasharray="3 2"/ style="stroke:var(--action)">
+            <g stroke-width="1" style="stroke:var(--line)"><line x1="4" y1="42" x2="146" y2="42"/></g>
+            <g font-size="8" style="fill:var(--ink-subtle)"><text x="4" y="52">3</text><text x="56" y="52">6</text><text x="138" y="52">14</text></g>
+            <text x="64" y="12" font-size="8.5" style="fill:var(--action-hover)">최대 0.31</text>
+          </svg>
+        </div>
+        <div class="xs" style="flex:1;display:flex;flex-direction:column;gap:3px">
+          <span>채택 k <span class="mono fg">6</span> · Elbow와 일치</span>
+          <span>TF-IDF 상위 10 · 명사</span>
+          <span class="rel" style="color:var(--spe)">1.0 실측 실루엣 <span class="mono">0.044 / 0.036</span> — 내부·외부를 사람이 나눠 돌린 값<span class="pin fl" style="top:-2px;right:-9px">6</span></span>
+        </div>
+      </div>
+      <div class="xs qu" style="margin-top:7px">L2는 명사 동시출현 행렬(상위 ≈300) → 모듈성 분할 → Desire 유사한 것 통합. L3는 micro segment 내부 gensim LDA, topic_num 2~10 스캔.</div>
+    </div>
+  </div>
+
+  <div class="card rel" style="flex:1">
+    <span class="pin fl" style="top:12px;left:-9px">3</span>
+    <div class="ch"><h3>수정 방법 · 임베딩</h3><span class="b ind">ID 발급</span><span class="grow"></span><span class="xs">Voyage 1024D 입력</span></div>
+    <div class="cc">
+      <svg viewBox="0 0 320 132" width="100%" height="132" style="display:block">
+        <g opacity=".92">
+          <circle cx="58" cy="40" r="20"/ style="fill:color-mix(in srgb, var(--persona-blue-100) 9%, transparent)"><circle cx="130" cy="30" r="17"/ style="fill:color-mix(in srgb, var(--persona-blue-100) 9%, transparent)">
+          <circle cx="212" cy="46" r="22"/ style="fill:color-mix(in srgb, var(--persona-blue-100) 9%, transparent)"><circle cx="84" cy="98" r="19"/ style="fill:color-mix(in srgb, var(--persona-blue-100) 9%, transparent)">
+          <circle cx="168" cy="100" r="16"/ style="fill:color-mix(in srgb, var(--persona-blue-100) 9%, transparent)"><circle cx="256" cy="98" r="18"/ style="fill:color-mix(in srgb, var(--persona-blue-100) 9%, transparent)">
+        </g>
+        <g style="fill:var(--ink-secondary)">
+          <circle cx="52" cy="36" r="2"/><circle cx="64" cy="44" r="2"/><circle cx="58" cy="30" r="2"/><circle cx="46" cy="47" r="2"/><circle cx="68" cy="33" r="2"/>
+          <circle cx="126" cy="26" r="2"/><circle cx="136" cy="34" r="2"/><circle cx="130" cy="38" r="2"/><circle cx="122" cy="36" r="2"/>
+          <circle cx="206" cy="42" r="2"/><circle cx="218" cy="50" r="2"/><circle cx="212" cy="38" r="2"/><circle cx="222" cy="40" r="2"/><circle cx="204" cy="54" r="2"/>
+          <circle cx="78" cy="94" r="2"/><circle cx="90" cy="102" r="2"/><circle cx="84" cy="90" r="2"/><circle cx="76" cy="105" r="2"/>
+          <circle cx="164" cy="96" r="2"/><circle cx="172" cy="104" r="2"/><circle cx="168" cy="92" r="2"/>
+          <circle cx="250" cy="94" r="2"/><circle cx="262" cy="102" r="2"/><circle cx="256" cy="90" r="2"/>
+        </g>
+        <g style="fill:var(--danger)"><circle cx="152" cy="64" r="2.6"/><circle cx="108" cy="66" r="2.6"/><circle cx="232" cy="74" r="2.6"/><circle cx="34" cy="76" r="2.6"/></g>
+        <text x="150" y="126" font-size="9" style="fill:var(--danger)">● Edge · dist_centroid &gt; P90 — 삭제하지 않고 반례 후보로 보존</text>
+      </svg>
+      <div class="xs" style="margin-top:9px;display:flex;gap:14px"><span>자동 k <span class="mono fg">6</span> · 실루엣 최대</span><span>c-TF-IDF 상위 10</span></div>
+      <div class="xs qu" style="margin-top:7px">L2·L3는 상위 구획 내부 서브 K-means(k 2~3 / 2~4) + c-TF-IDF. 클러스터를 한 문서로 합쳐 계산하므로 <span class="fg">구별하는 어휘</span>가 뽑힌다.</div>
+    </div>
+  </div>
+
+  <div class="card rel" style="width:360px;flex:none">
+    <span class="pin fl" style="top:12px;left:-9px">2</span>
+    <div class="ch"><h3>Cluster Quality Report</h3><span class="grow"></span><span class="xs">진단만 · 실행하지 않음</span></div>
+    <div class="cc" style="display:flex;flex-direction:column;gap:9px">
+      <div class="xs" style="display:flex;align-items:center;gap:8px"><span style="width:118px" class="sec">Experience Cohesion</span><div class="bar" style="flex:1"><i class="o" style="width:64%"></i></div><span class="mono fg" style="width:42px;text-align:right">0.64</span><span class="b obs">양호</span></div>
+      <div class="xs" style="display:flex;align-items:center;gap:8px"><span style="width:118px">Boundary Clarity</span><div class="bar" style="flex:1"><i class="w" style="width:75%"></i></div><span class="mono fg" style="width:42px;text-align:right">11.2%</span><span class="b">15% 이내</span></div>
+      <div class="xs" style="display:flex;align-items:center;gap:8px"><span style="width:118px">재현성 ARI · L1</span><div class="bar" style="flex:1"><i class="o" style="width:74%"></i></div><span class="mono fg" style="width:42px;text-align:right">0.74</span><span class="b obs">안정</span></div>
+      <div class="xs" style="display:flex;align-items:center;gap:8px"><span style="width:118px">재현성 ARI · L2</span><div class="bar" style="flex:1"><i class="w" style="width:58%"></i></div><span class="mono fg" style="width:42px;text-align:right">0.58</span><span class="b inf">임계 근접</span></div>
+      <div class="xs" style="display:flex;align-items:center;gap:8px"><span style="width:118px">NPMI · C_v</span><div class="bar" style="flex:1"><i class="n" style="width:61%"></i></div><span class="mono fg" style="width:42px;text-align:right">0.61</span><span class="b">LDA 0.57</span></div>
+      <div class="xs" style="display:flex;align-items:center;gap:8px"><span style="width:118px">Noise &amp; Outlier</span><div class="bar" style="flex:1"><i class="n" style="width:50%"></i></div><span class="mono fg" style="width:42px;text-align:right">5.0%</span><span class="b">보존</span></div>
+      <div class="xs" style="border-top:1px solid var(--line);padding-top:9px;margin-top:2px">
+        지표는 문헌에서 왔지만 <span class="fg">임계값은 아니다</span> — Cohesion 0.6, 음수 실루엣 15%, ARI L1 0.7 / L2 0.6은 설계 시작값이다. 아래 층일수록 문서 수가 줄어 재표집 분산이 커지므로 층별로 완화했다.
+      </div>
+      <div class="xs" style="border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--sunk)">
+        AS-IS에서 silhouette은 <span class="mono">best_k</span> 선택에 내부적으로 쓰인 뒤 폐기됐고, 사람은 군집 품질을 알 방법이 없었다. 같은 계산을 <span class="fg">사람에게 보여주는 진단</span>으로 되돌린 것이다.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card rel" style="flex:none">
+  <span class="pin fl" style="top:12px;left:-9px">7</span>
+  <div class="ch"><h3>Touch Point 정의</h3><span class="b ind">1.0 장표 구조 승계</span>
+    <span class="seg" style="margin-left:6px"><span class="on">CL0</span><span>CL1</span><span>CL2</span><span>CL3</span><span>CL4</span><span>CL5</span></span>
+    <span class="grow"></span>
+    <span class="xs">한 줄 정의 — <span class="fg">운동 중 몸 상태를 확인하려다 기기를 두 개 차게 되는 상황을 반복해 겪고, 하나로 줄이고 싶어 한다</span></span></div>
+  <div class="cc" style="display:flex;gap:16px">
+    <div style="width:184px;flex:none">
+      <div class="lab">c-TF-IDF 결과 <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">상위 14</span></div>
+      <table style="margin-top:6px">
+        <tbody>
+          <tr><td class="fg">심박</td><td class="n mono fg">0.704</td></tr>
+          <tr><td class="fg">워치</td><td class="n mono fg">0.695</td></tr>
+          <tr><td class="fg">러닝</td><td class="n mono fg">0.691</td></tr>
+          <tr><td>귀찮다</td><td class="n mono">0.676</td></tr>
+          <tr><td>손목</td><td class="n mono">0.674</td></tr>
+          <tr><td>챙기다</td><td class="n mono">0.666</td></tr>
+          <tr><td>측정</td><td class="n mono">0.665</td></tr>
+          <tr><td>운동</td><td class="n mono">0.649</td></tr>
+          <tr><td>충전</td><td class="n mono">0.634</td></tr>
+          <tr><td class="qu">＋ 5개</td><td class="n mono qu">…</td></tr>
+        </tbody>
+      </table>
+      <div class="xs" style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px">
+        1.0은 클러스터별 <span class="mono">TF-IDF</span>였다. 2.0은 클러스터를 한 문서로 합쳐 계산하는 <span class="mono fg">c-TF-IDF</span>이므로 <span class="fg">다른 클러스터와 구별되는 어휘</span>가 올라온다.
+      </div>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div class="lab">하위 주제별 대표 원문 <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">— 서브 K-means로 자동 분할 · 1.0은 사람이 골랐다</span></div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:7px">
+        <div class="card sunk"><div class="cc" style="padding:10px 11px">
+          <div class="sm fg" style="font-size:12.5px;font-weight:510">기기 중복</div>
+          <div class="xs" style="margin-top:6px">"러닝할 때 워치랑 이어폰 둘 다 챙겨 나가는 거 은근 귀찮잖아요 하나로 되면 좋겠는데"</div>
+          <div class="xs qu" style="margin-top:6px;display:flex;gap:6px"><span class="mono">n 4,120</span><span>·</span><span>Core 72%</span></div>
+        </div></div>
+        <div class="card sunk"><div class="cc" style="padding:10px 11px">
+          <div class="sm fg" style="font-size:12.5px;font-weight:510">측정 기대</div>
+          <div class="xs" style="margin-top:6px">"이어폰으로 심박 체크되면 진짜 편할 듯 워치 없이 이어폰만으로 되면 좋겠는데 될까요"</div>
+          <div class="xs qu" style="margin-top:6px;display:flex;gap:6px"><span class="mono">n 3,860</span><span>·</span><span>Core 68%</span></div>
+        </div></div>
+        <div class="card sunk"><div class="cc" style="padding:10px 11px">
+          <div class="sm fg" style="font-size:12.5px;font-weight:510">착용 지속</div>
+          <div class="xs" style="margin-top:6px">"장시간 끼고 있으면 귀가 아파서 결국 빼게 되는데 그럼 기록이 끊겨요"</div>
+          <div class="xs qu" style="margin-top:6px;display:flex;gap:6px"><span class="mono">n 3,540</span><span>·</span><span>Core 61%</span></div>
+        </div></div>
+        <div class="card sunk" style="border-color:var(--spe-ln)"><div class="cc" style="padding:10px 11px">
+          <div class="sm" style="font-size:12.5px;font-weight:510;color:var(--spe)">정확도 불신 <span class="b spe">반례</span></div>
+          <div class="xs" style="margin-top:6px">"이어폰 센서는 광학이라 흔들리면 튄다던데 그걸 믿고 쓸 수 있나요"</div>
+          <div class="xs qu" style="margin-top:6px;display:flex;gap:6px"><span class="mono">n 1,180</span><span>·</span><span>Edge 34%</span></div>
+        </div></div>
+      </div>
+      <div class="xs" style="margin-top:9px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--sunk)">
+        1.0 장표는 대표 원문을 사람이 읽고 4~6개 소주제로 묶어 배치했다. 2.0은 <span class="fg">L2 서브 K-means의 하위 구획을 그대로 칸으로 쓴다</span> — 배치가 판단이 아니라 계산이 되므로, 같은 입력이면 같은 장표가 다시 나온다. 반례 칸은 삭제 대상이 아니라 <span class="fg">보존 대상</span>이므로 항상 마지막 칸에 남는다.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card rel" style="flex:1;min-height:0;display:flex;flex-direction:column">
+  <span class="pin fl" style="top:12px;left:-9px">5</span>
+  <div class="ch"><h3>Cluster 목록</h3><span class="b ind">수정 방법 갈래 · ID 발급</span><span class="grow"></span>
+    <span class="xs">밴드 = dist_centroid 백분위 · Core ≤P50 / Fringe P50–P90 / Edge &gt;P90</span></div>
+  <div style="flex:1;overflow:hidden">
+    <table>
+      <thead><tr><th style="width:74px">ID</th><th style="width:186px">c-TF-IDF 상위 어휘</th><th style="width:152px">주된 제약 <span class="qu">dominant_constraint</span></th><th class="n" style="width:66px">문서</th><th style="width:150px">밴드 분포</th><th class="n" style="width:96px">max_sim_to_known</th><th class="n" style="width:86px">combo_rarity</th><th style="width:76px">Persona</th></tr></thead>
+      <tbody>
+        <tr><td class="mono" style="color:var(--fg)">CL0</td><td>심박 · 워치 · 러닝 · 귀찮다</td><td class="xs">기기를 늘려야 함</td><td class="n">14,820</td>
+          <td><div style="display:flex;height:6px;border-radius:3px;overflow:hidden"><i style="width:52%;background:var(--mut)"></i><i style="width:36%;background:var(--line-strong)"></i><i style="width:12%;background:var(--danger)"></i></div><div class="xs" style="margin-top:3px">52 / 36 / 12</div></td>
+          <td class="n mono">0.41</td><td class="n mono" style="color:var(--obs)">0.68</td><td class="xs">3개</td></tr>
+        <tr><td class="mono" style="color:var(--fg)">CL1</td><td>땀 · 이탈 · 폼팁 · 고정</td><td class="xs">교체로 해결 안 됨</td><td class="n">12,140</td>
+          <td><div style="display:flex;height:6px;border-radius:3px;overflow:hidden"><i style="width:58%;background:var(--mut)"></i><i style="width:33%;background:var(--line-strong)"></i><i style="width:9%;background:var(--danger)"></i></div><div class="xs" style="margin-top:3px">58 / 33 / 9</div></td>
+          <td class="n mono" style="color:var(--inf)">0.73</td><td class="n mono">0.22</td><td class="xs">2개</td></tr>
+        <tr><td class="mono" style="color:var(--fg)">CL2</td><td>수면 · 착용 · 배터리 · 알림</td><td class="xs">장시간 착용 부담</td><td class="n">9,460</td>
+          <td><div style="display:flex;height:6px;border-radius:3px;overflow:hidden"><i style="width:46%;background:var(--mut)"></i><i style="width:38%;background:var(--line-strong)"></i><i style="width:16%;background:var(--danger)"></i></div><div class="xs" style="margin-top:3px">46 / 38 / 16</div></td>
+          <td class="n mono">0.29</td><td class="n mono" style="color:var(--obs)">0.81</td><td class="xs">3개</td></tr>
+        <tr><td class="mono" style="color:var(--fg)">CL3</td><td>통화 · 풍절음 · 마이크 · 회의</td><td class="xs">환경 소음 제어 불가</td><td class="n">8,220</td>
+          <td><div style="display:flex;height:6px;border-radius:3px;overflow:hidden"><i style="width:61%;background:var(--mut)"></i><i style="width:31%;background:var(--line-strong)"></i><i style="width:8%;background:var(--danger)"></i></div><div class="xs" style="margin-top:3px">61 / 31 / 8</div></td>
+          <td class="n mono" style="color:var(--inf)">0.77</td><td class="n mono">0.18</td><td class="xs">2개</td></tr>
+        <tr><td class="mono" style="color:var(--fg)">CL4</td><td>정확도 · 센서 · 불신 · 리뷰</td><td class="xs">검증 수단이 없음</td><td class="n">6,910</td>
+          <td><div style="display:flex;height:6px;border-radius:3px;overflow:hidden"><i style="width:44%;background:var(--mut)"></i><i style="width:39%;background:var(--line-strong)"></i><i style="width:17%;background:var(--danger)"></i></div><div class="xs" style="margin-top:3px">44 / 39 / 17</div></td>
+          <td class="n mono">0.34</td><td class="n mono" style="color:var(--obs)">0.74</td><td class="xs">2개</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="cc rel" style="flex:none;border-top:1px solid var(--line);padding:11px 14px;display:flex;gap:16px;align-items:center">
+    <span class="pin fl" style="top:-9px;left:16px">4</span>
+    <span class="xs"><span class="lab">modifier seed</span> STEP 01·02 타겟(사회초년생 · 1인가구)은 <span class="fg">군집 입력이 아니다</span> — Persona 명명과 Desire 초안의 힌트로만 쓴다</span>
+    <span class="grow"></span>
+    <span class="xs qu">타겟을 군집 입력에 넣으면 "미리 아는 세그먼트"가 군집을 가르는 축이 되어 미지의 소비자가 나오지 않는다</span>
+  </div>
+</div>
+
+[[ANN]]
+<div class="it"><span class="pin">1</span><p><span class="tag rep">치환</span><b>두 갈래 병행.</b> 1.0 결과물은 이미 검증된 산출이고, 임베딩 기반 분할이 그 결과를 얼마나 보존하는지는 아직 아무도 모른다. 한쪽을 지우면 그 질문을 영구히 답할 수 없다. 다만 <b>ID는 한 갈래에서만</b> 발급한다 — 둘 다 발급하면 같은 <em class="mono">persona_id</em>가 두 뜻을 갖고 STEP 09 filter가 무너진다.</p></div>
+<div class="it"><span class="pin">2</span><p><span class="tag rep">치환</span><b>품질 지표를 사람에게 되돌린다.</b> AS-IS의 silhouette은 <em class="mono">best_k</em> 선택에 내부적으로 쓰인 뒤 폐기됐다. 같은 계산을 3축(Validity · Stability · Coherence) 진단으로 노출하되, 배지는 <b>진단만</b> 하고 Split·Merge를 실행하지 않는다.</p></div>
+<div class="it"><span class="pin">3</span><p><span class="tag new">신설</span><b>메타 2종 병기.</b> <em class="mono">max_sim_to_known</em>은 STEP 05에서 계산된 값을 그대로 실어 나르므로 비용 0이다. <em class="mono">combo_rarity</em>는 각 값은 흔한데 <b>조합이 희소한</b> 문서를 잡는다 — 그런 문서는 거리상 중앙에 앉아 있어 <em class="mono">dist_centroid</em>로는 절대 걸리지 않는다.</p></div>
+<div class="it"><span class="pin">4</span><p><span class="tag new">신설</span><b>modifier는 입력이 아니라 힌트.</b> STEP 01·02의 타겟은 5-Dimension의 축이 아니라 cross-cut 수식어로 재정의된다. 사후 세분화 원칙과 같은 논리 — 미리 아는 세그먼트가 군집을 가르면 안 된다.</p></div>
+<div class="it"><span class="pin">5</span><p><span class="tag new">신설</span><b>Context에 5-Dim 요약 첨부.</b> 소속 Core 원문 dims의 최빈값을 <em class="mono">dominant_constraint</em>로 붙인다. 제약이 명시되면 STEP 09의 쿼리 문장이 "~해서 불편"에서 <b>"~라는 제약 때문에 ~로 우회"</b>로 구체화된다.</p></div>
+<div class="it"><span class="pin">6</span><p><span class="tag keep">유지</span><b>실루엣 곡선을 장표 그대로 노출한다.</b> 1.0은 내부·외부를 사람이 나눠 각각 돌렸고 실루엣 계수가 <em class="mono">0.044 / 0.036</em>으로 매우 낮았다. 2.0은 한 번에 돌리고 k 3~14를 스캔해 최댓값을 채택하되, <b>곡선 자체를 보여준다</b> — 최고점이 얼마나 평평한지 보이지 않으면 k=6이 얼마나 임의적인지 알 수 없다.</p></div>
+<div class="it"><span class="pin">7</span><p><span class="tag keep">유지</span><b>Touch Point 정의 장표 승계.</b> 상위 어휘 랭킹 + 하위 주제별 대표 원문 그리드는 1.0 장표의 형식 그대로다. 바뀐 것은 둘 — 어휘가 TF-IDF에서 <b>c-TF-IDF</b>(클러스터를 한 문서로 합쳐 계산)로 바뀌어 구별하는 어휘가 올라오고, 소주제 칸이 사람의 묶음이 아니라 <b>L2 서브 K-means 구획</b>이라 재현된다. 반례 칸은 항상 마지막에 보존한다.</p></div>
+<div class="it"><span class="pin">—</span><p><span class="tag open">미결</span><b>L3 k 결정 · combo_rarity 임계 · centrality 산식.</b> L3는 문서 수가 적어 실루엣이 불안정하다 — Granularity 하한과 실루엣 중 무엇을 우선할지 정해야 한다. 조합 희소성을 Pinecone metadata로 버틸지 그래프 DB를 도입할지도 열려 있다.</p></div>

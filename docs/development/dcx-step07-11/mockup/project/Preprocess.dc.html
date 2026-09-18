@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>STEP 05 — 전처리 · 임베딩</title>
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+/* Person A Design System — handoff 번들의 토큰을 그대로 구현한다.
+   출처: project/styles.css → tokens/{fonts,colors,typography,spacing,base}.css
+   폰트·로고는 아티팩트 에셋으로 업로드해 /_blob/ 주소로 참조한다.
+   기존 화면 마크업이 쓰는 레거시 변수명은 맨 아래에서 이 토큰들에 별칭으로 연결한다. */
+
+/* ── tokens/fonts.css ── UI가 쓰는 400/500/600/700만 싣는다 (§3.1) */
+@font-face{font-family:Pretendard;font-weight:400;font-style:normal;font-display:swap;
+  src:url("/_blob/b61d00bb36beee27cff0927bae844311") format("woff2")}
+@font-face{font-family:Pretendard;font-weight:500;font-style:normal;font-display:swap;
+  src:url("/_blob/d7c65e026fbb548b5fa5045e0d4607aa") format("woff2")}
+@font-face{font-family:Pretendard;font-weight:600;font-style:normal;font-display:swap;
+  src:url("/_blob/cea76f29df8261db72490b8144c866a7") format("woff2")}
+@font-face{font-family:Pretendard;font-weight:700;font-style:normal;font-display:swap;
+  src:url("/_blob/6a3823c062967e5b736dd887f949c066") format("woff2")}
+
+/* ── tokens/colors.css ── */
+:root{
+/* brand */
+--persona-blue-100:#37b7f8;--persona-blue-soft:#e4f5fe;--persona-graphite-100:#68696e;
+/* action */
+--action:#0a73b5;--action-hover:#085d93;--action-soft:#e8f4fc;--on-action:#ffffff;
+/* surface & line */
+--surface:#f6f7f9;--surface-raised:#ffffff;--surface-sunken:#eceef1;--line:#e1e4e8;--line-strong:#7f838b;
+/* ink */
+--ink:#1c1e22;--ink-secondary:#55585f;--ink-subtle:#6a6e76;
+/* status */
+--success:#1b7446;--success-soft:#e6f6ec;--warning:#9a5b00;--warning-soft:#fff3dc;--danger:#c62828;--danger-soft:#fdeaea;
+/* semantic aliases */
+--text-secondary:var(--ink-secondary);--text-subtle:var(--ink-subtle);--text-link:var(--action);
+--surface-page:var(--surface);--surface-card:var(--surface-raised);--surface-header:var(--surface-sunken);
+--border-default:var(--line);--border-control:var(--line-strong);--focus-ring:var(--action);
+--selected-bg:var(--persona-blue-soft);--info:var(--action);--info-soft:var(--action-soft);
+}
+
+/* ── tokens/typography.css ── */
+:root{
+--font-sans:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",system-ui,sans-serif;
+--font-mono:"SF Mono",Menlo,Consolas,"D2Coding",monospace;
+--text-display-lg:700 32px/40px var(--font-sans);--tracking-display-lg:-0.02em;
+--text-display:700 24px/32px var(--font-sans);--tracking-display:-0.01em;
+--text-heading-lg:600 20px/28px var(--font-sans);
+--text-heading:600 16px/24px var(--font-sans);
+--text-body-lg:400 16px/24px var(--font-sans);
+--text-body:400 14px/20px var(--font-sans);
+--text-body-strong:600 14px/20px var(--font-sans);
+--text-label:500 13px/18px var(--font-sans);
+--text-caption:400 12px/16px var(--font-sans);
+--text-code:400 13px/20px var(--font-mono);
+--weight-regular:400;--weight-medium:500;--weight-semibold:600;--weight-bold:700;
+}
+
+/* ── tokens/spacing.css ── */
+:root{
+--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;--space-12:48px;
+--radius-sm:6px;--radius-md:10px;--radius-full:999px;
+--shadow-sm:0 1px 2px rgba(28,30,34,0.06);
+--shadow-md:0 8px 24px rgba(28,30,34,0.12),0 1px 2px rgba(28,30,34,0.06);
+--motion:150ms ease-out;
+--control-md:36px;--control-sm:28px;--badge-h:22px;
+--sidebar-w:240px;--content-max:1200px;--card-min:280px;
+}
+
+/* ── 레거시 별칭 ── 14개 화면 마크업이 참조하는 이름들 */
+:root{
+--canvas:var(--surface);--panel:var(--surface-raised);--raise:var(--surface-raised);--sunk:var(--surface-sunken);
+--fg:var(--ink);--sec:var(--ink-secondary);--mut:var(--ink-secondary);--qui:var(--ink-subtle);
+--line2:var(--line-strong);--act:var(--action);--act-fg:var(--on-action);
+--indigo:var(--persona-blue-100);--ind-fg:var(--action);--ind-deep:var(--action-hover);
+--ind-bg:var(--action-soft);--ind-ln:var(--action);
+--obs:var(--success);--inf:var(--warning);--spe:var(--danger);
+--obs-bg:var(--success-soft);--inf-bg:var(--warning-soft);--spe-bg:var(--danger-soft);
+--obs-ln:var(--success);--inf-ln:var(--warning);--spe-ln:var(--danger);
+}
+
+/* ── tokens/base.css ── */
+*{box-sizing:border-box}
+body{margin:0;font:var(--text-body);color:var(--ink);background:var(--surface);
+  -webkit-font-smoothing:antialiased;word-break:keep-all;overflow-wrap:break-word}
+a{color:var(--action);text-decoration:none}a:hover{color:var(--action-hover);text-decoration:underline}
+:focus-visible{outline:2px solid var(--action);outline-offset:2px}
+.mono{font:var(--text-code);font-variant-numeric:tabular-nums;word-break:normal;white-space:nowrap}
+
+/* ---------- artboard ---------- */
+.art{width:1440px;background:var(--surface);display:flex;flex-direction:column}
+.app{display:flex;flex-direction:column;flex:1;min-height:0}
+
+/* ---------- app header ---------- */
+.top{height:56px;flex:none;display:flex;align-items:center;gap:var(--space-3);
+  padding:0 var(--space-4);border-bottom:1px solid var(--line);background:var(--surface-raised)}
+.brand{display:flex;align-items:center;gap:var(--space-2);font:var(--text-body-strong);
+  color:var(--ink);white-space:nowrap}
+.brand .dot{width:32px;height:32px;flex:none;border-radius:var(--radius-sm);
+  background:url("/_blob/3f933f71922cb48295ada36d5be25263") center/contain no-repeat}
+.top .sep{width:1px;height:18px;background:var(--line)}
+.pill{display:inline-flex;align-items:center;gap:var(--space-1);height:var(--control-sm);
+  padding:0 var(--space-3);border-radius:var(--radius-sm);font:var(--text-label);
+  color:var(--ink-secondary);background:transparent;border:1px solid transparent;
+  white-space:nowrap;transition:background var(--motion)}
+.pill:hover{background:var(--surface-sunken)}
+.pill.on{background:var(--surface-sunken);color:var(--ink);border-color:var(--line)}
+.grow{flex:1}
+
+/* ---------- Button (§7.1) ---------- */
+.btn{display:inline-flex;align-items:center;gap:var(--space-2);height:var(--control-md);
+  padding:0 var(--space-4);border-radius:var(--radius-sm);font:var(--text-body-strong);
+  border:1px solid var(--line-strong);background:var(--surface-raised);color:var(--ink);
+  white-space:nowrap;transition:background var(--motion),border-color var(--motion)}
+.btn:hover{background:var(--action-soft)}
+.btn.pri{background:var(--action);color:var(--on-action);border-color:var(--action)}
+.btn.pri:hover{background:var(--action-hover);border-color:var(--action-hover)}
+.btn.gho{background:transparent;border-color:transparent;color:var(--action)}
+.btn.gho:hover{background:var(--action-soft)}
+.btn.dng{background:var(--danger);color:var(--on-action);border-color:var(--danger)}
+.btn.sm,.btn.lg{height:var(--control-sm);padding:0 var(--space-3);font:var(--text-label)}
+.btn.lg{height:var(--control-md);padding:0 var(--space-6);font:var(--text-body-strong)}
+
+/* ---------- body split (§4.4) ---------- */
+.body{display:flex;flex:1;min-height:0}
+.side{width:var(--sidebar-w);flex:none;border-right:1px solid var(--line);background:var(--surface);
+  padding:var(--space-3) var(--space-2);overflow:hidden}
+.side .grp{font:var(--text-caption);font-weight:var(--weight-semibold);color:var(--ink-subtle);
+  padding:var(--space-4) var(--space-3) var(--space-2)}
+.step{display:flex;align-items:center;gap:var(--space-2);height:34px;padding:0 var(--space-3);
+  border-radius:var(--radius-sm);font:var(--text-label);color:var(--ink-secondary);
+  white-space:nowrap;transition:background var(--motion)}
+.step:hover{background:var(--surface-sunken)}
+.step.on{background:var(--selected-bg);color:var(--ink)}
+.step .no{font:var(--text-caption);color:var(--ink-subtle);width:36px;flex:none;
+  font-variant-numeric:tabular-nums}
+.step.on .no{color:var(--action)}
+.step .st{margin-left:auto;width:8px;height:8px;border-radius:var(--radius-full);
+  background:var(--line-strong);flex:none;opacity:.45}
+.step .st.done{background:var(--success);opacity:1}
+.step .st.run{background:var(--warning);opacity:1}
+.step .st.cur{background:var(--action);opacity:1}
+.side .note{margin:var(--space-3) var(--space-2);padding:var(--space-3);
+  border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-raised)}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--surface)}
+.mhead{flex:none;padding:var(--space-6) var(--space-8) var(--space-4);border-bottom:1px solid var(--line)}
+.mhead h1{margin:0;font:var(--text-display);letter-spacing:var(--tracking-display)}
+.mhead .sub{margin-top:var(--space-2);font:var(--text-body);color:var(--ink-secondary)}
+.mbody{flex:1;min-height:0;padding:var(--space-6) var(--space-8);
+  display:flex;flex-direction:column;gap:var(--space-4)}
+
+/* ---------- context panel ---------- */
+.chat{width:320px;flex:none;border-left:1px solid var(--line);background:var(--surface-raised);
+  display:flex;flex-direction:column}
+.chat.rail{width:52px;align-items:center;padding-top:var(--space-3);gap:var(--space-4)}
+.chat .chead{flex:none;height:48px;display:flex;align-items:center;gap:var(--space-2);
+  padding:0 var(--space-4);border-bottom:1px solid var(--line);font:var(--text-heading);white-space:nowrap}
+.chat .cbody{flex:1;min-height:0;padding:var(--space-4);display:flex;flex-direction:column;
+  gap:var(--space-3);overflow:hidden}
+.chat .cfoot{flex:none;padding:var(--space-3) var(--space-4);border-top:1px solid var(--line)}
+.msg{border:1px solid var(--line);border-radius:var(--radius-md);padding:var(--space-3);
+  background:var(--surface-raised);font:var(--text-body);color:var(--ink)}
+.msg.me{background:var(--action-soft);border-color:var(--action-soft)}
+.msg .who{display:block;font:var(--text-caption);color:var(--ink-subtle);margin-bottom:var(--space-1)}
+.input{height:var(--control-md);border:1px solid var(--line-strong);border-radius:var(--radius-sm);
+  background:var(--surface-raised);display:flex;align-items:center;padding:0 var(--space-3);
+  font:var(--text-body);color:var(--ink-subtle)}
+
+/* ---------- Card (§7.3) — 보더로 구분, 정적 카드에 그림자 없음 ---------- */
+.card{border:1px solid var(--line);border-radius:var(--radius-md);
+  background:var(--surface-raised);overflow:hidden}
+.card.sunk{background:var(--surface-sunken)}
+.card>.ch{display:flex;align-items:center;gap:var(--space-2);
+  padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--line)}
+.card>.ch h3{margin:0;font:var(--text-heading);white-space:nowrap}
+.card>.cc{padding:var(--space-4)}
+.lab{font:var(--text-label);color:var(--ink-secondary);white-space:nowrap}
+.row{display:flex;gap:var(--space-4)}
+.row>*{min-width:0}
+.col{display:flex;flex-direction:column;gap:var(--space-4);min-width:0}
+.sm{font:var(--text-body);color:var(--ink-secondary)}
+.xs{font:var(--text-caption);color:var(--ink-secondary)}
+.mu,.qu{color:var(--ink-subtle)} .fg{color:var(--ink)}
+
+/* ---------- Badge (§7.4) — 텍스트가 의미, 색은 보조 ---------- */
+.b{display:inline-flex;align-items:center;gap:var(--space-1);height:var(--badge-h);
+  padding:0 var(--space-2);border-radius:var(--radius-sm);font:var(--text-label);
+  background:var(--surface-sunken);color:var(--ink-secondary);border:1px solid transparent;
+  white-space:nowrap;flex:none}
+.b.ind{background:var(--info-soft);color:var(--info)}
+.b.obs{background:var(--success-soft);color:var(--success)}
+.b.inf{background:var(--warning-soft);color:var(--warning)}
+.b.spe{background:var(--danger-soft);color:var(--danger)}
+.b.brand{background:var(--persona-blue-soft);color:var(--ink)}
+.b.solid{background:var(--ink);color:var(--on-action)}
+.b.pill{border-radius:var(--radius-full)}
+.dotg{width:8px;height:8px;border-radius:var(--radius-full);display:inline-block;flex:none}
+.dotg.o{background:var(--success)} .dotg.i{background:var(--warning)} .dotg.s{background:var(--danger)}
+
+/* ---------- Table (§7.5) — dense 변형: 로그·관리 화면 ---------- */
+table{width:100%;border-collapse:collapse;background:var(--surface-raised)}
+th,td{text-align:left;font:var(--text-label);font-weight:var(--weight-regular);
+  padding:var(--space-2) var(--space-3);border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:var(--weight-medium);color:var(--ink-secondary);background:var(--surface-sunken);
+  white-space:nowrap}
+td{color:var(--ink)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:none}
+
+/* ---------- meters ---------- */
+.bar{height:8px;border-radius:var(--radius-full);background:var(--surface-sunken);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--persona-blue-100)}
+.bar>i.n{background:var(--line-strong)} .bar>i.o{background:var(--success)} .bar>i.w{background:var(--warning)}
+.kv{display:flex;align-items:baseline;gap:var(--space-2)}
+.kv b{font:var(--text-display);letter-spacing:var(--tracking-display);
+  font-variant-numeric:tabular-nums;white-space:nowrap;flex:none}
+.kpi{display:flex;flex-direction:column;gap:var(--space-1);padding:var(--space-4);
+  border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-raised)}
+.kpi .v{font:var(--text-display);letter-spacing:var(--tracking-display);
+  font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:var(--space-1);height:var(--control-sm);
+  padding:0 var(--space-3);border-radius:var(--radius-sm);border:1px solid var(--line-strong);
+  background:var(--surface-raised);font:var(--text-label);color:var(--ink);white-space:nowrap;
+  transition:background var(--motion)}
+.chip.on{background:var(--selected-bg);border-color:var(--action);color:var(--ink)}
+.chip.off{color:var(--ink-subtle);border-color:var(--line);background:var(--surface-sunken)}
+.wrap{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.fld{border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface-raised);
+  padding:var(--space-2) var(--space-3);font:var(--text-body);color:var(--ink);min-height:var(--control-md)}
+.fld.ph{color:var(--ink-subtle);background:var(--surface-sunken);border-color:var(--line)}
+.seg{display:inline-flex;padding:2px;border:1px solid var(--line);border-radius:var(--radius-sm);
+  background:var(--surface-sunken)}
+.seg>span{height:var(--control-sm);display:inline-flex;align-items:center;padding:0 var(--space-3);
+  border-radius:4px;font:var(--text-label);color:var(--ink-secondary);white-space:nowrap;
+  transition:background var(--motion)}
+.seg>span.on{background:var(--surface-raised);color:var(--ink);box-shadow:var(--shadow-sm)}
+
+/* ---------- annotation pins ---------- */
+.pin{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;
+  border-radius:var(--radius-full);background:var(--action-soft);color:var(--action);
+  font:var(--text-caption);font-weight:var(--weight-semibold);flex:none;font-variant-numeric:tabular-nums}
+.pin.fl{position:absolute;z-index:5;background:var(--surface-raised);color:var(--action);
+  border:1px solid var(--action);box-shadow:0 0 0 3px var(--surface)}
+.rel{position:relative}
+.ann{flex:none;border-top:1px solid var(--line);background:var(--surface-sunken);
+  padding:var(--space-6) var(--space-8)}
+.ann h4{margin:0 0 var(--space-1);font:var(--text-heading)}
+.ann .lead{margin:0 0 var(--space-4);font:var(--text-caption);color:var(--ink-secondary)}
+.ann .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-3) var(--space-6)}
+.ann .it{display:flex;gap:var(--space-2)}
+.ann .it p{margin:0;font:var(--text-caption);color:var(--ink-secondary)}
+.ann .it p em{font-style:normal;color:var(--ink-subtle)}
+.ann .it p b{font-weight:var(--weight-semibold);color:var(--ink)}
+.tag{display:inline-block;font:var(--text-caption);font-weight:var(--weight-medium);
+  padding:1px var(--space-2);border-radius:var(--radius-sm);background:var(--surface-sunken);
+  color:var(--ink-secondary);margin-right:var(--space-1);white-space:nowrap}
+.tag.rep{background:var(--action-soft);color:var(--action)}
+.tag.new{background:var(--success-soft);color:var(--success)}
+.tag.keep{background:var(--surface-sunken);color:var(--ink-secondary)}
+.tag.open{background:var(--danger-soft);color:var(--danger)}
+
+/* ---------- keyword board ---------- */
+.kw{display:inline-flex;align-items:center;gap:var(--space-1);height:var(--control-sm);
+  padding:0 var(--space-3);border-radius:var(--radius-full);font:var(--text-label);
+  border:1px solid var(--line);background:var(--surface-raised);color:var(--ink);white-space:nowrap}
+.kw.old{background:var(--surface-sunken);color:var(--ink-secondary)}
+.kw.new{background:var(--action-soft);border-color:var(--action);color:var(--action)}
+.kw.rej{background:transparent;color:var(--ink-subtle);text-decoration:line-through;
+  border-color:var(--line);border-style:dashed}
+.kw.man{background:var(--success-soft);border-color:var(--success);color:var(--success)}
+.kw.sug{background:var(--persona-blue-soft);border-color:var(--persona-blue-100);color:var(--ink)}
+.kw .sc{font:var(--text-caption);font-weight:var(--weight-semibold);padding:0 var(--space-1);
+  border-radius:var(--radius-sm);font-variant-numeric:tabular-nums}
+.kw .sc.hi{background:var(--success-soft);color:var(--success)}
+.kw .sc.mid{background:var(--warning-soft);color:var(--warning)}
+.kw .sc.lo{background:var(--danger-soft);color:var(--danger)}
+.axis{border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-raised);overflow:hidden}
+.axis>.ah{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-3) var(--space-4);
+  background:var(--surface-sunken);border-bottom:1px solid var(--line);
+  font:var(--text-label);font-weight:var(--weight-semibold);white-space:nowrap}
+.sub{display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-3) var(--space-4);
+  border-bottom:1px solid var(--line)}
+.sub:last-child{border-bottom:none}
+.sub>.sh{display:flex;align-items:center;gap:var(--space-2);font:var(--text-label);
+  color:var(--ink-secondary);white-space:nowrap}
+.sub>.sh .car{color:var(--ink-subtle);width:10px}
+.sub>.sh .cnt{color:var(--ink-subtle);font-variant-numeric:tabular-nums}
+.drop{border:1px dashed var(--action);background:var(--action-soft);border-radius:var(--radius-md)}
+
+  </style>
+</helmet>
+<div class="art" style="width: 1440px; height: 1250px;">
+  <div class="app">
+    <header class="top">
+  <div class="brand"><span class="dot"></span>DCX Agent</div>
+  <span class="sep"></span>
+  <span class="pill on">에어팟 프로 3 · 운동·건강 맥락 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg></span>
+  <span class="pill">세션 3개</span>
+  <span class="grow"></span>
+  <span class="pill">작업 2건 실행 중</span>
+  <span class="pill">문서 검색</span>
+  <span class="btn gho">내보내기</span>
+  <span class="btn pri">세션 저장</span>
+</header>
+    <div class="body">
+      <nav class="side"><div class="grp">Data Defining</div><div class="step"><span class="no">00</span><span>세션</span><span class="st done"></span></div><div class="step"><span class="no">01·02</span><span>입력 선언</span><span class="st done"></span></div><div class="step"><span class="no">03</span><span>키워드 설계</span><span class="st done"></span></div><div class="step"><span class="no">04</span><span>데이터 수집</span><span class="st done"></span></div><div class="grp">Data Sensing</div><div class="step on"><span class="no">05</span><span>전처리 · 임베딩</span><span class="st cur"></span></div><div class="step"><span class="no">06-A</span><span>모델 학습</span><span class="st "></span></div><div class="step"><span class="no">06-B</span><span>근거 판정</span><span class="st "></span></div><div class="step"><span class="no">07</span><span>군집</span><span class="st "></span></div><div class="step"><span class="no">08</span><span>페르소나</span><span class="st "></span></div><div class="step"><span class="no">09</span><span>근거 수집</span><span class="st "></span></div><div class="grp">Data Shaping</div><div class="step"><span class="no">10-A</span><span>Customer Action Map</span><span class="st "></span></div><div class="step"><span class="no">10-B</span><span>기회 영역</span><span class="st "></span></div><div class="step"><span class="no">11-A</span><span>인사이트 도출</span><span class="st "></span></div><div class="step"><span class="no">11-B</span><span>경험 디자인 컨셉</span><span class="st "></span></div><div class="grp">운영</div><div class="step"><span class="no">ADM</span><span>프롬프트 관리</span><span class="st "></span></div><div class="note"><div class="lab">활성 선언</div>
+    <p class="xs" style="margin:6px 0 0;color:var(--sec)">무선 이어폰을 운동·건강 맥락에서 재정의할 미충족 니즈를 찾는다</p>
+    <p class="xs" style="margin:6px 0 0">STEP 01 한줄 정의 · 전 단계 프롬프트 헤더로 상주</p></div></nav>
+      <main class="main">
+        <div class="mhead"><h1>STEP 05 — 전처리 · 임베딩</h1><div class="sub">필요한 단계마다 각자 만들던 벡터를, 여기서 한 벌 만들어 전 단계가 가져다 쓴다</div></div>
+        <div class="mbody">
+<div class="row" style="flex:none">
+  <div class="card rel" style="flex:1.35">
+    <span class="pin fl" style="top:12px;left:-9px">4</span>
+    <div class="ch"><h3>필터 규칙</h3><span class="b">①② 기존 확정안 유지</span><span class="grow"></span><span class="xs">1.0 3종 전처리 중 ③만 바뀐다</span></div>
+    <div class="cc" style="display:flex;gap:14px">
+      <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:7px"><span class="b">①</span><span class="sm fg">광고 · 타겟 무관 제거</span><span class="b keep" style="margin-left:auto">유지</span></div>
+        <div class="xs">광고 패턴 정규식 · 제외 카페 · 링크 중복 · 저품질 컷(제목 5자 미만 AND 설명 10자 미만)</div>
+        <div style="display:flex;align-items:center;gap:7px;margin-top:6px"><span class="b">②</span><span class="sm fg">채널 특정 반복어 제거</span><span class="b keep" style="margin-left:auto">유지</span></div>
+        <div class="xs">"카페 회원님", "등업 신청" 등 채널 상투어 — 건수가 아니라 문자열이 줄어든다</div>
+        <div class="rel" style="display:flex;align-items:center;gap:7px;margin-top:6px"><span class="pin fl" style="top:-2px;left:-24px">1</span><span class="b ind">③</span><span class="sm fg">자연어 정제</span><span class="b ind" style="margin-left:auto">치환</span></div>
+        <div class="xs"><span style="text-decoration:line-through;color:var(--qui)">OKT 형태소 분해 → 명사 추출 → 불용어</span><br><span class="fg">Voyage 의미 임베딩 1024D</span>가 그 자리를 대신한다</div>
+      </div>
+      <div style="width:250px;flex:none;border-left:1px solid var(--line);padding-left:14px">
+        <div class="lab">데이터 깔때기</div>
+        <div style="margin-top:9px;display:flex;flex-direction:column;gap:7px">
+          <div><div class="xs" style="display:flex;justify-content:space-between"><span>수집 원본</span><span class="fg mono">128,400</span></div><div class="bar" style="margin-top:3px"><i class="n" style="width:100%"></i></div></div>
+          <div><div class="xs" style="display:flex;justify-content:space-between"><span>① 광고 · 무관 제거</span><span class="mono">−31,050</span></div><div class="bar" style="margin-top:3px"><i class="n" style="width:76%"></i></div></div>
+          <div><div class="xs" style="display:flex;justify-content:space-between"><span>저품질 컷</span><span class="mono">−18,450</span></div><div class="bar" style="margin-top:3px"><i class="n" style="width:61%"></i></div></div>
+          <div><div class="xs" style="display:flex;justify-content:space-between"><span class="fg">잔존 · 임베딩 대상</span><span class="fg mono">78,900</span></div><div class="bar" style="margin-top:3px"><i class="o" style="width:61%"></i></div></div>
+        </div>
+        <div class="xs qu" style="margin-top:9px">원본의 61.4%가 분석에 진입 · 1.0은 전처리 후 61.1%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card rel" style="flex:1">
+    <span class="pin fl" style="top:12px;left:-9px">2</span>
+    <div class="ch"><h3>임베딩 한 벌</h3><span class="b ind">Voyage · 1024D</span><span class="grow"></span><span class="xs">실행 중</span></div>
+    <div class="cc" style="display:flex;flex-direction:column;gap:11px">
+      <div><div class="bar" style="height:8px"><i style="width:84%"></i></div>
+        <div class="xs" style="margin-top:6px;display:flex;justify-content:space-between"><span>66,140 / 78,900</span><span>0벡터 폴백 <span class="fg">12</span>건</span></div></div>
+      <div class="xs" style="border:1px solid var(--line);border-radius:6px;padding:10px;background:var(--sunk)">
+        <div class="lab" style="margin-bottom:6px">한 벌이 어디로 가는가</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span>→ <span class="fg">STEP 06</span> 분류기 입력 · 프록시 선별</span>
+          <span>→ <span class="fg">STEP 07</span> K-means · dist_centroid</span>
+          <span>→ <span class="fg">STEP 09</span> Pinecone 적재 · 재계산 없음</span>
+        </div>
+      </div>
+      <div class="xs">AS-IS는 STEP 06이 모델 내부 임베딩 레이어를, STEP 07과 09가 Voyage를 각각 호출했다. 벡터 공간이 달라 공유가 불가능했고, 라벨링 중에는 벡터가 없어 문서를 고를 근거조차 없었다.</div>
+    </div>
+  </div>
+</div>
+
+<div class="row" style="flex:1;min-height:0">
+  <div class="card rel" style="flex:1">
+    <span class="pin fl" style="top:12px;left:-9px">3</span>
+    <div class="ch"><h3>known_insights 임베딩</h3><span class="b obs">신설</span><span class="grow"></span><span class="xs mono">max_sim_to_known 사전 계산</span></div>
+    <div class="cc" style="display:flex;flex-direction:column;gap:12px">
+      <div class="xs">실무자 문장 <span class="fg">24개</span>를 문서와 <span class="fg">동일 모델 · 동일 공간</span>으로 임베딩하고, 문서마다 기지 인사이트와의 최대 코사인을 미리 붙인다.</div>
+      <div>
+        <div class="lab">max_sim_to_known 분포 · 78,900건</div>
+        <div style="margin-top:9px;display:flex;align-items:flex-end;gap:3px;height:92px">
+          <div style="flex:1;height:14%;background:var(--line2);border-radius:2px 2px 0 0"></div>
+          <div style="flex:1;height:31%;background:var(--line2);border-radius:2px 2px 0 0"></div>
+          <div style="flex:1;height:58%;background:var(--line2);border-radius:2px 2px 0 0"></div>
+          <div style="flex:1;height:86%;background:var(--line-strong);border-radius:2px 2px 0 0"></div>
+          <div style="flex:1;height:100%;background:var(--action);border-radius:2px 2px 0 0"></div>
+          <div style="flex:1;height:74%;background:var(--indigo);border-radius:2px 2px 0 0"></div>
+          <div style="flex:1;height:42%;background:var(--indigo);border-radius:2px 2px 0 0"></div>
+          <div style="flex:1;height:19%;background:var(--indigo);border-radius:2px 2px 0 0"></div>
+        </div>
+        <div class="xs" style="margin-top:5px;display:flex;justify-content:space-between"><span>0.2</span><span class="qu">← 아직 모르는 것</span><span>0.6</span><span class="qu">이미 아는 것 →</span><span>0.9</span></div>
+      </div>
+      <div class="xs" style="border-top:1px solid var(--line);padding-top:10px">
+        STEP 09 리랭킹에서 <span class="mono fg">(1 − 0.5 · max_sim_to_known)</span> 페널티로 쓰인다. 추가 임베딩 호출은 24문장뿐이고 유사도는 문서 배치 루프 안에서 행렬 곱 한 번 — 여기서 계산하지 않으면 STEP 09에서 문서마다 다시 재야 한다.
+      </div>
+    </div>
+  </div>
+
+  <div class="col" style="flex:1">
+    <div class="card rel" style="flex:1">
+      <span class="pin fl" style="top:12px;left:-9px">6</span>
+      <div class="ch"><h3>형태소 토큰</h3><span class="b">기존 방법 전용</span><span class="grow"></span><span class="xs mono">tokens/{sid}/</span></div>
+      <div class="cc" style="display:flex;flex-direction:column;gap:10px">
+        <div class="bar"><i class="n" style="width:100%"></i></div>
+        <div class="xs">78,900건 완료 · SNA 명사 동시출현과 gensim LDA의 원재료. 두 갈래 비교가 <span class="fg">같은 입력에서 출발해야</span> 하므로 같은 자리에서 함께 만든다.</div>
+        <div class="xs" style="border:1px solid color-mix(in srgb, var(--warning) 28%, transparent);background:var(--inf-bg);border-radius:6px;padding:9px 10px;color:var(--sec)">
+          형태소 층이 사라지면서 여기 의존하던 두 계산의 입력이 바뀐다 — <span class="fg">STEP 07 c-TF-IDF 키워드</span>와 <span class="fg">STEP 10 감성사전 polarity</span>. 각 문서에 대체 경로가 명시돼야 한다.
+        </div>
+        <div class="xs qu">수정 방법으로 확정하면 이 단계는 끌 수 있다</div>
+      </div>
+    </div>
+
+    <div class="card rel" style="flex:none;border-color:color-mix(in srgb, var(--danger) 30%, transparent)">
+      <span class="pin fl" style="top:12px;left:-9px">5</span>
+      <div class="ch" style="background:var(--spe-bg)"><h3 style="color:var(--spe)">★ 선행 결정 · 임베딩 저장 포맷</h3></div>
+      <div class="cc"><div class="xs">100만 건 × 1024D(float32) ≈ <span class="fg">4GB</span>. 단일 <span class="mono">.npy</span>는 부분 로딩이 불가해 STEP 06 배치 라우팅과 STEP 09 적재가 모두 전체 로드를 요구한다.
+      <div class="seg" style="margin-top:9px;width:100%"><span class="on">샤딩 + 인덱스 맵</span><span>Parquet</span><span>미정</span></div></div></div>
+    </div>
+
+    <div class="card sunk" style="flex:none">
+      <div class="cc" style="padding:11px 14px;display:flex;align-items:center;gap:14px">
+        <span class="lab">산출 계약</span><span class="mono sm fg">stage_3.json</span>
+        <span class="xs">원본/후 건수 · 제거율 · 임베딩 실패(0벡터 폴백) 건수 — report.json으로 흘려보낼 결정론적 수치</span>
+      </div>
+    </div>
+  </div>
+</div>
+        </div>
+      </main>
+      <aside class="chat rail">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#565c66" stroke-width="1.7"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3v-5.5A8 8 0 0 1 11 4h2a8 8 0 0 1 8 8Z"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#747a84" stroke-width="1.7"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#747a84" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </aside>
+    </div>
+  </div>
+  <section class="ann">
+    <h4>1.0 대비 변경점</h4>
+    <p class="lead"><span class="tag rep">치환</span>AS-IS가 있고 대체된다 &nbsp;<span class="tag new">신설</span>AS-IS 없음 · 새로 꽂는다 &nbsp;<span class="tag keep">유지</span>기존 확정 재확인 &nbsp;<span class="tag open">미결</span>답이 필요한 것</p>
+    <div class="grid"><div class="it"><span class="pin">1</span><p><span class="tag rep">치환</span><b>OKT 형태소 → 의미 임베딩.</b> 1.0의 자연어 정제는 형태소 분해가 중심이었다. 2.0은 Voyage 1024D 임베딩이 그 자리를 대신한다. 다만 형태소를 <em>없애지</em> 않고 기존 방법(SNA·LDA) 전용 원재료로 병행 산출한다 — 두 갈래를 비교하려면 같은 입력에서 출발해야 한다.</p></div>
+<div class="it"><span class="pin">2</span><p><span class="tag rep">치환</span><b>작업 신설이 아니라 위치 이동.</b> STEP 06·07·09가 각자 만들던 벡터를 여기 한 자리로 옮겼다. 총 계산량은 늘지 않고 오히려 중복 호출이 사라진다. 벡터 공간이 하나로 통일되면서 라벨링 중에도 문서를 고를 근거가 생긴다.</p></div>
+<div class="it"><span class="pin">3</span><p><span class="tag new">신설</span><b>기지 인사이트에 좌표를 준다.</b> RAG는 "질문에 관련된" 문서를 잘 찾는데, 관련성이 가장 높은 문서는 대개 실무자가 이미 아는 이야기다 — 근거로는 맞고 인사이트로는 0이다. <em class="mono">max_sim_to_known</em>이 그 판별 장치다.</p></div>
+<div class="it"><span class="pin">4</span><p><span class="tag keep">유지</span><b>필터 규칙 ①②.</b> 광고 필터, 제외 카페, 링크 중복 제거, 저품질 컷은 1.0과 동일하게 수행되며 이번 개정 대상이 아니다.</p></div>
+<div class="it"><span class="pin">5</span><p><span class="tag open">미결</span><b>저장 포맷 선행 결정.</b> 샤딩 + 인덱스 맵이냐 Parquet이냐. 이 결정이 STEP 06 escalate 큐의 응답 속도와 STEP 09 적재 방식을 동시에 묶는다.</p></div>
+<div class="it"><span class="pin">6</span><p><span class="tag open">미결</span><b>형태소 제거의 파급.</b> c-TF-IDF 키워드와 감성사전 기반 polarity가 형태소에 의존하고 있었다. STEP 07 키워드 추출과 STEP 10 만족도 계산의 대체 경로를 각 문서에 명시해야 한다.</p></div></div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1250}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

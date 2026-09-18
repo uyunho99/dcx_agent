@@ -1,0 +1,207 @@
+<!--h:2510-->
+<!--title:STEP 08 — 페르소나-->
+<!--sub:한 번 사라졌던 1.0의 Actor 층을 되살린 것이며 신설이 아니다 · 여기서 Desire와 Goal이 확정된다-->
+<!--chat:full-->
+
+[[MAIN]]
+<div class="row rel" style="flex:none;gap:10px">
+  <span class="pin fl" style="top:-8px;left:-9px">4</span>
+  <div class="kpi" style="flex:1"><span class="lab">확정 대상</span><span class="v">48</span><span class="xs">두 갈래 병행 · 한 갈래면 21</span></div>
+  <div class="kpi" style="flex:1"><span class="lab">확정 완료</span><span class="v">31</span><span class="xs">Desire · Goal 승인됨</span></div>
+  <div class="kpi" style="flex:1"><span class="lab">Persona</span><span class="v">14</span><span class="xs">클러스터당 2~3</span></div>
+  <div class="kpi" style="flex:1"><span class="lab">모듈성 Q</span><span class="v">0.42</span><span class="xs">명사 동시출현 상위 ≈300</span></div>
+</div>
+
+<div class="card rel" style="flex:none">
+  <span class="pin fl" style="top:12px;left:-9px">5</span>
+  <div class="ch"><h3>마이크로 세그먼트 도출 절차</h3><span class="b ind">1.0 SNA 장표 구조 승계</span><span class="grow"></span>
+    <span class="xs">노드 = 의미 있는 품사(명사 · 형용사 · 동사) · 클러스터 CL0 내부 문단 기준</span></div>
+  <div class="cc" style="display:flex;gap:0;align-items:stretch">
+
+    <div style="flex:1;padding-right:16px">
+      <div style="display:flex;align-items:center;gap:7px"><span class="b solid">1</span><span class="sm fg" style="font-weight:510;font-size:12.5px">노드 생성</span></div>
+      <div class="xs" style="margin-top:5px">동일 문단에서 함께 나타난 단어를 노드로 올린다</div>
+      <div class="wrap" style="margin-top:8px">
+        <span class="chip">심박</span><span class="chip">워치</span><span class="chip">러닝</span><span class="chip">귀찮다</span>
+        <span class="chip">손목</span><span class="chip">챙기다</span><span class="chip">충전</span><span class="chip">기록</span>
+        <span class="chip off">＋ 292</span>
+      </div>
+      <div class="xs qu" style="margin-top:8px">불용어 · 1회 출현 노드 제거 후 상위 ≈300</div>
+    </div>
+
+    <div style="width:1px;background:var(--line);flex:none"></div>
+
+    <div style="flex:1.05;padding:0 16px">
+      <div style="display:flex;align-items:center;gap:7px"><span class="b solid">2</span><span class="sm fg" style="font-weight:510;font-size:12.5px">공출현 빈도 계산</span></div>
+      <div class="xs" style="margin-top:5px">같은 문단에 동시 등장하면 빈도가 카운트된다</div>
+      <table style="margin-top:8px">
+        <thead><tr><th style="width:52px"></th><th class="n">심박</th><th class="n">워치</th><th class="n">러닝</th><th class="n">귀찮다</th></tr></thead>
+        <tbody>
+          <tr><td class="lab" style="padding:5px 8px">심박</td><td class="n mono qu">—</td><td class="n mono fg">412</td><td class="n mono fg">386</td><td class="n mono">104</td></tr>
+          <tr><td class="lab" style="padding:5px 8px">워치</td><td class="n mono fg">412</td><td class="n mono qu">—</td><td class="n mono">231</td><td class="n mono fg">298</td></tr>
+          <tr><td class="lab" style="padding:5px 8px">러닝</td><td class="n mono fg">386</td><td class="n mono">231</td><td class="n mono qu">—</td><td class="n mono">88</td></tr>
+          <tr><td class="lab" style="padding:5px 8px">귀찮다</td><td class="n mono">104</td><td class="n mono fg">298</td><td class="n mono">88</td><td class="n mono qu">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="width:1px;background:var(--line);flex:none"></div>
+
+    <div style="flex:1;padding-left:16px">
+      <div style="display:flex;align-items:center;gap:7px"><span class="b solid">3</span><span class="sm fg" style="font-weight:510;font-size:12.5px">모듈성 분석</span></div>
+      <div class="xs" style="margin-top:5px">아이겐벡터 중심성 기준으로 모듈을 가른다 — 모듈이 곧 마이크로 세그먼트다</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+        <div class="xs" style="display:flex;align-items:center;gap:8px"><span class="dotg" style="background:var(--indigo)"></span><span style="width:112px" class="fg">M1 심박 · 워치 · 러닝</span><div class="bar" style="flex:1"><i style="width:44%"></i></div><span class="mono" style="width:30px;text-align:right">44%</span></div>
+        <div class="xs" style="display:flex;align-items:center;gap:8px"><span class="dotg o"></span><span style="width:112px" class="fg">M2 수면 · 착용 · 배터리</span><div class="bar" style="flex:1"><i class="o" style="width:33%"></i></div><span class="mono" style="width:30px;text-align:right">33%</span></div>
+        <div class="xs" style="display:flex;align-items:center;gap:8px"><span class="dotg i"></span><span style="width:112px" class="fg">M3 정확도 · 센서 · 리뷰</span><div class="bar" style="flex:1"><i class="w" style="width:23%"></i></div><span class="mono" style="width:30px;text-align:right">23%</span></div>
+      </div>
+      <div class="xs" style="margin-top:9px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--sunk)">
+        모듈성 <span class="mono fg">Q 0.42</span> · 1.0과 같은 산식이다. 다만 1.0은 여기서 나온 모듈을 <span class="fg">사람이 읽고 Desire를 해석해</span> Actor를 정의했고, 2.0은 그 자리를 아래의 확정 절차가 대신한다.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row" style="flex:1;min-height:0">
+  <div class="card rel" style="flex:1.2;display:flex;flex-direction:column">
+    <span class="pin fl" style="top:12px;left:-9px">1</span>
+    <div class="ch"><h3>명사 동시출현 네트워크</h3><span class="b">CL0 내부</span><span class="grow"></span><span class="xs">모듈성 분할 3개</span></div>
+    <div class="cc" style="flex:1;display:flex;flex-direction:column">
+      <svg viewBox="0 0 440 268" width="100%" style="flex:1;display:block">
+        <g stroke-width="1" fill="none" style="stroke:var(--line)">
+          <path d="M120 84 168 60M120 84 96 132M120 84 176 116M168 60 176 116M96 132 152 156M176 116 152 156M120 84 152 156"/>
+          <path d="M300 78 352 100M300 78 268 128M352 100 324 152M268 128 324 152M300 78 324 152"/>
+          <path d="M196 206 252 196M196 206 164 232M252 196 236 240M164 232 236 240"/>
+          <path d="M176 116 268 128M152 156 196 206M324 152 252 196" stroke-dasharray="3 3"/ style="stroke:var(--line)">
+        </g>
+        <g>
+          <circle cx="120" cy="84" r="22"/ style="fill:color-mix(in srgb, var(--persona-blue-100) 16%, transparent);stroke:var(--action)">
+          <circle cx="168" cy="60" r="12"/ style="fill:color-mix(in srgb, var(--persona-blue-100) 10%, transparent);stroke:var(--line-strong)">
+          <circle cx="96" cy="132" r="13"/ style="fill:color-mix(in srgb, var(--persona-blue-100) 10%, transparent);stroke:var(--line-strong)">
+          <circle cx="176" cy="116" r="15"/ style="fill:color-mix(in srgb, var(--persona-blue-100) 10%, transparent);stroke:var(--line-strong)">
+          <circle cx="152" cy="156" r="11"/ style="fill:color-mix(in srgb, var(--persona-blue-100) 10%, transparent);stroke:var(--line-strong)">
+          <circle cx="300" cy="78" r="19"/ style="fill:color-mix(in srgb, var(--success) 10%, transparent);stroke:color-mix(in srgb, var(--success) 50%, transparent)">
+          <circle cx="352" cy="100" r="12"/ style="fill:color-mix(in srgb, var(--success) 8%, transparent);stroke:color-mix(in srgb, var(--success) 30%, transparent)">
+          <circle cx="268" cy="128" r="13"/ style="fill:color-mix(in srgb, var(--success) 8%, transparent);stroke:color-mix(in srgb, var(--success) 30%, transparent)">
+          <circle cx="324" cy="152" r="11"/ style="fill:color-mix(in srgb, var(--success) 8%, transparent);stroke:color-mix(in srgb, var(--success) 30%, transparent)">
+          <circle cx="196" cy="206" r="17"/ style="fill:color-mix(in srgb, var(--warning) 11%, transparent);stroke:color-mix(in srgb, var(--warning) 45%, transparent)">
+          <circle cx="252" cy="196" r="12"/ style="fill:color-mix(in srgb, var(--warning) 9%, transparent);stroke:color-mix(in srgb, var(--warning) 30%, transparent)">
+          <circle cx="164" cy="232" r="10"/ style="fill:color-mix(in srgb, var(--warning) 9%, transparent);stroke:color-mix(in srgb, var(--warning) 30%, transparent)">
+          <circle cx="236" cy="240" r="10"/ style="fill:color-mix(in srgb, var(--warning) 9%, transparent);stroke:color-mix(in srgb, var(--warning) 30%, transparent)">
+        </g>
+        <g font-size="10" text-anchor="middle" style="fill:var(--ink-secondary)">
+          <text x="120" y="87">심박</text><text x="168" y="63">워치</text><text x="96" y="135">러닝</text><text x="176" y="119">귀찮다</text><text x="152" y="159">손목</text>
+          <text x="300" y="81">수면</text><text x="352" y="103">배터리</text><text x="268" y="131">착용</text><text x="324" y="155">리포트</text>
+          <text x="196" y="209">정확도</text><text x="252" y="199">센서</text><text x="164" y="235">리뷰</text><text x="236" y="243">의심</text>
+        </g>
+        <g font-size="10" font-weight="600">
+          <text x="60" y="30" style="fill:var(--action-hover)">P1 · 귀로 건강 재는 러너</text>
+          <text x="264" y="30" style="fill:var(--success)">P2 · 밤새 재는 사람</text>
+          <text x="150" y="262" style="fill:var(--warning)">P3 · 숫자를 못 믿는 사람</text>
+        </g>
+      </svg>
+      <div class="xs" style="border-top:1px solid var(--line);padding-top:9px;margin-top:6px">
+        점선은 모듈 간 연결 — 기존 방법은 Desire가 유사한 모듈을 <span class="fg">클러스터를 가로질러</span> 통합하고, 수정 방법은 하지 않는다. 겹침표의 차이가 그대로 답이 된다.
+      </div>
+    </div>
+  </div>
+
+  <div class="card rel" style="width:296px;flex:none;display:flex;flex-direction:column">
+    <span class="pin fl" style="top:12px;left:-9px">3</span>
+    <div class="ch"><h3>Eigenvector centrality</h3><span class="grow"></span><span class="xs">상위 16</span></div>
+    <div class="cc" style="flex:1;display:flex;flex-direction:column;gap:6px;overflow:hidden">
+      <div class="xs" style="margin-bottom:2px">"Desire가 드러나는 키워드" — 어느 방법으로 경계를 잡았든 <span class="fg">같은 방식</span>으로 뽑는다</div>
+      <div class="xs" style="display:flex;gap:8px;align-items:center"><span style="width:52px" class="fg">심박</span><div class="bar" style="flex:1"><i style="width:100%"></i></div><span class="mono" style="width:36px;text-align:right">.812</span></div>
+      <div class="xs" style="display:flex;gap:8px;align-items:center"><span style="width:52px" class="fg">워치</span><div class="bar" style="flex:1"><i style="width:96%"></i></div><span class="mono" style="width:36px;text-align:right">.781</span></div>
+      <div class="xs" style="display:flex;gap:8px;align-items:center"><span style="width:52px" class="fg">러닝</span><div class="bar" style="flex:1"><i style="width:94%"></i></div><span class="mono" style="width:36px;text-align:right">.764</span></div>
+      <div class="xs" style="display:flex;gap:8px;align-items:center"><span style="width:52px" class="fg">귀찮다</span><div class="bar" style="flex:1"><i style="width:91%"></i></div><span class="mono" style="width:36px;text-align:right">.742</span></div>
+      <div class="xs" style="display:flex;gap:8px;align-items:center"><span style="width:52px">손목</span><div class="bar" style="flex:1"><i class="n" style="width:82%"></i></div><span class="mono" style="width:36px;text-align:right">.668</span></div>
+      <div class="xs" style="display:flex;gap:8px;align-items:center"><span style="width:52px">챙기다</span><div class="bar" style="flex:1"><i class="n" style="width:74%"></i></div><span class="mono" style="width:36px;text-align:right">.601</span></div>
+      <div class="xs" style="display:flex;gap:8px;align-items:center"><span style="width:52px">충전</span><div class="bar" style="flex:1"><i class="n" style="width:66%"></i></div><span class="mono" style="width:36px;text-align:right">.537</span></div>
+      <div class="xs" style="display:flex;gap:8px;align-items:center"><span style="width:52px">기록</span><div class="bar" style="flex:1"><i class="n" style="width:61%"></i></div><span class="mono" style="width:36px;text-align:right">.496</span></div>
+      <div class="xs qu" style="margin-top:2px">＋ 8개</div>
+      <div class="xs" style="margin-top:auto;border-top:1px solid var(--line);padding-top:9px;color:var(--spe)">
+        ★ 산식 미결 — 정규화 방식과 표시 개수. 적용 층이 L2인 것까지가 확정이다.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card rel" style="flex:none">
+  <span class="pin fl" style="top:12px;left:-9px">2</span>
+  <div class="ch"><h3>P1 확정 · CL0-P1</h3><span class="b ind">검토 중</span><span class="grow"></span>
+    <span class="xs">여기서 확정한 값이 STEP 10·11에 그대로 표시된다 — 다시 생성하지 않는다</span></div>
+  <div class="cc" style="display:flex;gap:16px">
+    <div style="flex:1.5;display:flex;flex-direction:column;gap:11px">
+      <div><div class="lab">Persona 명 <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">— modifier 반영</span></div>
+        <div class="fld" style="margin-top:5px">귀로 건강 재는 러너</div></div>
+      <div><div class="lab">Desire <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">— 1문장</span></div>
+        <div class="fld" style="margin-top:5px">운동 중 몸 상태를 최소한의 기기로 확인받고 싶다</div>
+        <div class="xs" style="margin-top:5px">centrality 상위 어휘 기반 — 심박 .812 · 워치 .781 · 러닝 .764 · 귀찮다 .742</div></div>
+      <div><div class="lab">Goal <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">— 번호 목록 · 소속 Context에서 올린 목표</span></div>
+        <div class="fld" style="margin-top:5px">1. 러닝 흐름을 끊지 않고 심박을 확인한다</div>
+        <div class="fld" style="margin-top:5px">2. 기기를 늘리지 않고 운동·수면 데이터를 한 곳에 모은다</div></div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:11px">
+      <div><div class="lab">modifier <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">STEP 01·02 cross-cut</span></div>
+        <div class="wrap" style="margin-top:6px"><span class="chip on">사회초년생</span><span class="chip on">1인가구</span><span class="chip">신혼</span></div></div>
+      <div><div class="lab">소속 Context</div>
+        <div class="wrap" style="margin-top:6px"><span class="chip">C1 기기 중복</span><span class="chip">C2 측정 기대</span><span class="chip">C3 정확도 불신</span><span class="chip">C4 땀 이탈</span></div></div>
+      <div class="xs" style="border:1px solid var(--line);border-radius:6px;padding:9px 10px;background:var(--sunk)">
+        문서 45건 · 작성자 26명(중복 제거) · Cohesion 0.66 · ARI 0.58<br>
+        <span class="qu">작성자 수를 함께 세는 이유 — 한 사람이 여러 글을 쓴 경우 문서 수만으로는 담론의 폭이 부풀려진다</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:auto"><span class="btn gho">Desire 재생성</span><span class="grow"></span><span class="btn">보류</span><span class="btn pri">확정</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="card rel" style="flex:none">
+  <span class="pin fl" style="top:12px;left:-9px">6</span>
+  <div class="ch"><h3>Cluster → Persona → Desire 매핑</h3><span class="b ind">1.0 「Touch Point → Micro Segment → Desire[Actor]」 표 승계</span>
+    <span class="grow"></span><span class="xs">두 갈래 중 <span class="fg">수정 방법</span> 갈래 · 기존 방법 갈래는 비교 탭에서 같은 표로 본다</span></div>
+  <table>
+    <thead><tr><th style="width:176px">Cluster <span class="qu">[Touch Point]</span></th><th style="width:74px">Persona</th><th>Desire <span class="qu">[Actor]</span></th><th class="n" style="width:66px">문서</th><th class="n" style="width:62px">작성자</th><th style="width:78px">확정</th></tr></thead>
+    <tbody>
+      <tr><td rowspan="3" style="border-right:1px solid var(--line)"><span class="mono fg">CL0</span> 운동 중 신체 신호 확인</td>
+        <td class="mono fg">P1</td><td>운동 중 몸 상태를 최소한의 기기로 확인받고 싶다</td><td class="n">4,120</td><td class="n">2,318</td><td><span class="b obs">확정</span></td></tr>
+      <tr><td class="mono fg">P2</td><td>자는 동안의 몸 상태까지 같은 기기로 이어 재고 싶다</td><td class="n">3,540</td><td class="n">1,902</td><td><span class="b obs">확정</span></td></tr>
+      <tr><td class="mono fg">P3</td><td>측정값을 믿을 수 있는지 먼저 확인하고 싶다</td><td class="n">1,180</td><td class="n">742</td><td><span class="b ind">검토 중</span></td></tr>
+      <tr><td rowspan="2" style="border-right:1px solid var(--line)"><span class="mono fg">CL1</span> 착용 안정성</td>
+        <td class="mono fg">P1</td><td>격한 움직임에도 빠지지 않게 고정하고 싶다</td><td class="n">7,260</td><td class="n">3,441</td><td><span class="b obs">확정</span></td></tr>
+      <tr><td class="mono fg">P2</td><td>교체 부품을 사지 않고 해결하고 싶다</td><td class="n">4,880</td><td class="n">2,106</td><td><span class="b">대기</span></td></tr>
+      <tr><td rowspan="2" style="border-right:1px solid var(--line)"><span class="mono fg">CL2</span> 장시간 착용</td>
+        <td class="mono fg">P1</td><td>자는 내내 끼고 있어도 부담이 없었으면 한다</td><td class="n">5,210</td><td class="n">2,634</td><td><span class="b obs">확정</span></td></tr>
+      <tr><td class="mono fg">P2</td><td>충전 때문에 기록이 끊기지 않았으면 한다</td><td class="n">4,250</td><td class="n">1,988</td><td><span class="b">대기</span></td></tr>
+      <tr><td colspan="6" class="xs qu" style="text-align:center;padding:9px">CL3 · CL4 · CL5 ＋ 7개 페르소나</td></tr>
+    </tbody>
+  </table>
+  <div class="cc" style="border-top:1px solid var(--line);padding:10px 14px;display:flex;gap:14px;align-items:center">
+    <span class="xs">1.0은 <span class="fg">8 Touch Point → 14 Actor</span>였고, Desire가 비슷한 세그먼트를 <b>클러스터를 가로질러</b> 통합했다.</span>
+    <span class="grow"></span>
+    <span class="xs qu">2.0은 가로지르지 않는다 — 가로지르면 <span class="mono">persona_id</span>가 어느 클러스터의 자식인지 끊겨 STEP 09 filter가 무너진다. 가로지르는 종합은 STEP 11에서 한다.</span>
+  </div>
+</div>
+
+[[CHAT]]
+<div class="chead"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-secondary)" stroke-width="1.7"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3v-5.5A8 8 0 0 1 11 4h2a8 8 0 0 1 8 8Z"/></svg>확정 보조<span class="grow"></span><span class="b">31 / 48</span></div>
+<div class="cbody">
+  <div class="msg"><span class="who">에이전트</span>CL0-P1의 Desire 초안입니다. centrality 상위 4개 어휘(심박·워치·러닝·귀찮다)가 모두 들어가도록 썼습니다.</div>
+  <div class="msg me"><span class="who">나</span>"최소한의 기기"가 너무 해석 같은데, 원문에 그렇게 말한 사람이 있어?</div>
+  <div class="msg"><span class="who">에이전트</span>직접 표현은 없습니다. <span class="mono" style="font-size:12px">desire_support</span> 3건은 모두 "둘 다 챙기기 귀찮다" 형태입니다. <span class="fg">추론</span>으로 표시하거나 "기기를 늘리지 않고"로 바꾸면 관측에 더 가깝습니다.</div>
+  <div class="msg" style="border-color:var(--ind-ln)"><span class="who">확정 대기</span>
+    <div class="xs" style="display:flex;flex-direction:column;gap:4px;margin-top:3px">
+      <span>CL0-P2 · 밤새 재는 사람</span><span>CL0-P3 · 숫자를 못 믿는 사람</span><span>CL1-P1 · 땀에 지는 사람</span><span class="qu">＋ 14개</span>
+    </div></div>
+</div>
+<div class="cfoot"><div class="input">Desire를 수정하거나 근거를 요청하세요</div></div>
+
+[[ANN]]
+<div class="it"><span class="pin">1</span><p><span class="tag keep">복원</span><b>Actor 층 복원.</b> 1.0의 Actor = micro segment 층은 한 번 사라졌다가 되살아난 것이며 신설이 아니다. 명칭만 Persona로 정리했다. 층 구조는 <em class="mono">Cluster &gt; Persona &gt; Context</em>이고 Action은 층이 아니라 Context의 행동 서술 속성이다.</p></div>
+<div class="it"><span class="pin">2</span><p><span class="tag rep">치환</span><b>Desire·Goal 확정 권한이 여기로.</b> AS-IS는 STEP 10·11의 LLM이 이름·상황·페인포인트·인사이트를 한 번에 뱉으면서 페르소나 개수까지 정했다. 서술하는 단계가 개수를 정하면 통계 구획과 산출물 개수가 어긋난다. 구획을 만드는 단계에서 확정해야 Action 배분이 정의된다.</p></div>
+<div class="it"><span class="pin">3</span><p><span class="tag keep">유지</span><b>centrality 상위 16.</b> "Desire가 드러나는 키워드"를 뽑는 방식은 1.0 장표 그대로다 — 어느 방법으로 경계를 잡았든 같은 방식으로 뽑으므로 두 갈래 모두에서 같은 화면이 재현된다.</p></div>
+<div class="it"><span class="pin">4</span><p><span class="tag rep">치환</span><b>수작업이 확정 절차로.</b> 아이겐벡터 중심성 모듈성 분할 후 Desire를 사람이 해석하던 자리를 P1 확정 절차가 대신한다. 두 갈래를 병행하면 HITL 확정 대상이 21개에서 48개로 늘어난다 — 계산 2배 · 화면 2배가 병행의 비용이다.</p></div>
+<div class="it"><span class="pin">5</span><p><span class="tag keep">유지</span><b>SNA 3단계를 장표 그대로 노출한다.</b> 노드 생성 → 공출현 빈도 행렬 → 모듈성 분석은 1.0 장표의 세 칸 그대로이고 산식도 같다. 공출현 행렬을 <b>실제 숫자로 보여주는 것</b>이 요점이다 — 1.0 장표에서도 이 행렬은 예시 이미지였고, 어떤 쌍이 세그먼트를 갈랐는지 사후에 확인할 방법이 없었다.</p></div>
+<div class="it"><span class="pin">6</span><p><span class="tag rep">치환</span><b>매핑표는 남기되 가로지르기는 뺀다.</b> 1.0의 「Touch Point → Micro Segment → Desire[Actor]」 표는 형식 그대로 승계한다. 다만 1.0이 <em>Desire가 비슷한 세그먼트를 클러스터를 가로질러 통합</em>하던 절차는 제거했다 — 가로지르면 <em class="mono">persona_id</em>가 어느 클러스터의 자식인지 끊겨 STEP 09의 filter 3키가 무너진다. 가로지르는 종합은 STEP 11 인사이트에서 한다.</p></div>
+<div class="it"><span class="pin">—</span><p><span class="tag open">미결</span><b>centrality 산식.</b> 정규화 방식과 표시 개수가 정해지지 않았다. 적용 층이 L2라는 것까지가 확정이다.</p></div>
+<div class="it"><span class="pin">—</span><p><span class="tag keep">닫힘</span><b>재론하지 않는 것.</b> Persona는 클러스터의 자식이고 클러스터당 2~3개 · Desire/Goal 2층 표시 · merge/split/move는 인덱스 재배치를 동반하므로 포스트 MVP 부록.</p></div>

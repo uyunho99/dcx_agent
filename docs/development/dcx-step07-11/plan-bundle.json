@@ -1,0 +1,6 @@
+{
+  "kind": "plan",
+  "surface": "web",
+  "implementation": "docs/development/dcx-step07-11/03-plan.md",
+  "qaPlan": "docs/development/dcx-step07-11/QA_PLAN-dcx-step07-11.md"
+}

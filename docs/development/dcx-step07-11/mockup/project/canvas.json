@@ -1,0 +1,387 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Admin.dc.html": {
+      "h": 2380,
+      "page": "linear",
+      "title": "ADM · 프롬프트 관리",
+      "w": 1440,
+      "x": 6240,
+      "y": 5400
+    },
+    "Admin.glass.dc.html": {
+      "h": 2380,
+      "page": "glass",
+      "title": "◆ ADM · 프롬프트 관리",
+      "w": 1440,
+      "x": 6240,
+      "y": 5400
+    },
+    "Clustering.dc.html": {
+      "h": 2300,
+      "page": "linear",
+      "title": "07 · 군집 → Touch Point",
+      "w": 1440,
+      "x": 4680,
+      "y": 2470
+    },
+    "Clustering.glass.dc.html": {
+      "h": 2300,
+      "page": "glass",
+      "title": "◆ 07 · 군집 → Touch Point",
+      "w": 1440,
+      "x": 3120,
+      "y": 2470
+    },
+    "Concept.dc.html": {
+      "h": 1300,
+      "page": "linear",
+      "title": "11-A · 인사이트 도출",
+      "w": 1440,
+      "x": 3120,
+      "y": 5400
+    },
+    "Concept.glass.dc.html": {
+      "h": 1300,
+      "page": "glass",
+      "title": "◆ 11-A · 인사이트 도출",
+      "w": 1440,
+      "x": 3120,
+      "y": 5400
+    },
+    "ContextMap.dc.html": {
+      "h": 2320,
+      "page": "linear",
+      "title": "10-A · Customer Action Map",
+      "w": 1440,
+      "x": 0,
+      "y": 5400
+    },
+    "ContextMap.glass.dc.html": {
+      "h": 2320,
+      "page": "glass",
+      "title": "◆ 10-A · Customer Action Map",
+      "w": 1440,
+      "x": 0,
+      "y": 5400
+    },
+    "Crawling.dc.html": {
+      "h": 1258,
+      "page": "linear",
+      "title": "04 · 데이터 수집",
+      "w": 1440,
+      "x": 4680,
+      "y": 0
+    },
+    "Crawling.glass.dc.html": {
+      "h": 1258,
+      "page": "glass",
+      "title": "◆ 04 · 데이터 수집",
+      "w": 1440,
+      "x": 4680,
+      "y": 0
+    },
+    "Declare.dc.html": {
+      "h": 1500,
+      "page": "linear",
+      "title": "01·02 · 입력 선언",
+      "w": 1440,
+      "x": 1560,
+      "y": 0
+    },
+    "Declare.glass.dc.html": {
+      "h": 1500,
+      "page": "glass",
+      "title": "◆ 01·02 · 입력 선언",
+      "w": 1440,
+      "x": 1560,
+      "y": 0
+    },
+    "Design.dc.html": {
+      "h": 2330,
+      "page": "linear",
+      "title": "11-B · 경험 디자인 컨셉",
+      "w": 1440,
+      "x": 4680,
+      "y": 5400
+    },
+    "Design.glass.dc.html": {
+      "h": 2330,
+      "page": "glass",
+      "title": "◆ 11-B · 경험 디자인 컨셉",
+      "w": 1440,
+      "x": 4680,
+      "y": 5400
+    },
+    "Evidence.dc.html": {
+      "h": 2260,
+      "page": "linear",
+      "title": "09 · LDA → 근거 수집",
+      "w": 1440,
+      "x": 7800,
+      "y": 2470
+    },
+    "Evidence.glass.dc.html": {
+      "h": 2260,
+      "page": "glass",
+      "title": "◆ 09 · LDA → 근거 수집",
+      "w": 1440,
+      "x": 6240,
+      "y": 2470
+    },
+    "Keywords.dc.html": {
+      "h": 2050,
+      "page": "linear",
+      "title": "03 · 키워드 설계",
+      "w": 1440,
+      "x": 3120,
+      "y": 0
+    },
+    "Keywords.glass.dc.html": {
+      "h": 2050,
+      "page": "glass",
+      "title": "◆ 03 · 키워드 설계",
+      "w": 1440,
+      "x": 3120,
+      "y": 0
+    },
+    "Labeling.dc.html": {
+      "h": 1720,
+      "page": "linear",
+      "title": "06-B · 근거 판정",
+      "w": 1440,
+      "x": 3120,
+      "y": 2470
+    },
+    "Labeling.glass.dc.html": {
+      "h": 1620,
+      "page": "glass",
+      "title": "◆ 06 · 근거 판정",
+      "w": 1440,
+      "x": 1560,
+      "y": 2470
+    },
+    "Main.dc.html": {
+      "h": 1150,
+      "page": "linear",
+      "title": "00 · 세션",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "Main.glass.dc.html": {
+      "h": 1150,
+      "page": "glass",
+      "title": "◆ 00 · 세션",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "Opportunity.dc.html": {
+      "h": 1500,
+      "page": "linear",
+      "title": "10-B · 기회 영역",
+      "w": 1440,
+      "x": 1560,
+      "y": 5400
+    },
+    "Opportunity.glass.dc.html": {
+      "h": 1500,
+      "page": "glass",
+      "title": "◆ 10-B · 기회 영역",
+      "w": 1440,
+      "x": 1560,
+      "y": 5400
+    },
+    "Persona.dc.html": {
+      "h": 2510,
+      "page": "linear",
+      "title": "08 · SNA → 페르소나",
+      "w": 1440,
+      "x": 6240,
+      "y": 2470
+    },
+    "Persona.glass.dc.html": {
+      "h": 2510,
+      "page": "glass",
+      "title": "◆ 08 · SNA → 페르소나",
+      "w": 1440,
+      "x": 4680,
+      "y": 2470
+    },
+    "Preprocess.dc.html": {
+      "h": 1250,
+      "page": "linear",
+      "title": "05 · 전처리 · 임베딩",
+      "w": 1440,
+      "x": 0,
+      "y": 2470
+    },
+    "Preprocess.glass.dc.html": {
+      "h": 1250,
+      "page": "glass",
+      "title": "◆ 05 · 전처리 · 임베딩",
+      "w": 1440,
+      "x": 0,
+      "y": 2470
+    },
+    "Training.dc.html": {
+      "x": 1560,
+      "y": 2470,
+      "w": 1440,
+      "h": 1780,
+      "title": "06-A · 모델 학습 · 캘리브레이션",
+      "page": "linear"
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-09-18T07:38:49Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "page": "linear",
+    "view": "canvas"
+  },
+  "notes": {
+    "glass-layer-0": {
+      "color": "purple",
+      "maxH": 200,
+      "page": "glass",
+      "size": 24,
+      "text": "Data Defining — 무엇을 볼 것인가\n1.0 STEP 01~04에 대응한다. 선언 13필드와 known_insights가 여기서 들어가고, 그 맥락이 파이프라인 끝까지 따라간다.",
+      "w": 1400,
+      "x": 0,
+      "y": -300
+    },
+    "glass-layer-1": {
+      "color": "purple",
+      "maxH": 200,
+      "page": "glass",
+      "size": 24,
+      "text": "Data Sensing — 무엇이 보이는가\n1.0 STEP 05~09에 대응한다. 07·08·09는 1.0 장표(Touch Point 정의 · SNA 3단계 · LDAVis)를 형식까지 승계하고, 09에서 검색 순위가 관련성 단독에서 '감점 × 가점'으로 바뀐다.",
+      "w": 1400,
+      "x": 0,
+      "y": 2170
+    },
+    "glass-layer-2": {
+      "color": "purple",
+      "maxH": 200,
+      "page": "glass",
+      "size": 24,
+      "text": "Data Shaping — 무엇을 할 것인가\n1.0 STEP 10~11에 대응한다. 10-A는 CAM 행 구조를 승계하되 열 단위를 Action으로 바꾸고 관측/추론/추측을 기계 판정한다. 11-B는 1.0 컨셉 장표를 통째로 승계한 신설 화면이고, ADM은 프롬프트와 잠정 상수가 사는 곳이다.",
+      "w": 1400,
+      "x": 0,
+      "y": 5100
+    },
+    "glass-title": {
+      "kind": "title1",
+      "maxW": 7680,
+      "page": "glass",
+      "text": "DCX Agent 2.0 — Liquid Glass (이전안 · 동결)",
+      "w": 240,
+      "x": 0,
+      "y": -520
+    },
+    "linear-layer-0": {
+      "color": "blue",
+      "maxH": 200,
+      "page": "linear",
+      "size": 24,
+      "text": "Data Defining — 무엇을 볼 것인가\n1.0 STEP 01~04에 대응한다. 선언 13필드와 known_insights가 여기서 들어가고, 그 맥락이 파이프라인 끝까지 따라간다.",
+      "w": 1400,
+      "x": 0,
+      "y": -300
+    },
+    "linear-layer-1": {
+      "color": "blue",
+      "maxH": 200,
+      "page": "linear",
+      "size": 24,
+      "text": "Data Sensing — 무엇이 보이는가\n1.0 STEP 05~09에 대응한다. 07·08·09는 1.0 장표(Touch Point 정의 · SNA 3단계 · LDAVis)를 형식까지 승계하고, 09에서 검색 순위가 관련성 단독에서 '감점 × 가점'으로 바뀐다.",
+      "w": 1400,
+      "x": 0,
+      "y": 2170
+    },
+    "linear-layer-2": {
+      "color": "blue",
+      "maxH": 200,
+      "page": "linear",
+      "size": 24,
+      "text": "Data Shaping — 무엇을 할 것인가\n1.0 STEP 10~11에 대응한다. 10-A는 CAM 행 구조를 승계하되 열 단위를 Action으로 바꾸고 관측/추론/추측을 기계 판정한다. 11-B는 1.0 컨셉 장표를 통째로 승계한 신설 화면이고, ADM은 프롬프트와 잠정 상수가 사는 곳이다.",
+      "w": 1400,
+      "x": 0,
+      "y": 5100
+    },
+    "linear-title": {
+      "kind": "title1",
+      "maxW": 7680,
+      "page": "linear",
+      "text": "DCX Agent 2.0 — Person A 디자인 시스템",
+      "w": 240,
+      "x": 0,
+      "y": -520
+    },
+    "readme": {
+      "color": "gray",
+      "maxH": 420,
+      "page": "linear",
+      "text": "읽는 법\n\n각 화면 아래 '1.0 대비 변경점' 스트립의 번호가 화면 안의 동그란 핀과 짝을 이룬다.\n\n치환 = AS-IS가 있고 대체된다 · 신설 = AS-IS 없음 · 유지 = 기존 확정 재확인 · 미결 = 답이 필요한 것\n\n색·타이포·간격은 Person A 디자인 시스템(design.md) 토큰을 그대로 쓴다. 표는 §7.5 dense(13px) 변형이다.\n\n샘플 데이터는 에어팟 프로 3 세션이며 수치는 설명용 더미다.",
+      "w": 900,
+      "x": 8000,
+      "y": 5100
+    },
+    "themes": {
+      "color": "gray",
+      "maxH": 460,
+      "page": "glass",
+      "text": "이전안 · 동결\n\nPerson A 디자인 시스템이 단일 기준이 되면서 이 페이지는 갱신을 멈췄다.\n\n충돌 지점: 시스템은 Light 단일 테마이고, §4.3이 정적 카드의 그림자를 금지한다. Liquid Glass는 반투명 패널과 접지 그림자로 층을 만드는 방식이라 양립하지 않는다.\n\n기록으로 남겨 둔 것이며 지워도 된다.",
+      "w": 900,
+      "x": 8000,
+      "y": 5100
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Declare.dc.html",
+    "Keywords.dc.html",
+    "Crawling.dc.html",
+    "Preprocess.dc.html",
+    "Training.dc.html",
+    "Labeling.dc.html",
+    "Clustering.dc.html",
+    "Persona.dc.html",
+    "Evidence.dc.html",
+    "ContextMap.dc.html",
+    "Opportunity.dc.html",
+    "Concept.dc.html",
+    "Design.dc.html",
+    "Admin.dc.html",
+    "Main.glass.dc.html",
+    "Declare.glass.dc.html",
+    "Keywords.glass.dc.html",
+    "Crawling.glass.dc.html",
+    "Preprocess.glass.dc.html",
+    "Labeling.glass.dc.html",
+    "Clustering.glass.dc.html",
+    "Persona.glass.dc.html",
+    "Evidence.glass.dc.html",
+    "ContextMap.glass.dc.html",
+    "Opportunity.glass.dc.html",
+    "Concept.glass.dc.html",
+    "Design.glass.dc.html",
+    "Admin.glass.dc.html"
+  ],
+  "pages": [
+    {
+      "id": "linear",
+      "name": "Person A"
+    },
+    {
+      "id": "glass",
+      "name": "Liquid Glass (이전안)"
+    }
+  ],
+  "title": "DCX Agent 2.0 화면 설계"
+}

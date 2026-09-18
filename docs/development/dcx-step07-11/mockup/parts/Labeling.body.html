@@ -1,0 +1,152 @@
+<!--h:1720-->
+<!--title:STEP 06-B — 근거 판정-->
+<!--sub:사람이 몇 문장을 봐야 하는지를 "감"이 아니라 허용 오류율이 정한다-->
+<!--chat:rail-->
+
+[[MAIN]]
+<div class="row rel" style="flex:none;gap:12px;align-items:stretch">
+  <span class="pin fl" style="top:-8px;left:-9px">3</span>
+  <div class="card" style="flex:1.5;border-color:var(--ind-ln);background:color-mix(in srgb, var(--persona-blue-100) 6%, transparent)">
+    <div class="cc" style="padding:14px 16px">
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span class="lab" style="color:var(--ind-fg)">허용 오류율</span>
+        <span class="mono" style="font-size:24px;font-weight:590;color:var(--fg);white-space:nowrap;flex:none">10%</span>
+        <span class="xs">AI 판정을 그대로 쓸 때, 틀린 게 몇 %까지 섞여도 되는가 <span class="mono qu">α = 0.10</span></span>
+      </div>
+      <div style="margin-top:12px;position:relative;height:6px;border-radius:3px;background:color-mix(in srgb, var(--ink) 8%, transparent)">
+        <div style="position:absolute;left:0;top:0;height:6px;width:46%;border-radius:3px;background:var(--indigo)"></div>
+        <div style="position:absolute;left:46%;top:-5px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:var(--panel);border:1px solid var(--line2);box-shadow:0 1px 3px color-mix(in srgb, var(--ink) 25%, transparent)"></div>
+      </div>
+      <div class="xs" style="margin-top:6px;display:flex;justify-content:space-between"><span>2% 엄격</span><span>20% 느슨</span></div>
+      <div class="xs" style="margin-top:11px;border-top:1px dashed var(--line2);padding-top:9px;display:flex;gap:18px">
+        <span>판정 기준선 <span class="mono fg">0.72</span> <span class="qu">— 사람이 정하지 않는다. 허용 오류율에서 계산돼 나온다</span></span>
+      </div>
+      <div class="xs" style="margin-top:7px">
+        <span class="fg">5%</span>로 조이면 → 기준선 <span class="mono fg">0.81</span> · 사람이 볼 문장 <span class="fg">+6,100</span> · 예상 <span class="fg">+10시간</span>.
+        <span class="qu">"품질을 높인다"가 곧 "사람이 더 본다"라는 것이 숫자로 보인다.</span>
+      </div>
+    </div>
+  </div>
+  <div class="kpi" style="flex:.66"><span class="lab">사람이 볼 문장</span><span class="v">3,284</span><span class="xs">전체 14,720 중 · 78% 처리</span></div>
+  <div class="kpi" style="flex:.66"><span class="lab">처리 속도</span><span class="v">214<span class="xs" style="font-weight:400"> 문장/h</span></span><span class="xs">최근 1시간 이동평균</span></div>
+  <div class="kpi" style="flex:.66"><span class="lab">남은 시간</span><span class="v">15h 20m</span><span class="xs">현재 허용 오류율 기준</span></div>
+</div>
+
+<div class="card rel" style="flex:none">
+  <span class="pin fl" style="top:12px;left:-9px">1</span>
+  <div class="ch"><h3>78,900문장이 어디로 가는가</h3><span class="grow"></span><span class="xs">사람은 두 곳만 본다</span></div>
+  <div class="cc" style="display:flex;gap:10px;align-items:stretch">
+    <div style="flex:81.4;border:1px solid var(--line);border-radius:8px;padding:11px 13px;background:var(--sunk)">
+      <div style="display:flex;align-items:baseline;gap:8px"><span class="sm fg" style="font-weight:510">AI 판정 그대로 채택</span><span class="mono fg" style="font-size:17px;font-weight:590">64,180</span><span class="xs">81.4%</span></div>
+      <div class="bar" style="margin-top:7px"><i class="o" style="width:100%"></i></div>
+      <div class="xs" style="margin-top:6px">사람이 보지 않는다. 대신 <span class="fg">이 묶음의 오류율이 10% 이하</span>임이 보장된다 — 그게 허용 오류율의 의미다.</div>
+    </div>
+    <div style="flex:18.6;border:1px solid var(--ind-ln);border-radius:8px;padding:11px 13px;background:color-mix(in srgb, var(--persona-blue-100) 6%, transparent)">
+      <div style="display:flex;align-items:baseline;gap:8px"><span class="sm fg" style="font-weight:510">사람이 볼 문장</span><span class="mono fg" style="font-size:17px;font-weight:590">14,720</span><span class="xs">18.6%</span></div>
+      <div class="bar" style="margin-top:7px"><i style="width:100%"></i></div>
+      <div class="xs" style="margin-top:6px">AI 확신도가 기준선 미만이거나, 핵심 근거–보조 단서 경계에 붙은 문장.</div>
+    </div>
+    <div style="width:186px;flex:none;border:1px solid var(--line);border-radius:8px;padding:11px 13px">
+      <div style="display:flex;align-items:baseline;gap:8px"><span class="sm" style="font-weight:510">무작위 점검</span><span class="mono fg" style="font-size:17px;font-weight:590">600</span></div>
+      <div class="bar" style="margin-top:7px"><i class="n" style="width:100%"></i></div>
+      <div class="xs" style="margin-top:6px">채택분에서 무작위로 뽑는다. <span class="fg">"AI가 자신 있게 틀린 구간"</span>은 이것으로만 보인다.</div>
+    </div>
+  </div>
+</div>
+
+<div class="row" style="flex:1;min-height:0">
+  <div class="card rel" style="width:404px;flex:none;display:flex;flex-direction:column">
+    <span class="pin fl" style="top:12px;left:-9px">2</span>
+    <div class="ch"><h3>큐</h3><span class="b ind">3,284</span><span class="grow"></span>
+      <span class="seg"><span class="on">전체</span><span>확신도 낮음</span><span>경계</span></span></div>
+    <div style="flex:1;overflow:hidden">
+      <table>
+        <thead><tr><th style="width:74px">문장</th><th>왜 올라왔나</th><th class="n" style="width:62px">확신도</th></tr></thead>
+        <tbody>
+          <tr style="background:color-mix(in srgb, var(--persona-blue-100) 5%, transparent)"><td class="mono" style="color:var(--fg)">84117</td><td><span class="b spe">경계</span> <span class="xs">채움 4개 · 핵심 근거 경계에 붙음</span></td><td class="n mono">0.67</td></tr>
+          <tr><td class="mono">84203</td><td><span class="b inf">확신도 낮음</span> <span class="xs">판정자 3명 중 2:1 갈림</span></td><td class="n mono">0.58</td></tr>
+          <tr><td class="mono">84318</td><td><span class="b inf">확신도 낮음</span> <span class="xs">광고 여부가 모호</span></td><td class="n mono">0.44</td></tr>
+          <tr><td class="mono">84402</td><td><span class="b spe">경계</span> <span class="xs">채움 3개 · 목적축 없음</span></td><td class="n mono">0.71</td></tr>
+          <tr><td class="mono">84517</td><td><span class="b">사유별 최소 표본</span> <span class="xs">무관 사유 <span class="mono">other</span> 배정</span></td><td class="n mono">0.63</td></tr>
+          <tr><td class="mono">84620</td><td><span class="b inf">확신도 낮음</span> <span class="xs">판정자 3명 모두 갈림</span></td><td class="n mono">0.31</td></tr>
+          <tr><td class="mono">84711</td><td><span class="b spe">경계</span> <span class="xs">채움 2개 · 제약축만 있음</span></td><td class="n mono">0.69</td></tr>
+          <tr><td class="mono qu">84802</td><td class="xs qu">＋ 3,277문장</td><td class="n mono qu">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="cc" style="flex:none;border-top:1px solid var(--line);padding:10px 13px">
+      <div class="xs">모드 <span class="seg" style="margin-left:4px"><span>기준 만들기</span><span class="on">혼자 판단</span><span>재확인</span></span></div>
+      <div class="xs qu" style="margin-top:7px">혼자 판단 모드에서는 AI 근거를 <span class="fg">제출 후에만</span> 보여준다 — 판단 전에 보면 그쪽으로 끌려간다.</div>
+    </div>
+  </div>
+
+  <div class="card" style="flex:1;display:flex;flex-direction:column">
+    <div class="ch"><h3>문장 84117</h3><span class="b spe">경계</span><span class="grow"></span>
+      <span class="xs">런닝 크루 카페 · 2026-04-11 · <span class="mono">kw. 폼팁 교체</span></span></div>
+    <div class="cc" style="flex:1;display:flex;flex-direction:column;gap:12px">
+      <p class="sm" style="margin:0;color:var(--fg);font-size:14.5px;line-height:23px;border:1px solid var(--line2);border-radius:8px;padding:12px 14px;background:var(--sunk)">
+        "10km 넘어가면 땀 때문에 오른쪽이 자꾸 헐거워져서, 뛰다가 손으로 밀어 넣는 게 일이에요. 폼팁 사이즈 바꿔봐도 똑같길래 요즘은 그냥 한쪽만 끼고 뜁니다."</p>
+
+      <div class="row" style="gap:14px">
+        <div style="flex:1.05">
+          <div class="lab">이 문장만으로 상황을 몇 개나 채울 수 있나</div>
+          <table style="margin-top:7px">
+            <tbody>
+              <tr><td style="width:104px">언제·어디서</td><td><span class="dotg o"></span></td><td class="xs">10km 지점 · 러닝 중</td></tr>
+              <tr><td>어떤 마음</td><td><span class="dotg o"></span></td><td class="xs">"일이에요" 짜증</td></tr>
+              <tr><td style="color:var(--fg)">무엇을 하려고</td><td><span class="dotg o"></span></td><td class="xs">끊김 없이 계속 뛰기</td></tr>
+              <tr><td>실제 한 행동</td><td><span class="dotg o"></span></td><td class="xs">손으로 밀어넣음 · 한쪽만 착용</td></tr>
+              <tr><td style="color:var(--fg)">무엇에 막혔나</td><td><span class="dotg o"></span></td><td class="xs">폼팁 교체로 해결 안 됨</td></tr>
+            </tbody>
+          </table>
+          <div class="xs" style="margin-top:8px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--sunk)">
+            <span class="fg">핵심 근거</span>: 3개 이상 <span class="fg">그리고</span> "무엇을 하려고" 또는 "무엇에 막혔나"를 포함 ·
+            <span class="fg">보조 단서</span>: 1~2개 · <span class="fg">무관</span>: 0개 + 사유.
+            <span class="qu">사람과 AI가 이 한 문장을 똑같이 쓴다.</span>
+          </div>
+        </div>
+
+        <div style="flex:1;display:flex;flex-direction:column;gap:11px">
+          <div>
+            <div class="lab">판정</div>
+            <div style="display:flex;gap:7px;margin-top:7px">
+              <span class="btn" style="flex:1;flex-direction:column;gap:0;justify-content:center;height:44px;border-color:var(--obs-ln);color:var(--obs);background:var(--obs-bg)">핵심 근거<span class="mono" style="font-size:10px;opacity:.75">core</span></span>
+              <span class="btn" style="flex:1;flex-direction:column;gap:0;justify-content:center;height:44px">보조 단서<span class="mono" style="font-size:10px;opacity:.6">supporting</span></span>
+              <span class="btn gho" style="flex:1;flex-direction:column;gap:0;justify-content:center;height:44px">무관<span class="mono" style="font-size:10px;opacity:.6">non</span></span>
+            </div>
+            <div class="wrap" style="margin-top:7px;opacity:.45">
+              <span class="xs" style="width:100%">무관을 고르면 사유를 함께 받는다</span>
+              <span class="chip">광고</span><span class="chip">단순 평가</span><span class="chip">비난만</span><span class="chip">경험 없음</span><span class="chip">기타</span>
+            </div>
+          </div>
+
+          <div class="rel" style="border:1px solid var(--ind-ln);border-radius:8px;padding:11px 12px;background:color-mix(in srgb, var(--persona-blue-100) 6%, transparent)">
+            <span class="pin fl" style="top:-9px;right:10px">4</span>
+            <div class="lab" style="color:var(--ind-fg)">제출 후에만 공개</div>
+            <div class="xs" style="margin-top:6px">AI 판정 <span class="b obs">핵심 근거</span> · 확신도 <span class="mono fg">0.67</span> <span class="qu">— 기준선 0.72 미만이라 큐로 올라옴</span></div>
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
+              <div class="xs" style="display:flex;gap:8px"><span style="width:84px">CX 리서처</span><span class="b obs">핵심 근거</span><span class="qu">미충족이 읽힌다</span></div>
+              <div class="xs" style="display:flex;gap:8px"><span style="width:84px">제품 QA</span><span class="b obs">핵심 근거</span><span class="qu">재현 가능한 결함</span></div>
+              <div class="xs" style="display:flex;gap:8px"><span style="width:84px">일반 소비자</span><span class="b inf">보조 단서</span><span class="qu">흔한 불평으로 읽힘</span></div>
+            </div>
+            <div class="xs" style="margin-top:8px;border-top:1px dashed var(--ind-ln);padding-top:7px">
+              확신도는 AI에게 "얼마나 확신하냐"고 물어서 얻은 값이 아니다. <span class="fg">관점이 다른 판정자 3명</span>에게 같은 문장을 보이고 그 <span class="fg">일치율</span>을 쓴다.
+            </div>
+          </div>
+
+          <div style="margin-top:auto;display:flex;gap:8px;align-items:center">
+            <span class="btn gho">건너뛰기</span><span class="grow"></span><span class="btn pri">제출하고 다음</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+[[ANN]]
+<div class="it"><span class="pin">1</span><p><span class="tag rep">치환</span><b>주체가 뒤집힌다.</b> AS-IS는 무작위 2%를 사람이 이진 라벨링했다 — 100만 건이면 20,000건. TO-BE는 AI가 전량 판정하고 사람은 두 곳만 본다: 기준을 만드는 캘리브레이션 300~500건, 그리고 AI가 자신 없어 올린 문장.</p></div>
+<div class="it"><span class="pin">2</span><p><span class="tag rep">치환</span><b>라벨 스키마 — 2분류 → 3-class + 사유.</b> 하류가 필요로 하는 것은 "관련이냐"가 아니라 <em>이 원문 하나로 상황을 재구성할 수 있느냐</em>다. <em class="mono">relevant</em>를 <em class="mono">core / supporting</em>으로 분할하고 나머지 4 class를 <em class="mono">non</em>의 <em class="mono">reason_code</em>(ad · plain_eval · pure_criticism · no_experience · other)로 강하 — 정보 손실이 없어 기존 라벨은 마이그레이션 없이 읽힌다. <em class="mono">context_dims</em>는 여기서 채우지 않고 STEP 09에서 Core만 추출한다.</p></div>
+<div class="it"><span class="pin">3</span><p><span class="tag new">신설</span><b>α가 검수량을 정한다 (conformal risk control).</b> v4의 "목표 1,000건"에는 근거가 없었다 — 정확도가 정체하면 멈춘다는 경험칙뿐이고, 채택된 라벨이 얼마나 틀렸는지는 끝까지 알 수 없었다. α를 정하면 임계 τ가 캘리브레이션 데이터에서 나오고, 사람 검수량은 입력이 아니라 <em>결과</em>가 된다.</p></div>
+<div class="it"><span class="pin">4</span><p><span class="tag new">신설</span><b>confidence의 출처 — Simulated Annotators.</b> 지시-튜닝 모델은 자기 판단에 과도한 확신을 보고하고 그 값이 프롬프트 형식에 크게 흔들려 라우팅 기준으로 못 쓴다. 그래서 <em>판정 근거축 자체가 다른</em> 페르소나 k=3(CX 리서처 · 제품 QA · 일반 소비자)에게 같은 문서를 판정시키고 일치율을 confidence로 쓴다. 근거는 <b>제출 후에만</b> 노출해 앵커링을 막는다.</p></div>
+<div class="it"><span class="pin">—</span><p><span class="tag new">신설</span><b>AI-first 신뢰도 6절차.</b> ① 캘리브레이션 스프린트(300~500건 2인 이중 라벨 → κ<sub>human</sub>) → ② AI 전량 판정(cascade 3-tier) → ③ conformal로 τ 산출 → ④ 라우팅(채택 / escalate) → ⑤ 감사 샘플(채택분 무작위 → κ<sub>AI</sub>) → ⑥ κ 2배치 연속 하락 또는 분포 급변 시 ①로 재캘리브레이션. ⑤가 무작위인 이유는 escalate 큐만 보면 "AI가 자신 있게 틀린 구간"이 구조적으로 관측되지 않기 때문이다.</p></div>
+<div class="it"><span class="pin">—</span><p><span class="tag rep">치환</span><b>60/20/15/5 재해석과 산출 계약.</b> 레시피는 남기고 의미만 갈아끼운다 — 60% 프록시 선별 → escalate 건 / 20% 층화 무작위 → 감사 샘플 / 15% LLM 시드·5% 재발행은 유지. 화면은 그대로고 배치되는 절차만 바뀐다. <em class="mono">stage_5.json</em>에 κ<sub>human</sub> · κ<sub>AI</sub> · 클래스 분포 · conformal 커버리지 · α · escalate 건수 · cascade 단계별 처리량을 남긴다(분류기 채택 81% · LLM-B 재판정 18%). <span class="tag open">미결</span>페르소나 간 불일치가 실제 오답과 상관되는지 먼저 검증해야 하며 k=3은 잠정값이다.</p></div>

@@ -1,0 +1,195 @@
+<!--h:2380-->
+<!--title:어드민 — 프롬프트 · 파이프라인 상수-->
+<!--sub:코드에 흩어진 f-string 프롬프트와 호출 파라미터를 한 곳으로 모은다 · 편집보다 중요한 것은 편집한 뒤 무엇이 달라졌는지 아는 것이다-->
+<!--chat:rail-->
+
+[[MAIN]]
+<div class="row" style="flex:none;gap:12px;align-items:stretch">
+  <div class="card rel" style="flex:1.5;border-color:var(--ind-ln);background:var(--ind-bg)">
+    <span class="pin fl" style="top:-8px;left:-9px">1</span>
+    <div class="cc" style="padding:12px 15px;display:flex;align-items:center;gap:14px">
+      <div><div class="lab" style="color:var(--ind-fg)">활성 프롬프트 세트 <span class="mono qu" style="text-transform:none;letter-spacing:0;font-weight:400">prompt_set</span></div>
+        <div class="xs" style="margin-top:4px">세션은 시작 시점의 세트를 고정해 붙든다 · 진행 중 세션은 편집 영향을 받지 않는다</div></div>
+      <span class="grow"></span>
+      <span class="seg"><span class="on">v7 운영</span><span>v8 초안</span></span>
+    </div>
+  </div>
+  <div class="kpi" style="flex:.6"><span class="lab">프롬프트</span><span class="v">12</span><span class="xs">코드 하드코딩 7 · 신설 5</span></div>
+  <div class="kpi" style="flex:.6"><span class="lab">미외부화</span><span class="v" style="color:var(--spe)">7</span><span class="xs">아직 f-string으로 남음</span></div>
+  <div class="kpi" style="flex:.6"><span class="lab">드라이런 미실행</span><span class="v" style="color:var(--inf)">3</span><span class="xs">v8 초안 중</span></div>
+  <div class="kpi" style="flex:.66"><span class="lab">잠정 상수</span><span class="v">9</span><span class="xs">실측 캘리브레이션 대기</span></div>
+</div>
+
+<div class="row" style="flex:1;min-height:0">
+  <div class="card rel" style="flex:1;display:flex;flex-direction:column">
+    <span class="pin fl" style="top:12px;left:-9px">2</span>
+    <div class="ch"><h3>프롬프트 레지스트리</h3>
+      <span class="seg" style="margin-left:4px"><span class="on">전체</span><span>미외부화</span><span>수정됨</span></span>
+      <span class="grow"></span><span class="xs">호출 지점 = 코드 경로와 1:1</span></div>
+    <div style="flex:1;overflow:hidden">
+      <table>
+        <thead><tr><th style="width:130px">ID</th><th style="width:62px">STEP</th><th>용도 · 호출 지점</th><th class="n" style="width:66px">max_tok</th><th class="n" style="width:56px">timeout</th><th style="width:52px">버전</th><th style="width:72px">상태</th></tr></thead>
+        <tbody>
+          <tr><td class="mono fg">kw.expand</td><td class="mono">03</td><td>카테고리·키워드 발산<div class="xs qu mono">routers/keywords.py:34</div></td><td class="n mono">8000</td><td class="n mono">120</td><td class="mono">v4</td><td><span class="b spe">f-string</span></td></tr>
+          <tr><td class="mono fg">kw.converge</td><td class="mono">03</td><td>키워드 수렴<div class="xs qu mono">routers/keywords.py:72</div></td><td class="n mono">8000</td><td class="n mono">120</td><td class="mono">v4</td><td><span class="b spe">f-string</span></td></tr>
+          <tr><td class="mono fg">kw.suggest</td><td class="mono">03</td><td>키워드 추천<div class="xs qu mono">routers/keywords.py:150</div></td><td class="n mono">2000</td><td class="n mono">60</td><td class="mono">v2</td><td><span class="b spe">f-string</span></td></tr>
+          <tr><td class="mono fg">filter.relevance</td><td class="mono">05</td><td>관련성 0/1 배치 판정<div class="xs qu mono">utils/text.py:28</div></td><td class="n mono qu">배치</td><td class="n mono">60</td><td class="mono">v3</td><td><span class="b spe">f-string</span></td></tr>
+          <tr style="background:var(--ind-bg)"><td class="mono fg">cluster.label</td><td class="mono">07</td><td>Touch Point 한 줄 정의<div class="xs" style="color:var(--ind-fg)">신설 — c-TF-IDF 상위 어휘 → 정의문</div></td><td class="n mono">1500</td><td class="n mono">60</td><td class="mono">v1</td><td><span class="b ind">초안</span></td></tr>
+          <tr><td class="mono fg">persona.generate</td><td class="mono">08</td><td>Desire · Goal 초안<div class="xs qu mono">services/personas.py:67</div></td><td class="n mono">8000</td><td class="n mono">180</td><td class="mono">v6</td><td><span class="b spe">f-string</span></td></tr>
+          <tr style="background:var(--ind-bg)"><td class="mono fg">evidence.query</td><td class="mono">09</td><td>persona_query · context_query 생성<div class="xs" style="color:var(--ind-fg)">신설 — 코드 검증 4항목 대상</div></td><td class="n mono">2000</td><td class="n mono">60</td><td class="mono">v2</td><td><span class="b ind">초안</span></td></tr>
+          <tr style="background:var(--ind-bg)"><td class="mono fg">cam.describe</td><td class="mono">10</td><td>상황 · 행동 · 장벽 서술<div class="xs" style="color:var(--ind-fg)">신설 — 등급은 이 호출이 매기지 않는다</div></td><td class="n mono">4000</td><td class="n mono">120</td><td class="mono">v3</td><td><span class="b ind">편집 중</span></td></tr>
+          <tr style="background:var(--ind-bg)"><td class="mono fg">insight.synth</td><td class="mono">11-A</td><td>페르소나 가로지르는 종합<div class="xs" style="color:var(--ind-fg)">신설</div></td><td class="n mono">4000</td><td class="n mono">120</td><td class="mono">v1</td><td><span class="b ind">초안</span></td></tr>
+          <tr style="background:var(--ind-bg)"><td class="mono fg">concept.generate</td><td class="mono">11-B</td><td>Service · Experience 블록<div class="xs" style="color:var(--ind-fg)">신설</div></td><td class="n mono">4000</td><td class="n mono">120</td><td class="mono">v1</td><td><span class="b ind">초안</span></td></tr>
+          <tr><td class="mono fg">chat.qa</td><td class="mono qu">전 단계</td><td>인사이트 Q&amp;A<div class="xs qu mono">routers/chat.py:56</div></td><td class="n mono">2000</td><td class="n mono">60</td><td class="mono">v5</td><td><span class="b spe">f-string</span></td></tr>
+          <tr><td class="mono fg">chat.edit</td><td class="mono">11</td><td>데이터 편집 에이전트<div class="xs qu mono">routers/chat.py:157</div></td><td class="n mono">4000</td><td class="n mono">120</td><td class="mono">v5</td><td><span class="b spe">f-string</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="cc" style="flex:none;border-top:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:10px">
+      <span class="b spe">f-string</span><span class="xs">아직 코드에 박혀 있어 여기서 읽기만 된다 — 외부화 전까지 편집 불가</span>
+      <span class="grow"></span><span class="btn gho">외부화 마이그레이션 ↗</span>
+    </div>
+  </div>
+
+  <div class="card rel" style="flex:1.1;display:flex;flex-direction:column">
+    <span class="pin fl" style="top:12px;left:-9px">3</span>
+    <div class="ch"><h3>편집기</h3><span class="b ind mono">cam.describe</span><span class="qu xs">v3 초안</span>
+      <span class="grow"></span>
+      <span class="seg"><span class="on">템플릿</span><span>변수</span><span>파라미터</span><span>이력</span></span></div>
+    <div class="cc" style="flex:1;display:flex;flex-direction:column;gap:10px;overflow:hidden">
+      <div class="mono xs" style="flex:1;min-height:0;border:1px solid var(--line2);border-radius:6px;padding:11px 12px;background:var(--sunk);color:var(--sec);line-height:19px;overflow:hidden">
+        <span class="qu">01</span>  당신은 소비자 담론을 서술하는 분석가입니다.<br>
+        <span class="qu">02</span>  <br>
+        <span class="qu">03</span>  제품: "<span style="background:var(--ind-bg);color:var(--ind-fg);padding:0 3px;border-radius:3px">{bk}</span>"<br>
+        <span class="qu">04</span>  한줄 정의: <span style="background:var(--ind-bg);color:var(--ind-fg);padding:0 3px;border-radius:3px">{problem_def}</span><br>
+        <span class="qu">05</span>  Persona: <span style="background:var(--ind-bg);color:var(--ind-fg);padding:0 3px;border-radius:3px">{persona_desire}</span><br>
+        <span class="qu">06</span>  Action: <span style="background:var(--ind-bg);color:var(--ind-fg);padding:0 3px;border-radius:3px">{action_sentence}</span><br>
+        <span class="qu">07</span>  근거 인용: <span style="background:var(--spe-bg);color:var(--spe);padding:0 3px;border-radius:3px">{evidence_quotes}</span><br>
+        <span class="qu">08</span>  <br>
+        <span class="qu">09</span>  위 Action에 대해 세 문장을 쓰세요.<br>
+        <span class="qu">10</span>  1) 상황 — 지금 무엇이 반복되는가<br>
+        <span class="qu">11</span>  2) 행동 — 그래서 사람들이 무엇을 하는가<br>
+        <span class="qu">12</span>  3) 장벽 — 무엇이 그것을 해결하지 못하게 하는가<br>
+        <span class="qu">13</span>  <br>
+        <span class="qu">14</span>  <span style="color:var(--spe)">※ 관측/추론/추측 등급을 스스로 붙이지 마세요.</span><br>
+        <span class="qu">15</span>  <span style="color:var(--spe)">   등급은 코드가 검색 히트로 판정합니다.</span><br>
+        <span class="qu">16</span>  <span class="qu">"페르소나는", "클러스터" 등 분석 용어 금지.</span>
+      </div>
+
+      <div class="card sunk" style="flex:none"><div class="cc" style="padding:10px 12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="lab">변수 린트</span><span class="b spe">오류 1</span><span class="b inf">경고 1</span>
+          <span class="grow"></span><span class="xs qu">저장 전 자동 실행 · 오류가 있으면 활성화되지 않는다</span>
+        </div>
+        <div class="xs" style="margin-top:7px;display:flex;flex-direction:column;gap:5px">
+          <div style="display:flex;gap:8px"><span class="b spe" style="flex:none">오류</span><span><span class="mono">{evidence_quotes}</span> — 호출부가 넘기지 않는 변수입니다. <span class="qu">cam.describe는 Evidence Package를 인용 배열로 받습니다 → <span class="mono fg">{evidence_items}</span></span></span></div>
+          <div style="display:flex;gap:8px"><span class="b inf" style="flex:none">경고</span><span>금지어 정규식에 <span class="mono">클러스터</span>가 걸려 있는데 본문 16행에서 <b>지시문으로</b> 쓰였습니다. 예외 표기 필요</span></div>
+          <div style="display:flex;gap:8px"><span class="b obs" style="flex:none">통과</span><span class="qu"><span class="mono">{bk}</span> <span class="mono">{problem_def}</span> <span class="mono">{persona_desire}</span> <span class="mono">{action_sentence}</span> — 호출부 시그니처와 일치</span></div>
+        </div>
+      </div></div>
+
+      <div style="flex:none;display:flex;gap:10px;align-items:flex-end">
+        <div style="flex:1"><div class="lab">model</div><div class="fld mono" style="margin-top:4px;font-size:12px">claude-sonnet-4-20250514</div></div>
+        <div style="width:96px"><div class="lab">max_tokens</div><div class="fld mono" style="margin-top:4px">4000</div></div>
+        <div style="width:82px"><div class="lab">timeout</div><div class="fld mono" style="margin-top:4px">120</div></div>
+      </div>
+      <div style="flex:none;display:flex;gap:8px;align-items:center">
+        <span class="xs qu">마지막 저장 2026-09-18 11:04 · 나</span>
+        <span class="grow"></span>
+        <span class="btn gho">v2로 되돌리기</span><span class="btn">드라이런</span><span class="btn pri" style="opacity:.45">활성화</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row" style="flex:none">
+  <div class="card rel" style="flex:1.45">
+    <span class="pin fl" style="top:12px;left:-9px">4</span>
+    <div class="ch"><h3>드라이런 대조</h3><span class="b">고정 샘플 세트 20건</span>
+      <span class="grow"></span><span class="xs">같은 입력 · 같은 seed — 프롬프트만 다르다</span></div>
+    <div class="cc" style="display:flex;gap:0">
+      <div style="flex:1;padding-right:14px">
+        <div class="lab">v2 <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">현재 운영</span></div>
+        <div class="card sunk" style="margin-top:6px"><div class="cc" style="padding:10px 11px">
+          <div class="xs"><b>상황</b> 러닝 중 심박을 보려면 손목 기기가 필요하다</div>
+          <div class="xs" style="margin-top:4px"><b>행동</b> 워치와 이어폰을 함께 챙긴다</div>
+          <div class="xs" style="margin-top:4px;color:var(--spe)"><b>장벽</b> —<span class="qu"> 생성되지 않음</span></div>
+        </div></div>
+        <div class="xs" style="margin-top:8px;display:flex;flex-direction:column;gap:4px">
+          <span>장벽 생성률 <span class="mono fg">11 / 20</span></span>
+          <span>관측 등급 비율 <span class="mono fg">54%</span></span>
+          <span>금지어 위반 <span class="mono fg">3건</span></span>
+        </div>
+      </div>
+      <div style="width:1px;background:var(--line);flex:none"></div>
+      <div style="flex:1;padding-left:14px">
+        <div class="lab" style="color:var(--ind-fg)">v3 <span class="qu" style="text-transform:none;letter-spacing:-.06px;font-weight:400">초안</span></div>
+        <div class="card" style="margin-top:6px;border-color:var(--ind-ln);background:var(--ind-bg)"><div class="cc" style="padding:10px 11px">
+          <div class="xs"><b>상황</b> 러닝 중 심박을 보려면 손목 기기가 필요한 상황이 반복된다</div>
+          <div class="xs" style="margin-top:4px"><b>행동</b> 워치와 이어폰을 함께 챙겨 나가며 둘 다 착용한다</div>
+          <div class="xs" style="margin-top:4px"><b>장벽</b> 기기를 줄이면 기록이 끊긴다</div>
+        </div></div>
+        <div class="xs" style="margin-top:8px;display:flex;flex-direction:column;gap:4px">
+          <span>장벽 생성률 <span class="mono" style="color:var(--obs)">19 / 20 ▲8</span></span>
+          <span>관측 등급 비율 <span class="mono" style="color:var(--obs)">67% ▲13%p</span></span>
+          <span>금지어 위반 <span class="mono" style="color:var(--spe)">5건 ▲2</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="cc" style="border-top:1px solid var(--line);padding:10px 14px">
+      <div class="xs">장벽 행이 채워지는 대가로 금지어 위반이 늘었다. <span class="fg">두 지표가 같은 방향으로 움직이지 않을 때 활성화 판단은 사람이 한다</span> — 종합 점수 하나로 뭉개면 무엇을 잃었는지 보이지 않는다.</div>
+    </div>
+  </div>
+
+  <div class="card rel" style="flex:1">
+    <span class="pin fl" style="top:12px;left:-9px">5</span>
+    <div class="ch"><h3>가드레일</h3><span class="grow"></span><span class="xs">코드 검증 · LLM에게 다시 묻지 않는다</span></div>
+    <div class="cc" style="display:flex;flex-direction:column;gap:7px">
+      <div class="xs" style="display:flex;align-items:center;gap:8px"><span class="b obs" style="flex:none;width:36px;justify-content:center">통과</span><span style="flex:1">anchor_context_ids 합집합 = Context 전체</span><span class="mono qu">09</span></div>
+      <div class="xs" style="display:flex;align-items:center;gap:8px"><span class="b obs" style="flex:none;width:36px;justify-content:center">통과</span><span style="flex:1">경험차원 8문장에 dim 누락 없음</span><span class="mono qu">09</span></div>
+      <div class="xs" style="display:flex;align-items:center;gap:8px"><span class="b spe" style="flex:none;width:36px;justify-content:center">실패</span><span style="flex:1">분석 용어 금지어 정규식</span><span class="mono qu">09·10</span></div>
+      <div class="xs" style="display:flex;align-items:center;gap:8px"><span class="b obs" style="flex:none;width:36px;justify-content:center">통과</span><span style="flex:1">미달 시 1회 재생성 → 실패 시 stage 로그 기록</span><span class="mono qu">09</span></div>
+      <div class="xs" style="display:flex;align-items:center;gap:8px"><span class="b inf" style="flex:none;width:36px;justify-content:center">경고</span><span style="flex:1">등급 자기판정 금지 — 출력에 등급 문자열 포함됨</span><span class="mono qu">10</span></div>
+      <div class="xs" style="margin-top:4px;border:1px solid var(--line);border-radius:6px;padding:9px 10px;background:var(--sunk)">
+        <span class="lab">금지어 정규식</span>
+        <div class="mono xs" style="margin-top:5px;color:var(--sec)">(페르소나는|클러스터|세그먼트|토픽\s*\d)</div>
+        <div class="xs qu" style="margin-top:5px">분석 용어가 서술문에 새면 담론 서술이 분석 리포트로 변질된다. 지시문에서의 사용은 예외 등록이 필요하다.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card rel" style="flex:none">
+  <span class="pin fl" style="top:12px;left:-9px">6</span>
+  <div class="ch"><h3>파이프라인 상수</h3><span class="b spe">잠정 9건</span>
+    <span class="grow"></span>
+    <span class="xs">기능설계서의 미결 항목이 여기 산다 — 코드 상수가 아니라 <span class="fg">근거와 함께 조정되는 값</span>이다</span></div>
+  <table>
+    <thead><tr><th style="width:62px">STEP</th><th style="width:186px">상수</th><th class="n" style="width:72px">현재값</th><th style="width:96px">근거</th><th style="width:150px">영향</th><th>바꾸면 다시 돌아야 하는 것</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">07</td><td><span class="mono fg">k_scan_range</span> 실루엣 k 탐색</td><td class="n mono">3–14</td><td><span class="b">확정</span></td><td class="xs">L1 클러스터 수</td><td class="xs">07 이후 전체 — ID 재발급</td></tr>
+      <tr><td class="mono">07</td><td><span class="mono fg">edge_percentile</span> Edge 밴드 경계</td><td class="n mono">P90</td><td><span class="b spe">잠정</span></td><td class="xs">반례 후보 수</td><td class="xs">09 후보 집합</td></tr>
+      <tr><td class="mono">07</td><td><span class="mono fg">combo_rarity_threshold</span></td><td class="n mono">0.60</td><td><span class="b spe">잠정</span></td><td class="xs">희소 조합 판정</td><td class="xs">09 랭킹</td></tr>
+      <tr style="background:var(--ind-bg)"><td class="mono">09</td><td><span class="mono fg">alpha_known_penalty</span> 감점 계수</td><td class="n mono">0.50</td><td><span class="b spe">잠정</span></td><td class="xs">아는 이야기 하향 폭</td><td class="xs">09 순위 · 10 인용 세트</td></tr>
+      <tr style="background:var(--ind-bg)"><td class="mono">09</td><td><span class="mono fg">beta_rarity_bonus</span> 가점 계수</td><td class="n mono">0.30</td><td><span class="b spe">잠정</span></td><td class="xs">희소 조합 상향 폭</td><td class="xs">09 순위 · 10 인용 세트</td></tr>
+      <tr><td class="mono">09</td><td><span class="mono fg">coverage_min</span> 경험차원 하한</td><td class="n mono">4 / 6</td><td><span class="b spe">잠정</span></td><td class="xs">자동 보충 검색 발동</td><td class="xs">09 노출 건수</td></tr>
+      <tr style="background:var(--ind-bg)"><td class="mono">10</td><td><span class="mono fg">lexical_overlap_min</span> 관측 판정</td><td class="n mono">0.40</td><td><span class="b spe">잠정</span></td><td class="xs">관측 / 추론 경계</td><td class="xs">10 등급 전량 재판정</td></tr>
+      <tr style="background:var(--ind-bg)"><td class="mono">10</td><td><span class="mono fg">speculation_max</span> 추측 비율 상한</td><td class="n mono">30%</td><td><span class="b spe">잠정</span></td><td class="xs">페르소나 신뢰도 등급</td><td class="xs">11 종합 가중치</td></tr>
+      <tr><td class="mono">10-B</td><td><span class="mono fg">satisfaction_min_n</span> 표본 하한</td><td class="n mono">20</td><td><span class="b spe">잠정</span></td><td class="xs">Satisfaction 산출 여부</td><td class="xs">10-B 좌표 · ODI</td></tr>
+    </tbody>
+  </table>
+  <div class="cc" style="border-top:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:12px">
+    <span class="xs"><span class="b spe">잠정</span> 은 "설계 시작값이며 실측으로 정해질 값"이라는 뜻이다 — <span class="fg">기본값이 아니다.</span></span>
+    <span class="grow"></span>
+    <span class="xs qu">상수를 바꾸면 영향 범위의 단계가 자동으로 재실행 대기로 내려간다 · 지난 세션 결과는 당시 값으로 동결된다</span>
+  </div>
+</div>
+
+[[ANN]]
+<div class="it"><span class="pin">1</span><p><span class="tag new">신설</span><b>세트 단위로 고정한다.</b> 프롬프트를 UI에서 고칠 수 있게 만드는 순간 "어제 돌린 세션과 오늘 돌린 세션이 같은 프롬프트였는가"가 즉시 불확실해진다. 세션은 <b>시작 시점의 <em class="mono">prompt_set</em> 버전을 붙들고</b> 끝까지 간다. 편집은 다음 세션부터 적용된다.</p></div>
+<div class="it"><span class="pin">2</span><p><span class="tag rep">치환</span><b>코드 경로와 1:1로 세운다.</b> 현재 프롬프트는 <em class="mono">keywords.py</em>(3곳) · <em class="mono">chat.py</em>(2곳) · <em class="mono">text.py</em> · <em class="mono">personas.py</em>에 f-string으로 박혀 있고 <em class="mono">max_tokens</em>·<em class="mono">timeout</em>도 호출마다 따로 적혀 있다. 레지스트리는 <b>그 호출 지점을 그대로 행으로</b> 세운다 — 화면에만 있는 가상의 프롬프트를 만들면 코드와 어긋나는 순간 아무도 믿지 않는다. 아직 외부화되지 않은 7건은 <b>읽기 전용</b>으로 표시하고 편집을 막는다.</p></div>
+<div class="it"><span class="pin">3</span><p><span class="tag new">신설</span><b>변수 린트가 저장을 막는다.</b> f-string을 템플릿으로 빼면 <em class="mono">{bk}</em> 같은 변수 누락이 컴파일 오류에서 <b>런타임 오류</b>로 내려앉는다. 저장 전에 호출부 시그니처와 대조해 (a) 호출부가 넘기지 않는 변수 (b) 템플릿이 쓰지 않는 변수 (c) 금지어 정규식 충돌을 검사하고, <b>오류가 있으면 활성화 버튼이 잠긴다.</b></p></div>
+<div class="it"><span class="pin">4</span><p><span class="tag new">신설</span><b>드라이런은 점수 하나로 뭉개지 않는다.</b> 고정 샘플 20건에 같은 seed로 이전 버전과 새 버전을 돌리고 출력을 나란히 놓는다. 예시에서 v3는 장벽 생성률을 11→19로 올렸지만 금지어 위반을 3→5로 늘렸다. <b>지표가 같은 방향으로 움직이지 않을 때 활성화 판단은 사람이 한다</b> — 종합 점수를 만들면 무엇을 잃었는지 보이지 않는다.</p></div>
+<div class="it"><span class="pin">5</span><p><span class="tag keep">유지</span><b>가드레일은 STEP 09의 코드 검증 4항목을 그대로 올린 것이다.</b> 새 장치가 아니라 이미 정한 계약을 관리 화면에서 볼 수 있게 한 것뿐이다. 여기에 STEP 10의 <b>등급 자기판정 금지</b> 검사가 하나 추가된다 — 출력에 "관측"·"추론" 문자열이 섞여 나오면 모델이 자기 등급을 매긴 것이므로 경고를 올린다.</p></div>
+<div class="it"><span class="pin">6</span><p><span class="tag new">신설</span><b>미결 상수가 사는 곳.</b> 기능설계서가 열어 둔 값들(<em class="mono">α=0.5</em> · <em class="mono">β=0.3</em> · 어휘중첩 <em class="mono">0.40</em> · 추측비율 <em class="mono">30%</em> · Edge <em class="mono">P90</em> …)은 코드 상수로 묻히면 안 된다. <b><span class="tag open">잠정</span> 배지는 "기본값"이 아니라 "실측으로 정해질 값"이라는 뜻이다.</b> 각 행은 <b>바꾸면 다시 돌아야 하는 단계</b>를 같이 들고 있어, 상수 변경이 어디까지 번지는지 먼저 보인다. 지난 세션 결과는 당시 값으로 동결된다.</p></div>
+<div class="it"><span class="pin">—</span><p><span class="tag open">미결</span><b>권한과 감사 로그.</b> 프롬프트·상수 편집은 분석 결과를 바꾸는 행위다. 누가 언제 무엇을 바꿨는지의 감사 로그는 전제이고, 편집 권한을 운영자 단일 역할로 둘지 단계별로 나눌지는 아직 정하지 않았다.</p></div>

@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "workflowVersion": 2,
+  "id": "dcx-step07-11",
+  "phase": "worktree",
+  "evidence": {
+    "brainstorm": "docs/development/dcx-step07-11/01-brainstorm.md#sha256=45e823300ba4ae1e825003ee11b6d97038bddfb7e01a0350ffe0a3a27c654307",
+    "design": "docs/development/dcx-step07-11/design-bundle.json#sha256=baefafca67d842213b652853b4e4f37a88c56348a042a0419d81a69852de61cc",
+    "plan": "docs/development/dcx-step07-11/plan-bundle.json#sha256=8af30356b6d9a8963fcbc8d097450811440b54fc12c5511efd8db8ed1cfa7265"
+  },
+  "history": [
+    {
+      "phase": "brainstorm",
+      "action": "complete",
+      "reference": "docs/development/dcx-step07-11/01-brainstorm.md#sha256=45e823300ba4ae1e825003ee11b6d97038bddfb7e01a0350ffe0a3a27c654307",
+      "at": "2026-09-18T13:26:07.919Z"
+    },
+    {
+      "phase": "product-gate",
+      "action": "approve",
+      "reference": "사용자 승인 2026-09-18 — '승인할게' (선결 조건 P0 포함 범위 확정)",
+      "at": "2026-09-18T13:26:12.126Z"
+    },
+    {
+      "phase": "design",
+      "action": "complete",
+      "reference": "docs/development/dcx-step07-11/design-bundle.json#sha256=baefafca67d842213b652853b4e4f37a88c56348a042a0419d81a69852de61cc",
+      "at": "2026-09-18T13:27:31.990Z"
+    },
+    {
+      "phase": "design-gate",
+      "action": "approve",
+      "reference": "사용자 승인 2026-09-18 — 설계(목업 15화면 + 데이터 계약 + Person A 시스템)",
+      "at": "2026-09-18T13:27:32.051Z"
+    },
+    {
+      "phase": "plan",
+      "action": "complete",
+      "reference": "docs/development/dcx-step07-11/plan-bundle.json#sha256=8af30356b6d9a8963fcbc8d097450811440b54fc12c5511efd8db8ed1cfa7265",
+      "at": "2026-09-18T13:29:46.580Z"
+    },
+    {
+      "phase": "plan-gate",
+      "action": "approve",
+      "reference": "사용자 승인 2026-09-18 — 실행 계획 13 Task + QA 계획 46 시나리오 (QA handoff 승인 포함)",
+      "at": "2026-09-18T13:29:51.599Z"
+    }
+  ],
+  "root": "/Users/yunho/Documents/dcx_agent",
+  "base": "1ff09c8937887037a73153df5ec2dd424af933da",
+  "approvedArtifacts": {
+    "design": {
+      "docs/development/dcx-step07-11/02-design.md": "66489ca16dd086cb36c67f9953cf345d6754a49a8c60d52391a4dad2c74e55a3",
+      "docs/development/dcx-step07-11/mockup/README.md": "d1f1e0329d61b827d8d595b9d934d7f5a28021531ab3ada9dc14b18926d58e62",
+      "docs/development/dcx-step07-11/mockup/_shell.css": "b476564c8bef05e0a0911dc2ff3ec2bbfb093dbb2bb890f558152bf9b44f1f4e",
+      "docs/development/dcx-step07-11/mockup/build.mjs": "d2382db28595e234df40ce18691a7a599f2b2f9460be8191221ac512d019dba0",
+      "docs/development/dcx-step07-11/mockup/project/canvas.json": "0f86fae854c31d65d0a9feec09bf09ab5379984b9392d4f804a0581fef9fe5ae",
+      "docs/development/dcx-step07-11/mockup/project/Admin.dc.html": "08911e6e1f64bd3bdc7e22c021527b8b999ce37c2da4d12f94873cbf736a8869",
+      "docs/development/dcx-step07-11/mockup/project/Admin.glass.dc.html": "26d973e2fcbc2d1b6c6f7b8479ff000999a5a2e6e086e628b29f75257c1b4c3a",
+      "docs/development/dcx-step07-11/mockup/project/Clustering.dc.html": "e1947d489b754f8036cd7ccca30a3ffe11b8936b2bbe83e94f9f2e901c2960cd",
+      "docs/development/dcx-step07-11/mockup/project/Clustering.glass.dc.html": "f2e48cf78089a17ea25bce4ed7945cc2a6909c5a002d1678667cf0f27ffcd7b7",
+      "docs/development/dcx-step07-11/mockup/project/Concept.dc.html": "930d72d3bf202d6ba3ea52a8b3a5ad7f99f52c0e2ee80a14e508c50df89bdae3",
+      "docs/development/dcx-step07-11/mockup/project/Concept.glass.dc.html": "ece2e4eb244903ff84a595a104d3e32b298418b0cb90be9d758b0661c63d7c25",
+      "docs/development/dcx-step07-11/mockup/project/ContextMap.dc.html": "920198d650aa7ad9376eac8d6354070e97d868480e2b5d29746414ac4d4a5cba",
+      "docs/development/dcx-step07-11/mockup/project/ContextMap.glass.dc.html": "ea072018315773f059aee44ab105b5afe2a902fa39f8afe05caea99a639c27a5",
+      "docs/development/dcx-step07-11/mockup/project/Crawling.dc.html": "ddcfa1854dfef52191c070ffe7e47e5dc8c9cc16f7cc93a16057a69069c34921",
+      "docs/development/dcx-step07-11/mockup/project/Crawling.glass.dc.html": "61a08572c76d613e030a3bafc4687d42545971208c0ad2f0c49edee578bc44b3",
+      "docs/development/dcx-step07-11/mockup/project/Declare.dc.html": "0054f2eaa4ca1a806a73a220baf42a6d388dae752a3faba75817a17957a03621",
+      "docs/development/dcx-step07-11/mockup/project/Declare.glass.dc.html": "15471027f1c434bbb99d9c0a34f2a6228f84af07826331bfdb4298ee2f541ecb",
+      "docs/development/dcx-step07-11/mockup/project/Design.dc.html": "5e0df953f6470ab9b8e436c4624cac2485aaaa63c9408f0ba1436faf7fde062a",
+      "docs/development/dcx-step07-11/mockup/project/Design.glass.dc.html": "e5aa3933b2245c2b5d854a7ab10e2945e1a4a6f712f19731fbf73a5c6de9bc76",
+      "docs/development/dcx-step07-11/mockup/project/Evidence.dc.html": "29657af2fcdf34bec9ced0cccd37bad9bf1559c2f3874e0f887a68f4ef5bc035",
+      "docs/development/dcx-step07-11/mockup/project/Evidence.glass.dc.html": "4a424a561afce42f122565977226c4669af5bbed77adbb2d086357dfc5d80ed8",
+      "docs/development/dcx-step07-11/mockup/project/Keywords.dc.html": "1aabb4bc6f69fdde78a3241ba2e6990ac693dd2658391fb3f3100f0da26f5b6b",
+      "docs/development/dcx-step07-11/mockup/project/Keywords.glass.dc.html": "9cda6a07536ef2176702d6d40090fa0517876e88ca21d23fe750e35f92df9c14",
+      "docs/development/dcx-step07-11/mockup/project/Labeling.dc.html": "8b8d8e6bdb28dd4d4b301e65a4ae9a50cff467c53def520e0ce3895d52eccf38",
+      "docs/development/dcx-step07-11/mockup/project/Labeling.glass.dc.html": "d6ce0a4418ce5601a87dcd05ecbbee91c22712edee3e12492e95b76f17ce7a43",
+      "docs/development/dcx-step07-11/mockup/project/Main.dc.html": "24ed7255c926e5ef7dfd140fa125213ef27c5e6b4801f76c7f44bee62d72353c",
+      "docs/development/dcx-step07-11/mockup/project/Main.glass.dc.html": "9055e960807d49259adf73822f29dd866e3bb36a8dc708ae48f160a7eac3655e",
+      "docs/development/dcx-step07-11/mockup/project/Opportunity.dc.html": "5188cb40ef30d86463b4691098a9b95a3e0c1d091e92b1fb22e4c34c230b57c0",
+      "docs/development/dcx-step07-11/mockup/project/Opportunity.glass.dc.html": "7af42bc2070352148cf577926d517d535ab652fde4a2bf3a404a492480f9547e",
+      "docs/development/dcx-step07-11/mockup/project/Persona.dc.html": "0d17b8347bc0a371c3df92760d7760a78e04a467035060fd67cb358f0275b986",
+      "docs/development/dcx-step07-11/mockup/project/Persona.glass.dc.html": "4ccf0dac7944488024858680abb93852b9469553e7f8e5052b16f72774ff44fe",
+      "docs/development/dcx-step07-11/mockup/project/Preprocess.dc.html": "3f37808b77e041f325f1b56a0f6072344cd1733ab8697a594e341720f9ae39d2",
+      "docs/development/dcx-step07-11/mockup/project/Preprocess.glass.dc.html": "18d81a65a3e1f790c444ec4865ef4dd2bf809e8635a955ec21b1931c80f2b350",
+      "docs/development/dcx-step07-11/mockup/project/Training.dc.html": "8d7aa1d4bd8c37301134e17c6dd2df7927ecae7b6b45b06aae8e0615fa8b34df",
+      "docs/development/dcx-step07-11/mockup/parts/Admin.body.html": "d30b0d23cc5574ad93e318e1b56168d4a262d97fcd3773ea49b226c42a6b5510",
+      "docs/development/dcx-step07-11/mockup/parts/Clustering.body.html": "61b95bd6a4e870d4acfad8f8865eb95c4fb0eb4d49c8af58e2ce26dde21560b8",
+      "docs/development/dcx-step07-11/mockup/parts/Concept.body.html": "1d411dd41b3fcaddd294eb764910772829348c67e5e625b3bce34c2c26d14dfa",
+      "docs/development/dcx-step07-11/mockup/parts/ContextMap.body.html": "ccf6fafc0eafe694c7bca8ab08349ec7c22ccdaf99efe6a8c21244c6adb45ab8",
+      "docs/development/dcx-step07-11/mockup/parts/Crawling.body.html": "69ef933398fef2cdeb1551e4d7b465b380a4c54868d1dfb1da2b26e4bb06d8ca",
+      "docs/development/dcx-step07-11/mockup/parts/Declare.body.html": "f2ce5021a87cc8d117ab1e78ee3f636ebcde0b5c45e8747aa659dcb81bd5214a",
+      "docs/development/dcx-step07-11/mockup/parts/Design.body.html": "e297cf93e6ca030f5b5986ca8f821a0dbbf4efb0efdcb909535474329d376027",
+      "docs/development/dcx-step07-11/mockup/parts/Evidence.body.html": "0e38425cc50386f34bac5dc739a11a5e02251aef92dec5b878e098fb3e7eeec9",
+      "docs/development/dcx-step07-11/mockup/parts/Keywords.body.html": "a82015366bdf79cf3ccf7ef93153d7d93b8e10ac03cffa599a254327c89d4528",
+      "docs/development/dcx-step07-11/mockup/parts/Labeling.body.html": "7c58b9f2a8473e9cd7ebd14e0a9ea4aa78d0c9ee4ae35de0f226e2e2ff200ea8",
+      "docs/development/dcx-step07-11/mockup/parts/Main.body.html": "4189682a554767ca830db0d8d029506b96d60617c70c9976542cbf465d9b2680",
+      "docs/development/dcx-step07-11/mockup/parts/Opportunity.body.html": "a2b01e379ab660fe8596cf5720bae54c9d09359cbc6c3cc68fd45657880f9604",
+      "docs/development/dcx-step07-11/mockup/parts/Persona.body.html": "6b441cd2bd23d893299640d7169370c17bb374a715afd46b62d2fd27040246e8",
+      "docs/development/dcx-step07-11/mockup/parts/Preprocess.body.html": "d10824049d704928a63627ea936769ab5809fcc28063726e7df890d79afbb4bb",
+      "docs/development/dcx-step07-11/mockup/parts/Training.body.html": "3b76b8c48e74c790635dd9848cd83a430a42a252463b10c542dd7acb4c65a5a1"
+    },
+    "plan": {
+      "docs/development/dcx-step07-11/03-plan.md": "8971ecb4bb533abe155a88178fabfaac320612e9e541474386c7ad1f573ceb8a",
+      "docs/development/dcx-step07-11/QA_PLAN-dcx-step07-11.md": "e8786e341897a64823380809e23fd2ef1ad51653e467ef740ad1161271207d40"
+    }
+  }
+}
