@@ -1,0 +1,1032 @@
+{
+  "sid": "golden-a",
+  "timestamp": "20260918_120000",
+  "known_insights": [
+    {
+      "id": "ki_01",
+      "text": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다 (기준 1)",
+      "embedding": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": "ki_02",
+      "text": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다 (기준 2)",
+      "embedding": [
+        0.0,
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.1,
+        0.0
+      ]
+    },
+    {
+      "id": "ki_03",
+      "text": "일하는 동안 알림을 끄고 집중 시간을 설정한다 (기준 3)",
+      "embedding": [
+        0.0,
+        0.0,
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.2,
+        0.0
+      ]
+    },
+    {
+      "id": "ki_04",
+      "text": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다 (기준 4)",
+      "embedding": [
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.30000000000000004,
+        0.0
+      ]
+    },
+    {
+      "id": "ki_05",
+      "text": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다 (기준 5)",
+      "embedding": [
+        0.0,
+        10.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.4,
+        0.0
+      ]
+    }
+  ],
+  "records": [
+    {
+      "doc_id": "d_000001",
+      "author_hash": null,
+      "date": "2026-09-01",
+      "decision": "auto",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.99,
+      "text": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 1.",
+      "keywords": [
+        "심박",
+        "워치",
+        "확인"
+      ],
+      "embedding": [
+        10.0,
+        0.0,
+        0.0,
+        -1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "kw": "심박",
+      "title": "심박 워치 확인",
+      "desc": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 1.",
+      "body": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 1.",
+      "link": "https://example.invalid/docs/1",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000002",
+      "author_hash": "a49d077d",
+      "date": "2026-09-02",
+      "decision": "escalated",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.98,
+      "text": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 2.",
+      "keywords": [
+        "심박",
+        "워치",
+        "확인"
+      ],
+      "embedding": [
+        10.0,
+        0.0,
+        0.0,
+        -0.7,
+        0.07,
+        0.03,
+        0.0,
+        0.0
+      ],
+      "kw": "심박",
+      "title": "심박 워치 확인",
+      "desc": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 2.",
+      "body": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 2.",
+      "link": "https://example.invalid/docs/2",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000003",
+      "author_hash": "70c3d529",
+      "date": "2026-09-03",
+      "decision": "human",
+      "label": 1,
+      "reviewed_by": "golden-reviewer",
+      "relevance_score": 0.97,
+      "text": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 3.",
+      "keywords": [
+        "심박",
+        "워치",
+        "확인"
+      ],
+      "embedding": [
+        10.0,
+        0.0,
+        0.0,
+        -0.4,
+        0.14,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "kw": "심박",
+      "title": "심박 워치 확인",
+      "desc": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 3.",
+      "body": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 3.",
+      "link": "https://example.invalid/docs/3",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000004",
+      "author_hash": "6fff3075",
+      "date": "2026-09-04",
+      "decision": "auto",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.96,
+      "text": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 4.",
+      "keywords": [
+        "심박",
+        "워치",
+        "확인"
+      ],
+      "embedding": [
+        10.0,
+        0.0,
+        0.0,
+        -0.2,
+        0.0,
+        0.03,
+        0.0,
+        0.0
+      ],
+      "kw": "심박",
+      "title": "심박 워치 확인",
+      "desc": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 4.",
+      "body": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 4.",
+      "link": "https://example.invalid/docs/4",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000005",
+      "author_hash": "97f9435b",
+      "date": "2026-09-05",
+      "decision": "escalated",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.95,
+      "text": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 5.",
+      "keywords": [
+        "심박",
+        "워치",
+        "확인"
+      ],
+      "embedding": [
+        10.0,
+        0.0,
+        0.0,
+        -0.05,
+        0.07,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "kw": "심박",
+      "title": "심박 워치 확인",
+      "desc": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 5.",
+      "body": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 5.",
+      "link": "https://example.invalid/docs/5",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000006",
+      "author_hash": "d4bfc1c1",
+      "date": "2026-09-06",
+      "decision": "human",
+      "label": 1,
+      "reviewed_by": "golden-reviewer",
+      "relevance_score": 0.94,
+      "text": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 6.",
+      "keywords": [
+        "심박",
+        "워치",
+        "확인"
+      ],
+      "embedding": [
+        10.0,
+        0.0,
+        0.0,
+        0.1,
+        0.14,
+        0.03,
+        0.0,
+        0.0
+      ],
+      "kw": "심박",
+      "title": "심박 워치 확인",
+      "desc": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 6.",
+      "body": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 6.",
+      "link": "https://example.invalid/docs/6",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000007",
+      "author_hash": "e3357619",
+      "date": "2026-09-07",
+      "decision": "auto",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.93,
+      "text": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 7.",
+      "keywords": [
+        "심박",
+        "워치",
+        "확인"
+      ],
+      "embedding": [
+        10.0,
+        0.0,
+        0.0,
+        0.25,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "kw": "심박",
+      "title": "심박 워치 확인",
+      "desc": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 7.",
+      "body": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 7.",
+      "link": "https://example.invalid/docs/7",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000008",
+      "author_hash": "097661a6",
+      "date": "2026-09-08",
+      "decision": "escalated",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.92,
+      "text": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 8.",
+      "keywords": [
+        "심박",
+        "워치",
+        "확인"
+      ],
+      "embedding": [
+        10.0,
+        0.0,
+        0.0,
+        0.45,
+        0.07,
+        0.03,
+        0.0,
+        0.0
+      ],
+      "kw": "심박",
+      "title": "심박 워치 확인",
+      "desc": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 8.",
+      "body": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 8.",
+      "link": "https://example.invalid/docs/8",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000009",
+      "author_hash": "1a544bc0",
+      "date": "2026-09-09",
+      "decision": "human",
+      "label": 1,
+      "reviewed_by": "golden-reviewer",
+      "relevance_score": 0.91,
+      "text": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 9.",
+      "keywords": [
+        "심박",
+        "워치",
+        "확인"
+      ],
+      "embedding": [
+        10.0,
+        0.0,
+        0.0,
+        0.65,
+        0.14,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "kw": "심박",
+      "title": "심박 워치 확인",
+      "desc": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 9.",
+      "body": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 사용 기록 9.",
+      "link": "https://example.invalid/docs/9",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000010",
+      "author_hash": "9ff6c4b8",
+      "date": "2026-09-10",
+      "decision": "auto",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.9,
+      "text": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 그러나 오늘은 이 행동이 필요하지 않았다.",
+      "keywords": [
+        "심박",
+        "워치",
+        "확인"
+      ],
+      "embedding": [
+        10.0,
+        0.0,
+        0.0,
+        0.9,
+        0.0,
+        0.03,
+        0.0,
+        0.0
+      ],
+      "kw": "심박",
+      "title": "심박 워치 확인",
+      "desc": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 그러나 오늘은 이 행동이 필요하지 않았다.",
+      "body": "운동 중 심박을 확인하려고 워치와 이어폰을 함께 착용한다. 그러나 오늘은 이 행동이 필요하지 않았다.",
+      "link": "https://example.invalid/docs/10",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000011",
+      "author_hash": null,
+      "date": "2026-09-01",
+      "decision": "auto",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.99,
+      "text": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 1.",
+      "keywords": [
+        "배터리",
+        "충전",
+        "준비"
+      ],
+      "embedding": [
+        0.0,
+        10.0,
+        0.0,
+        -1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "kw": "배터리",
+      "title": "배터리 충전 준비",
+      "desc": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 1.",
+      "body": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 1.",
+      "link": "https://example.invalid/docs/11",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000012",
+      "author_hash": "ee2e667f",
+      "date": "2026-09-02",
+      "decision": "escalated",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.98,
+      "text": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 2.",
+      "keywords": [
+        "배터리",
+        "충전",
+        "준비"
+      ],
+      "embedding": [
+        0.0,
+        10.0,
+        0.0,
+        -0.7,
+        0.07,
+        0.03,
+        0.0,
+        0.0
+      ],
+      "kw": "배터리",
+      "title": "배터리 충전 준비",
+      "desc": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 2.",
+      "body": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 2.",
+      "link": "https://example.invalid/docs/12",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000013",
+      "author_hash": "65e414c7",
+      "date": "2026-09-03",
+      "decision": "human",
+      "label": 1,
+      "reviewed_by": "golden-reviewer",
+      "relevance_score": 0.97,
+      "text": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 3.",
+      "keywords": [
+        "배터리",
+        "충전",
+        "준비"
+      ],
+      "embedding": [
+        0.0,
+        10.0,
+        0.0,
+        -0.4,
+        0.14,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "kw": "배터리",
+      "title": "배터리 충전 준비",
+      "desc": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 3.",
+      "body": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 3.",
+      "link": "https://example.invalid/docs/13",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000014",
+      "author_hash": "405a1d70",
+      "date": "2026-09-04",
+      "decision": "auto",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.96,
+      "text": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 4.",
+      "keywords": [
+        "배터리",
+        "충전",
+        "준비"
+      ],
+      "embedding": [
+        0.0,
+        10.0,
+        0.0,
+        -0.2,
+        0.0,
+        0.03,
+        0.0,
+        0.0
+      ],
+      "kw": "배터리",
+      "title": "배터리 충전 준비",
+      "desc": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 4.",
+      "body": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 4.",
+      "link": "https://example.invalid/docs/14",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000015",
+      "author_hash": "ebebf66b",
+      "date": "2026-09-05",
+      "decision": "escalated",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.95,
+      "text": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 5.",
+      "keywords": [
+        "배터리",
+        "충전",
+        "준비"
+      ],
+      "embedding": [
+        0.0,
+        10.0,
+        0.0,
+        -0.05,
+        0.07,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "kw": "배터리",
+      "title": "배터리 충전 준비",
+      "desc": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 5.",
+      "body": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 5.",
+      "link": "https://example.invalid/docs/15",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000016",
+      "author_hash": "11ad319c",
+      "date": "2026-09-06",
+      "decision": "human",
+      "label": 1,
+      "reviewed_by": "golden-reviewer",
+      "relevance_score": 0.94,
+      "text": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 6.",
+      "keywords": [
+        "배터리",
+        "충전",
+        "준비"
+      ],
+      "embedding": [
+        0.0,
+        10.0,
+        0.0,
+        0.1,
+        0.14,
+        0.03,
+        0.0,
+        0.0
+      ],
+      "kw": "배터리",
+      "title": "배터리 충전 준비",
+      "desc": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 6.",
+      "body": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 6.",
+      "link": "https://example.invalid/docs/16",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000017",
+      "author_hash": "3520c3e6",
+      "date": "2026-09-07",
+      "decision": "auto",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.93,
+      "text": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 7.",
+      "keywords": [
+        "배터리",
+        "충전",
+        "준비"
+      ],
+      "embedding": [
+        0.0,
+        10.0,
+        0.0,
+        0.25,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "kw": "배터리",
+      "title": "배터리 충전 준비",
+      "desc": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 7.",
+      "body": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 7.",
+      "link": "https://example.invalid/docs/17",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000018",
+      "author_hash": "33830b94",
+      "date": "2026-09-08",
+      "decision": "escalated",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.92,
+      "text": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 8.",
+      "keywords": [
+        "배터리",
+        "충전",
+        "준비"
+      ],
+      "embedding": [
+        0.0,
+        10.0,
+        0.0,
+        0.45,
+        0.07,
+        0.03,
+        0.0,
+        0.0
+      ],
+      "kw": "배터리",
+      "title": "배터리 충전 준비",
+      "desc": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 8.",
+      "body": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 8.",
+      "link": "https://example.invalid/docs/18",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000019",
+      "author_hash": "50b68d98",
+      "date": "2026-09-09",
+      "decision": "human",
+      "label": 1,
+      "reviewed_by": "golden-reviewer",
+      "relevance_score": 0.91,
+      "text": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 9.",
+      "keywords": [
+        "배터리",
+        "충전",
+        "준비"
+      ],
+      "embedding": [
+        0.0,
+        10.0,
+        0.0,
+        0.65,
+        0.14,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "kw": "배터리",
+      "title": "배터리 충전 준비",
+      "desc": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 9.",
+      "body": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 9.",
+      "link": "https://example.invalid/docs/19",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000020",
+      "author_hash": "11215abd",
+      "date": "2026-09-10",
+      "decision": "auto",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.9,
+      "text": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 그러나 오늘은 이 행동이 필요하지 않았다.",
+      "keywords": [
+        "배터리",
+        "충전",
+        "준비"
+      ],
+      "embedding": [
+        0.0,
+        10.0,
+        0.0,
+        0.9,
+        0.0,
+        0.03,
+        0.0,
+        0.0
+      ],
+      "kw": "배터리",
+      "title": "배터리 충전 준비",
+      "desc": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 그러나 오늘은 이 행동이 필요하지 않았다.",
+      "body": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 그러나 오늘은 이 행동이 필요하지 않았다.",
+      "link": "https://example.invalid/docs/20",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000021",
+      "author_hash": null,
+      "date": "2026-09-01",
+      "decision": "auto",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.99,
+      "text": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 1.",
+      "keywords": [
+        "알림",
+        "집중",
+        "설정"
+      ],
+      "embedding": [
+        0.0,
+        0.0,
+        10.0,
+        -1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "kw": "알림",
+      "title": "알림 집중 설정",
+      "desc": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 1.",
+      "body": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 1.",
+      "link": "https://example.invalid/docs/21",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000022",
+      "author_hash": "e09a8f75",
+      "date": "2026-09-02",
+      "decision": "escalated",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.98,
+      "text": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 2.",
+      "keywords": [
+        "알림",
+        "집중",
+        "설정"
+      ],
+      "embedding": [
+        0.0,
+        0.0,
+        10.0,
+        -0.7,
+        0.07,
+        0.03,
+        0.0,
+        0.0
+      ],
+      "kw": "알림",
+      "title": "알림 집중 설정",
+      "desc": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 2.",
+      "body": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 2.",
+      "link": "https://example.invalid/docs/22",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000023",
+      "author_hash": "26b50244",
+      "date": "2026-09-03",
+      "decision": "human",
+      "label": 1,
+      "reviewed_by": "golden-reviewer",
+      "relevance_score": 0.97,
+      "text": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 3.",
+      "keywords": [
+        "알림",
+        "집중",
+        "설정"
+      ],
+      "embedding": [
+        0.0,
+        0.0,
+        10.0,
+        -0.4,
+        0.14,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "kw": "알림",
+      "title": "알림 집중 설정",
+      "desc": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 3.",
+      "body": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 3.",
+      "link": "https://example.invalid/docs/23",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000024",
+      "author_hash": "2d0a36b4",
+      "date": "2026-09-04",
+      "decision": "auto",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.96,
+      "text": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 4.",
+      "keywords": [
+        "알림",
+        "집중",
+        "설정"
+      ],
+      "embedding": [
+        0.0,
+        0.0,
+        10.0,
+        -0.2,
+        0.0,
+        0.03,
+        0.0,
+        0.0
+      ],
+      "kw": "알림",
+      "title": "알림 집중 설정",
+      "desc": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 4.",
+      "body": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 4.",
+      "link": "https://example.invalid/docs/24",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000025",
+      "author_hash": "156eaf94",
+      "date": "2026-09-05",
+      "decision": "escalated",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.95,
+      "text": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 5.",
+      "keywords": [
+        "알림",
+        "집중",
+        "설정"
+      ],
+      "embedding": [
+        0.0,
+        0.0,
+        10.0,
+        -0.05,
+        0.07,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "kw": "알림",
+      "title": "알림 집중 설정",
+      "desc": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 5.",
+      "body": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 5.",
+      "link": "https://example.invalid/docs/25",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000026",
+      "author_hash": "8a97e648",
+      "date": "2026-09-06",
+      "decision": "human",
+      "label": 1,
+      "reviewed_by": "golden-reviewer",
+      "relevance_score": 0.94,
+      "text": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 6.",
+      "keywords": [
+        "알림",
+        "집중",
+        "설정"
+      ],
+      "embedding": [
+        0.0,
+        0.0,
+        10.0,
+        0.1,
+        0.14,
+        0.03,
+        0.0,
+        0.0
+      ],
+      "kw": "알림",
+      "title": "알림 집중 설정",
+      "desc": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 6.",
+      "body": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 6.",
+      "link": "https://example.invalid/docs/26",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000027",
+      "author_hash": "30263b2f",
+      "date": "2026-09-07",
+      "decision": "auto",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.93,
+      "text": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 7.",
+      "keywords": [
+        "알림",
+        "집중",
+        "설정"
+      ],
+      "embedding": [
+        0.0,
+        0.0,
+        10.0,
+        0.25,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "kw": "알림",
+      "title": "알림 집중 설정",
+      "desc": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 7.",
+      "body": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 7.",
+      "link": "https://example.invalid/docs/27",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000028",
+      "author_hash": "88f6689e",
+      "date": "2026-09-08",
+      "decision": "escalated",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.92,
+      "text": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 8.",
+      "keywords": [
+        "알림",
+        "집중",
+        "설정"
+      ],
+      "embedding": [
+        0.0,
+        0.0,
+        10.0,
+        0.45,
+        0.07,
+        0.03,
+        0.0,
+        0.0
+      ],
+      "kw": "알림",
+      "title": "알림 집중 설정",
+      "desc": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 8.",
+      "body": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 8.",
+      "link": "https://example.invalid/docs/28",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000029",
+      "author_hash": "0a7163d8",
+      "date": "2026-09-09",
+      "decision": "human",
+      "label": 1,
+      "reviewed_by": "golden-reviewer",
+      "relevance_score": 0.91,
+      "text": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 9.",
+      "keywords": [
+        "알림",
+        "집중",
+        "설정"
+      ],
+      "embedding": [
+        0.0,
+        0.0,
+        10.0,
+        0.65,
+        0.14,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "kw": "알림",
+      "title": "알림 집중 설정",
+      "desc": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 9.",
+      "body": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 9.",
+      "link": "https://example.invalid/docs/29",
+      "cafe": "합성 연구 모임"
+    },
+    {
+      "doc_id": "d_000030",
+      "author_hash": "7e183306",
+      "date": "2026-09-10",
+      "decision": "auto",
+      "label": 1,
+      "reviewed_by": null,
+      "relevance_score": 0.9,
+      "text": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 그러나 오늘은 이 행동이 필요하지 않았다.",
+      "keywords": [
+        "알림",
+        "집중",
+        "설정"
+      ],
+      "embedding": [
+        0.0,
+        0.0,
+        10.0,
+        0.9,
+        0.0,
+        0.03,
+        0.0,
+        0.0
+      ],
+      "kw": "알림",
+      "title": "알림 집중 설정",
+      "desc": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 그러나 오늘은 이 행동이 필요하지 않았다.",
+      "body": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 그러나 오늘은 이 행동이 필요하지 않았다.",
+      "link": "https://example.invalid/docs/30",
+      "cafe": "합성 연구 모임"
+    }
+  ],
+  "run": {
+    "alpha": 0.03,
+    "escalate_threshold": 0.62,
+    "calibration": {
+      "n": 30,
+      "agreement": 0.9,
+      "disagreements": 3
+    },
+    "ensemble": {
+      "models": [
+        "synthetic"
+      ],
+      "scores": {
+        "synthetic": 0.9
+      },
+      "combined": 0.9
+    },
+    "counts": {
+      "total": 30,
+      "auto": 12,
+      "escalated": 9,
+      "human": 9
+    }
+  }
+}
