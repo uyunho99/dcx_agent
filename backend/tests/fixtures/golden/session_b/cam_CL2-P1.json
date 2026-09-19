@@ -1,0 +1,116 @@
+{
+  "sid": "golden-b",
+  "timestamp": "20260918_120000",
+  "persona_id": "CL2-P1",
+  "columns": [
+    {
+      "action_id": "CL2-P1-A1",
+      "context_id": "CL2-P1-C1",
+      "context": {
+        "text": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 1.",
+        "grade": "confirmed",
+        "cites": [
+          "d_000021"
+        ]
+      },
+      "action": {
+        "text": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 8.",
+        "grade": "confirmed",
+        "cites": [
+          "d_000028"
+        ]
+      },
+      "barrier": {
+        "text": "반복 준비로 다음 사용을 미룰 수 있다",
+        "grade": "speculated",
+        "cites": []
+      },
+      "barrier_gen_fail": false,
+      "measurements": [
+        {
+          "doc_id": "d_000021",
+          "importance": 8.0,
+          "satisfaction": 5.0
+        },
+        {
+          "doc_id": "d_000022",
+          "importance": 8.0,
+          "satisfaction": 5.0
+        },
+        {
+          "doc_id": "d_000023",
+          "importance": 8.0,
+          "satisfaction": 5.0
+        },
+        {
+          "doc_id": "d_000024",
+          "importance": 8.0,
+          "satisfaction": 5.0
+        },
+        {
+          "doc_id": "d_000026",
+          "importance": 8.0,
+          "satisfaction": 5.0
+        },
+        {
+          "doc_id": "d_000027",
+          "importance": 8.0,
+          "satisfaction": 5.0
+        },
+        {
+          "doc_id": "d_000028",
+          "importance": 8.0,
+          "satisfaction": 5.0
+        }
+      ],
+      "importance": 8.0,
+      "satisfaction_n": 7,
+      "satisfaction": 5.0,
+      "odi": 11.0
+    },
+    {
+      "action_id": "CL2-P1-A2",
+      "context_id": "CL2-P1-C2",
+      "context": {
+        "text": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 9.",
+        "grade": "confirmed",
+        "cites": [
+          "d_000029"
+        ]
+      },
+      "action": {
+        "text": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 그러나 오늘은 이 행동이 필요하지 않았다.",
+        "grade": "confirmed",
+        "cites": [
+          "d_000030"
+        ]
+      },
+      "barrier": null,
+      "barrier_gen_fail": true,
+      "measurements": [
+        {
+          "doc_id": "d_000029",
+          "importance": 4.0,
+          "satisfaction": 8.0
+        },
+        {
+          "doc_id": "d_000030",
+          "importance": 4.0,
+          "satisfaction": 8.0
+        }
+      ],
+      "importance": 4.0,
+      "satisfaction_n": 2,
+      "satisfaction": null,
+      "odi": null
+    }
+  ],
+  "constants": {
+    "satisfaction_min_n": 6
+  },
+  "grades": {
+    "confirmed": 4,
+    "speculated": 1,
+    "ratio_spec": 0.2
+  }
+}

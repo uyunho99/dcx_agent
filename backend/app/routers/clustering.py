@@ -1,7 +1,9 @@
 import threading
 from fastapi import APIRouter
 
-from app.services.clustering import run_clustering, refine_clusters
+from app.services.clustering import (
+    run_clustering, refine_clusters, load_latest_result, result_status,
+)
 from app.services.s3 import load_data
 from app.jobs.manager import job_manager
 from app.models.schemas import ClusterRequest, ClusterRefineRequest
@@ -24,7 +26,15 @@ def get_cluster_status(sid: str):
     if job.get("status") in ("running", "done", "error"):
         return job
 
-    # Fallback: check S3
+    # Restore the full STEP 07 contract after a process restart.
+    try:
+        latest = load_latest_result(sid)
+        if latest is not None:
+            return result_status(*latest)
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+    # Read-only compatibility for sessions produced before STEP 07 v2.
     try:
         cd = load_data(f"clusters_refined/{sid}/data_")
         if not cd:
