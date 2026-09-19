@@ -1,4 +1,6 @@
 from copy import deepcopy
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier, BrokenBarrierError
 
 import pytest
 from fastapi import FastAPI
@@ -66,6 +68,75 @@ def test_confirm_append_and_next_session_contract(client, draft):
     insight.inherit_known_insights("golden-a", "next")
     insight.inherit_known_insights("golden-a", "next")
     assert s3.load_json("sessions/next/session.json")["known_insights"] == saved["known_insights"]
+
+
+def test_concurrent_confirm_preserves_both_appends(client, draft, golden_cam, monkeypatch):
+    second = client.post("/api/insight/synthesize", json={
+        "sid": "golden-a", "headline": "대기 부담을 줄인다", "cams": [golden_cam()],
+    }).json()
+    key = "sessions/golden-a/session.json"
+    stored = {key: deepcopy(s3.load_json(key))}
+    before = deepcopy(stored[key]["known_insights"])
+    load_json, save_json = s3.load_json, s3.save_json
+    reads = Barrier(2)
+    start = Barrier(2)
+
+    def load(session_key):
+        if session_key != key:
+            return load_json(session_key)
+        snapshot = deepcopy(stored[key])
+        # Force stale reads without serialization; a lock lets only one reader
+        # reach this barrier, so the bounded wait must also allow that case.
+        try:
+            reads.wait(timeout=1)
+        except BrokenBarrierError:
+            pass
+        return snapshot
+
+    def save(session_key, data):
+        if session_key == key:
+            stored[key] = deepcopy(data)
+        else:
+            save_json(session_key, data)
+
+    monkeypatch.setattr(s3, "load_json", load)
+    monkeypatch.setattr(s3, "save_json", save)
+
+    def confirm(item):
+        start.wait(timeout=5)
+        with TestClient(client.app) as concurrent_client:
+            return concurrent_client.post(f'/api/insight/golden-a/{item["insight_id"]}/confirm')
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(confirm, [draft, second]))
+    assert all(response.status_code == 200 for response in responses)
+    assert [response.json()["status"] for response in responses] == ["confirmed", "confirmed"]
+    saved = stored[key]
+    assert saved["bk"] == "preserved"
+    assert saved["known_insights"][:len(before)] == before
+    assert sorted(saved["known_insights"][len(before):], key=lambda item: item["id"]) == sorted(
+        [{"id": item["insight_id"], "text": item["headline"]} for item in [draft, second]],
+        key=lambda item: item["id"],
+    )
+
+
+@pytest.mark.parametrize("suffix, following", [
+    ("", []),
+    (" 다음 문장이다. Another sentence!", ["다음 문장이다.", "Another sentence!"]),
+])
+def test_decimal_sentence_keeps_one_grade(client, draft, golden_evidence, suffix, following):
+    payload = concept_payload(draft, golden_evidence)
+    sentence = "평균 대기 시간은 3.5분이다."
+    payload["experience"][0]["text"] = sentence + suffix
+    counter = next(row for row in payload["evidence_packages"][0]["evidence"]
+                   if row["role"] == "refute")
+    counter["quote"] = "평균 대기 시간은 짧다."
+    response = client.post("/api/concept/generate", json=payload)
+    assert response.status_code == 200, response.text
+    experience = response.json()["experience"]
+    assert [item["text"] for item in experience] == [sentence] + following
+    assert experience[0]["grade"] == "confirmed"
+    assert counter["doc_id"] in experience[0]["cites"]
 
 
 def test_sentence_grades_lineage_and_manual_cx(client, draft, golden_evidence,

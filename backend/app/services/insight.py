@@ -15,8 +15,10 @@ concept across processes (the existing S3 interface is read/modify/write).
 from copy import deepcopy
 from datetime import datetime, timezone
 import re
+from threading import Lock
 from typing import Annotated, Literal
 from uuid import uuid4
+from weakref import WeakValueDictionary
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -26,6 +28,19 @@ from app.services import s3
 Identifier = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]*$", max_length=128)]
 Text = Annotated[str, Field(min_length=1, pattern=r"\S")]
 Number = Annotated[float, Field(allow_inf_nan=False)]
+
+
+_confirmation_locks = WeakValueDictionary()
+_confirmation_locks_guard = Lock()
+
+
+def _confirmation_lock(sid):
+    with _confirmation_locks_guard:
+        lock = _confirmation_locks.get(sid)
+        if lock is None:
+            lock = Lock()
+            _confirmation_locks[sid] = lock
+        return lock
 
 
 class Cell(BaseModel):
@@ -211,13 +226,15 @@ def synthesize(req: SynthesizeRequest) -> dict:
 
 
 def confirm(sid: str, insight_id: str) -> dict:
-    data = get_artifact("insights", sid, insight_id)
-    key, session = _session(sid)
-    _append_known(session, [{"id": data["insight_id"], "text": data["headline"]}])
-    # Append first: retry after an artifact-write failure remains idempotent.
-    s3.save_json(key, session)
-    data["status"] = "confirmed"
-    return _save("insights", data)
+    # Hold a per-session lock across the read/append/write in this process.
+    with _confirmation_lock(_identifier(sid)):
+        data = get_artifact("insights", sid, insight_id)
+        key, session = _session(sid)
+        _append_known(session, [{"id": data["insight_id"], "text": data["headline"]}])
+        # Append first: retry after an artifact-write failure remains idempotent.
+        s3.save_json(key, session)
+        data["status"] = "confirmed"
+        return _save("insights", data)
 
 
 def _tokens(text):
@@ -302,8 +319,8 @@ def generate(req: GenerateRequest) -> dict:
         bullets.append({**bullet.model_dump(), "cites": sorted(cites)})
     experience = []
     for item in req.experience:
-        # Split punctuation/newlines, including Korean and CJK terminators.
-        for sentence in re.split(r"(?<=[.!?。！？])\s*|\n+", item.text):
+        # Split punctuation/newlines, but keep periods between digits intact.
+        for sentence in re.split(r"(?<=[.!?。！？])(?!(?<=\d\.)\d)\s*|\n+", item.text):
             if sentence.strip():
                 experience.append({**grade_sentence(sentence.strip(), scoped[item.from_action],
                                                      req.lexical_overlap_min),
