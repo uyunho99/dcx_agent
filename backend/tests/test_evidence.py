@@ -18,6 +18,7 @@ def inputs(golden_classified, golden_clusters, golden_personas, golden_evidence)
 
 @pytest.fixture
 def retrieval(monkeypatch, golden_evidence):
+    monkeypatch.setattr(pinecone_svc, 'update_context_mappings', Mock())
     rows = golden_evidence()['evidence']
     def search(sid, query, top_k=50, *, filters):
         return [dict(r, score=r['relevance']) for r in rows
@@ -111,6 +112,56 @@ def test_collect_storage_and_get_sort(inputs, retrieval, monkeypatch, client):
     assert [r['relevance_rank'] for r in rows] == list(range(1, len(rows) + 1))
     assert {r['doc_id']: r['quality_rank'] for r in rows} == {
         r['doc_id']: r['quality_rank'] for r in stored['evidence']}
+
+
+def test_collect_syncs_derived_document_contexts_before_search(inputs, monkeypatch):
+    source = {k: v for k, v in inputs.items() if k != 'actions'}
+    monkeypatch.setattr(evidence, 'load_inputs', lambda *args: source)
+    actions = evidence.derive_actions(source['persona'], source['cluster'], source['records'])
+    expected = [dict(doc_id=doc_id, cluster_id=source['persona']['cluster_id'],
+                     persona_id=source['persona']['persona_id'], context_id=action['context_id'])
+                for action in actions for doc_id in action['doc_ids']]
+    mappings = []
+    events = []
+    records = {r['doc_id']: r for r in source['records']}
+
+    def update(sid, rows):
+        assert sid == source['sid']
+        events.append(('update', deepcopy(rows)))
+        mappings[:] = deepcopy(rows)
+
+    def search(sid, query, top_k=50, *, filters):
+        events.append(('search', dict(filters)))
+        return [dict(row, quote=records[row['doc_id']]['text'], score=.8,
+                     max_sim_to_known=.2, combo_rarity=.3, dims=list(evidence.DIMENSIONS))
+                for row in mappings if all(row[k] == v for k, v in filters.items())]
+
+    monkeypatch.setattr(pinecone_svc, 'update_context_mappings', update)
+    monkeypatch.setattr(pinecone_svc, 'search_similar', search)
+    key = evidence.collect(source['sid'], source['persona']['persona_id'])
+    assert events[0] == ('update', expected), 'Document-context mapping must be synced before search'
+    assert [kind for kind, _ in events] == ['update'] + ['search'] * len(actions)
+    stored = s3.load_json(key)
+    assert {r['doc_id']: r['context_id'] for r in stored['evidence']} == {
+        r['doc_id']: r['context_id'] for r in expected}
+
+
+@pytest.mark.parametrize('implemented', [False, True])
+def test_collect_mapping_failure_prevents_search_and_save(inputs, monkeypatch, implemented):
+    source = {k: v for k, v in inputs.items() if k != 'actions'}
+    monkeypatch.setattr(evidence, 'load_inputs', lambda *args: source)
+    if implemented:
+        monkeypatch.setattr(pinecone_svc, 'update_context_mappings',
+                            Mock(side_effect=RuntimeError('metadata update failed')))
+    search = Mock()
+    save = Mock()
+    monkeypatch.setattr(pinecone_svc, 'search_similar', search)
+    monkeypatch.setattr(s3, 'save_json', save)
+    with pytest.raises(evidence.RetrievalUnavailable, match='mapping sync unavailable') as exc:
+        evidence.collect(source['sid'], source['persona']['persona_id'])
+    assert isinstance(exc.value.__cause__, RuntimeError if implemented else NotImplementedError)
+    search.assert_not_called()
+    save.assert_not_called()
 
 
 @pytest.mark.parametrize('missing', ['cluster_id', 'persona_id', 'context_id', 'all'])

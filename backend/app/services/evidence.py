@@ -169,7 +169,7 @@ def derive_actions(persona, cluster, records):
 
     No synthetic LLM claim is introduced: each sentence is the highest topic
     weight source text. Context IDs are stable for sorted source IDs and seed 42.
-    These scopes must be attached to T4 metadata before scoped retrieval.
+    collect attaches these scopes through T4 before scoped retrieval.
     """
     from sklearn.decomposition import LatentDirichletAllocation
     from sklearn.feature_extraction.text import CountVectorizer
@@ -237,6 +237,13 @@ def load_inputs(sid, persona_id):
 def collect(sid, persona_id):
     inputs = load_inputs(sid, persona_id)
     actions = derive_actions(inputs['persona'], inputs['cluster'], inputs['records'])
+    mappings = [dict(doc_id=doc_id, cluster_id=inputs['persona']['cluster_id'],
+                     persona_id=inputs['persona']['persona_id'], context_id=action['context_id'])
+                for action in actions for doc_id in action['doc_ids']]
+    try:
+        pinecone_svc.update_context_mappings(sid, mappings)
+    except Exception as exc:
+        raise RetrievalUnavailable('Evidence mapping sync unavailable; STEP 05 재실행 필요') from exc
     result = build_package(**inputs, actions=actions)
     key = f"evidence/{sid}/{persona_id}_{result['timestamp']}.json"
     s3.save_json(key, result)
