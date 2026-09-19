@@ -1,5 +1,6 @@
 import copy
 import json
+import math
 from unittest.mock import Mock
 
 import pytest
@@ -47,6 +48,63 @@ def test_machine_grades_cites_and_all_rows(monkeypatch, golden_evidence):
         assert set(col['context']['cites']) <= scope
         assert 'invented' not in col['context']['cites']
     assert any(w['code'] == 'LLM_GRADE_IGNORED' for w in result['warnings'])
+
+
+
+def test_t9_unsupported_artifact_is_graded_and_counted(monkeypatch, golden_evidence):
+    package = golden_evidence()
+    response = draft(package)
+    response['columns'][0]['artifacts'] = ['unsupported_artifact']
+    result, _ = generate(monkeypatch, package, response, speculation_max=0.1)
+    assert result['columns'][0]['artifacts'][0] == {
+        'text': 'unsupported_artifact', 'grade': 'speculated', 'cites': [],
+    }
+    assert result['grades'] == {
+        'confirmed': 4, 'inferred': 0, 'speculated': 1, 'ratio_spec': 1 / 5,
+    }
+    assert result['confidence_lowered'] is True
+
+
+@pytest.mark.parametrize('row', ['keywords', 'artifacts', 'sentiment'])
+@pytest.mark.parametrize(('text', 'grade'), [
+    ('alpha beta', 'confirmed'),
+    ('alpha gamma delta epsilon', 'inferred'),
+    ('unsupported', 'speculated'),
+])
+def test_t9_all_added_rows_use_scoped_cell_grading(monkeypatch, golden_evidence, row, text, grade):
+    package = golden_evidence()
+    for evidence in package['evidence']:
+        evidence['quote'] = 'alpha beta'
+    response = draft(package)
+    cell = {'text': text, 'grade': 'confirmed', 'cites': ['invented']}
+    response['columns'][0][row] = cell if row == 'sentiment' else [cell]
+    result, _ = generate(monkeypatch, package, response)
+    actual = result['columns'][0][row]
+    actual = actual if row == 'sentiment' else actual[0]
+    scope = cam._scope(package, package['actions'][0])
+    assert actual == cam.grade_cell({'text': text}, scope)
+    assert actual['grade'] == grade
+    assert result['grades'][grade] == (5 if grade == 'confirmed' else 1)
+    assert result['grades']['ratio_spec'] == (1 / 5 if grade == 'speculated' else 0)
+
+
+
+def test_t9_legacy_keyword_and_numeric_sentiment_are_counted(monkeypatch, golden_evidence):
+    package = golden_evidence()
+    response = draft(package)
+    response['columns'][0]['keywords'] = ['unsupported_keyword']
+    response['columns'][0]['sentiment'] = -0.987654321
+    result, _ = generate(monkeypatch, package, response)
+    col = result['columns'][0]
+    assert col['keywords'] == [
+        {'text': 'unsupported_keyword', 'grade': 'speculated', 'cites': []},
+    ]
+    assert col['sentiment'] == {
+        'text': '-0.987654321', 'grade': 'speculated', 'cites': [],
+    }
+    assert result['grades']['speculated'] == 2
+    assert result['grades']['ratio_spec'] == 2 / 6
+    assert result['confidence_lowered'] is True
 
 
 def test_scoped_retrieval_and_overlap_boundary():
@@ -216,15 +274,35 @@ def test_t10_satisfaction_above_importance_and_missing_samples(golden_cam):
         {'doc_id': f'd{i}', 'importance': 3, 'satisfaction': 9 if i < 20 else None}
         for i in range(22)
     ]
-    second['measurements'] = []
+    second['measurements'] = [{'doc_id': 'missing-satisfaction', 'importance': 4, 'satisfaction': None}]
     result = cam.aggregate_opportunities(source)
     assert result['columns'][0]['odi'] == 3
     assert result['columns'][0]['satisfaction_n'] == 20
-    assert result['columns'][1]['importance'] is None
+    assert result['columns'][1]['importance'] == 4
+    assert math.isfinite(result['columns'][1]['importance'])
     assert result['columns'][1]['satisfaction'] is None
     assert result['columns'][1]['odi'] is None
     first['measurements'][0]['satisfaction'] = None
     assert cam.aggregate_opportunities(source)['columns'][0]['satisfaction'] is None
+
+
+
+def test_t10_rejects_empty_measurements(golden_cam):
+    source = golden_cam()
+    source['columns'][0]['measurements'] = []
+    before = copy.deepcopy(source)
+    with pytest.raises(ValueError, match='at least one measurement'):
+        cam.aggregate_opportunities(source)
+    assert source == before
+
+
+def test_t10_rejects_empty_measurements_from_generation(monkeypatch, golden_evidence):
+    package = golden_evidence()
+    response = draft(package)
+    response['columns'][0]['measurements'] = []
+    source, _ = generate(monkeypatch, package, response)
+    with pytest.raises(ValueError, match='at least one measurement'):
+        cam.aggregate_opportunities(source)
 
 
 @pytest.mark.parametrize('damage', ['duplicate', 'missing', 'nonfinite', 'bool', 'failed', 'threshold'])

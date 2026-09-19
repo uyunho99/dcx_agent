@@ -27,7 +27,7 @@ from app.services.s3 import list_objects, load_json, save_json
 LEXICAL_OVERLAP_MIN = 0.40
 SPECULATION_MAX = 0.30
 SATISFACTION_MIN_N = 20
-ROWS = ('context', 'action', 'barrier', 'opportunity')
+ROWS = ('context', 'action', 'barrier', 'keywords', 'artifacts', 'sentiment', 'opportunity')
 
 
 class CamGenerationError(ValueError):
@@ -55,9 +55,9 @@ class _Column(BaseModel):
     context: _Cell
     action: _Cell
     barrier: _Cell | None
-    keywords: list[StrictStr]
-    artifacts: list[StrictStr]
-    sentiment: float | None
+    keywords: list[_Cell | StrictStr]
+    artifacts: list[_Cell | StrictStr]
+    sentiment: _Cell | float | None
     opportunity: _Cell | None
     measurements: list[_Measurement]
 
@@ -114,8 +114,15 @@ def _validate_draft(raw, actions, scopes):
         if len(ids) != len(set(ids)) or not set(ids) <= allowed:
             raise ValueError('measurements must be unique and Action-scoped')
         for row in ROWS:
-            if col[row] is not None and not col[row]['text'].strip():
+            value = col[row]
+            if value is None:
+                continue
+            # Normalize legacy strings/numbers into the same gradeable cell shape.
+            cells = value if isinstance(value, list) else [value]
+            cells = [cell if isinstance(cell, dict) else {'text': str(cell)} for cell in cells]
+            if any(not cell['text'].strip() for cell in cells):
                 raise ValueError('empty text is not a valid cell')
+            col[row] = cells if isinstance(value, list) else cells[0]
     return {c['action_id']: c for c in columns}
 
 
@@ -131,7 +138,7 @@ def describe_cam(package, *, confidence=1.0, lexical_overlap_min=LEXICAL_OVERLAP
         'cam.describe: Return JSON matching this schema. Use only the supplied Action evidence. '
         'Do not supply grade or cites; code assigns them. Every Action must occur once. '
         'barrier and opportunity may be explicit null when generation is impossible. '
-        'keywords/artifacts are string arrays; sentiment is numeric or null. '
+        'keywords/artifacts are arrays of text cells; sentiment is a text cell or null. '
         'measurements contains unique doc_id assessments from this Action only, importance '
         'and satisfaction on 0..10; satisfaction may be null. Do not fabricate missing samples.\n'
         + json.dumps(_Draft.model_json_schema(), ensure_ascii=False)
@@ -161,10 +168,15 @@ def describe_cam(package, *, confidence=1.0, lexical_overlap_min=LEXICAL_OVERLAP
                 if row == 'barrier':
                     warnings.append({'code': 'barrier_gen_fail', 'action_id': aid, 'message': '생성 실패'})
                 continue
-            if cell.get('grade') is not None:
-                warnings.append({'code': 'LLM_GRADE_IGNORED', 'action_id': aid, 'row': row})
-            col[row] = grade_cell(cell, scopes[aid], lexical_overlap_min)
-            counts[col[row]['grade']] += 1
+            cells = cell if isinstance(cell, list) else [cell]
+            graded = []
+            for item in cells:
+                if item.get('grade') is not None:
+                    warnings.append({'code': 'LLM_GRADE_IGNORED', 'action_id': aid, 'row': row})
+                assigned = grade_cell(item, scopes[aid], lexical_overlap_min)
+                graded.append(assigned)
+                counts[assigned['grade']] += 1
+            col[row] = graded if isinstance(cell, list) else graded[0]
         col['barrier_gen_fail'] = col['barrier'] is None
         columns.append(col)
     total = sum(counts.values())
@@ -267,7 +279,9 @@ def aggregate_opportunities(source):
         ids = [m.doc_id for m in measurements]
         if len(ids) != len(set(ids)):
             raise ValueError('duplicate measurement doc_id')
-        importance = fmean(m.importance for m in measurements) if measurements else None
+        if not measurements:
+            raise ValueError('each Action requires at least one measurement')
+        importance = fmean(m.importance for m in measurements)
         samples = [m.satisfaction for m in measurements if m.satisfaction is not None]
         insufficient = len(samples) < minimum
         satisfaction = None if insufficient else fmean(samples)
