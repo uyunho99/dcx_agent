@@ -263,3 +263,138 @@ def test_multiple_personas_and_conflicting_actions(client, golden_cam):
     assert len(result["actions"]) == 4 and result["odi_sum"] == 22
     payload["cams"] = [cams[0], cams[0]]
     assert client.post("/api/insight/synthesize", json=payload).status_code == 422
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+@pytest.mark.parametrize("storage_mode", ["local", "remote"])
+def test_process_confirm_preserves_both_appends(draft, local_data_dir, reverse, storage_mode):
+    """Independent interpreters share storage, never a threading.Lock."""
+    import subprocess
+    import sys
+
+    second = {**draft, "insight_id": "IN-second", "timestamp": "second",
+              "headline": "Second insight"}
+    insight._save("insights", second)
+    key = "sessions/golden-a/session.json"
+    before = s3.load_json(key)
+    worker = r'''
+import fcntl
+import sys
+import time
+from app.services import insight, s3
+
+item, peer, mode, rank = sys.argv[1:]
+root = s3._DATA_DIR
+load, save = s3.load_json, s3.save_json
+first = True
+if mode == "remote":
+    # Shared disk stands in for object storage; disable the production flock.
+    s3._USE_LOCAL = False
+
+def synchronized_load(key):
+    global first
+    snapshot = load(key)
+    if key == "sessions/golden-a/session.json" and first:
+        first = False
+        (root / (item + ".read")).touch()
+        deadline = time.monotonic() + 1
+        while not (root / (peer + ".read")).exists() and time.monotonic() < deadline:
+            time.sleep(.005)
+        if mode == "remote" and rank == "1":
+            # The peer commits after our snapshot but before our validation.
+            deadline = time.monotonic() + 5
+            while not (root / (peer + ".done")).exists():
+                assert time.monotonic() < deadline, "peer did not finish"
+                time.sleep(.005)
+    return snapshot
+
+def serialized_save(key, data):
+    # Serialize individual file writes only, like atomic object PUTs; this does
+    # not protect read/modify/write and reproduces lost updates in old code.
+    with (root / "test-write.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        save(key, data)
+
+s3.load_json = synchronized_load
+s3.save_json = serialized_save
+assert insight.confirm("golden-a", item)["status"] == "confirmed"
+(root / (item + ".done")).touch()
+'''
+    ids = [draft["insight_id"], second["insight_id"]]
+    if reverse:
+        ids.reverse()
+    processes = []
+    try:
+        for rank, (item, peer) in enumerate([ids, ids[::-1]]):
+            processes.append(subprocess.Popen(
+                [sys.executable, "-c", worker, item, peer, storage_mode, str(rank)],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True))
+        for process in processes:
+            stdout, stderr = process.communicate(timeout=15)
+            assert process.returncode == 0, stdout + stderr
+    finally:
+        for process in processes:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+    saved = s3.load_json(key)
+    assert saved["bk"] == before["bk"]
+    assert saved["known_insights"][:len(before["known_insights"])] == before["known_insights"]
+    assert {item["id"] for item in saved["known_insights"]} == {
+        item["id"] for item in before["known_insights"]} | set(ids)
+    for item in ids:
+        assert insight.get_artifact("insights", "golden-a", item)["status"] == "confirmed"
+
+
+@pytest.mark.parametrize("collision", ["before_write", "after_write"])
+def test_confirm_retries_remote_changes(draft, monkeypatch, collision):
+    monkeypatch.setattr(s3, "_USE_LOCAL", False)
+    key = "sessions/golden-a/session.json"
+    load, save = s3.load_json, s3.save_json
+    before = load(key)
+    calls = 0
+    other = {"id": "IN-other", "text": "Other process"}
+
+    def load_with_collision(path):
+        nonlocal calls
+        if path == key:
+            calls += 1
+            if calls == (2 if collision == "before_write" else 3):
+                changed = deepcopy(before)
+                changed["known_insights"].append(other)
+                changed["bk"] = "concurrent edit"
+                save(key, changed)
+        return load(path)
+
+    monkeypatch.setattr(s3, "load_json", load_with_collision)
+    assert insight.confirm("golden-a", draft["insight_id"])["status"] == "confirmed"
+    saved = load(key)
+    assert saved["bk"] == "concurrent edit"
+    assert saved["known_insights"] == before["known_insights"] + [
+        other, {"id": draft["insight_id"], "text": draft["headline"]}]
+    assert calls == (6 if collision == "after_write" else 5)
+
+
+def test_confirm_retry_exhaustion_leaves_artifact_draft(draft, monkeypatch):
+    monkeypatch.setattr(s3, "_USE_LOCAL", False)
+    key = "sessions/golden-a/session.json"
+    load = s3.load_json
+    calls = 0
+
+    def changing_load(path):
+        nonlocal calls
+        data = load(path)
+        if path == key:
+            calls += 1
+            data["revision"] = calls
+        return data
+
+    monkeypatch.setattr(s3, "load_json", changing_load)
+    with pytest.raises(RuntimeError, match="Session changed during confirmation"):
+        insight.confirm("golden-a", draft["insight_id"])
+    assert calls == 2 * insight._SESSION_WRITE_ATTEMPTS
+    assert insight.get_artifact("insights", "golden-a", draft["insight_id"])["status"] == "draft"
+    assert draft["insight_id"] not in {row["id"] for row in load(key)["known_insights"]}
+    # Failure releases the process lock; a subsequent request can succeed.
+    monkeypatch.setattr(s3, "load_json", load)
+    assert insight.confirm("golden-a", draft["insight_id"])["status"] == "confirmed"

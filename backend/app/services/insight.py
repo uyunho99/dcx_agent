@@ -8,12 +8,17 @@ session, BEFORE T4 embedding/T8 collection. There is no global knowledge key.
 T9 is not present in this lane. grade_sentence uses Action-scoped lexical
 retrieval and query-token overlap; replace the retrieve boundary with T9's
 retriever when integrated. Grades follow the golden confirmed/speculated enum.
-Storage offers no CAS: callers must serialize writes to the same session or
-concept across processes (the existing S3 interface is read/modify/write).
+Local confirmation/inheritance writes serialize across processes sharing the
+data directory. S3 retries detected session changes, but without CAS this is
+best effort: a writer can still race between the final read and the write.
+Other session writers must use the same lock; concept writes need their own
+serialization.
 """
 
 from copy import deepcopy
+from contextlib import contextmanager
 from datetime import datetime, timezone
+import fcntl
 import re
 from threading import Lock
 from typing import Annotated, Literal
@@ -32,6 +37,7 @@ Number = Annotated[float, Field(allow_inf_nan=False)]
 
 _confirmation_locks = WeakValueDictionary()
 _confirmation_locks_guard = Lock()
+_SESSION_WRITE_ATTEMPTS = 5
 
 
 def _confirmation_lock(sid):
@@ -41,6 +47,24 @@ def _confirmation_lock(sid):
             lock = Lock()
             _confirmation_locks[sid] = lock
         return lock
+
+
+@contextmanager
+def _session_write_lock(sid):
+    with _confirmation_lock(_identifier(sid)):
+        if not s3._USE_LOCAL:
+            yield
+            return
+        # Never unlink: waiters must continue locking the same inode. Keep
+        # locks outside sessions so session enumeration sees no extra entries.
+        directory = s3._DATA_DIR / ".insight-locks"
+        directory.mkdir(parents=True, exist_ok=True)
+        with (directory / f"{sid}.lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(lock, fcntl.LOCK_UN)
 
 
 class Cell(BaseModel):
@@ -163,10 +187,23 @@ def _append_known(data, entries):
 def inherit_known_insights(source_sid: str, target_sid: str) -> list[dict]:
     """Explicit follow-up-session hook for T3; merge without duplicate IDs."""
     _, source = _session(source_sid)
-    key, target = _session(target_sid)
-    _append_known(target, source.get("known_insights", []))
-    s3.save_json(key, target)
-    return target["known_insights"]
+    with _session_write_lock(target_sid):
+        return _merge_known(target_sid, source.get("known_insights", []))["known_insights"]
+
+
+def _merge_known(sid, entries):
+    # Bound storage requests under sustained contention. Exhaustion must not
+    # mark the artifact confirmed; callers can retry the idempotent operation.
+    for _ in range(_SESSION_WRITE_ATTEMPTS):
+        key, snapshot = _session(sid)
+        merged = deepcopy(snapshot)
+        _append_known(merged, entries)
+        if s3.load_json(key) != snapshot:
+            continue
+        s3.save_json(key, merged)
+        if s3.load_json(key) == merged:
+            return merged
+    raise RuntimeError(f"Session changed during confirmation; retry: {sid}")
 
 
 def _save(kind, data):
@@ -226,13 +263,10 @@ def synthesize(req: SynthesizeRequest) -> dict:
 
 
 def confirm(sid: str, insight_id: str) -> dict:
-    # Hold a per-session lock across the read/append/write in this process.
-    with _confirmation_lock(_identifier(sid)):
+    with _session_write_lock(sid):
         data = get_artifact("insights", sid, insight_id)
-        key, session = _session(sid)
-        _append_known(session, [{"id": data["insight_id"], "text": data["headline"]}])
         # Append first: retry after an artifact-write failure remains idempotent.
-        s3.save_json(key, session)
+        _merge_known(sid, [{"id": data["insight_id"], "text": data["headline"]}])
         data["status"] = "confirmed"
         return _save("insights", data)
 
