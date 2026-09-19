@@ -34,3 +34,12 @@ def get_cam(sid: str, persona_id: str):
         raise HTTPException(404, str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
+
+
+@router.get('/opportunities/{sid}/{persona_id}')
+def get_opportunities(sid: str, persona_id: str):
+    source = get_cam(sid, persona_id)
+    try:
+        return cam.aggregate_opportunities(source)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc

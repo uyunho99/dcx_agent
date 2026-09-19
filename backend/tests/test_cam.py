@@ -3,12 +3,11 @@ import json
 from unittest.mock import Mock
 
 import pytest
+from app.routers.cam import router
+from app.services import cam
+from app.services.s3 import list_objects, load_json, save_json
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-from app.services import cam
-from app.services.s3 import save_json, load_json, list_objects
-from app.routers.cam import router
 
 
 def draft(package):
@@ -171,3 +170,131 @@ def test_failed_job_records_gen_fail_and_no_cam(monkeypatch, golden_evidence):
     stage = load_json('sessions/golden-a/stage_10.json')
     assert stage['cam_gen_fail'] and stage['persona_id'] == 'CL0-P1'
     assert cam.get_cam_job('golden-a', 'CL0-P1')['status'] == 'error'
+
+
+def test_t10_odi_formula_and_sample_boundary(monkeypatch, golden_cam):
+    source = golden_cam()
+    source['constants'] = {}  # Production default is 20, not the fixture's 6.
+    for col, n in zip(source['columns'], [20, 19]):
+        col['measurements'] = [
+            {'doc_id': f"{col['action_id']}-d{i}", 'importance': 8, 'satisfaction': 5}
+            for i in range(n)
+        ]
+        col['odi'] = 999  # Recompute aggregates from stored source measurements.
+    before = copy.deepcopy(source)
+    monkeypatch.setattr(cam, 'call_claude', Mock(side_effect=AssertionError('aggregation must not call LLM')))
+    result = cam.aggregate_opportunities(source)
+    assert source == before
+    enough, short = result['columns']
+    assert enough['importance'] == 8 and enough['satisfaction'] == 5
+    assert enough['odi'] == 8 + max(8 - 5, 0) == 11
+    assert enough['satisfaction_n'] == 20
+    assert enough['sample_insufficient'] is False
+    assert short['satisfaction_n'] == 19
+    assert short['satisfaction'] is None and short['odi'] is None
+    assert short['sample_insufficient'] is True
+    assert short['satisfaction_note'] == '표본 부족'
+    for old, new in zip(source['columns'], result['columns']):
+        assert old['measurements'] == new['measurements']
+        assert old['context'] == new['context']
+
+
+@pytest.mark.parametrize('session', ['a', 'b'])
+def test_t10_golden_cam_aggregates(golden_cam, session):
+    source = golden_cam(session=session)
+    result = cam.aggregate_opportunities(source)
+    for expected, actual in zip(source['columns'], result['columns']):
+        for key in ('importance', 'satisfaction_n', 'satisfaction', 'odi'):
+            assert actual[key] == expected[key]
+
+
+def test_t10_satisfaction_above_importance_and_missing_samples(golden_cam):
+    source = golden_cam()
+    source['constants']['satisfaction_min_n'] = 20
+    first, second = source['columns']
+    first['measurements'] = [
+        {'doc_id': f'd{i}', 'importance': 3, 'satisfaction': 9 if i < 20 else None}
+        for i in range(22)
+    ]
+    second['measurements'] = []
+    result = cam.aggregate_opportunities(source)
+    assert result['columns'][0]['odi'] == 3
+    assert result['columns'][0]['satisfaction_n'] == 20
+    assert result['columns'][1]['importance'] is None
+    assert result['columns'][1]['satisfaction'] is None
+    assert result['columns'][1]['odi'] is None
+    first['measurements'][0]['satisfaction'] = None
+    assert cam.aggregate_opportunities(source)['columns'][0]['satisfaction'] is None
+
+
+@pytest.mark.parametrize('damage', ['duplicate', 'missing', 'nonfinite', 'bool', 'failed', 'threshold'])
+def test_t10_rejects_invalid_source_without_inventing_values(golden_cam, damage):
+    source = golden_cam()
+    col = source['columns'][0]
+    if damage == 'duplicate':
+        col['measurements'].append(col['measurements'][0])
+    elif damage == 'missing':
+        del col['measurements']
+    elif damage == 'nonfinite':
+        col['measurements'][0]['importance'] = float('inf')
+    elif damage == 'bool':
+        col['measurements'][0]['satisfaction'] = True
+    elif damage == 'failed':
+        source['cam_gen_fail'] = True
+    elif damage == 'threshold':
+        source['constants']['satisfaction_min_n'] = 0
+    with pytest.raises(ValueError):
+        cam.aggregate_opportunities(source)
+
+
+def test_t10_route_is_pure_stored_cam_view(monkeypatch, golden_cam):
+    source = golden_cam()
+    key = 'cam/golden-a/CL0-P1_20260918_120000.json'
+    save_json(key, source)
+    monkeypatch.setattr(cam, 'call_claude', Mock(side_effect=AssertionError('no generation')))
+    with client() as api:
+        response = api.get('/api/cam/opportunities/golden-a/CL0-P1')
+        assert response.status_code == 200
+        assert response.json()['columns'][0]['odi'] == 11
+        assert response.json()['columns'][1]['satisfaction_note'] == '표본 부족'
+        assert api.get('/api/cam/opportunities/golden-a/missing').status_code == 404
+    assert load_json(key) == source
+
+
+def test_t10_uses_t9_generated_measurements(monkeypatch, golden_evidence):
+    source, llm = generate(monkeypatch, golden_evidence())
+    result = cam.aggregate_opportunities(source)
+    assert llm.call_count == 1
+    for col in result['columns']:
+        assert col['importance'] == 8
+        assert col['satisfaction'] is None and col['odi'] is None
+        assert col['sample_insufficient']
+
+
+def test_t10_averages_only_existing_nonnull_satisfaction(golden_cam):
+    source = golden_cam()
+    source['constants']['satisfaction_min_n'] = 2
+    source['columns'][0]['measurements'] = [
+        {'doc_id': 'd1', 'importance': 6, 'satisfaction': 2},
+        {'doc_id': 'd2', 'importance': 8, 'satisfaction': 6},
+        {'doc_id': 'd3', 'importance': 10, 'satisfaction': None},
+    ]
+    result = cam.aggregate_opportunities(source)['columns'][0]
+    assert result['importance'] == 8
+    assert result['satisfaction'] == 4
+    assert result['satisfaction_n'] == 2
+    assert result['odi'] == 12
+
+
+def test_t10_persisted_cam_includes_aggregates_for_downstream(monkeypatch, golden_evidence):
+    package = golden_evidence()
+    save_json('evidence/golden-a/CL0-P1_20260918_120000.json', package)
+    llm = Mock(return_value=json.dumps(draft(package)))
+    monkeypatch.setattr(cam, 'call_claude', llm)
+    cam.run_cam({'sid': 'golden-a', 'persona_id': 'CL0-P1'})
+    stored = cam.load_latest('cam', 'golden-a', 'CL0-P1')
+    assert llm.call_count == 1
+    assert stored == cam.aggregate_opportunities(stored)
+    assert stored['columns'][0]['importance'] == 8
+    assert stored['columns'][0]['satisfaction_n'] == 7
+    assert stored['columns'][0]['odi'] is None

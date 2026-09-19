@@ -7,9 +7,18 @@ is inferred; no local hit is speculated. LLM grade/citation claims are discarded
 import json
 import re
 import unicodedata
+from copy import deepcopy
 from datetime import datetime, timezone
+from statistics import fmean
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr, ValidationError
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictStr,
+    TypeAdapter,
+    ValidationError,
+)
 
 from app.jobs.manager import job_manager
 from app.services.claude import call_claude
@@ -217,13 +226,54 @@ def run_cam(config):
     try:
         package = load_latest('evidence', sid, persona_id)
         result = describe_cam(package, confidence=config.get('confidence', 1.0))
+        result = aggregate_opportunities(result)
         result['evidence_timestamp'] = package['timestamp']
         key = f"cam/{sid}/{persona_id}_{result['timestamp']}.json"
         save_json(key, result)
         set_cam_job(sid, persona_id, status='done', progress=100, phase='done', artifact_key=key)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - background jobs must record terminal failures
         if isinstance(exc, CamGenerationError):
             failure = {'sid': sid, 'persona_id': persona_id, 'cam_gen_fail': True,
                        'status': 'error', 'attempts': 2, 'error': str(exc)}
             save_json(f'sessions/{sid}/stage_10.json', failure)
         set_cam_job(sid, persona_id, status='error', progress=0, phase='failed', error=str(exc))
+
+
+def aggregate_opportunities(source):
+    """10-B: a pure view over persisted 10-A measurements, without source scoring.
+
+    The artifact's constant snapshot wins; absent snapshots use provisional 20.
+    Do not mutate/save the source or invent zones, missing samples, or scores.
+    """
+    if source.get('cam_gen_fail') or source.get('status') == 'error':
+        raise ValueError('cannot aggregate a failed CAM generation')
+    minimum = source.get('constants', {}).get('satisfaction_min_n', SATISFACTION_MIN_N)
+    if type(minimum) is not int or minimum < 1:
+        raise ValueError('satisfaction_min_n must be a positive integer')
+    columns = source.get('columns')
+    if not isinstance(columns, list) or not columns:
+        raise ValueError('CAM columns are required')
+    result = deepcopy(source)
+    result.setdefault('constants', {})['satisfaction_min_n'] = minimum
+    action_ids = set()
+    for col in result['columns']:
+        aid = col.get('action_id')
+        if not isinstance(aid, str) or not aid or aid in action_ids:
+            raise ValueError('CAM Action IDs must be unique nonempty strings')
+        action_ids.add(aid)
+        if 'measurements' not in col:
+            raise ValueError('10-A measurements are required; source values cannot be generated')
+        measurements = TypeAdapter(list[_Measurement]).validate_python(col['measurements'], strict=True)
+        ids = [m.doc_id for m in measurements]
+        if len(ids) != len(set(ids)):
+            raise ValueError('duplicate measurement doc_id')
+        importance = fmean(m.importance for m in measurements) if measurements else None
+        samples = [m.satisfaction for m in measurements if m.satisfaction is not None]
+        insufficient = len(samples) < minimum
+        satisfaction = None if insufficient else fmean(samples)
+        col.update(
+            importance=importance, satisfaction_n=len(samples), satisfaction=satisfaction,
+            odi=None if satisfaction is None else importance + max(importance - satisfaction, 0),
+            sample_insufficient=insufficient, satisfaction_note='표본 부족' if insufficient else None,
+        )
+    return result
