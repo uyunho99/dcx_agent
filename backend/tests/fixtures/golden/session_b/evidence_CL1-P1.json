@@ -1,0 +1,265 @@
+{
+  "sid": "golden-b",
+  "timestamp": "20260918_120000",
+  "persona_id": "CL1-P1",
+  "cluster_id": "CL1",
+  "actions": [
+    {
+      "action_id": "CL1-P1-A1",
+      "context_id": "CL1-P1-C1",
+      "sentence": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 1.",
+      "lda_topic": 0,
+      "topic_weight": 0.7777777777777778,
+      "docs": 7,
+      "doc_ids": [
+        "d_000011",
+        "d_000012",
+        "d_000013",
+        "d_000014",
+        "d_000016",
+        "d_000017",
+        "d_000018"
+      ]
+    },
+    {
+      "action_id": "CL1-P1-A2",
+      "context_id": "CL1-P1-C2",
+      "sentence": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 9.",
+      "lda_topic": 1,
+      "topic_weight": 0.2222222222222222,
+      "docs": 2,
+      "doc_ids": [
+        "d_000019",
+        "d_000020"
+      ]
+    }
+  ],
+  "centroid_sentence": {
+    "doc_id": "d_000015",
+    "text": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 5.",
+    "dist_centroid": 0.05266877632905478
+  },
+  "evidence": [
+    {
+      "doc_id": "d_000011",
+      "cluster_id": "CL1",
+      "persona_id": "CL1-P1",
+      "context_id": "CL1-P1-C1",
+      "action_id": "CL1-P1-A1",
+      "quote": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 1.",
+      "role": "support",
+      "relevance": 0.95,
+      "known": 0.0,
+      "max_sim_to_known": 0.0,
+      "rarity": 0.0,
+      "combo_rarity": 0.0,
+      "quality": 0.95,
+      "dims": [
+        "Sense",
+        "Feel"
+      ],
+      "band": "edge",
+      "source": "auto",
+      "rank_relevance": 1,
+      "rank_quality": 1
+    },
+    {
+      "doc_id": "d_000012",
+      "cluster_id": "CL1",
+      "persona_id": "CL1-P1",
+      "context_id": "CL1-P1-C1",
+      "action_id": "CL1-P1-A1",
+      "quote": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 2.",
+      "role": "support",
+      "relevance": 0.94,
+      "known": 0.0,
+      "max_sim_to_known": 0.0,
+      "rarity": 0.1,
+      "combo_rarity": 0.1,
+      "quality": 0.94,
+      "dims": [
+        "Think",
+        "Act"
+      ],
+      "band": "fringe",
+      "source": "auto",
+      "rank_relevance": 2,
+      "rank_quality": 2
+    },
+    {
+      "doc_id": "d_000013",
+      "cluster_id": "CL1",
+      "persona_id": "CL1-P1",
+      "context_id": "CL1-P1-C1",
+      "action_id": "CL1-P1-A1",
+      "quote": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 3.",
+      "role": "support",
+      "relevance": 0.9299999999999999,
+      "known": 0.0,
+      "max_sim_to_known": 0.0,
+      "rarity": 0.2,
+      "combo_rarity": 0.2,
+      "quality": 0.9299999999999999,
+      "dims": [
+        "Relate",
+        "Outcome"
+      ],
+      "band": "core",
+      "source": "auto",
+      "rank_relevance": 3,
+      "rank_quality": 3
+    },
+    {
+      "doc_id": "d_000014",
+      "cluster_id": "CL1",
+      "persona_id": "CL1-P1",
+      "context_id": "CL1-P1-C1",
+      "action_id": "CL1-P1-A1",
+      "quote": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 4.",
+      "role": "support",
+      "relevance": 0.9199999999999999,
+      "known": 0.0,
+      "max_sim_to_known": 0.0,
+      "rarity": 0.3,
+      "combo_rarity": 0.3,
+      "quality": 0.9199999999999999,
+      "dims": [
+        "Sense",
+        "Feel"
+      ],
+      "band": "core",
+      "source": "auto",
+      "rank_relevance": 4,
+      "rank_quality": 4
+    },
+    {
+      "doc_id": "d_000016",
+      "cluster_id": "CL1",
+      "persona_id": "CL1-P1",
+      "context_id": "CL1-P1-C1",
+      "action_id": "CL1-P1-A1",
+      "quote": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 6.",
+      "role": "support",
+      "relevance": 0.9099999999999999,
+      "known": 0.0,
+      "max_sim_to_known": 0.0,
+      "rarity": 0.4,
+      "combo_rarity": 0.4,
+      "quality": 0.9099999999999999,
+      "dims": [
+        "Think",
+        "Act"
+      ],
+      "band": "core",
+      "source": "auto",
+      "rank_relevance": 5,
+      "rank_quality": 5
+    },
+    {
+      "doc_id": "d_000017",
+      "cluster_id": "CL1",
+      "persona_id": "CL1-P1",
+      "context_id": "CL1-P1-C1",
+      "action_id": "CL1-P1-A1",
+      "quote": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 7.",
+      "role": "support",
+      "relevance": 0.8999999999999999,
+      "known": 0.0,
+      "max_sim_to_known": 0.0,
+      "rarity": 0.5,
+      "combo_rarity": 0.5,
+      "quality": 0.8999999999999999,
+      "dims": [
+        "Relate",
+        "Outcome"
+      ],
+      "band": "core",
+      "source": "auto",
+      "rank_relevance": 6,
+      "rank_quality": 6
+    },
+    {
+      "doc_id": "d_000018",
+      "cluster_id": "CL1",
+      "persona_id": "CL1-P1",
+      "context_id": "CL1-P1-C1",
+      "action_id": "CL1-P1-A1",
+      "quote": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 8.",
+      "role": "support",
+      "relevance": 0.8899999999999999,
+      "known": 0.0,
+      "max_sim_to_known": 0.0,
+      "rarity": 0.6,
+      "combo_rarity": 0.6,
+      "quality": 0.8899999999999999,
+      "dims": [
+        "Sense",
+        "Feel"
+      ],
+      "band": "fringe",
+      "source": "auto",
+      "rank_relevance": 7,
+      "rank_quality": 7
+    },
+    {
+      "doc_id": "d_000019",
+      "cluster_id": "CL1",
+      "persona_id": "CL1-P1",
+      "context_id": "CL1-P1-C2",
+      "action_id": "CL1-P1-A2",
+      "quote": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 사용 기록 9.",
+      "role": "support",
+      "relevance": 0.8799999999999999,
+      "known": 0.0,
+      "max_sim_to_known": 0.0,
+      "rarity": 0.7,
+      "combo_rarity": 0.7,
+      "quality": 0.8799999999999999,
+      "dims": [
+        "Think",
+        "Act"
+      ],
+      "band": "fringe",
+      "source": "auto",
+      "rank_relevance": 8,
+      "rank_quality": 8
+    },
+    {
+      "doc_id": "d_000020",
+      "cluster_id": "CL1",
+      "persona_id": "CL1-P1",
+      "context_id": "CL1-P1-C2",
+      "action_id": "CL1-P1-A2",
+      "quote": "외출 전 배터리를 확인하고 충전 케이블을 챙긴다. 그러나 오늘은 이 행동이 필요하지 않았다.",
+      "role": "refute",
+      "relevance": 0.87,
+      "known": 0.0,
+      "max_sim_to_known": 0.0,
+      "rarity": 0.8,
+      "combo_rarity": 0.8,
+      "quality": 0.87,
+      "dims": [
+        "Relate",
+        "Outcome"
+      ],
+      "band": "fringe",
+      "source": "auto",
+      "rank_relevance": 9,
+      "rank_quality": 9
+    }
+  ],
+  "coverage": {
+    "dims": [
+      "Act",
+      "Feel",
+      "Outcome",
+      "Relate",
+      "Sense",
+      "Think"
+    ],
+    "min": 4
+  },
+  "warnings": [
+    "KNOWN_INSIGHTS_EMPTY"
+  ]
+}

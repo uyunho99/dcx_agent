@@ -1,0 +1,265 @@
+{
+  "sid": "golden-b",
+  "timestamp": "20260918_120000",
+  "persona_id": "CL2-P1",
+  "cluster_id": "CL2",
+  "actions": [
+    {
+      "action_id": "CL2-P1-A1",
+      "context_id": "CL2-P1-C1",
+      "sentence": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 1.",
+      "lda_topic": 0,
+      "topic_weight": 0.7777777777777778,
+      "docs": 7,
+      "doc_ids": [
+        "d_000021",
+        "d_000022",
+        "d_000023",
+        "d_000024",
+        "d_000026",
+        "d_000027",
+        "d_000028"
+      ]
+    },
+    {
+      "action_id": "CL2-P1-A2",
+      "context_id": "CL2-P1-C2",
+      "sentence": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 9.",
+      "lda_topic": 1,
+      "topic_weight": 0.2222222222222222,
+      "docs": 2,
+      "doc_ids": [
+        "d_000029",
+        "d_000030"
+      ]
+    }
+  ],
+  "centroid_sentence": {
+    "doc_id": "d_000025",
+    "text": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 5.",
+    "dist_centroid": 0.05266877632905478
+  },
+  "evidence": [
+    {
+      "doc_id": "d_000021",
+      "cluster_id": "CL2",
+      "persona_id": "CL2-P1",
+      "context_id": "CL2-P1-C1",
+      "action_id": "CL2-P1-A1",
+      "quote": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 1.",
+      "role": "support",
+      "relevance": 0.95,
+      "known": 0.0,
+      "max_sim_to_known": 0.0,
+      "rarity": 0.0,
+      "combo_rarity": 0.0,
+      "quality": 0.95,
+      "dims": [
+        "Sense",
+        "Feel"
+      ],
+      "band": "edge",
+      "source": "auto",
+      "rank_relevance": 1,
+      "rank_quality": 1
+    },
+    {
+      "doc_id": "d_000022",
+      "cluster_id": "CL2",
+      "persona_id": "CL2-P1",
+      "context_id": "CL2-P1-C1",
+      "action_id": "CL2-P1-A1",
+      "quote": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 2.",
+      "role": "support",
+      "relevance": 0.94,
+      "known": 0.0,
+      "max_sim_to_known": 0.0,
+      "rarity": 0.1,
+      "combo_rarity": 0.1,
+      "quality": 0.94,
+      "dims": [
+        "Think",
+        "Act"
+      ],
+      "band": "fringe",
+      "source": "auto",
+      "rank_relevance": 2,
+      "rank_quality": 2
+    },
+    {
+      "doc_id": "d_000023",
+      "cluster_id": "CL2",
+      "persona_id": "CL2-P1",
+      "context_id": "CL2-P1-C1",
+      "action_id": "CL2-P1-A1",
+      "quote": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 3.",
+      "role": "support",
+      "relevance": 0.9299999999999999,
+      "known": 0.0,
+      "max_sim_to_known": 0.0,
+      "rarity": 0.2,
+      "combo_rarity": 0.2,
+      "quality": 0.9299999999999999,
+      "dims": [
+        "Relate",
+        "Outcome"
+      ],
+      "band": "core",
+      "source": "auto",
+      "rank_relevance": 3,
+      "rank_quality": 3
+    },
+    {
+      "doc_id": "d_000024",
+      "cluster_id": "CL2",
+      "persona_id": "CL2-P1",
+      "context_id": "CL2-P1-C1",
+      "action_id": "CL2-P1-A1",
+      "quote": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 4.",
+      "role": "support",
+      "relevance": 0.9199999999999999,
+      "known": 0.0,
+      "max_sim_to_known": 0.0,
+      "rarity": 0.3,
+      "combo_rarity": 0.3,
+      "quality": 0.9199999999999999,
+      "dims": [
+        "Sense",
+        "Feel"
+      ],
+      "band": "core",
+      "source": "auto",
+      "rank_relevance": 4,
+      "rank_quality": 4
+    },
+    {
+      "doc_id": "d_000026",
+      "cluster_id": "CL2",
+      "persona_id": "CL2-P1",
+      "context_id": "CL2-P1-C1",
+      "action_id": "CL2-P1-A1",
+      "quote": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 6.",
+      "role": "support",
+      "relevance": 0.9099999999999999,
+      "known": 0.0,
+      "max_sim_to_known": 0.0,
+      "rarity": 0.4,
+      "combo_rarity": 0.4,
+      "quality": 0.9099999999999999,
+      "dims": [
+        "Think",
+        "Act"
+      ],
+      "band": "core",
+      "source": "auto",
+      "rank_relevance": 5,
+      "rank_quality": 5
+    },
+    {
+      "doc_id": "d_000027",
+      "cluster_id": "CL2",
+      "persona_id": "CL2-P1",
+      "context_id": "CL2-P1-C1",
+      "action_id": "CL2-P1-A1",
+      "quote": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 7.",
+      "role": "support",
+      "relevance": 0.8999999999999999,
+      "known": 0.0,
+      "max_sim_to_known": 0.0,
+      "rarity": 0.5,
+      "combo_rarity": 0.5,
+      "quality": 0.8999999999999999,
+      "dims": [
+        "Relate",
+        "Outcome"
+      ],
+      "band": "core",
+      "source": "auto",
+      "rank_relevance": 6,
+      "rank_quality": 6
+    },
+    {
+      "doc_id": "d_000028",
+      "cluster_id": "CL2",
+      "persona_id": "CL2-P1",
+      "context_id": "CL2-P1-C1",
+      "action_id": "CL2-P1-A1",
+      "quote": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 8.",
+      "role": "support",
+      "relevance": 0.8899999999999999,
+      "known": 0.0,
+      "max_sim_to_known": 0.0,
+      "rarity": 0.6,
+      "combo_rarity": 0.6,
+      "quality": 0.8899999999999999,
+      "dims": [
+        "Sense",
+        "Feel"
+      ],
+      "band": "fringe",
+      "source": "auto",
+      "rank_relevance": 7,
+      "rank_quality": 7
+    },
+    {
+      "doc_id": "d_000029",
+      "cluster_id": "CL2",
+      "persona_id": "CL2-P1",
+      "context_id": "CL2-P1-C2",
+      "action_id": "CL2-P1-A2",
+      "quote": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 사용 기록 9.",
+      "role": "support",
+      "relevance": 0.8799999999999999,
+      "known": 0.0,
+      "max_sim_to_known": 0.0,
+      "rarity": 0.7,
+      "combo_rarity": 0.7,
+      "quality": 0.8799999999999999,
+      "dims": [
+        "Think",
+        "Act"
+      ],
+      "band": "fringe",
+      "source": "auto",
+      "rank_relevance": 8,
+      "rank_quality": 8
+    },
+    {
+      "doc_id": "d_000030",
+      "cluster_id": "CL2",
+      "persona_id": "CL2-P1",
+      "context_id": "CL2-P1-C2",
+      "action_id": "CL2-P1-A2",
+      "quote": "일하는 동안 알림을 끄고 집중 시간을 설정한다. 그러나 오늘은 이 행동이 필요하지 않았다.",
+      "role": "refute",
+      "relevance": 0.87,
+      "known": 0.0,
+      "max_sim_to_known": 0.0,
+      "rarity": 0.8,
+      "combo_rarity": 0.8,
+      "quality": 0.87,
+      "dims": [
+        "Relate",
+        "Outcome"
+      ],
+      "band": "fringe",
+      "source": "auto",
+      "rank_relevance": 9,
+      "rank_quality": 9
+    }
+  ],
+  "coverage": {
+    "dims": [
+      "Act",
+      "Feel",
+      "Outcome",
+      "Relate",
+      "Sense",
+      "Think"
+    ],
+    "min": 4
+  },
+  "warnings": [
+    "KNOWN_INSIGHTS_EMPTY"
+  ]
+}
