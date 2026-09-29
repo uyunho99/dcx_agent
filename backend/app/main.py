@@ -7,6 +7,7 @@ from app.config import settings
 from app.routers import (
     sessions,
     context,
+    integrations,
     keywords,
     keywords_v2,
     crawl_v2,
@@ -38,6 +39,7 @@ app.add_middleware(
 )
 
 app.include_router(sessions.router)
+app.include_router(integrations.router)
 app.include_router(context.router)
 app.include_router(keywords.router)
 app.include_router(keywords_v2.router)
