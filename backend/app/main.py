@@ -9,7 +9,7 @@ from app.routers import (
     context,
     keywords,
     keywords_v2,
-    crawling,
+    crawl_v2,
     preprocessing,
     labeling,
     training,
@@ -41,7 +41,7 @@ app.include_router(sessions.router)
 app.include_router(context.router)
 app.include_router(keywords.router)
 app.include_router(keywords_v2.router)
-app.include_router(crawling.router)
+app.include_router(crawl_v2.router)
 app.include_router(preprocessing.router)
 app.include_router(labeling.router)
 app.include_router(training.router)
