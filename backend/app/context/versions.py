@@ -65,7 +65,7 @@ def _data(sid, v):
 
 
 def _idle(sid, data):
-    running = any(r.get('job', {}).get('status') == 'running' for r in data.get('keywordRounds', {}).values())
+    running = any((r.get('job') or {}).get('status') == 'running' for r in data.get('keywordRounds', {}).values())
     if running or any(a['status'] == 'running' for a in session_activities(sid, data)):
         raise StoreError('진행 중인 작업이 끝난 뒤 다시 시도하세요')
 
@@ -112,7 +112,9 @@ def set_active(sid, v):
         _data(sid, v)
         _idle(sid, _data(sid, meta['activeVersion']))
         _idle(sid, _data(sid, v))
-        # Switching to history permits viewing, never makes history writable.
+        entry = next((entry for entry in meta['versions'] if entry['id'] == v), None)
+        if entry is None or entry['readonly']:
+            raise StoreError('읽기 전용 버전은 활성화할 수 없습니다. 복원하려면 새 버전을 만드세요')
         previous_active = meta['activeVersion']
         meta['activeVersion'] = v
         _activate_link(root_dir(sid), v)

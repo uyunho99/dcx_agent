@@ -60,13 +60,64 @@ def test_compare_stage2_same_collection(client):
     assert compare(sid, 'v1', 'v2', 'stage2') == {'same': True}
 
 
-def test_active_history_stays_readonly(client):
+def test_readonly_history_cannot_be_activated(client):
+    import pytest
+    from app.context.store import StoreError, read_json, root_dir
+    from app.context.versions import set_active
     sid = create(client)
     create_version(sid, 'v1', 'stage1', '')
-    assert client.put(f'/sessions/{sid}/active-version', json={'version': 'v1'}).status_code == 200
-    assert client.patch(f'/session/{sid}', json={'step': 'r2'}).status_code == 409
+    before = read_json(root_dir(sid) / 'meta.json')
+    with pytest.raises(StoreError, match='읽기 전용') as error:
+        set_active(sid, 'v1')
+    assert error.value.status == 409
+    response = client.put(f'/sessions/{sid}/active-version', json={'version': 'v1'})
+    assert response.status_code == 409
+    assert response.json()['error']['kind'] == 'conflict'
+    assert '읽기 전용' in response.json()['error']['message']
+    assert read_json(root_dir(sid) / 'meta.json') == before
+    assert (root_dir(sid) / 'active').resolve() == session_dir(sid)
+    assert client.get(f'/context/{sid}?version=v1').status_code == 200
+    assert client.get(f'/session/{sid}?version=v1').json()['data']['version'] == 'v1'
+    assert client.patch(f'/session/{sid}?version=v1', json={'step': 'r2'}).status_code == 409
     assert create_version(sid, 'v1', 'stage0', 'restore') == 'v3'
     assert client.patch(f'/session/{sid}', json={'step': 'start'}).status_code == 200
+
+
+def test_version_operations_keep_legacy_full_saves_writable(client):
+    sid = create(client)
+    operations = [
+        ('activate', 'v1'), ('create', 'v1'), ('activate', 'v1'),
+        ('activate', 'v2'), ('create', 'v1'), ('activate', 'v2'),
+        ('create', 'v2'), ('activate', 'v3'), ('activate', 'v4'),
+    ]
+    for i, (operation, version) in enumerate(operations):
+        if operation == 'create':
+            assert client.post(f'/sessions/{sid}/versions', json={
+                'from': version, 'restartFrom': 'stage1', 'note': 'restore',
+            }).status_code == 201
+        else:
+            client.put(f'/sessions/{sid}/active-version', json={'version': version})
+        before = load_session(sid)
+        response = client.post('/save-session', json={'sid': sid, 'data': {
+            'keywordRounds': {}, 'projectContext': {}, 'version': 'v0',
+            'labeledData': [{'label': i}], 'stageResults': {'stage3': {'iteration': i}},
+        }})
+        assert response.status_code == 200
+        assert response.json()['status'] == 'saved'
+        saved = load_session(sid)
+        assert saved['labeledData'] == [{'label': i}]
+        assert saved['stageResults']['stage3'] == {'iteration': i}
+        assert saved['projectContext'] == before['projectContext']
+        assert saved['version'] == before['version']
+
+
+def test_version_operations_allow_null_job(client):
+    sid = create(client)
+    update_session(sid, {'keywordRounds': {'1': {'job': None}}})
+    assert client.put(f'/sessions/{sid}/active-version', json={'version': 'v1'}).status_code == 200
+    assert client.post(f'/sessions/{sid}/versions', json={
+        'from': 'v1', 'restartFrom': 'stage1',
+    }).status_code == 201
 
 
 def test_version_activation_failure_keeps_original(client, monkeypatch):

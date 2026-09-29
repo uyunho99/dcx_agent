@@ -1,4 +1,5 @@
 import shutil
+from datetime import datetime, timezone
 from pathlib import Path
 
 from app.config import settings
@@ -51,16 +52,27 @@ def list_sessions():
         if root.exists():
             prefixes.update(f"sessions/{p.name}/" for p in root.iterdir() if p.is_dir())
         sessions = []
+        recency = {}
         for p in prefixes:
             sid = p.replace("sessions/", "").rstrip("/")
             d = store.load_session(sid) or load_json(f"sessions/{sid}/session.json")
             if not d:
                 continue
+            updated_at = d.get("updatedAt") or d.get("createdAt")
+            try:
+                timestamp = datetime.fromisoformat(updated_at)
+                if timestamp.tzinfo is None:
+                    timestamp = timestamp.replace(tzinfo=timezone.utc)
+                recency[sid] = timestamp.timestamp()
+            except (TypeError, ValueError):
+                path = store.session_dir(sid) / "session.json"
+                recency[sid] = path.stat().st_mtime if path.exists() else 0.0
+                updated_at = datetime.fromtimestamp(recency[sid], timezone.utc).isoformat()
             sessions.append({"sid": sid, "bk": d.get("projectContext", {}).get("bk", d.get("bk", "")),
                              "step": d.get("step", ""), "schemaVersion": d.get("schemaVersion"),
                              "legacy": store.is_legacy(d), "activity": store.session_activity(sid, d),
-                             "updatedAt": d.get("updatedAt", d.get("createdAt", sid))})
-        sessions.sort(key=lambda item: (item["updatedAt"], item["sid"]), reverse=True)
+                             "updatedAt": updated_at})
+        sessions.sort(key=lambda item: (recency[item["sid"]], item["sid"]), reverse=True)
         sessions.sort(key=lambda item: store.activity_rank(item["activity"]))
         return {"status": "ok", "sessions": sessions[:20]}
     except Exception:

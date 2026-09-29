@@ -120,3 +120,19 @@ def test_legacy_full_save_still_overwrites(client):
     client.post('/save-session', json={'sid': 'old', 'data': {'a': 1, 'b': 2}})
     client.post('/save-session', json={'sid': 'old', 'data': {'a': 3}})
     assert client.get('/session/old').json()['data'] == {'a': 3}
+
+
+def test_sessions_recency_includes_new_v2_among_legacy(client):
+    import os
+    for i in range(21):
+        sid = f'slegacy{i:02d}'
+        assert client.post('/save-session', json={'sid': sid, 'data': {'bk': sid}}).json()['status'] == 'saved'
+        # Reverse ID order and include a tie to check the secondary sort.
+        timestamp = 1_600_000_000 - i // 2
+        os.utime(session_dir(sid) / 'session.json', (timestamp, timestamp))
+    new_sid = create(client)
+    response = client.get('/sessions').json()
+    assert response['status'] == 'ok'
+    ids = [s['sid'] for s in response['sessions']]
+    expected_legacy = sorted(range(21), key=lambda i: (-(i // 2), i), reverse=True)
+    assert ids == [new_sid] + [f'slegacy{i:02d}' for i in expected_legacy[:19]]
