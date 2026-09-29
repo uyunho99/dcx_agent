@@ -349,7 +349,7 @@ class CrawlQueue:
         if not db.execute('SELECT 1 FROM snapshots WHERE snapshot_id=?', (snapshot_id,)).fetchone():
             raise ValueError('Unknown snapshot')
 
-    def lease_urls(self, snapshot_id: str, n: int, lease_s: float) -> list[UrlRow]:
+    def lease_urls(self, snapshot_id: str, n: int, lease_s: float, sources: list[str] | None = None) -> list[UrlRow]:
         if n < 0 or lease_s <= 0:
             raise ValueError('n must be nonnegative and lease_s positive')
         now = time.time()
@@ -363,7 +363,8 @@ class CrawlQueue:
                 self._apply_exclusions(db, snapshot_id, reassign=False)
                 db.execute('''UPDATE snapshots SET swept_version=exclusion_version
                     WHERE snapshot_id=?''', (snapshot_id,))
-            rows = db.execute('''SELECT u.*, h.kw AS hit_kw, h.kw_axis AS hit_axis,
+            source_filter = '' if sources is None else ' AND u.source IN (' + ','.join('?' for _ in sources) + ')'
+            rows = db.execute(f'''SELECT u.*, h.kw AS hit_kw, h.kw_axis AS hit_axis,
                     h.kw_sub AS hit_sub, h.kw_order AS hit_order
                 FROM urls u JOIN snapshot_urls s USING(url_norm,source)
                 JOIN url_hits h USING(url_norm,source)
@@ -372,8 +373,9 @@ class CrawlQueue:
                     WHERE h2.url_norm=u.url_norm AND h2.source=u.source
                     AND NOT EXISTS (SELECT 1 FROM excluded_keywords e WHERE e.snapshot_id=? AND e.kw=h2.kw)
                     ORDER BY h2.kw_order,h2.kw LIMIT 1)
+                {source_filter}
                 ORDER BY h.kw_order,u.source,u.url_norm LIMIT ?''',
-                              (snapshot_id, now, snapshot_id, n)).fetchall()
+                              (snapshot_id, now, snapshot_id, *(sources or []), n)).fetchall()
             result = []
             for row in rows:
                 exhausted = bool(row['exhausted'] or row['attempts'] >= row['max_attempts'])

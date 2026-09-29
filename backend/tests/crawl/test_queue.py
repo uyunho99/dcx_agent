@@ -645,3 +645,14 @@ def test_legacy_snapshot_gets_one_initial_sweep(queue):
         assert exclusion_updates(statements) == []
     finally:
         reopened.close()
+
+
+def test_lease_sources_filter(queue):
+    add(queue, 'early', 0, ['fixture://aircon/1'])
+    add(queue, 'late', 1, ['fixture://aircon/2'], 'naver_blog')
+    snap = queue.take_snapshot()
+    assert queue.lease_urls(snap, 10, 30, sources=[]) == []
+    rows = queue.lease_urls(snap, 10, 30, sources=['naver_blog'])
+    assert [r.source for r in rows] == ['naver_blog']
+    assert queue.connection.execute("SELECT attempts FROM urls WHERE source='fixture'").fetchone()[0] == 0
+    assert [r.source for r in queue.lease_urls(snap, 10, 30)] == ['fixture']

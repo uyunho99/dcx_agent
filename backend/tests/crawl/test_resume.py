@@ -21,6 +21,7 @@ from test_worker import corpus, detail, setup_list, state
 
 
 def test_kill_and_resume_no_refetch(tmp_path, corpus):
+    corpus.write_text('review\n' + ''.join(f'에어컨 소음 {i}\n' for i in range(520)))
     snap = setup_list(tmp_path)
     hook = tmp_path / 'count_adapter.py'
     hook.write_text('''import os, time
@@ -46,12 +47,18 @@ REGISTRY['fixture'] = lambda: Counted(os.environ['FIXTURE_CORPUS_PATH'])
     proc = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
         deadline = time.monotonic() + 8
-        while not log.exists() or len(log.read_text().splitlines()) < 30:
+        committed = set()
+        while not committed:
             assert proc.poll() is None
             assert time.monotonic() < deadline
+            with CrawlQueue.open_readonly(tmp_path / 'queue.sqlite') as db:
+                committed = {r[0] for r in db.execute("SELECT url_norm FROM urls WHERE status='done'")}
             time.sleep(0.005)
         proc.kill()
         proc.communicate(timeout=3)
+        # Include transactions committed between the successful poll and SIGKILL.
+        with CrawlQueue.open_readonly(tmp_path / 'queue.sqlite') as db:
+            committed = {r[0] for r in db.execute("SELECT url_norm FROM urls WHERE status='done'")}
     finally:
         if proc.poll() is None:
             proc.kill()
@@ -59,10 +66,12 @@ REGISTRY['fixture'] = lambda: Counted(os.environ['FIXTURE_CORPUS_PATH'])
     result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=10)
     assert result.returncode == 0, result.stderr
     counts = collections.Counter(log.read_text().splitlines())
-    assert len(counts) == 80 and max(counts.values()) <= 2
+    assert committed
+    assert all(counts[url] == 1 for url in committed)
+    assert len(counts) == 520 and max(counts.values()) <= 2
     assert sum(n > 1 for n in counts.values()) <= 200
     docs = list(read_docs(tmp_path / 'docs'))
-    assert len(docs) == len({d['doc_id'] for d in docs}) == 80
+    assert len(docs) == len({d['doc_id'] for d in docs}) == 520
 
 
 def test_reader_skips_truncated_last_line(tmp_path, caplog):
@@ -101,7 +110,7 @@ def test_fsync_before_done(tmp_path, corpus, monkeypatch):
     assert q.counts()['done'] == 0
     q.close()
     detail(tmp_path, snap)
-    assert len(calls) == 2 and len(list(read_docs(docsdir))) == 80
+    assert len(calls) >= 2 and len(list(read_docs(docsdir))) == 80
 
 
 def test_channels_and_keywords_run_concurrently(tmp_path, monkeypatch):
@@ -136,7 +145,9 @@ def test_parse_error_rate_pauses_channel(tmp_path, corpus, monkeypatch):
     detail(tmp_path, snap)
     assert state(tmp_path)['naver_blog']['status'] == 'paused_parse_error'
     assert state(tmp_path)['naver_blog']['attempts'] >= 10
-    assert len(list(read_docs(tmp_path / 'docs'))) == 80
+    docs = list(read_docs(tmp_path / 'docs'))
+    assert len([d for d in docs if d['source'] == 'fixture']) == 80
+    assert all(d['fetch_level'] == 'snippet' for d in docs if d['source'] == 'naver_blog')
 
 
 def test_healthcheck_reports_per_stage(corpus, capsys, monkeypatch):

@@ -1,3 +1,4 @@
+from contextlib import closing
 import csv
 import json
 from dataclasses import replace
@@ -93,3 +94,122 @@ def test_restricted_recorded(tmp_path, corpus, monkeypatch):
     docs = list(read_docs(tmp_path / 'docs'))
     assert all(d['access'] == 'restricted' and len(d['author_hash']) == 16 for d in docs)
     assert 'private-id' not in ''.join(p.read_text() for p in (tmp_path / 'docs').glob('*'))
+
+
+def test_list_dropped_invalid_url(tmp_path, monkeypatch):
+    from app.crawl.adapters.base import ListItem, ListPage
+    class Invalid:
+        def list_page(self, kw, cursor):
+            return ListPage([ListItem('', '광고', '', None, {})], None, 1)
+    original = CrawlQueue.record_list_page
+    monkeypatch.setattr(CrawlQueue, 'record_list_page',
+                        lambda self, task, items, cursor: original(self, task, [], cursor))
+    monkeypatch.setitem(REGISTRY, 'fixture', Invalid)
+    assert setup_list(tmp_path)
+
+
+def seed_channels(tmp_path, sizes):
+    from app.crawl.queue import KwMeta
+    with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+        q.add_list_tasks([KwMeta('k1', '', '', 0), KwMeta('k2', '', '', 1)], [])
+        q.add_urls([dict(url=f'fixture://aircon/{i:04}', source=s, kw=f'k{k+1}')
+                    for k, (s, n) in enumerate(sizes) for i in range(n)])
+        return q.take_snapshot()
+
+
+def test_bounded_claims_interrupt_resume(tmp_path, monkeypatch):
+    import threading
+    from contextlib import contextmanager
+    from collections import Counter
+    from app.crawl.adapters.base import FetchedDoc
+    from app.crawl.ratelimit import ChannelLimiter
+    snap = seed_channels(tmp_path, [('fixture', 3000), ('naver_blog', 3)])
+    stop = threading.Event()
+    calls = Counter()
+    main = threading.get_ident()
+    original = CrawlQueue.lease_urls
+    def lease(self, *args, **kwargs):
+        assert threading.get_ident() == main
+        rows = original(self, *args, **kwargs)
+        for s in ('fixture', 'naver_blog'):
+            assert self.connection.execute("SELECT count(*) FROM urls WHERE source=? AND status='leased'", (s,)).fetchone()[0] <= 4
+            count = self.connection.execute("SELECT count(*) FROM urls WHERE source=? AND attempts>0", (s,)).fetchone()[0]
+            if not resumed[0]:
+                assert count <= 4
+        return rows
+    class Adapter:
+        def fetch(self, item):
+            calls[item.url] += 1
+            if not resumed[0]:
+                stop.set()
+            return [FetchedDoc('', 'body', [], None, {}, 'public', None)]
+    @contextmanager
+    def stopping():
+        yield stop
+    resumed = [False]
+    monkeypatch.setattr(worker, '_stop_event', stopping)
+    monkeypatch.setattr(CrawlQueue, 'lease_urls', lease)
+    for s in ('fixture', 'naver_blog'):
+        monkeypatch.setitem(REGISTRY, s, Adapter)
+    limits = {s: ChannelLimiter(2, 0) for s in ('fixture', 'naver_blog')}
+    detail(tmp_path, snap, limiters=limits)
+    resumed[0] = True
+    stop.clear()
+    detail(tmp_path, snap, limiters=limits)
+    with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+        assert q.counts()['done'] == 3003
+        assert all(r['attempts'] == 1 for r in q.connection.execute('SELECT attempts FROM urls'))
+    assert sum(calls.values()) == 3003
+
+
+def test_fast_channel_finishes_before_slow_call(tmp_path, monkeypatch):
+    import threading
+    from app.crawl.adapters.base import FetchedDoc
+    from app.crawl.ratelimit import ChannelLimiter
+    snap = seed_channels(tmp_path, [('fixture', 205), ('naver_blog', 1)])
+    finished = threading.Event()
+    observed = []
+    calls = []
+    class Fast:
+        def fetch(self, item):
+            calls.append(item.url)
+            if len(calls) == 205:
+                finished.set()
+            return [FetchedDoc('', 'body', [], None, {}, 'public', None)]
+    class Slow(Fast):
+        def fetch(self, item):
+            observed.append(finished.wait(2))
+            return [FetchedDoc('', 'body', [], None, {}, 'public', None)]
+    monkeypatch.setitem(REGISTRY, 'fixture', Fast)
+    monkeypatch.setitem(REGISTRY, 'naver_blog', Slow)
+    detail(tmp_path, snap, limiters={s: ChannelLimiter(1, 0) for s in ('fixture', 'naver_blog')})
+    assert observed == [True]
+
+
+def test_hung_fetch_times_out_and_channel_continues(tmp_path, monkeypatch):
+    import threading
+    from app.crawl.adapters.base import FetchedDoc
+    from app.crawl.ratelimit import ChannelLimiter
+    snap = seed_channels(tmp_path, [('fixture', 3)])
+    release = threading.Event()
+    calls = []
+    class Hanging:
+        def fetch(self, item):
+            calls.append(item.url)
+            if item.url.endswith('/0000'):
+                release.wait(2)
+            return [FetchedDoc('', 'body', [], None, {}, 'public', None)]
+    monkeypatch.setattr(worker, 'FETCH_TIMEOUT_S', 0.03, raising=False)
+    monkeypatch.setitem(REGISTRY, 'fixture', Hanging)
+    try:
+        detail(tmp_path, snap, limiters={'fixture': ChannelLimiter(1, 0)})
+        assert not release.is_set()
+        with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+            row = q.connection.execute("SELECT * FROM urls WHERE url_norm LIKE '%0000'").fetchone()
+            assert row['attempts'] == 3
+            assert 'TimeoutError' in row['last_error']
+            assert row['fetch_level'] == 'snippet'
+            assert q.counts()['done'] == 3
+        assert len(calls) == 5
+    finally:
+        release.set()

@@ -5,7 +5,7 @@ inert by default and intended solely for subprocess tests with fake adapters.
 """
 import argparse
 from collections import deque
-from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from contextlib import contextmanager
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -32,6 +32,7 @@ from app.crawl.writer import DocWriter
 from app.utils.text import clean_text
 
 BATCH_SIZE = 200
+FETCH_TIMEOUT_S = 60
 # Heartbeats fence dead owners; a long lease avoids expiring a healthy slow fetch.
 LEASE_SECONDS = 86400
 
@@ -231,7 +232,7 @@ def run_list(sid, *, collection=None, keywords=None, sources=None, filters=None,
                             # Discovery may encounter a previously filtered/shared URL.
                             row = run.q.connection.execute('SELECT status,attempts FROM urls WHERE url_norm=? AND source=?',
                                 (normalize_url(item.url, task.source), task.source)).fetchone()
-                            if row['status'] == 'pending' and row['attempts'] == 0:
+                            if row is not None and row['status'] == 'pending' and row['attempts'] == 0:
                                 run.q.mark_filtered(normalize_url(item.url, task.source), task.source, rule)
             run.snapshot = run.q.take_snapshot()
             status = 'stopped' if stop.is_set() else 'done'
@@ -270,34 +271,71 @@ def _remaining(run):
         [run.snapshot, *sources]).fetchone() is not None
 
 
-def _detail_wave(run, buffers, stop):
-    """Global queue claims, then fair channel routing into <=200 fetched URLs.
+def _detail_results(run, adapters, stop, batch, commit):
+    """Lease only free channel slots; multiplex completions on the SQLite owner.
 
-    The queue has no source selector. Scan past a dense source when necessary
-    so it cannot starve another channel. Buffered claims never enter a pool
-    until their bounded wave, and paused claims are left for public reclaim.
+    Each call has a daemon thread so abandoned adapter calls neither consume a
+    future channel slot nor prevent process exit. Late results are discarded.
+    Rate spacing is shared even across timed-out calls; logical concurrency is
+    bounded, although Python cannot terminate an abandoned adapter thread.
     """
-    for source, rows in buffers.items():
-        if not run.active(source):
-            rows.clear()
-    ready = {r[0] for r in run.q.connection.execute(
-        """SELECT DISTINCT u.source FROM urls u JOIN snapshot_urls s USING(url_norm,source)
-        WHERE s.snapshot_id=? AND u.status='pending' AND (u.retry_at IS NULL OR u.retry_at<=?)""",
-        (run.snapshot, time.time())) if run.active(r[0])}
-    while any(not buffers[s] for s in ready) and not stop.is_set():
+    futures = {}
+    running = dict.fromkeys(run.channels, 0)
+
+    def call(future, row, started):
+        try:
+            run.limiters[row.source].wait_start()
+            started.append(time.monotonic())
+            docs = adapters[row.source].fetch(
+                ListItem(row.url_norm, row.title, row.snippet, row.date, row.src_meta))
+            if not isinstance(docs, list) or any(not isinstance(d, FetchedDoc) for d in docs):
+                raise AdapterParseError('Expected a list of FetchedDoc records')
+            future.set_result(docs)
+        except BaseException as exc:
+            future.set_exception(exc)
+
+    while True:
         run.tick()
-        rows = run.q.lease_urls(run.snapshot, BATCH_SIZE, LEASE_SECONDS)
-        if not rows:
-            break
-        for row in rows:
-            if run.active(row.source):
-                buffers[row.source].append(row)
-    jobs = []
-    while len(jobs) < BATCH_SIZE and any(buffers.values()) and not stop.is_set():
-        for rows in buffers.values():
-            if rows and len(jobs) < BATCH_SIZE:
-                jobs.append(rows.popleft())
-    return jobs
+        if (len(batch) + len(futures) >= BATCH_SIZE or any(
+                sum(key[1] == source for key in batch) >= limiter.concurrency
+                for source, limiter in run.limiters.items())):
+            commit()
+        for source in run.channels:
+            while (not stop.is_set() and run.active(source)
+                   and running[source] < run.limiters[source].concurrency
+                   and len(batch) + len(futures) < BATCH_SIZE):
+                rows = run.q.lease_urls(run.snapshot, 1, LEASE_SECONDS, sources=[source])
+                if not rows:
+                    break
+                row = rows[0]
+                if row.exhausted:
+                    yield row, None, None
+                    continue
+                future, started = Future(), []
+                futures[future] = (row, started)
+                running[source] += 1
+                threading.Thread(target=call, args=(future, row, started), daemon=True).start()
+        if not futures:
+            if stop.is_set() or not _remaining(run):
+                break
+            stop.wait(0.05)
+            continue
+        done, _ = wait(futures, timeout=0.01, return_when=FIRST_COMPLETED)
+        now = time.monotonic()
+        expired = {f for f, (_, started) in futures.items()
+                   if f not in done and started and now - started[0] >= FETCH_TIMEOUT_S}
+        for future in done | expired:
+            row, _ = futures.pop(future)
+            running[row.source] -= 1
+            if future in expired:
+                result, error = None, TimeoutError(f'Fetch exceeded {FETCH_TIMEOUT_S}s')
+            else:
+                try:
+                    result, error = future.result(), None
+                except Exception as exc:
+                    result, error = None, exc
+            run.outcome(row.source, error)
+            yield row, result, error
 
 
 def run_detail(sid, snapshot_id, *, collection=None, filters=None, limiters=None, backoff_s=1):
@@ -315,7 +353,6 @@ def run_detail(sid, snapshot_id, *, collection=None, filters=None, limiters=None
     status = 'interrupted'
     batch = {}
     written = 0
-    buffers = {s: deque() for s in sources}
     def commit():
         nonlocal written
         if batch:
@@ -327,52 +364,42 @@ def run_detail(sid, snapshot_id, *, collection=None, filters=None, limiters=None
         writer = DocWriter(root / 'docs', shard_size=5000)
         run.q.lease_urls(snapshot_id, 0, LEASE_SECONDS)  # Validate snapshot, apply exclusions.
         with _stop_event() as stop:
-            while not stop.is_set():
-                run.tick()
-                jobs = _detail_wave(run, buffers, stop)
-                if not jobs:
-                    if not _remaining(run):
-                        break
-                    stop.wait(0.05)
-                    continue
-                for row, fetched, error in run.execute(jobs, adapters, 'detail', stop):
-                    last_error = row.last_error
-                    if error:
-                        last_error = _error(error)
-                        result = run.q.mark_failed_attempt(row.url_norm, row.source, last_error,
-                                                          max_attempts=3, backoff_s=backoff_s)
-                        if result != 'exhausted':
-                            continue
-                    fallback = row.exhausted or error is not None
-                    if fallback:
-                        fetched = [FetchedDoc(row.title, row.snippet, [], row.date, row.src_meta, 'public', None)]
-                    docs, rules = [], []
-                    for item in fetched:
-                        rule = check_doc(item, filters)
-                        if rule:
-                            rules.append(rule)
-                        else:
-                            docs.append(_doc(row, item, 'snippet' if fallback or item.access == 'restricted' else 'full'))
-                    if not docs and rules:
-                        run.q.mark_filtered(row.url_norm, row.source, rules[0])
+            for row, fetched, error in _detail_results(run, adapters, stop, batch, commit):
+                last_error = row.last_error
+                if error:
+                    last_error = _error(error)
+                    result = run.q.mark_failed_attempt(row.url_norm, row.source, last_error,
+                                                      max_attempts=3, backoff_s=backoff_s)
+                    if result != 'exhausted':
                         continue
-                    docs = list({d.doc_id: d for d in docs}.values())
-                    for doc in docs:
-                        writer.write(doc)
-                        written += 1
-                        if written >= BATCH_SIZE:
-                            # A URL can contain >200 threads. Its completion waits for all.
-                            writer.flush_and_fsync()
-                            commit()
-                            written = 0
-                    level = 'snippet' if fallback or any(d.fetch_level == 'snippet' for d in docs) else 'full'
-                    access = 'restricted' if any(d.access == 'restricted' for d in docs) else 'public'
-                    batch[(row.url_norm, row.source)] = (row.url_norm, row.source, len(docs), last_error, level, access)
-                    if len(batch) >= BATCH_SIZE:
+                fallback = row.exhausted or error is not None
+                if fallback:
+                    fetched = [FetchedDoc(row.title, row.snippet, [], row.date, row.src_meta, 'public', None)]
+                docs, rules = [], []
+                for item in fetched:
+                    rule = check_doc(item, filters)
+                    if rule:
+                        rules.append(rule)
+                    else:
+                        docs.append(_doc(row, item, 'snippet' if fallback or item.access == 'restricted' else 'full'))
+                if not docs and rules:
+                    run.q.mark_filtered(row.url_norm, row.source, rules[0])
+                    continue
+                docs = list({d.doc_id: d for d in docs}.values())
+                for doc in docs:
+                    writer.write(doc)
+                    written += 1
+                    if written >= BATCH_SIZE:
+                        # A URL can contain >200 threads. Its completion waits for all.
+                        writer.flush_and_fsync()
                         commit()
-                commit()
-                if not any(buffers[s] for s in sources if run.active(s)) and not _remaining(run):
-                    break
+                        written = 0
+                level = 'snippet' if fallback or any(d.fetch_level == 'snippet' for d in docs) else 'full'
+                access = 'restricted' if any(d.access == 'restricted' for d in docs) else 'public'
+                batch[(row.url_norm, row.source)] = (row.url_norm, row.source, len(docs), last_error, level, access)
+                if len(batch) >= BATCH_SIZE:
+                    commit()
+            commit()
             status = 'stopped' if stop.is_set() else 'done'
     finally:
         # Never complete pending writes after fencing or another exception.

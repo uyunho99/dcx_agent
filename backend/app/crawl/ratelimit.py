@@ -17,11 +17,7 @@ class ChannelLimiter:
     def __enter__(self):
         self._slots.acquire()
         try:
-            with self._lock:
-                delay = self._next - self.clock()
-                if delay > 0:
-                    self.sleep(delay)
-                self._next = self.clock() + self.min_interval_s
+            self.wait_start()
         except BaseException:
             self._slots.release()
             raise
@@ -29,3 +25,11 @@ class ChannelLimiter:
 
     def __exit__(self, *exc):
         self._slots.release()
+
+    def wait_start(self):
+        """Space starts when the coordinator already owns a concurrency slot."""
+        with self._lock:
+            delay = self._next - self.clock()
+            if delay > 0:
+                self.sleep(delay)
+            self._next = self.clock() + self.min_interval_s
