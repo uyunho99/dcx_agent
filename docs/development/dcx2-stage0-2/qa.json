@@ -1,0 +1,158 @@
+{
+  "verdict": "PASS",
+  "head": "80383ab785e332de7943640bdc73e23dd5ce4559",
+  "fingerprint": "0464edf3e72b7a6495f6ab0b13fd2dda00aeba410bc03209dc94e0d7fd20aacb",
+  "commands": [
+    {
+      "command": "browser QA via Claude built-in browser (gstack qa-only)",
+      "exitCode": 0
+    },
+    {
+      "command": "backend/.venv/bin/python -m app.crawl.healthcheck --source <channel> --keyword \"에어컨 소음\"",
+      "exitCode": 0
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "QA-DS",
+      "url": "http://localhost:3000/pipeline/start",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage0-2/qa/qa-report-2026-09-29.md 시나리오 결과 표 + 최종 재확인"
+    },
+    {
+      "id": "QA-1",
+      "url": "http://localhost:3000/pipeline/start",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage0-2/qa/qa-report-2026-09-29.md 시나리오 결과 표 + 최종 재확인"
+    },
+    {
+      "id": "QA-2",
+      "url": "http://localhost:3000/pipeline/start",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage0-2/qa/qa-report-2026-09-29.md 시나리오 결과 표 + 최종 재확인"
+    },
+    {
+      "id": "QA-4",
+      "url": "http://localhost:3000/pipeline/keywords",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage0-2/qa/qa-report-2026-09-29.md 시나리오 결과 표 + 최종 재확인"
+    },
+    {
+      "id": "QA-5",
+      "url": "http://localhost:3000/pipeline/keywords",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage0-2/qa/qa-report-2026-09-29.md 시나리오 결과 표 + 최종 재확인"
+    },
+    {
+      "id": "QA-6",
+      "url": "http://localhost:3000/pipeline/crawling",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage0-2/qa/qa-report-2026-09-29.md 시나리오 결과 표 + 최종 재확인"
+    },
+    {
+      "id": "QA-7",
+      "url": "http://localhost:3000/pipeline/crawling",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage0-2/qa/qa-report-2026-09-29.md 시나리오 결과 표 + 최종 재확인"
+    },
+    {
+      "id": "QA-8",
+      "url": "http://localhost:3000/pipeline/start",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage0-2/qa/qa-report-2026-09-29.md 시나리오 결과 표 + 최종 재확인"
+    },
+    {
+      "id": "QA-10",
+      "url": "http://localhost:3000/pipeline/start",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage0-2/qa/qa-report-2026-09-29.md 시나리오 결과 표 + 최종 재확인"
+    },
+    {
+      "id": "QA-V",
+      "url": "http://localhost:3000/pipeline/compare",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage0-2/qa/qa-report-2026-09-29.md 시나리오 결과 표 + 최종 재확인"
+    },
+    {
+      "id": "QA-3",
+      "url": "http://localhost:3000/pipeline/keywords",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage0-2/qa/qa-report-2026-09-29.md (부분: 가짜 LLM이 즉시 응답해 스켈레톤·경과 시간 관찰 불가)"
+    },
+    {
+      "id": "QA-9",
+      "url": "http://localhost:3000/pipeline/start",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage0-2/qa/qa-report-2026-09-29.md + 재확인 QA-9b(INTERNAL_TOOLS=false 프로덕션 빌드)"
+    },
+    {
+      "id": "QA-R",
+      "url": "http://localhost:3000/pipeline/keywords",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage0-2/qa/qa-report-2026-09-29.md (부분: 드래그는 키보드 M 이동으로 대체, ③⑤ 미시험)"
+    },
+    {
+      "id": "QA-N1",
+      "url": "http://localhost:3000/pipeline/crawling",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage0-2/qa/qa-report-2026-09-29.md 최종 재확인 절"
+    },
+    {
+      "id": "QA-I6",
+      "url": "http://localhost:3000/pipeline/crawling",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage0-2/qa/qa-report-2026-09-29.md 최종 재확인 절"
+    },
+    {
+      "id": "QA-D096",
+      "url": "http://localhost:3000/pipeline/crawling",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage0-2/qa/qa-report-2026-09-29.md 최종 재확인 절"
+    },
+    {
+      "id": "QA-D091",
+      "url": "http://localhost:3000/pipeline/crawling",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage0-2/qa/qa-report-2026-09-29.md 최종 재확인 절"
+    },
+    {
+      "id": "QA-LIVE",
+      "url": "http://localhost:8000/health",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage0-2/qa/qa-report-2026-09-29.md 실제 채널 스모크 표(클리앙·뽐뿌·유튜브·네이버 블로그·카페, healthcheck)"
+    }
+  ],
+  "resolvedFindings": [
+    {
+      "id": "Q3",
+      "severity": "Critical",
+      "status": "fixed"
+    },
+    {
+      "id": "Q1",
+      "severity": "Medium",
+      "status": "fixed"
+    },
+    {
+      "id": "Q9",
+      "severity": "Medium",
+      "status": "fixed"
+    },
+    {
+      "id": "QA-N1",
+      "severity": "Medium",
+      "status": "fixed"
+    },
+    {
+      "id": "Q6",
+      "severity": "Low",
+      "status": "accepted"
+    },
+    {
+      "id": "QA-D097",
+      "severity": "info",
+      "status": "not browser-reproduced; covered by API/unit tests"
+    }
+  ],
+  "findings": []
+}
