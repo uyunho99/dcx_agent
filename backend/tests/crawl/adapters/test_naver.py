@@ -1,7 +1,9 @@
 """Offline contracts for the D-094 keyless Naver adapters."""
 import json
+import re
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import httpx
 import pytest
@@ -20,14 +22,24 @@ def fixture(cls, name):
     return (FIXTURES / cls.source / name).read_bytes()
 
 
-def adapter(cls, content, status=200):
+def adapter(cls, content, status=200, *, now=datetime(2026, 9, 29, 12)):
     requests = []
     def handle(request):
         requests.append(request)
         return httpx.Response(status, content=content)
     client = httpx.Client(transport=httpx.MockTransport(handle))
     return cls(client=client, sleep=lambda _: None,
-               now=lambda: datetime(2026, 9, 29, 12)), requests
+               now=lambda: now), requests
+
+
+def recorded_list(cls, number):
+    manifest = json.loads(fixture(cls, 'manifest.json'))
+    captured_at = datetime.fromisoformat(manifest['captured_at']).astimezone(ZoneInfo('Asia/Seoul'))
+    a, _ = adapter(cls, fixture(cls, f'list-{number}.html'), now=captured_at)
+    try:
+        return a.list_page(manifest['keyword'], str(1 + (number - 1) * 30))
+    finally:
+        a.client.close()
 
 
 def item(cls):
@@ -59,6 +71,58 @@ def test_cafe_list_parses_items_and_cursor():
 
 def test_blog_list_parses_items_and_cursor():
     check_list(NaverBlogAdapter)
+
+
+@pytest.mark.parametrize('cls,number,relative_dates', [
+    (NaverBlogAdapter, 1, {0: '2026-09-15', 19: '2026-09-26', 28: '2026-09-08'}),
+    (NaverBlogAdapter, 2, {12: '2026-09-08', 25: '2026-09-28', 27: '2026-09-23'}),
+    (NaverCafeAdapter, 1, {
+        0: '2026-09-28', 1: '2026-09-22', 2: '2026-09-25',
+        6: '2026-09-29', 24: '2026-09-26', 29: '2026-09-08',
+    }),
+    (NaverCafeAdapter, 2, {
+        0: '2026-09-28', 1: '2026-09-22', 2: '2026-09-25',
+        6: '2026-09-29', 24: '2026-09-26', 29: '2026-09-08',
+    }),
+])
+def test_recorded_list_dates(cls, number, relative_dates):
+    page = recorded_list(cls, number)
+    assert len(page.items) == 30
+    for entry in page.items:
+        assert re.fullmatch(r'\d{4}-\d{2}-\d{2}', entry.date or ''), entry.url
+        assert datetime.strptime(entry.date, '%Y-%m-%d').date().isoformat() == entry.date
+    # These expectations come from the recorded relative labels, with the clock
+    # fixed to manifest captured_at in Naver's local timezone.
+    for index, expected in relative_dates.items():
+        assert page.items[index].date == expected, page.items[index].url
+
+
+@pytest.mark.parametrize('number', [1, 2])
+def test_recorded_cafe_list_names(number):
+    page = recorded_list(NaverCafeAdapter, number)
+    assert len(page.items) == 30
+    for entry in page.items:
+        name = entry.src_meta['cafe']
+        assert name.strip(), entry.url
+        assert not name.startswith('사용자'), (entry.url, name)
+
+
+@pytest.mark.parametrize('number', [1, 2])
+@pytest.mark.parametrize('detail_number,expected_date', [(1, '2026-09-28'), (2, '2026-09-22')])
+def test_recorded_cafe_restricted_doc_keeps_list_date(number, detail_number, expected_date):
+    entry = recorded_list(NaverCafeAdapter, number).items[detail_number - 1]
+    manifest = json.loads(fixture(NaverCafeAdapter, 'manifest.json'))
+    recording = next(r for r in manifest['requests'] if r['file'] == f'detail-{detail_number}.json')
+    assert recording['status_code'] == 401
+    a, requests = adapter(NaverCafeAdapter, fixture(NaverCafeAdapter, recording['file']),
+                          recording['status_code'])
+    try:
+        doc, = a.fetch(entry)
+        assert str(requests[0].url) == recording['url']
+        assert doc.access == 'restricted'
+        assert doc.date == entry.date == expected_date
+    finally:
+        a.client.close()
 
 
 @pytest.mark.parametrize('cls', CLASSES)
