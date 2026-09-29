@@ -1,0 +1,43 @@
+:root{
+  --blue:#38B6F9; --blue-deep:#168FCC; --blue-soft:#EAF8FF; --blue-tint:#DDF4FE;
+  --ink:#676668; --ink-strong:#1c1e22; --sub:#8A8A8C; /* 키트 값 유지 (리뷰 8B) */
+  --line:#E7EAEE; --line-strong:#7f838b; --paper:#FFFFFF; --soft:#F8FCFF; --sunken:#F3F4F6;
+  --action:#0a73b5; --action-hover:#085d93; --action-soft:#e8f4fc;
+  --success:#1b7446; --success-soft:#e6f6ec; --warning:#9a5b00; --warning-soft:#fff3dc; --danger:#c62828; --danger-soft:#fdeaea;
+  --r-input:6px; --r-button:10px; --r-card:14px; --r-overlay:18px; --r-full:999px;
+  --shadow-overlay:0 8px 24px rgba(28,30,34,.12),0 1px 2px rgba(28,30,34,.06);
+  --font:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",system-ui,sans-serif;
+  --mono:"SF Mono",Menlo,Consolas,monospace;
+}
+
+:root {
+  --shadow-md: var(--shadow-overlay);
+  --sidebar-width:224px; --sidebar-collapsed:72px; --content-max:1200px;
+  --chat-width:400px;
+}
+@theme inline {
+  --font-sans: var(--font);
+  --color-primary: var(--action); --color-primary-hover: var(--action-hover);
+  --color-blue: var(--blue); --color-blue-deep: var(--blue-deep); --color-blue-soft: var(--blue-soft); --color-blue-tint: var(--blue-tint);
+  --color-ink: var(--ink); --color-ink-strong: var(--ink-strong); --color-sub: var(--sub);
+  --color-line: var(--line); --color-line-strong: var(--line-strong);
+  --color-paper: var(--paper); --color-soft: var(--soft); --color-sunken: var(--sunken);
+  --color-action: var(--action); --color-action-soft: var(--action-soft);
+  --color-success: var(--success); --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning); --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger); --color-danger-soft: var(--danger-soft);
+  --radius-input: var(--r-input); --radius-button: var(--r-button); --radius-card: var(--r-card); --radius-overlay: var(--r-overlay); --radius-full: var(--r-full);
+}
+
+:root {
+  --type-insight:800 40px/52px var(--font);
+  --type-screen:800 30px/40px var(--font);
+  --type-section:700 24px/34px var(--font);
+  --type-card:700 18px/27px var(--font);
+  --type-body:400 15px/24px var(--font);
+  --type-label:600 13px/19px var(--font);
+  --type-caption:400 12px/18px var(--font);
+  --type-input:400 14px/20px var(--font);
+  --type-badge:600 12px/18px var(--font);
+  --type-eyebrow:700 12px/18px var(--font);
+}
