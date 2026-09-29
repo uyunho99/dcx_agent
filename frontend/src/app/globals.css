@@ -7,13 +7,15 @@
 @font-face{font-family:Pretendard;font-weight:800;font-display:swap;src:url("/fonts/Pretendard-ExtraBold.otf") format("opentype")}
 
 
+@layer base {
 * { box-sizing:border-box; }
 html { accent-color:var(--action); caret-color:var(--action); scrollbar-color:var(--line-strong) transparent; scrollbar-width:thin; }
 body { margin:0; font:var(--type-body); letter-spacing:-.01em; color:var(--ink); background:var(--soft); -webkit-font-smoothing:antialiased; }
 :focus-visible { outline:2px solid var(--action); outline-offset:2px; }
 ::selection { background:var(--blue-tint); color:var(--ink-strong); }
-select { appearance:none; border:1px solid var(--line-strong); border-radius:var(--r-input); }
+select { appearance:none; border:1px solid var(--line-strong); border-radius:var(--r-input); background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23676668' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; padding-right:32px; }
 button:not(:disabled) { cursor:pointer; }
+}
 .pipeline-shell { display:flex; height:100dvh; min-height:0; }
 .pipeline-side { width:var(--sidebar-width); flex:none; background:var(--soft); border-right:1px solid var(--line); padding:28px 20px; display:flex; flex-direction:column; gap:28px; overflow-y:auto; }
 .pipeline-logo { width:104px; height:auto; }

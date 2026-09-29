@@ -3,7 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { MessageCircle, Plug, X } from "lucide-react";
 import { Badge, Button, Icon } from "@/components/ds";
-import { INTERNAL_TOOLS, InternalToolsContext } from "@/lib/internalTools";
+import { INTERNAL_TOOLS } from "@/lib/internalTools";
+import { InternalToolsProvider } from "@/lib/internalToolsContext";
 import StepBar from "@/components/StepBar";
 import ChatPanel from "@/components/ChatPanel";
 import { useSessionStore } from "@/stores/useSessionStore";
@@ -47,7 +48,7 @@ export default function PipelineLayout({ children }: { children: React.ReactNode
   );
 
   return (
-    <InternalToolsContext.Provider value={{ drawerOpen, setDrawerOpen }}>
+    <InternalToolsProvider value={{ drawerOpen, setDrawerOpen }}>
       <div className="pipeline-shell">
         <aside className="pipeline-side" aria-label="파이프라인">
           <Image className="pipeline-logo" src="/person-a-logo.png" alt="Person A" width={104} height={32} priority />
@@ -72,6 +73,6 @@ export default function PipelineLayout({ children }: { children: React.ReactNode
           <div className="flex-1 min-h-0"><ChatPanel initialMessage="파이프라인 진행이나 결과에 대해 물어보세요." onSend={handleChat} /></div>
         </aside>}
       </div>
-    </InternalToolsContext.Provider>
+    </InternalToolsProvider>
   );
 }
