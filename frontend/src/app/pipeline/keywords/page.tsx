@@ -7,9 +7,10 @@ import { SaveBar } from '@/components/SaveBar';
 import { KeywordGroup } from '@/components/keywords/KeywordGroup';
 import { CoveragePanel } from '@/components/keywords/CoveragePanel';
 import { axes, destinations, groupKey, groupLabel } from '@/components/keywords/taxonomy';
-import { addKeyword, commitRound, getCoverage, getKeywords, getRound, KeywordApiError, postEvent, startRound, suggestWords, type Axis, type Decision, type Destination, type Draft, type Keyword, type KeywordState, type Rejection } from '@/lib/api/keywords';
+import { addKeyword, commitRound, getCoverage, getKeywords, getRound, KeywordApiError, postEvent, regenerateRound, startRound, suggestWords, type Axis, type Decision, type Destination, type Draft, type Keyword, type KeywordState, type Rejection } from '@/lib/api/keywords';
 import { contextRequest, patchSession } from '@/lib/api/context';
 import { filterKeywords, keywordFilters, type KeywordFilter } from '@/lib/logic/filterKeywords';
+import { createActionQueue } from '@/lib/logic/actionQueue';
 import { roundUi } from '@/lib/logic/roundUi';
 import { INTERNAL_TOOLS } from '@/lib/internalTools';
 import '@/components/keywords/keywords.css';
@@ -26,7 +27,7 @@ export default function KeywordsPage() {
 function KeywordScreen({ sid }: { sid: string }) {
   const router = useRouter(); const [data, setData] = useState<KeywordState | null>(null); const [round, setRound] = useState(1);
   const [overrides, setOverrides] = useState<Record<string, Decision>>({}); const [dirty, setDirty] = useState(false);
-  const [busy, setBusy] = useState(false); const lock = useRef(false); const [error, setError] = useState(''); const [notice, setNotice] = useState('');
+  const [busy, setBusy] = useState(false); const lock = useRef(false); const queue = useRef(createActionQueue()); const pendingActions = useRef(0); const [error, setError] = useState(''); const [notice, setNotice] = useState('');
   const [direction, setDirection] = useState(''); const [axis, setAxis] = useState('physical'); const [filter, setFilter] = useState<KeywordFilter>('판단 필요'); const [query, setQuery] = useState('');
   const [custom, setCustom] = useState<Destination[]>([]); const [customAxis, setCustomAxis] = useState(''); const [customName, setCustomName] = useState('');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({}); const [help, setHelp] = useState(false); const [elapsed, setElapsed] = useState(0);
@@ -73,26 +74,33 @@ function KeywordScreen({ sid }: { sid: string }) {
   const visible = filterKeywords(tabKeywords, filter, query);
   const isCollapsed = (g: Destination) => collapsed[`${axis}:${groupKey(g)}`] ?? tabGroups.length >= 10;
   const decisions = (): Decision[] => (current?.keywords ?? []).map(k => overrides[k.id] ?? { id: k.id, status: k.status === 'rejected' ? 'rejected' : 'approved', reject: k.reject });
-  async function action(fn: () => Promise<void>) { if (lock.current) return; lock.current = true; setBusy(true); setError(''); setNotice(''); try { await fn(); } catch (e) { reportError(e); } finally { lock.current = false; setBusy(false); } }
-  async function saveDirection() { if (direction.trim()) { const result = await postEvent(sid, { round, type: 'direction', text: direction.trim() }); setData(d => d ? { ...d, feedback_md: result.feedback_md } : d); setDirection(''); } }
-  async function generate(n: number) { await action(async () => { await saveDirection(); const job = await startRound(sid, n); setOverrides({}); setDirty(false); setElapsed(0); setRound(n); setData(d => d ? { ...d, keywordRounds: { ...d.keywordRounds, [n]: { round: n, gen: job.gen, job, committed: false, keywords: [] } } } : d); await patchSession(sid, { step: `r${n}` }); useSessionStore.getState().setSession({ step: `r${n}` }); }); }
+  async function action(fn: () => Promise<void>, waitForLock = false) {
+    if (lock.current && !waitForLock) return;
+    pendingActions.current += 1; lock.current = true; setBusy(true);
+    await queue.current(async () => {
+      setError(''); setNotice('');
+      try { await fn(); } catch (e) { reportError(e); }
+      finally { pendingActions.current -= 1; lock.current = pendingActions.current > 0; setBusy(lock.current); }
+    });
+  }
+  async function saveDirection(targetRound = round) { if (direction.trim()) { const result = await postEvent(sid, { round: targetRound, type: 'direction', text: direction.trim() }); setData(d => d ? { ...d, feedback_md: result.feedback_md } : d); setDirection(''); } }
+  async function generate(n: number, regenerate = false) { if (regenerate && !ui.canRegenerate) return; await action(async () => { await saveDirection(n); const job = await (regenerate ? regenerateRound(sid, n) : startRound(sid, n)); setOverrides({}); setDirty(false); setElapsed(0); setRound(n); setData(d => d ? { ...d, keywordRounds: { ...d.keywordRounds, [n]: { round: n, gen: job.gen, job, committed: false, keywords: [] } } } : d); await patchSession(sid, { step: `r${n}` }); useSessionStore.getState().setSession({ step: `r${n}` }); }); }
   async function review(k: Keyword, rejection: Rejection | null, to?: Destination) {
-    if (lock.current) return;
     let failed: unknown;
     await action(async () => { try {
       await postEvent(sid, { round, type: rejection ? 'reject' : 'unreject', kwId: k.id, tags: rejection?.tags, note: rejection?.note });
       setOverrides(o => ({ ...o, [k.id]: { id: k.id, status: rejection ? 'rejected' : 'approved', reject: rejection } })); setDirty(!current?.committed); if (!rejection && filter === '거절됨') { setFilter('전체'); }
       if (to) { await postEvent(sid, { round, type: 'move', kwId: k.id, to }); reveal(to); }
       await reload(); focusKeyword(k.id);
-    } catch (e) { failed = e; throw e; } });
+    } catch (e) { failed = e; throw e; } }, true);
     if (failed) throw failed;
   }
   function focusKeyword(id: string) { requestAnimationFrame(() => { const chip = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-keyword-id]')).find(el => el.dataset.keywordId === id); chip?.focus(); }); }
   function reveal(to: Destination) { setAxis('all'); setFilter('전체'); setQuery(''); setCollapsed(c => ({ ...c, [`all:${groupKey(to)}`]: false })); }
   async function move(k: Keyword | string, to: Destination) {
-    const id = typeof k === 'string' ? k : k.id; if (!all.some(item => item.id === id) || lock.current) return;
+    const id = typeof k === 'string' ? k : k.id; if (!all.some(item => item.id === id)) return;
     let failed: unknown;
-    await action(async () => { try { await postEvent(sid, { round, type: 'move', kwId: id, to }); await reload(); reveal(to); focusKeyword(id); } catch (e) { failed = e; throw e; } });
+    await action(async () => { try { await postEvent(sid, { round, type: 'move', kwId: id, to }); await reload(); reveal(to); focusKeyword(id); } catch (e) { failed = e; throw e; } }, true);
     if (failed) throw failed;
   }
   async function add(word: string, to: Destination, origin: 'manual' | 'suggested') {
@@ -119,8 +127,7 @@ function KeywordScreen({ sid }: { sid: string }) {
     <div className="kw-layout"><div className="kw-main space-y-4"><Card><fieldset disabled={busy || running}><Input label="다음 라운드 방향 지시 (선택)" value={direction} onChange={e => setDirection(e.target.value)} placeholder="예: 영유아 관련 맥락을 더 발산해줘" /><div className="ds-actions"><Button disabled={!direction.trim()} onClick={() => void action(saveDirection)}>지시 저장하기</Button></div></fieldset></Card>
       {running ? <Card><p role="status" aria-live="polite">처리 중… R{round} 생성 중 · 보통 30~90초 · 경과 {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}</p><div className="space-y-4 mt-4">{[0, 1, 2].map(i => <Skeleton key={i} height={112} />)}</div><p className="ds-t-caption">다른 화면으로 이동해도 생성은 계속됩니다.</p></Card> : <>
       {current?.job.status === 'failed' && <Banner tone="danger" actions={<Button disabled={busy} onClick={() => void generate(round)}>다시 생성하기</Button>}>R{round} 생성에 실패했습니다(원인: {reasons[current.job.error?.kind ?? ''] ?? '생성 도구 오류'}). 승인한 키워드는 그대로 있습니다. 다시 생성하세요.{current.job.error?.kind === 'backend' && ' 설정에서 claude_api로 바꿀 수 있습니다.'}</Banner>}
-      {current?.below_min && <Banner>목표 {current.below_min.min}개 중 {current.below_min.got}개가 생성되었습니다. 그대로 검토하거나 저장 후 다음 라운드를 생성하세요.</Banner>}
-      {current?.job.status === 'done' && !current.keywords.length && <Banner>새 키워드가 나오지 않았습니다. 방향 지시를 바꾸거나 다시 생성하세요. 먼저 저장하여 이 라운드를 확정하세요.</Banner>}
+      {ui.canRegenerate && (current?.keywords.length === 0 ? <Banner actions={<Button disabled={busy} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}>새 키워드가 나오지 않았습니다. 방향 지시를 바꾸거나 다시 생성하세요.</Banner> : current?.below_min ? <Banner actions={<Button disabled={busy} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}>목표 {current.below_min.min}개 중 {current.below_min.got}개가 생성되었습니다. 그대로 검토하거나 다시 생성하세요.</Banner> : null)}
       <Card><Tabs label="3축" value={axis} onChange={setAxis} items={[{ value: 'all', label: '전체' }, ...axes].map(a => ({ ...a, count: all.filter(k => a.value === 'all' || k.axis === a.value).length, content: a.value === axis ? reviewPanel : null }))} />
 
       </Card></>}

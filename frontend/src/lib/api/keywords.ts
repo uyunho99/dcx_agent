@@ -20,6 +20,7 @@ async function request<T>(sid: string, path = '', method = 'GET', body?: unknown
 }
 export const getKeywords = (sid: string) => request<KeywordState>(sid);
 export const startRound = (sid: string, n: number) => request<Job>(sid, `/rounds/${n}`, 'POST');
+export const regenerateRound = (sid: string, n: number) => request<Job>(sid, `/rounds/${n}?regenerate=true`, 'POST');
 export const getRound = (sid: string, n: number) => request<Job & Omit<Round, 'job'>>(sid, `/rounds/${n}`);
 export const commitRound = (sid: string, n: number, gen: number, decisions: Decision[]) => request(sid, `/rounds/${n}/commit`, 'POST', { gen, decisions });
 export type ReviewEvent = { round: number; type: 'direction' | 'approve' | 'reject' | 'move' | 'unreject'; kwId?: string; tags?: string[]; note?: string; text?: string; to?: Destination };
