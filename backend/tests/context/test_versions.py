@@ -5,7 +5,7 @@ from test_api import create
 
 def test_create_version_copies_all_but_collection(client, data_dir, monkeypatch):
     from app.crawl import control
-    monkeypatch.setattr(control, 'phase_state', lambda sid: 'done')
+    monkeypatch.setattr(control, 'phase_state', lambda sid, collection_id=None: 'done')
     sid = create(client)
     update_session(sid, {'collectionId': 'c1'})
     (session_dir(sid) / 'keyword_events.jsonl').write_text('event')
@@ -57,7 +57,7 @@ def test_compare_stage1_added_removed_moved(client):
 
 def test_compare_stage2_same_collection(client, monkeypatch):
     from app.crawl import control
-    monkeypatch.setattr(control, 'phase_state', lambda sid: 'done')
+    monkeypatch.setattr(control, 'phase_state', lambda sid, collection_id=None: 'done')
     sid = create(client)
     update_session(sid, {'collectionId': 'c1'})
     create_version(sid, 'v1', 'stage2', '')

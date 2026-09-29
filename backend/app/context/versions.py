@@ -70,25 +70,9 @@ def _idle(sid, data):
         raise StoreError('진행 중인 작업이 끝난 뒤 다시 시도하세요')
 
 
-def _crawl_phase(sid):
-    from app.crawl import control
-    if hasattr(control, 'phase_state'):
-        return control.phase_state(sid)
-    # Transitional compatibility until W2 exposes phase_state. latest_run opens
-    # CrawlQueue.open_readonly; no recovery, schema creation or run mutation.
-    from app.context.store import load_session
-    data = load_session(sid) or {}
-    if not data.get('collectionId'):
-        return 'none'
-    root = control.collection_dir(sid)
-    if not (root / 'queue.sqlite').exists():
-        return 'none'
-    run = control.latest_run(control.ReadQueue(root / 'queue.sqlite'))
-    if control._run_state(run) == 'running':
-        return 'running'
-    if (root / 'report.json').exists():
-        return 'done'
-    return 'unfinished' if run else 'none'
+def _crawl_phase(sid, collection_id):
+    from app.crawl.control import phase_state
+    return phase_state(sid, collection_id) if collection_id else 'none'
 
 
 def create_version(sid, from_v, restart_from, note, version=None) -> str:
@@ -101,7 +85,7 @@ def create_version(sid, from_v, restart_from, note, version=None) -> str:
         data = _data(sid, from_v)
         _idle(sid, _data(sid, meta['activeVersion']))
         _idle(sid, data)
-        phase = _crawl_phase(sid)
+        phase = _crawl_phase(sid, data.get('collectionId'))
         if phase == 'running':
             raise StoreError('진행 중인 작업이 끝난 뒤 다시 시도하세요')
         v = f"v{max(int(e['id'][1:]) for e in meta['versions']) + 1}"

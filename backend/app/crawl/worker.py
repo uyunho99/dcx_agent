@@ -123,10 +123,16 @@ class _Run:
         self.save()
 
     def save(self):
-        write_json(self.root / 'worker_state.json', dict(sid=self.sid, kind=self.kind,
-                   run_id=self.id, snapshot_id=self.snapshot, channels=self.channels,
-                   paused_channels=[s for s, c in self.channels.items() if c['status'].startswith('paused')],
-                   **({'stopReason': self.stop_reason} if self.stop_reason else {})))
+        # Serialize ownership validation and the atomic file replacement with
+        # run fencing/registration, including the interval before respawn.
+        with self.q._write() as db:
+            latest = db.execute('SELECT run_id,status FROM runs ORDER BY started_at DESC, rowid DESC LIMIT 1').fetchone()
+            if not latest or latest['run_id'] != self.id or latest['status'] != 'running':
+                return
+            write_json(self.root / 'worker_state.json', dict(sid=self.sid, kind=self.kind,
+                       run_id=self.id, snapshot_id=self.snapshot, channels=self.channels,
+                       paused_channels=[s for s, c in self.channels.items() if c['status'].startswith('paused')],
+                       **({'stopReason': self.stop_reason} if self.stop_reason else {})))
 
     def target_reached(self):
         if self.target_total > 0 and self.completed_docs >= self.target_total:
@@ -229,11 +235,11 @@ class _Run:
                 status = 'paused'
                 self.stop_reason = 'pending_channels'
         try:
-            self.q.finish_run(self.id, status)
             for c in self.channels.values():
                 if c['status'] == 'running':
                     c['status'] = status
             self.save()
+            self.q.finish_run(self.id, status)
         finally:
             for pool in self.pools.values():
                 pool.shutdown(wait=False, cancel_futures=True)

@@ -11,6 +11,37 @@ from app.crawl import control
 from app.crawl.filters import DEFAULT_AD_WORDS, DEFAULT_EXCLUDE_SOURCES
 
 
+# Keep existing human-readable messages and HTTP/kind contracts intact.
+ERROR_CODES = {
+    'Session not found': 'session_not_found',
+    'Invalid session id': 'invalid_session_id',
+    'Invalid version': 'invalid_version',
+    'No crawl collection': 'no_collection',
+    'Another crawl phase is running': 'worker_running',
+    'A crawl worker is running': 'worker_running',
+    'Worker is already running': 'worker_running',
+    'Finished collections are immutable': 'finished_collection',
+    'Invalid list mode': 'invalid_list_mode',
+    'Added-keywords mode requires a parent collection': 'parent_collection_required',
+    'Invalid collection ancestry': 'invalid_collection_ancestry',
+    'Parent collection not found': 'parent_collection_not_found',
+    'No approved new keywords': 'no_approved_keywords',
+    'Sources are unavailable': 'sources_unavailable',
+    'Active collection changed before launch': 'collection_conflict',
+    'Finish list collection before starting detail': 'p1_unfinished',
+    'Snapshot not found': 'snapshot_not_found',
+    'Detail snapshot is already selected': 'snapshot_conflict',
+    'Resume the unfinished detail phase': 'detail_unfinished',
+    'No unfinished phase to resume': 'no_unfinished_phase',
+    'Unknown resume channel': 'unknown_resume_channel',
+    'Gate is editable only after list completion': 'gate_not_editable',
+    'Unknown gate keyword': 'unknown_gate_keyword',
+    '구버전 세션은 0~2단계를 편집할 수 없습니다': 'legacy_session',
+    '다른 버전이 활성화되었습니다': 'version_conflict',
+    '읽기 전용 버전입니다': 'readonly_version',
+}
+
+
 class CrawlRoute(APIRoute):
     def get_route_handler(self):
         handler = super().get_route_handler()
@@ -18,11 +49,11 @@ class CrawlRoute(APIRoute):
             try:
                 return await handler(request)
             except StoreError as exc:
-                return JSONResponse(status_code=exc.status, content={'status': 'error', 'error': {'kind': exc.kind, 'message': str(exc)}})
+                return JSONResponse(status_code=exc.status, content={'status': 'error', 'error': {'kind': exc.kind, 'code': ERROR_CODES.get(str(exc), 'invalid_request' if exc.kind == 'validation' else 'crawl_error'), 'message': str(exc)}})
             except RequestValidationError:
-                return JSONResponse(status_code=422, content={'status': 'error', 'error': {'kind': 'validation', 'message': 'Invalid crawl request'}})
+                return JSONResponse(status_code=422, content={'status': 'error', 'error': {'kind': 'validation', 'code': 'invalid_request', 'message': 'Invalid crawl request'}})
             except OSError:
-                return JSONResponse(status_code=500, content={'status': 'error', 'error': {'kind': 'storage', 'message': 'Crawl storage or worker operation failed'}})
+                return JSONResponse(status_code=500, content={'status': 'error', 'error': {'kind': 'storage', 'code': 'storage_error', 'message': 'Crawl storage or worker operation failed'}})
         return wrapped
 
 

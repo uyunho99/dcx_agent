@@ -96,7 +96,12 @@ def delete_session(sid: str, version: str | None = None):
         root = store.root_dir(sid)
         if (root / "meta.json").exists():
             with store.locked(sid):
-                store.assert_writable(sid, version)
+                try:
+                    session = store.load_session(sid)
+                except (OSError, ValueError):
+                    session = None
+                if session is not None:
+                    store.assert_writable(sid, version)
                 # Keep the lock inode stable for writers already waiting on it.
                 for child in root.iterdir():
                     if child.name == ".lock":

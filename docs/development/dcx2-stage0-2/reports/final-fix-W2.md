@@ -66,3 +66,49 @@ and trailer:
 `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
 
 It failed with exit 1 because the three new files could not be staged and were unknown to Git. No permission bypass or unrelated-file commit was attempted.
+
+## Follow-up FX-B
+
+- N1: `phase_state(sid, collection_id=None)` accepts an explicit collection. Forking checks the source version's collection, including older read-only sources; a source without a collection stays detached. Regression tests cover repeated forks from a stopped c1 after v2 detached, and retaining completed c1 while active v2 has an unfinished c2.
+- N2: stale runs are marked interrupted before SIGTERM and state reset. Worker `save()` checks that its run is both latest and running inside a SQLite write transaction, held through atomic state replacement. This serializes saves against fencing and new run registration. Normal close saves terminal channel state before finishing the run. Confirmed worker PIDs receive SIGTERM followed by polling for exit for at most five seconds; after timeout the fence still prevents old saves. Tests cover fenced saves/close before and after replacement, a newer starting reservation, exit polling, and the five-second bound.
+- N3: deleting a versioned session skips `assert_writable` only when loading returns no session or fails with a read/decode error. Root path validation and writable checks for readable sessions remain. Missing/corrupt JSON deletion and invalid session paths are tested.
+- N4: removed both transitional fallbacks; version phase checks directly use the public helper, and crawl mutations directly use `_update_locked(..., confirm_stage=...)`.
+- M1 support: crawl errors retain their existing HTTP status, `kind`, and `message`, and add `error.code`. Equivalent worker-running errors share one code. Validation and storage envelopes also have codes.
+
+Error code list:
+
+| Code | Meaning |
+| --- | --- |
+| `sources_unavailable` | Requested sources are unavailable |
+| `worker_running` | A worker or another crawl phase is running |
+| `invalid_request` | Request validation failed |
+| `unknown_resume_channel` | Resume intervals name an unknown channel |
+| `p1_unfinished` | List collection must finish before detail |
+| `finished_collection` | Completed collection is immutable |
+| `readonly_version` | Selected version is read-only |
+| `version_conflict` | Displayed version differs from active version |
+| `session_not_found` | Session does not exist |
+| `invalid_session_id` | Invalid session identifier |
+| `invalid_version` | Invalid version identifier |
+| `no_collection` | No valid crawl collection is selected |
+| `invalid_list_mode` | Unsupported list mode |
+| `parent_collection_required` | Added-keywords mode needs a parent |
+| `invalid_collection_ancestry` | Invalid or cyclic collection ancestry |
+| `parent_collection_not_found` | Parent collection metadata is missing |
+| `no_approved_keywords` | No approved new keywords to collect |
+| `collection_conflict` | Active collection changed before launch |
+| `snapshot_not_found` | Requested snapshot does not exist |
+| `snapshot_conflict` | Another detail snapshot is already selected |
+| `detail_unfinished` | Existing detail phase must be resumed |
+| `no_unfinished_phase` | No unfinished phase is available to resume |
+| `gate_not_editable` | Gate cannot be edited in the current phase |
+| `unknown_gate_keyword` | Gate exclusion names an unknown keyword |
+| `legacy_session` | Legacy session cannot edit stages 0–2 |
+| `storage_error` | Storage or worker OS operation failed |
+| `crawl_error` | Fallback for an otherwise unmapped StoreError |
+
+TDD: `tests/crawl/test_followup_fx_b.py` initially reported **15 failed** before production edits. Focused context/crawl regression validation then passed **87 tests**. The first full-suite GREEN was **537 passed, 2 warnings in 36.40s**. Four additional boundary checks were added before final full-suite verification below. Existing phase-helper mocks were updated for the optional collection argument.
+
+Final GREEN: `cd backend && .venv/bin/python -m pytest -q` — **541 passed, 2 warnings in 36.80s**. All 19 follow-up tests pass. Scoped `git diff --check` passes. Warnings remain the existing Pydantic class-config deprecation and joblib physical-core fallback. Frontend and unrelated `.DS_Store` edits are excluded.
+
+Commit outcome: **uncommitted**. Explicit scoped `git add` failed (exit 128): the sandbox denied creation of `/Users/persona1/Desktop/dcx_agent/.git/worktrees/dcx_agent-dcx2-stage0-2/index.lock`. The requested subject and `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>` trailer were then passed to a scoped `git commit --only`; it failed (exit 1) because the new regression test could not be staged. Changes are left uncommitted as requested.

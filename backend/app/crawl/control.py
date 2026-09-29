@@ -67,15 +67,7 @@ def _mutate(sid, callback, version=None, confirm_stage=None):
         session = store.assert_writable(sid, version)
         patch, result = callback(session)
         if patch:
-            if confirm_stage:
-                try:
-                    store._update_locked(sid, patch, confirm_stage=confirm_stage)
-                except TypeError as exc:
-                    if 'confirm_stage' not in str(exc):
-                        raise
-                    store._update_locked(sid, patch)
-            else:
-                store._update_locked(sid, patch)
+            store._update_locked(sid, patch, confirm_stage=confirm_stage)
         return result
 
 
@@ -108,12 +100,24 @@ def _live(queue):
     for row in rows:
         if _run_state(row) == 'running':
             return dict(row)
+        # Fence before resetting state or signalling: save() uses the same SQLite
+        # write lock, so an in-flight save finishes before this update commits.
+        with closing(CrawlQueue(queue.path)) as writable:
+            writable.connection.execute(
+                "UPDATE runs SET status='interrupted' WHERE run_id=? AND status IN ('running','starting')",
+                (row['run_id'],))
         if pid_alive(row['pid']):
             try:
                 command = subprocess.run(['ps', '-p', str(row['pid']), '-o', 'args='],
                                          capture_output=True, text=True, timeout=2).stdout
                 if 'app.crawl.worker' in command:
                     os.kill(row['pid'], signal.SIGTERM)
+                    deadline = time.monotonic() + 5
+                    while pid_alive(row['pid']):
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0:
+                            break
+                        time.sleep(min(.1, remaining))
             except (OSError, subprocess.SubprocessError):
                 pass
     return None
@@ -444,14 +448,19 @@ def save_config(sid, config, version=None):
     return _mutate(sid, perform, version)
 
 
-def phase_state(sid):
+def phase_state(sid, collection_id=None):
     """Read-only version guard; list completion still awaits detail collection."""
     import sqlite3
-    session = store.load_session(sid)
-    if not session or not session.get('collectionId'):
+    store.root_dir(sid)  # Validate even when an explicit collection is supplied.
+    if collection_id is None:
+        session = store.load_session(sid)
+        collection_id = (session or {}).get('collectionId')
+    if not collection_id:
         return 'none'
+    if not re.fullmatch(r'c[1-9][0-9]*', collection_id):
+        raise store.StoreError('No crawl collection', 409)
     try:
-        root = collection_dir(sid)
+        root = Path(settings.local_data_dir).resolve() / 'crawl' / sid / 'collections' / collection_id
         queue = ReadQueue(root / 'queue.sqlite')
         run = latest_run(queue)
         if _run_state(run) == 'running':

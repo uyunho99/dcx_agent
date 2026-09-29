@@ -20,7 +20,7 @@ def test_fork_collection_phase(client, monkeypatch, phase):
     from app.crawl import control
     sid = create(client)
     store.update_session(sid, {'collectionId': 'c1'})
-    monkeypatch.setattr(control, 'phase_state', lambda sid: phase, raising=False)
+    monkeypatch.setattr(control, 'phase_state', lambda sid, collection_id=None: phase, raising=False)
     if phase == 'running':
         with pytest.raises(store.StoreError):
             versions.create_version(sid, 'v1', 'stage3', '')
