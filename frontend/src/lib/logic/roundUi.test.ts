@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { roundUi } from './roundUi';
+import { roundUi, directionRound } from './roundUi';
 it('allows initial start and disables every mutation during running', () => {
   expect(roundUi({ round: 1 }).canStart).toBe(true);
   expect(roundUi({ round: 2, status: 'running' })).toMatchObject({ canStart: false, canCommit: false, canNext: false, canEdit: false });
@@ -15,10 +15,10 @@ it('allows failed retries and only R4 additional generation after commit', () =>
   expect(roundUi({ round: 3, status: 'done', committed: true }).canStart).toBe(false);
   expect(roundUi({ round: 4, status: 'done', committed: true }).canStart).toBe(true);
 });
-it('lets the server decide regeneration for completed rounds including copied commits', () => {
+it('requires explicit regeneration permission for committed rounds', () => {
   for (const round of [1, 2, 3, 4]) {
     expect(roundUi({ round, status: 'done', committed: false }).canRegenerate).toBe(true);
-    expect(roundUi({ round, status: 'done', committed: true }).canRegenerate).toBe(true);
+    expect(roundUi({ round, status: 'done', committed: true }).canRegenerate).toBe(false);
     for (const status of [undefined, 'running', 'failed'] as const) {
       expect(roundUi({ round, status }).canRegenerate).toBe(false);
     }
@@ -32,4 +32,15 @@ it('locks failed and mismatched generations while keeping retries available', ()
 it('requires saving dirty decisions before regeneration', () => {
   expect(roundUi({ round: 1, status: 'done', dirty: true }).canRegenerate).toBe(false);
   expect(roundUi({ round: 1, status: 'done', dirty: false }).canRegenerate).toBe(true);
+});
+
+it('permits restart regeneration and protects existing next rounds',()=>{
+ expect(roundUi({round:1,status:'done',committed:true,needsRegeneration:true}).canRegenerate).toBe(true);
+ expect(roundUi({round:1,status:'done',committed:true,nextRound:{status:'done',committed:true}}).canNext).toBe(false);
+ expect(roundUi({round:1,status:'done',committed:true,nextRound:{status:'done',committed:true,needsRegeneration:true}}).canNext).toBe(true);
+ expect(roundUi({round:1,status:'done',committed:true,nextRound:{status:'done',committed:false}}).canNext).toBe(true);
+ expect(roundUi({round:1,status:'done',committed:true,nextRound:{status:'running'}}).canNext).toBe(false);
+});
+it('tags directions saved at commit with the upcoming generation',()=>{
+ expect([1,2,3,4].map(directionRound)).toEqual([2,3,4,4]);
 });

@@ -66,7 +66,7 @@ export default function PipelineLayout({ children }: { children: React.ReactNode
             <div className="ds-t-label text-ink-strong">{bk || "세션 없음"}</div>
             <VersionPicker />
             <div className="pipeline-activity" data-slot="activity-badge" aria-live="polite"><SidebarActivity /></div>
-            {INTERNAL_TOOLS && <div className="pipeline-tools"><Button id="integrations-trigger" aria-label="외부 API 연결 상태 열기" style={{ whiteSpace: "normal", height: "auto", minHeight: 28, textAlign: "left" }} variant="quiet" size="sm" aria-haspopup="dialog" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(open => !open)}><Icon icon={Plug} /><span className="pipeline-foot-label">외부 API · {integrations.error ? "—" : connectedCount ?? "—"}/6 연결 열기</span></Button><Badge>내부용</Badge></div>}
+            {INTERNAL_TOOLS && <div className="pipeline-tools"><Button id="integrations-trigger" aria-label={`외부 API · ${integrations.error ? "—" : connectedCount ?? "—"}/6 연결 열기`} title={`외부 API · ${integrations.error ? "—" : connectedCount ?? "—"}/6 연결 열기`} style={{ whiteSpace: "normal", height: "auto", minHeight: 28, textAlign: "left" }} variant="quiet" size="sm" aria-haspopup="dialog" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(open => !open)}><Icon icon={Plug} /><span className="pipeline-foot-label">외부 API · {integrations.error ? "—" : connectedCount ?? "—"}/6 연결 열기</span></Button><Badge>내부용</Badge></div>}
           </div>
         </aside>
         <div className="pipeline-content">

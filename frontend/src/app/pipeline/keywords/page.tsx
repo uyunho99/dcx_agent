@@ -15,7 +15,8 @@ import { contextRequest, patchSession } from '@/lib/api/context';
 import { filterKeywords, keywordFilters, type KeywordFilter } from '@/lib/logic/filterKeywords';
 import { createActionQueue } from '@/lib/logic/actionQueue';
 import { reviewKeywords } from '@/lib/logic/reviewKeywords';
-import { roundUi } from '@/lib/logic/roundUi';
+import { displayError } from '@/lib/api/errors';
+import { roundUi, directionRound } from '@/lib/logic/roundUi';
 import { INTERNAL_TOOLS } from '@/lib/internalTools';
 import '@/components/keywords/keywords.css';
 
@@ -43,9 +44,10 @@ function KeywordScreen({ sid }: { sid: string }) {
   const [custom, setCustom] = useState<Destination[]>([]); const [customAxis, setCustomAxis] = useState(''); const [customName, setCustomName] = useState('');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({}); const [help, setHelp] = useState(false); const [elapsed, setElapsed] = useState(0);
   const [duplicate, setDuplicate] = useState<Keyword | null>(null);
-  const current = data?.keywordRounds[String(round)]; const ui = roundUi({ round, status: current?.job.status, committed: current?.committed, gen: current?.gen, jobGen: current?.job.gen, dirty });
+  const nextRound = data?.keywordRounds[String(round + 1)];
+  const current = data?.keywordRounds[String(round)]; const ui = roundUi({ round, status: current?.job.status, committed: current?.committed, gen: current?.gen, jobGen: current?.job.gen, needsRegeneration: current?.needsRegeneration, nextRound: nextRound ? {...nextRound, status: nextRound.job.status} : undefined, dirty });
   const running = current?.job.status === 'running';
-  const reportError = useCallback((e: unknown) => setError(e instanceof Error ? e.message : '요청에 실패했습니다. 다시 시도하세요.'), []);
+  const reportError = useCallback((e: unknown) => setError(displayError(e)), []);
   const reload = useCallback(async () => { const fresh = await getVersionKeywords(sid, version); setData(fresh); return fresh; }, [sid, version]);
   useEffect(() => {
     let cancelled = false;
@@ -95,8 +97,8 @@ function KeywordScreen({ sid }: { sid: string }) {
       finally { pendingActions.current -= 1; lock.current = pendingActions.current > 0; setBusy(lock.current); }
     });
   }
-  async function saveDirection(targetRound = round) { if (direction.trim()) { const result = await postEvent(sid, { round: targetRound, type: 'direction', text: direction.trim() }, version); await patchSession(sid, {drafts:{keywords:{[`r${round}`]:{direction:''}}}}, version); if(drafts.current[`r${round}`]) drafts.current[`r${round}`].direction = ''; setData(d => d ? { ...d, feedback_md: result.feedback_md } : d); setDirection(''); setSavedDirection(''); } }
-  async function generate(n: number, regenerate = false) { if ((dirty && current) || (regenerate && !ui.canRegenerate)) return; await action(async () => { await saveDirection(n); const job = await (regenerate ? regenerateRound(sid, n, version) : startRound(sid, n, version)); setOverrides({}); setDirty(false); setElapsed(0); setRound(n); setData(d => d ? { ...d, keywordRounds: { ...d.keywordRounds, [n]: { round: n, gen: job.gen, job, committed: false, keywords: [] } } } : d); await patchSession(sid, { step: `r${n}` }, version); useSessionStore.getState().setSession({ step: `r${n}` }); }); }
+  async function saveDirection(targetRound = directionRound(round)) { if (direction.trim()) { const result = await postEvent(sid, { round: targetRound, type: 'direction', text: direction.trim() }, version); await patchSession(sid, {drafts:{keywords:{[`r${round}`]:{direction:''}}}}, version); if(drafts.current[`r${round}`]) drafts.current[`r${round}`].direction = ''; setData(d => d ? { ...d, feedback_md: result.feedback_md } : d); setDirection(''); setSavedDirection(''); } }
+  async function generate(n: number, regenerate = false) { if ((dirty && current) || (regenerate && !(n === round ? ui.canRegenerate : ui.canNext))) return; await action(async () => { await saveDirection(n); const job = await (regenerate ? regenerateRound(sid, n, version) : startRound(sid, n, version)); setOverrides({}); setDirty(false); setElapsed(0); setRound(n); setData(d => d ? { ...d, keywordRounds: { ...d.keywordRounds, [n]: { round: n, gen: job.gen, job, committed: false, keywords: [] } } } : d); await patchSession(sid, { step: `r${n}` }, version); useSessionStore.getState().setSession({ step: `r${n}` }); }); }
   async function review(k: Keyword, rejection: Rejection | null, to?: Destination) {
     let failed: unknown;
     await action(async () => { try {
@@ -124,7 +126,7 @@ function KeywordScreen({ sid }: { sid: string }) {
   async function suggest(to: Destination) { let words: string[] = []; await action(async () => { words = (await suggestWords(sid, to, version)).words.map(w => w.word); }); return words; }
   async function draft() { if (running) return; await action(async () => { await patchSession(sid, { drafts: { keywords: { [`r${round}`]: { round, gen: current?.gen ?? 0, decisions: decisions(), groups: custom, direction } } } }, version); setDirty(false); drafts.current[`r${round}`] = {round,gen:current?.gen ?? 0,decisions:decisions(),groups:custom,direction}; setSavedDirection(direction); setNotice('검토를 임시 저장했습니다. 저장하면 이 라운드를 확정합니다.'); }); }
   async function commit() { if (!current || !ui.canCommit) return; await action(async () => { await saveDirection(); await commitRound(sid, round, current.gen, decisions(), version); setOverrides({}); setDirty(false); await reload(); await patchSession(sid, { drafts: { keywords: { [`r${round}`]: null } } }, version); delete drafts.current[`r${round}`]; setNotice(`R${round}을 저장했습니다. 다음 작업을 선택하세요.`); }); }
-  async function next() { if (!ui.canNext || dirty) return; if (round < 4) await generate(round + 1); else await action(async () => { await saveDirection(); await patchSession(sid, { step: 'crawl-setup' }, version); useSessionStore.getState().setSession({ step: 'crawl-setup' }); router.push('/pipeline/crawling'); }); }
+  async function next() { if (!ui.canNext || dirty) return; if (round < 4) await generate(round + 1, !!nextRound); else await action(async () => { await saveDirection(); await patchSession(sid, { step: 'crawl-setup' }, version); useSessionStore.getState().setSession({ step: 'crawl-setup' }); router.push('/pipeline/crawling'); }); }
   const approved = all.filter(k => k.status !== 'rejected'); const counts = axes.map(a => approved.filter(k => k.axis === a.value).length); const minimum = counts.indexOf(Math.min(...counts));
   if (!data) return <div className="space-y-4">{error ? <Banner tone="danger" actions={<Button onClick={() => window.location.reload()}>새로고침하기</Button>}>{error}</Banner> : <><p role="status">처리 중…</p><Skeleton height={120} /><Skeleton height={240} /></>}</div>;
   const steps = names.map((title, i) => ({ label: i < 4 ? `R${i + 1}` : '최종', title, description: techniques[i], state: i === (ui.final ? 4 : round - 1) ? 'current' : i < 4 && data.keywordRounds[String(i + 1)]?.committed ? 'complete' : 'upcoming' })) as [StepperItem, StepperItem, StepperItem, StepperItem, StepperItem];
@@ -148,6 +150,6 @@ function KeywordScreen({ sid }: { sid: string }) {
     {INTERNAL_TOOLS && <Card><details><summary>keyword_feedback.md 미리보기 <Badge>내부용</Badge></summary><pre style={{color:"var(--ink)"}} className="ds-t-caption">{data.feedback_md || '아직 기록된 피드백이 없습니다.'}</pre></details></Card>}</aside></div>
     {data.keywordRounds['2']?.committed && <section className="mt-6" aria-label="커버리지 검사"><CoveragePanel coverage={data.coverage} busy={busy || running} onRefresh={() => void action(async () => { await getCoverage(sid, version); await reload(); })} /></section>}
     <p className="ds-t-caption" aria-live="polite">승인 예정 {approved.length} · 거절 {all.length - approved.length}</p>
-    <SaveBar dirty={dirty || direction !== savedDirection} valid={ui.canCommit && !busy} saving={busy} onDraft={() => void draft()} onSave={() => void commit()} primary={<>{current?.job.status === 'done' && <Button disabled={busy || !ui.canRegenerate} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}<Button disabled={!ui.canStart || busy || (dirty && !!current)} onClick={() => void generate(round)}>{ui.final ? '추가 생성하기' : current?.job.status === 'failed' ? '다시 생성하기' : '생성하기'}</Button><Button variant="primary" disabled={!ui.canNext || busy || dirty} onClick={() => void next()}>{round === 4 ? '크롤링 설정하기' : '다음 라운드 생성'}</Button></>} />
+    <SaveBar dirty={dirty || direction !== savedDirection} valid={ui.canCommit && !busy} saving={busy} onDraft={() => void draft()} onSave={() => void commit()} primary={<>{ui.showRegenerate && <Button disabled={busy || !ui.canRegenerate} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}<Button disabled={!ui.canStart || busy || (dirty && !!current)} onClick={() => void generate(round)}>{ui.final ? '추가 생성하기' : current?.job.status === 'failed' ? '다시 생성하기' : '생성하기'}</Button>{(round === 4 || !nextRound || ui.canNext) && <Button variant="primary" disabled={!ui.canNext || busy || dirty} onClick={() => void next()}>{round === 4 ? '크롤링 설정하기' : '다음 라운드 생성'}</Button>}</>} />
   </div>;
 }

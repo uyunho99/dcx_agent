@@ -111,3 +111,46 @@ error: pathspec 'docs/development/dcx2-stage0-2/reports/final-fix-W3.md' did not
 ```
 
 결과는 **uncommitted**. 권한 우회 없이 변경을 남겼으며 backend 및 다른 작업의 파일을 staging/commit하지 않았다.
+
+## Follow-up FX-F
+
+요청 범위의 frontend와 이 절만 수정했다. 기존 `.DS_Store` 및 병렬 backend/다른 보고서 변경은 건드리지 않았다. 하위 에이전트와 추가 질문 없이 진행했다. 아래 내용은 위 W3의 수집본 부재/오류 원문 보존/확정 라운드 재생성 관련 설명을 대체한다.
+
+- I1: `restartFrom === stage2` 또는 `stale.stage2`일 때만 fresh setup/`새 수집 시작`. 최초 수집은 일반 설정과 `목록 수집 시작`을 유지한다.
+- M1: `lib/api/errors.ts`에서 지정한 8개 `error.code`를 한국어 상황+다음 행동으로 매핑한다. 미지정/알 수 없는 코드는 기존 한국어 fallback을 쓰고 원문 message/detail은 노출하지 않는다. context 저장/조회/제안, keyword, crawl 화면에 연결했다. 네트워크 예외도 한국어 fallback으로 처리한다. 409 version conflict 이벤트는 유지한다.
+- M2: done+미확정 또는 `needsRegeneration`인 라운드만 다시 생성 버튼을 표시한다(진행 중/dirty는 실행 불가). 과거 라운드에서 다음 라운드가 이미 있으면 **생성 대상인 다음 라운드**에 같은 조건을 적용하고 regenerate 요청을 보낸다. 다음 라운드가 없으면 기존 생성 흐름을 유지한다.
+- M3 / R-66: 멈춘 채널만, 없으면 `collection_channels`만 전송한다. `min_interval_s`의 현재 유효값을 우선해 두 배로 늘리고, 없으면 설정값으로 계산한다(최소 1초). 두 status 필드가 없고 멈춘 채널도 없으면 빈 interval map을 보내 UI 채널을 추정하지 않는다. 설정 config는 변경하지 않는다.
+- M4: 버전 id/읽기 전용·활성 상태 및 외부 API `n/6 연결`을 accessible name과 title에 포함했다. 새 활성 버전 안내에서 축소 화면용 숨김 클래스를 제거하여 1100px 미만에서도 안내와 열기 버튼을 유지한다.
+- M7 / R-46: commit/지시 저장의 방향 이벤트는 다음 생성 라운드(최대 R4)에 기록한다. 실제 생성/재생성에서는 대상 라운드를 명시한다. helper로 R1→R2, R2→R3, R3→R4, R4→R4를 검증했다.
+
+테스트를 먼저 작성한 RED:
+
+```text
+npm --prefix frontend test -- src/lib/logic/finalFix.test.ts src/lib/logic/roundUi.test.ts src/lib/api/errors.test.ts src/lib/logic/mutationContract.test.ts
+Test Files 4 failed (4)
+Tests 16 failed | 12 passed (28), exit 1
+```
+
+최종 단위 테스트/정적 검사:
+
+```text
+npm --prefix frontend test
+Test Files 21 passed (21), Tests 81 passed (81), exit 0
+npm --prefix frontend run lint
+exit 0, 0 problems
+```
+
+실제 브라우저 시각/키보드 QA 및 병렬 backend와의 worker 왕복은 수행하지 않았다. 접근성은 JSX와 반응형 CSS 경로를 검토했다. 기존 Node DEP0205 경고가 남는다.
+
+빌드 결과:
+
+```text
+npm --prefix frontend run build
+Turbopack: binding to a port / Operation not permitted (os error 1), exit 1
+npm --prefix frontend run build -- --webpack
+Compiled successfully; TypeScript 통과; static pages 14/14, exit 0
+```
+
+`git diff --check -- frontend docs/development/dcx2-stage0-2/reports/final-fix-W3.md` 통과. 요청한 제목/trailer로 범위를 제한한 commit을 시도한다.
+
+scoped `git add` 및 지정 제목/`Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`를 넣은 `git commit --only` 모두 exit 128: worktree의 `index.lock` 생성이 `Operation not permitted`로 거부되었다. 결과는 **uncommitted**이며 변경을 그대로 남겼다.

@@ -14,13 +14,13 @@ it('keeps resume body optional and sends increased intervals',async()=>{
  await resumeCrawl('s','v2');await resumeCrawl('s','v2',{min_interval_s:{clien:2}});
  expect((fetch.mock.calls as unknown as [string,RequestInit][])[0][1].body).toBeUndefined();expect(JSON.parse((fetch.mock.calls as unknown as [string,RequestInit][])[1][1].body as string)).toEqual({min_interval_s:{clien:2}});
 });
-it('preserves validation and version conflict messages without retry',async()=>{
+it('uses generic Korean for uncoded validation without retry',async()=>{
  const fetch=vi.fn(async()=>({ok:false,status:422,json:async()=>({detail:[{msg:'사용 불가 채널'}]})}));vi.stubGlobal('fetch',fetch);
- await expect(contextRequest('/test')).rejects.toThrow('사용 불가 채널');expect(fetch).toHaveBeenCalledTimes(1);
+ await expect(contextRequest('/test')).rejects.toThrow('요청에 실패했습니다. 다시 시도하세요.');expect(fetch).toHaveBeenCalledTimes(1);
 });
 it('announces active-version conflicts once and never retries the mutation',async()=>{
  const dispatchEvent=vi.fn();vi.stubGlobal('window',{dispatchEvent});
- const fetch=vi.fn(async()=>({ok:false,status:409,json:async()=>({error:{message:'다른 버전이 활성화되었습니다'}})}));vi.stubGlobal('fetch',fetch);
+ const fetch=vi.fn(async()=>({ok:false,status:409,json:async()=>({error:{code:'version_conflict',message:'Version conflict'}})}));vi.stubGlobal('fetch',fetch);
  await expect(patchSession('s',{step:'r1'},'v1')).rejects.toThrow('다른 버전이 활성화되었습니다');
  expect(fetch).toHaveBeenCalledTimes(1);expect(dispatchEvent).toHaveBeenCalledTimes(1);expect(dispatchEvent.mock.calls[0][0].type).toBe('dcx-version-conflict');
 });

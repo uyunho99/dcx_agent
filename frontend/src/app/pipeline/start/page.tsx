@@ -1,4 +1,5 @@
 "use client";
+import { displayError } from "@/lib/api/errors";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import SessionList from "@/components/SessionList";
@@ -67,7 +68,7 @@ function StartScreen() {
       if (!active) return;
       const value = mergeStartForm(data.draft || data.projectContext);
       setForm(value); setSaved(value); setReturned(mergeStartForm(data.projectContext));
-    }).catch(() => { if(active) { setLoadError(true); setMessage("입력값을 불러오지 못했습니다. 세션을 다시 여세요."); } }).finally(() => {if(active) setLoading(false);});
+    }).catch((e) => { if(active) { setLoadError(true); setMessage(displayError(e, "입력값을 불러오지 못했습니다. 세션을 다시 여세요.")); } }).finally(() => {if(active) setLoading(false);});
     return () => { active = false; };
   }, [store.sid, legacy, reload, version]);
   const valid = !!(form.bk.trim() && form.oneLiner.trim() && form.researchQuestion.text.trim() && form.projectType.choice && form.analysisGoal.choice && form.keyMetrics.length && form.positioning.price && form.positioning.market && form.channels.length);
@@ -99,7 +100,7 @@ function StartScreen() {
         setMessage("저장했습니다.");
         if (navigate) router.push("/pipeline/keywords");
       }
-    } catch { setMessage("저장에 실패했습니다. 입력값은 그대로 있습니다. 다시 시도하세요."); }
+    } catch (e) { setMessage(displayError(e, "저장에 실패했습니다. 입력값은 그대로 있습니다. 다시 시도하세요.")); }
     finally { operation.current = false; setBusy(false); }
   };
   const open = async (sid: string, session?: SessionInfo) => {
@@ -112,7 +113,7 @@ function StartScreen() {
       if (["interrupted", "paused_blocked", "blocked"].includes(session?.activity?.status || "")) { router.push("/pipeline/crawling"); return; }
       const route = step.startsWith("r") || (step === "final" || step === "kw-final") ? "keywords" : step.startsWith("crawl") ? "crawling" : step.startsWith("preprocess") ? "preprocess" : step.startsWith("label") ? "labeling" : step.startsWith("train") ? "training" : step.startsWith("cluster") ? "clustering" : /^(persona|embed|done)/.test(step) ? "personas" : "start";
       router.push(`/pipeline/${route}`);
-    } catch { setMessage("세션을 불러오지 못했습니다. 다시 여세요."); }
+    } catch (e) { setMessage(displayError(e, "세션을 불러오지 못했습니다. 다시 여세요.")); }
   };
   const suggest = async () => {
     setSuggesting(true); setCategoryError("");
@@ -120,7 +121,7 @@ function StartScreen() {
       const category = await suggestCategory(form.bk, form.oneLiner); update("productCategory", category);
       const missing = !category.l1 ? "l1" : !category.l2 ? "l2" : !category.l3 ? "l3" : null;
       if (missing) setTimeout(() => document.getElementById(`category-${missing}`)?.focus(), 0);
-    } catch { setCategoryError("제품군을 제안하지 못했습니다. 직접 입력하세요."); }
+    } catch (e) { setCategoryError(displayError(e, "제품군을 제안하지 못했습니다. 직접 입력하세요.")); }
     finally { setSuggesting(false); }
   };
   const single = (key: "projectType" | "analysisGoal", title: string) => <div className="space-y-2" role="group" aria-labelledby={`${key}-heading`} aria-describedby={!form[key].choice ? `${key}-error` : undefined} tabIndex={-1} aria-invalid={!form[key].choice || undefined}>
