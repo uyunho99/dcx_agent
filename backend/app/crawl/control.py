@@ -389,5 +389,10 @@ def save_config(sid, config, version=None):
     def perform(session):
         if set(config['channels']) - set(available_sources()):
             raise store.StoreError('Sources are unavailable', 422, 'validation')
-        return {'crawlConfig': _Replacement(config)}, {'status': 'ok', 'crawlConfig': config}
+        replacement = dict(config)
+        current = session.get('crawlConfig', {})
+        # Gate state is server-owned; replace only the user settings.
+        if 'gateExclusions' in current:
+            replacement['gateExclusions'] = current['gateExclusions']
+        return {'crawlConfig': _Replacement(replacement)}, {'status': 'ok', 'crawlConfig': replacement}
     return _mutate(sid, perform, version)

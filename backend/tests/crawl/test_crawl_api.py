@@ -68,6 +68,20 @@ def test_gate_excludes_then_detail_skips(env):
         assert [r.kw for r in q.lease_urls(snap, 10, 60)] == ['beta']
 
 
+def test_gate_exclusions_survive_config_save_then_detail(env):
+    root, snap = prepared(env)
+    assert env.client.put('/crawl/S/gate', json={'exclusions': ['alpha']}).status_code == 200
+    assert env.client.put('/crawl/S/config', json={
+        'channels': ['fixture'], 'perChannel': {'fixture': {}}
+    }).status_code == 200
+    assert env.client.post('/crawl/S/detail', json={'snapshot_id': snap}).status_code == 200
+    with closing(CrawlQueue(root / 'queue.sqlite')) as q:
+        assert q.counts()['excluded'] == 1
+        q.connection.execute("UPDATE runs SET status='done'")
+        q.register_run('detail')
+        assert [r.kw for r in q.lease_urls(snap, 10, 60)] == ['beta']
+
+
 def test_report_matrix_fields(env):
     root, _ = prepared(env)
     with closing(CrawlQueue(root / 'queue.sqlite')) as q:
@@ -444,9 +458,11 @@ def test_save_config_replaces_removed_channel(env, monkeypatch):
     assert response.status_code == 200
     saved = store.load_session('S')['crawlConfig']
     assert 'youtube' not in saved['perChannel']
-    assert 'gateExclusions' not in saved
+    assert saved['gateExclusions'] == ['alpha']
     assert saved == response.json()['crawlConfig']
-    assert env.client.put('/crawl/S/config', json=saved).status_code == 200
+    user_config = {key: value for key, value in saved.items() if key != 'gateExclusions'}
+    assert env.client.put('/crawl/S/config', json=user_config).status_code == 200
+    assert store.load_session('S')['crawlConfig'] == saved
 
 
 def test_status_added_keywords_across_chain_normalized(env):
