@@ -338,8 +338,19 @@ def _status_settings(session):
         ancestor = meta.get('parent')
     added = {norm_key(k.get('kw', k.get('text', ''))) for k in session.get('keywords', [])
              if k.get('status') == 'approved'} - known - {''}
+    channels, intervals = [], {}
+    if session.get('collectionId'):
+        manifest = store.read_json(base / session['collectionId'] / 'manifest.json')
+        channels = manifest['channels']
+        config = manifest.get('config', {})
+        limits = config.get('perChannel', config.get('channel_limits', {}))
+        # Match worker._Run's limiter precedence and default request spacing.
+        intervals = {source: limits.get(source, {}).get(
+            'min_interval_s', 1 if source in ('clien', 'ppomppu') else 0)
+            for source in channels}
     return dict(defaults=dict(adWords=DEFAULT_AD_WORDS.copy(), excludeSources=DEFAULT_EXCLUDE_SOURCES.copy()),
                 available_sources=available_sources(), collection_keywords=keywords,
+                collection_channels=channels, min_interval_s=intervals,
                 added_keywords_count=len(added) if session.get('collectionId') else 0)
 
 

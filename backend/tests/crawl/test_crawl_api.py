@@ -449,6 +449,48 @@ def test_status_defaults_and_available_sources(env, collected):
         assert data['added_keywords_count'] == 0
 
 
+def test_status_collection_settings_without_collection(env):
+    response = env.client.get('/crawl/S/status')
+    assert response.status_code == 200
+    assert response.json()['collection_channels'] == []
+    assert response.json()['min_interval_s'] == {}
+
+
+@pytest.mark.parametrize('config, expected', [
+    ({}, {'fixture': 0, 'youtube': 0, 'clien': 1, 'ppomppu': 1}),
+    ({'channel_limits': {'clien': {'min_interval_s': 3}}},
+     {'fixture': 0, 'youtube': 0, 'clien': 3, 'ppomppu': 1}),
+    ({'channel_limits': {'clien': {'min_interval_s': 3}},
+      'perChannel': {'clien': {'min_interval_s': 5}}},
+     {'fixture': 0, 'youtube': 0, 'clien': 5, 'ppomppu': 1}),
+])
+def test_status_collection_settings_from_manifest(env, monkeypatch, config, expected):
+    sources = ['fixture', 'youtube', 'clien', 'ppomppu']
+    monkeypatch.setattr(control, 'available_sources', lambda: sources)
+    store.update_session('S', {'crawlConfig': {'channels': sources}})
+    control.start_list('S')
+    root = control.collection_dir('S')
+    manifest = store.read_json(root / 'manifest.json')
+    store.write_json(root / 'manifest.json', dict(manifest, config=config))
+    store.update_session('S', {'crawlConfig': {
+        'channels': ['fixture'], 'perChannel': {'fixture': {'min_interval_s': 99}}}})
+    response = env.client.get('/crawl/S/status')
+    assert response.status_code == 200
+    assert response.json()['collection_channels'] == sources
+    assert response.json()['min_interval_s'] == expected
+
+
+def test_status_collection_interval_after_resume(env, monkeypatch):
+    control.start_list('S')
+    monkeypatch.setattr(control, 'pid_alive', lambda pid: False)
+    response = env.client.post('/crawl/S/resume', json={'min_interval_s': {'fixture': 2.5}})
+    assert response.status_code == 200
+    response = env.client.get('/crawl/S/status')
+    assert response.status_code == 200
+    assert response.json()['collection_channels'] == ['fixture']
+    assert response.json()['min_interval_s'] == {'fixture': 2.5}
+
+
 def test_save_config_replaces_removed_channel(env, monkeypatch):
     monkeypatch.setattr(control, 'available_sources', lambda: ['fixture', 'youtube'])
     first = {'channels': ['fixture', 'youtube'], 'perChannel': {'fixture': {}, 'youtube': {}}}

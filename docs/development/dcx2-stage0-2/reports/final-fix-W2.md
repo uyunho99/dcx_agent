@@ -112,3 +112,11 @@ TDD: `tests/crawl/test_followup_fx_b.py` initially reported **15 failed** before
 Final GREEN: `cd backend && .venv/bin/python -m pytest -q` — **541 passed, 2 warnings in 36.80s**. All 19 follow-up tests pass. Scoped `git diff --check` passes. Warnings remain the existing Pydantic class-config deprecation and joblib physical-core fallback. Frontend and unrelated `.DS_Store` edits are excluded.
 
 Commit outcome: **uncommitted**. Explicit scoped `git add` failed (exit 128): the sandbox denied creation of `/Users/persona1/Desktop/dcx_agent/.git/worktrees/dcx_agent-dcx2-stage0-2/index.lock`. The requested subject and `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>` trailer were then passed to a scoped `git commit --only`; it failed (exit 1) because the new regression test could not be staged. Changes are left uncommitted as requested.
+
+## Follow-up FX-B2
+
+- R-66: `GET /crawl/{sid}/status` now adds `collection_channels` from the active collection manifest and `min_interval_s` for each manifest channel. Without a collection these are `[]` and `{}`. All existing status fields remain unchanged.
+- Intervals follow worker `_Run` precedence: manifest `config.perChannel`, falling back to `config.channel_limits`, then 1 second for clien/ppomppu or 0 for other channels. Resume interval updates are reflected on the next status read; session config edits do not override the active manifest.
+- TDD: five new parameterized cases initially failed for missing fields. Coverage includes no collection, defaults, both manifest config forms and their precedence, and a raised interval after API resume.
+- Verification: `cd backend && .venv/bin/python -m pytest tests/crawl -q` — **223 passed, 1 warning in 25.41s**. The warning is the existing Pydantic class-config deprecation. Scoped `git diff --check` passes.
+- Commit outcome: **uncommitted**. Scoped `git add` and `git commit --only` with the requested subject and co-author trailer both failed (exit 128): the sandbox denied creation of `/Users/persona1/Desktop/dcx_agent/.git/worktrees/dcx_agent-dcx2-stage0-2/index.lock`. Changes remain uncommitted; no frontend files were touched.
