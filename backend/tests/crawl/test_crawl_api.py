@@ -254,6 +254,7 @@ def test_finished_collection_rejects_mutation(env):
     control.start_detail('S', snap)
     with closing(CrawlQueue(root / 'queue.sqlite')) as q:
         q.connection.execute("UPDATE runs SET status='done'")
+        q.connection.execute("UPDATE urls SET status='done'")
     control.status('S')
     before = {p.name: p.read_bytes() for p in root.iterdir() if p.is_file()}
     assert env.client.post('/crawl/S/detail', json={'snapshot_id': snap}).status_code == 409
@@ -531,3 +532,124 @@ def test_status_added_keywords_across_chain_normalized(env):
     data = env.client.get('/crawl/S/status').json()
     assert set(data['collection_keywords']) == {'alpha', 'beta', '가 나'}
     assert data['added_keywords_count'] == 1
+
+
+def test_done_list_status_is_not_resumable(env):
+    prepared(env)
+    data = env.client.get('/crawl/S/status').json()
+    assert data['kind'] == 'list'
+    assert data['status'] == 'done'
+    assert data['resumable'] is False
+    assert control.phase_state('S') == 'unfinished'
+
+
+def test_done_list_resume_rejected_and_gate_can_start_detail(env):
+    _, snap = prepared(env)
+    response = env.client.post('/crawl/S/resume')
+    assert response.status_code == 409
+    assert 'No unfinished phase to resume' in response.text
+    assert not env.calls
+    assert control.phase_state('S') == 'unfinished'
+    assert env.client.post('/crawl/S/detail', json={'snapshot_id': snap}).status_code == 200
+    assert len(env.calls) == 1
+
+
+@pytest.mark.parametrize('run_status', ['interrupted', 'stopped', 'paused'])
+def test_unfinished_list_can_resume(env, run_status):
+    root, _ = prepared(env)
+    with closing(CrawlQueue(root / 'queue.sqlite')) as q:
+        q.connection.execute('UPDATE runs SET status=?', (run_status,))
+    assert env.client.get('/crawl/S/status').json()['resumable'] is True
+    response = env.client.post('/crawl/S/resume')
+    assert response.status_code == 200
+    assert response.json()['kind'] == 'list'
+    assert len(env.calls) == 1
+
+
+@pytest.mark.parametrize('phase,url_status', [('detail', 'pending'), ('detail', 'leased')])
+def test_done_unfinished_phase_can_resume(env, phase, url_status):
+    root, snap = prepared(env)
+    if phase == 'detail':
+        control.start_detail('S', snap)
+    with closing(CrawlQueue(root / 'queue.sqlite')) as q:
+        q.connection.execute("UPDATE runs SET status='done'")
+        q.connection.execute('UPDATE urls SET status=?', (url_status,))
+        assert not report.can_finalize(q, control.latest_run(q))
+    env.calls.clear()
+    assert control.phase_state('S') == 'unfinished'
+    assert env.client.get('/crawl/S/status').json()['resumable'] is True
+    response = env.client.post('/crawl/S/resume')
+    assert response.status_code == 200
+    assert response.json()['kind'] == phase
+    assert len(env.calls) == 1
+    args = env.calls[0][0][0]
+    assert args[3] == phase
+    if phase == 'detail':
+        assert args[-2:] == ['--snapshot', snap]
+    assert store.load_session('S')['step'] == 'crawl-' + phase
+
+
+@pytest.mark.parametrize('finished', [False, True])
+@pytest.mark.parametrize('target_reached', [False, True])
+def test_done_detail_status_exposes_resumability(env, finished, target_reached):
+    root, snap = prepared(env)
+    control.start_detail('S', snap)
+    with closing(CrawlQueue(root / 'queue.sqlite')) as q:
+        q.connection.execute("UPDATE runs SET status='done'")
+        if finished:
+            q.connection.execute("UPDATE urls SET status='done'")
+    if target_reached:
+        store.write_json(root / 'worker_state.json', {'stopReason': 'target_reached'})
+    complete = finished or target_reached
+    data = env.client.get('/crawl/S/status').json()
+    assert data['resumable'] is not complete
+    assert control.phase_state('S') == ('done' if complete else 'unfinished')
+    if complete:
+        response = env.client.post('/crawl/S/resume')
+        assert response.status_code == 409
+        assert 'No unfinished phase to resume' in response.text
+
+
+@pytest.mark.parametrize('damage', ['missing', 'corrupt'])
+def test_damaged_queue_stays_unfinished(env, damage):
+    root, _ = prepared(env)
+    path = root / 'queue.sqlite'
+    if damage == 'missing':
+        path.unlink()
+    else:
+        path.write_bytes(b'corrupt database')
+    assert control.phase_state('S') == 'unfinished'
+
+
+@pytest.mark.parametrize('url_status', ['pending', 'leased'])
+@pytest.mark.parametrize('target_reached', [False, True])
+def test_worker_close_does_not_leave_done_unfinalizable(env, url_status, target_reached):
+    root, snap = prepared(env)
+    run = worker._Run(root, 'S', 'detail', ['fixture'], None, {}, snap)
+    run.q.connection.execute('UPDATE urls SET status=?', (url_status,))
+    if target_reached:
+        run.stop_reason = 'target_reached'
+    run.close('done')
+    queue = control.ReadQueue(root / 'queue.sqlite')
+    latest = control.latest_run(queue)
+    assert latest['status'] == ('done' if target_reached else 'paused')
+    assert report.can_finalize(queue, latest) is target_reached
+    assert store.read_json(root / 'worker_state.json')['stopReason'] == (
+        'target_reached' if target_reached else 'pending_channels')
+
+
+def test_idle_and_running_status_are_not_resumable(env):
+    assert env.client.get('/crawl/S/status').json()['resumable'] is False
+    control.start_list('S')
+    assert env.client.get('/crawl/S/status').json()['resumable'] is False
+
+
+def test_collection_without_run_is_not_resumable(env):
+    root, _ = prepared(env)
+    with closing(CrawlQueue(root / 'queue.sqlite')) as q:
+        q.connection.execute('DELETE FROM runs')
+    assert env.client.get('/crawl/S/status').json()['resumable'] is False
+    response = env.client.post('/crawl/S/resume')
+    assert response.status_code == 409
+    assert 'No unfinished phase to resume' in response.text
+    assert not env.calls

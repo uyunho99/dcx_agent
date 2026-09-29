@@ -248,12 +248,21 @@ def start_detail(sid, snapshot_id, version=None):
     return _mutate(sid, perform, version)
 
 
+def _unfinished_run(queue, run):
+    if not run:
+        return False
+    # Completed lists await gate review; only unfinished detail completion needs recovery.
+    if run['kind'] == 'list':
+        return run['status'] != 'done'
+    return not report.can_finalize(queue, run)
+
+
 def resume(sid, version=None, min_interval_s=None):
     def perform(session):
         root = collection_dir(sid)
         with collection_lock(root), closing(CrawlQueue(root / 'queue.sqlite')) as queue:
             run = latest_run(queue)
-            if not run or run['status'] == 'done':
+            if not _unfinished_run(queue, run):
                 raise store.StoreError('No unfinished phase to resume')
             if not _live(queue):
                 queue.reclaim_expired_leases()
@@ -360,7 +369,7 @@ def status(sid):
         raise store.StoreError('Session not found', 404, 'not_found')
     settings_payload = _status_settings(session)
     if not session.get('collectionId'):
-        return dict(**settings_payload, status='idle', kind=None, progress=None, gate=None, report=None, channels={}, updatedAt=session.get('updatedAt'))
+        return dict(**settings_payload, status='idle', resumable=False, kind=None, progress=None, gate=None, report=None, channels={}, updatedAt=session.get('updatedAt'))
     root = collection_dir(sid)
     queue = ReadQueue(root / 'queue.sqlite')
     run = latest_run(queue)
@@ -388,7 +397,9 @@ def status(sid):
             except store.StoreError as exc:
                 if exc.status != 409:
                     raise
-    return dict(**settings_payload, status=state, kind=run['kind'] if run else None, collectionId=root.name,
+    return dict(**settings_payload, status=state,
+                resumable=state != 'running' and _unfinished_run(queue, run),
+                kind=run['kind'] if run else None, collectionId=root.name,
                 progress=p, channels=p['channels'], paused_channels=worker_state.get('paused_channels', []),
                 stopReason=worker_state.get('stopReason'), snapshot_id=snapshot[0] if snapshot else None,
                 gate=table.get('rows') if isinstance(table, dict) else table,
