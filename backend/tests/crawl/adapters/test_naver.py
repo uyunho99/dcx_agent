@@ -223,8 +223,9 @@ def test_request_interval_shared_between_list_and_detail(cls):
 
 
 @pytest.mark.parametrize('result', [
-    {'errorCode': 'GRADE_403'},
-    {'reason': '멤버 등급이 낮아 읽기 권한이 없습니다.'},
+    {'errorCode': '0004'},
+    {'reason': '등급'},
+    {'errorCode': '9999', 'reason': '등급'},
 ])
 def test_cafe_403_restriction_json_returns_snippet(result):
     a, _ = adapter(NaverCafeAdapter, json.dumps({'result': result}).encode(), 403)
@@ -310,3 +311,11 @@ def test_page_signature_storage_is_bounded():
             a.list_page(f'keyword {number}')
         assert len(a._pages) <= 256
         assert a.list_page('keyword 299', '1').next_cursor == '31'
+
+
+@pytest.mark.parametrize('code', ['9999', 'GRADE_403'])
+def test_cafe_403_unknown_error_code_is_blocked(code):
+    payload = {'result': {'errorCode': code, 'message': 'too many requests'}}
+    a, _ = adapter(NaverCafeAdapter, json.dumps(payload).encode(), 403)
+    with pytest.raises(AdapterBlocked):
+        a.fetch(item(NaverCafeAdapter))

@@ -5,6 +5,9 @@ from app.crawl.adapters.base import AdapterBlocked, FetchedDoc
 from app.crawl.adapters.community import html_text
 from app.crawl.adapters.naver_common import NaverAdapter
 
+# Login-required code recorded in detail-1.json and T15-naver-probe.md.
+RESTRICTION_CODES = frozenset({'0004'})
+
 
 class NaverCafeAdapter(NaverAdapter):
     source = 'naver_cafe'
@@ -30,13 +33,14 @@ class NaverCafeAdapter(NaverAdapter):
         if response.status_code == 401:
             return self.restricted_doc(item, result.get('errorCode') if isinstance(result, dict) else None)
         if response.status_code == 403:
-            if isinstance(result, dict) and (result.get('errorCode') or self.restriction_reason(result)):
+            if isinstance(result, dict) and (
+                    str(result.get('errorCode')) in RESTRICTION_CODES or self.restriction_reason(result)):
                 return self.restricted_doc(item, result.get('errorCode'))
             raise AdapterBlocked(f'{self.source}: HTTP 403')
         if not isinstance(result, dict):
             raise ValueError('Naver cafe result missing')
         code = result.get('errorCode')
-        if str(code) == '0004' or self.restriction_reason(result):
+        if str(code) in RESTRICTION_CODES or self.restriction_reason(result):
             return self.restricted_doc(item, code)
         article = result.get('article')
         if not isinstance(article, dict) or not isinstance(article.get('contentHtml'), str):
