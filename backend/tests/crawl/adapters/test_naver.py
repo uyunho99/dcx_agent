@@ -171,6 +171,7 @@ def test_repeated_full_page_terminates(cls):
     a, _ = adapter(cls, fixture(cls, 'list-1.html'))
     assert a.list_page('keyword').next_cursor == '31'
     assert a.list_page('keyword', '31').next_cursor is None
+    assert a.list_page('keyword', '31').next_cursor is None  # Retry stays terminal.
     assert a.list_page('other keyword').next_cursor == '31'
 
 
@@ -219,3 +220,93 @@ def test_request_interval_shared_between_list_and_detail(cls):
         a.list_page('keyword')
         a.fetch(item(cls))
     assert starts[1] - starts[0] >= 1.0
+
+
+@pytest.mark.parametrize('result', [
+    {'errorCode': 'GRADE_403'},
+    {'reason': '멤버 등급이 낮아 읽기 권한이 없습니다.'},
+])
+def test_cafe_403_restriction_json_returns_snippet(result):
+    a, _ = adapter(NaverCafeAdapter, json.dumps({'result': result}).encode(), 403)
+    doc, = a.fetch(item(NaverCafeAdapter))
+    assert (doc.title, doc.body, doc.access, doc.comments) == ('목록 제목', '검색 요약', 'restricted', [])
+
+
+@pytest.mark.parametrize('content', [b'', b'<html>Forbidden</html>', b'{"result":{}}', b'[]'])
+def test_cafe_403_without_restriction_is_blocked(content):
+    a, _ = adapter(NaverCafeAdapter, content, 403)
+    with pytest.raises(AdapterBlocked):
+        a.fetch(item(NaverCafeAdapter))
+
+
+def test_cafe_429_restriction_json_is_always_blocked():
+    a, _ = adapter(NaverCafeAdapter, b'{"result":{"errorCode":"0004"}}', 429)
+    with pytest.raises(AdapterBlocked):
+        a.fetch(item(NaverCafeAdapter))
+
+
+@pytest.mark.parametrize('content', [b'', b'<html>Login required</html>', b'{"result":null}'])
+def test_cafe_401_without_json_article_returns_snippet(content):
+    a, _ = adapter(NaverCafeAdapter, content, 401)
+    doc, = a.fetch(item(NaverCafeAdapter))
+    assert doc.body == '검색 요약' and doc.access == 'restricted'
+
+
+def search_rows(*urls):
+    from html import escape
+    return ('<ul class="lst_view">' + ''.join(
+        f'<li><a class="title_link" href="{escape(url)}">Article title</a>'
+        '<a class="dsc_link">Snippet</a></li>' for url in urls) + '</ul>').encode()
+
+
+@pytest.mark.parametrize('cls,url,canonical', [
+    (NaverBlogAdapter, 'https://blog.naver.com/PostView.naver?blogId=user_a&logNo=123&tracking=1',
+     'https://blog.naver.com/user_a/123'),
+    (NaverCafeAdapter, 'https://m.cafe.naver.com/ca-fe/cafes/123/articles/456?tracking=1',
+     'https://cafe.naver.com/ca-fe/cafes/123/articles/456'),
+])
+def test_alternate_article_urls_normalized_and_non_articles_skipped(cls, url, canonical):
+    a, _ = adapter(cls, search_rows('https://example.com/ad', url, '#more', canonical))
+    page = a.list_page('keyword')
+    assert [i.url for i in page.items] == [canonical]
+    assert page.items[0].title == 'Article title'
+
+
+def test_cafe_numeric_id_url_fetch_uses_cafe_id():
+    a, requests = adapter(NaverCafeAdapter, fixture(NaverCafeAdapter, 'detail-3.json'))
+    numeric = ListItem('https://cafe.naver.com/ca-fe/cafes/123/articles/456', 'title', 'snippet', None, {})
+    assert a.fetch(numeric)[0].access == 'public'
+    assert str(requests[0].url) == 'https://article.cafe.naver.com/gw/v4/cafes/123/articles/456?useCafeId=true'
+
+
+@pytest.mark.parametrize('cls', CLASSES)
+def test_non_article_results_raise_even_with_no_results_notice(cls):
+    a, _ = adapter(cls, search_rows('https://example.com/ad') +
+                   '<div class="not_found">검색결과가 없습니다.</div>'.encode())
+    with pytest.raises(ValueError):
+        a.list_page('keyword')
+
+
+@pytest.mark.parametrize('cls', CLASSES)
+@pytest.mark.parametrize('link', ['<a class="title_link">Title</a>', '<a class="title_link" href="#more"></a>'])
+def test_result_missing_href_or_title_raises(cls, link):
+    a, _ = adapter(cls, (f'<ul class="lst_view"><li>{link}</li></ul>').encode() +
+                   search_rows(item(cls).url))
+    with pytest.raises(ValueError):
+        a.list_page('keyword')
+
+
+def test_page_signature_storage_is_bounded():
+    def handle(request):
+        start = int(request.url.params['start'])
+        return httpx.Response(200, content=search_rows(*(
+            f'https://blog.naver.com/user_a/{i}' for i in range(start, start + 30))))
+    with httpx.Client(transport=httpx.MockTransport(handle)) as client:
+        a = NaverBlogAdapter(client, sleep=lambda _: None)
+        for start in range(1, 301, 30):
+            assert a.list_page('same keyword', str(start)).next_cursor == str(start + 30)
+        assert len(a._pages) == 1
+        for number in range(300):
+            a.list_page(f'keyword {number}')
+        assert len(a._pages) <= 256
+        assert a.list_page('keyword 299', '1').next_cursor == '31'

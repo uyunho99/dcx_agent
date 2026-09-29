@@ -1,8 +1,9 @@
 """Shared keyless search parsing and CommunityAdapter HTTP lifecycle."""
 import re
+from collections import OrderedDict
 from threading import Lock
 from datetime import datetime, timedelta
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import parse_qs, urlencode, urlsplit
 from zoneinfo import ZoneInfo
 
 from selectolax.parser import HTMLParser
@@ -16,7 +17,7 @@ KST = ZoneInfo('Asia/Seoul')
 class NaverAdapter(CommunityAdapter):
     def __init__(self, client=None, *, now=None, **kwargs):
         super().__init__(client, **kwargs)
-        self._pages = {}
+        self._pages = OrderedDict()
         self._pages_lock = Lock()
         self.now = now or (lambda: datetime.now(KST))
 
@@ -42,18 +43,39 @@ class NaverAdapter(CommunityAdapter):
 
     def article_parts(self, url):
         parsed = urlsplit(url)
-        match = re.fullmatch(r'/([A-Za-z0-9_-]+)/(\d+)/?', parsed.path)
         if parsed.scheme not in ('http', 'https') or parsed.netloc not in (
-                f'{self.kind}.naver.com', f'm.{self.kind}.naver.com') or not match:
+                f'{self.kind}.naver.com', f'm.{self.kind}.naver.com'):
             raise ValueError('Unexpected Naver article URL')
-        return match.groups()
+        match = re.fullmatch(r'/([A-Za-z0-9_-]+)/(\d+)/?', parsed.path)
+        if match:
+            return match.groups()
+        if self.kind == 'cafe':
+            match = re.fullmatch(r'/ca-fe/cafes/(\d+)/articles/(\d+)/?', parsed.path)
+            if match:
+                return match.groups()
+        if self.kind == 'blog' and parsed.path == '/PostView.naver':
+            query = parse_qs(parsed.query)
+            owner, article_id = query.get('blogId', []), query.get('logNo', [])
+            if (len(owner) == len(article_id) == 1
+                    and re.fullmatch(r'[A-Za-z0-9_-]+', owner[0])
+                    and re.fullmatch(r'\d+', article_id[0])):
+                return owner[0], article_id[0]
+        raise ValueError('Unexpected Naver article URL')
+
+    def article_url(self, url):
+        owner, article_id = self.article_parts(url)
+        if self.kind == 'cafe' and urlsplit(url).path.startswith('/ca-fe/cafes/'):
+            # Preserve numeric cafe IDs rather than pretending they are cafe names.
+            return f'https://cafe.naver.com/ca-fe/cafes/{owner}/articles/{article_id}'
+        return f'https://{self.kind}.naver.com/{owner}/{article_id}'
 
     def request(self, url, *, restricted=False):
         with self._limiter:
             response = self.client.get(url, headers=self.headers(), follow_redirects=False)
-        if response.status_code in (403, 429):
+        if response.status_code == 429 or (response.status_code == 403 and not restricted):
             raise AdapterBlocked(f'{self.source}: HTTP {response.status_code}')
-        if not (restricted and response.status_code == 401):
+        # Cafe detail classifies 403 JSON restrictions versus channel blocking.
+        if not (restricted and response.status_code in (401, 403)):
             response.raise_for_status()
         return response
 
@@ -69,17 +91,21 @@ class NaverAdapter(CommunityAdapter):
         for row in rows:
             headline = row.css_first('.sds-comps-text-type-headline1')
             link = headline.parent if headline is not None else row.css_first('a.title_link')
-            if link is None:
+            if link is None or link.tag != 'a' or not link.attributes.get('href'):
                 raise ValueError('Naver search result title missing')
-            owner, article_id = self.article_parts(link.attributes.get('href', ''))
-            url = f'https://{self.kind}.naver.com/{owner}/{article_id}'
+            title = text(headline if headline is not None else link)
+            if not title:
+                raise ValueError('Naver search result title empty')
+            try:
+                url = self.article_url(link.attributes['href'])
+            except ValueError:
+                # Valid titled links may be advertisements, profiles or more links.
+                continue
+            owner, article_id = self.article_parts(url)
             if url in seen:
                 continue
             seen.add(url)
-            title = text(headline if headline is not None else link)
             snippet = selected(row, '.sds-comps-text-type-body1, .dsc_link')
-            if not title:
-                raise ValueError('Naver search result title empty')
             date = None
             for node in row.css('.sds-comps-profile-info-subtext, .user_info .sub, .date'):
                 date = self.normalize_date(text(node)) or date
@@ -87,15 +113,20 @@ class NaverAdapter(CommunityAdapter):
                                   {'article_id': article_id, f'{self.kind}_id': owner}))
         if not items:
             notice = selected(tree, '.not_found, .api_noresult_wrap, .no_result')
-            if not re.search(r'검색\s*결과가?\s*없|검색된.*없', notice):
+            if rows or not re.search(r'검색\s*결과가?\s*없|검색된.*없', notice):
                 raise ValueError('Naver search results could not be parsed')
         # Captures have no next-page link. A short page is terminal; an explicit
         # disabled next control also terminates a full page. No internal retries.
         terminal = tree.css_first('.sc_page .btn_next[aria-disabled="true"], .sc_page .btn_next.disabled')
         signature = frozenset(i.url for i in items)
         with self._pages_lock:
-            key = (kw, signature)
-            previous = self._pages.get(key, start)
-            self._pages[key] = min(start, previous)
-        more = len(items) == 30 and terminal is None and previous >= start
+            previous = self._pages.get(kw)
+            repeated = previous is not None and previous[0] == signature and previous[1] < start
+            # Preserve the first start of consecutive identical pages so retrying
+            # a terminal cursor cannot accidentally reopen pagination.
+            self._pages[kw] = (signature, previous[1] if repeated else start)
+            self._pages.move_to_end(kw)
+            if len(self._pages) > 256:
+                self._pages.popitem(last=False)
+        more = len(items) == 30 and terminal is None and not repeated
         return ListPage(items, str(start + 30) if more else None, None)

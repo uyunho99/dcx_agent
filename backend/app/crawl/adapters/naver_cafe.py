@@ -1,5 +1,7 @@
 """Public cafe JSON and restricted snippets, without authentication."""
-from app.crawl.adapters.base import FetchedDoc
+from urllib.parse import urlsplit
+
+from app.crawl.adapters.base import AdapterBlocked, FetchedDoc
 from app.crawl.adapters.community import html_text
 from app.crawl.adapters.naver_common import NaverAdapter
 
@@ -12,20 +14,30 @@ class NaverCafeAdapter(NaverAdapter):
 
     def fetch(self, item, *, max_comments=None):
         owner, article_id = self.article_parts(item.url)
+        use_cafe_id = 'true' if urlsplit(item.url).path.startswith('/ca-fe/cafes/') else 'false'
         response = self.request(
-            f'https://article.cafe.naver.com/gw/v4/cafes/{owner}/articles/{article_id}?useCafeId=false',
+            f'https://article.cafe.naver.com/gw/v4/cafes/{owner}/articles/{article_id}?useCafeId={use_cafe_id}',
             restricted=True)
-        payload = response.json()
+        try:
+            payload = response.json()
+        except ValueError:
+            if response.status_code == 401:
+                return self.restricted_doc(item)
+            if response.status_code == 403:
+                raise AdapterBlocked(f'{self.source}: HTTP 403') from None
+            raise
         result = payload.get('result') if isinstance(payload, dict) else None
+        if response.status_code == 401:
+            return self.restricted_doc(item, result.get('errorCode') if isinstance(result, dict) else None)
+        if response.status_code == 403:
+            if isinstance(result, dict) and (result.get('errorCode') or self.restriction_reason(result)):
+                return self.restricted_doc(item, result.get('errorCode'))
+            raise AdapterBlocked(f'{self.source}: HTTP 403')
         if not isinstance(result, dict):
             raise ValueError('Naver cafe result missing')
         code = result.get('errorCode')
-        reason = str(result.get('reason', '')) + str(result.get('message', ''))
-        restricted = response.status_code == 401 or str(code) == '0004' or any(
-            word in reason for word in ('로그인', '등급', '권한', '비공개', '회원 전용'))
-        if code and restricted:
-            return [FetchedDoc(item.title, item.snippet, [], item.date,
-                               {**item.src_meta, 'restriction_code': str(code)}, 'restricted', None)]
+        if str(code) == '0004' or self.restriction_reason(result):
+            return self.restricted_doc(item, code)
         article = result.get('article')
         if not isinstance(article, dict) or not isinstance(article.get('contentHtml'), str):
             raise ValueError('Naver cafe article body missing')
@@ -55,3 +67,15 @@ class NaverCafeAdapter(NaverAdapter):
             {**item.src_meta, 'comment_count': article.get('commentCount'), 'comment_threads': threads},
             'public', writer.get('memberKey') or writer.get('nick'),
         )]
+
+    @staticmethod
+    def restriction_reason(result):
+        reason = str(result.get('reason', '')) + str(result.get('message', ''))
+        return any(word in reason for word in ('로그인', '등급', '권한', '비공개', '회원 전용'))
+
+    @staticmethod
+    def restricted_doc(item, code=None):
+        meta = dict(item.src_meta)
+        if code is not None:
+            meta['restriction_code'] = str(code)
+        return [FetchedDoc(item.title, item.snippet, [], item.date, meta, 'restricted', None)]
