@@ -1,6 +1,6 @@
 import threading
 from fastapi import APIRouter
-from app.context.store import load_session
+from app.context.compat import fill_bk_problem
 
 from app.services.clustering import run_clustering, refine_clusters
 from app.services.s3 import load_data
@@ -14,12 +14,7 @@ router = APIRouter()
 def start_cluster(req: ClusterRequest):
     sid = req.sid
     config = req.model_dump()
-    if not config.get("bk") or not config.get("problemDef"):
-        context = (load_session(sid) or {}).get("projectContext", {})
-        if not config.get("bk"):
-            config["bk"] = context.get("bk", "")
-        if not config.get("problemDef"):
-            config["problemDef"] = context.get("researchQuestion", {}).get("text", "")
+    fill_bk_problem(config, sid)
     job_manager.set("cluster", sid, {"status": "running", "phase": "init", "progress": 0})
     threading.Thread(target=lambda: run_clustering(config), daemon=True).start()
     return {"sid": sid, "status": "started"}
@@ -78,10 +73,5 @@ def get_cluster_status(sid: str):
 def cluster_refine(req: ClusterRefineRequest):
     sid = req.sid
     config = req.model_dump()
-    if not config.get("bk") or not config.get("problemDef"):
-        context = (load_session(sid) or {}).get("projectContext", {})
-        if not config.get("bk"):
-            config["bk"] = context.get("bk", "")
-        if not config.get("problemDef"):
-            config["problemDef"] = context.get("researchQuestion", {}).get("text", "")
+    fill_bk_problem(config, sid)
     return refine_clusters(config)

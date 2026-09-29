@@ -110,6 +110,11 @@ def full_flow(client, offline):
     docs = load_data(f'preprocessed/{sid}/')
     assert len(docs) == 200
     assert all(d['desc'] == d['body'] + '\n' and d['cafe'] == '개발용 샘플' and d['link'] == d['url'] for d in docs)
+    request('GET', f'/context/{sid}')
+    request('GET', '/integrations')
+    request('GET', '/sessions')
+    request('GET', f'/session/{sid}')
+    request('GET', f'/sessions/{sid}/versions')
     return sid, docs, responses
 
 
@@ -124,21 +129,22 @@ def test_no_api_keys_full_run(client, offline):
     responses.append(response.json())
     assert response.json() == [entry.model_dump() for entry in integration_status()]
     assert all(not entry['connected'] for entry in response.json())
-    serialized = json.dumps(responses)
-    assert all(not getattr(settings, name) or getattr(settings, name) not in serialized for name in KEY_FIELDS)
 
 
 def test_integrations_never_exposes_configured_secrets(client, offline, monkeypatch):
-    for i, name in enumerate(KEY_FIELDS):
-        monkeypatch.setattr(settings, name, f'SENTINEL_KEY_{i}_123')
+    sentinels = [f'SENTINEL_{name.upper()}_9f3a' for name in KEY_FIELDS]
+    for name, sentinel in zip(KEY_FIELDS, sentinels):
+        monkeypatch.setattr(settings, name, sentinel)
     from app.routers import integrations
     calls = []
     def status():
         calls.append(True)
         return integration_status()
     monkeypatch.setattr(integrations, 'integration_status', status)
+    _, _, responses = full_flow(client, offline)
+    assert all(sentinel not in json.dumps(responses) for sentinel in sentinels)
     response = client.get('/integrations')
-    assert calls == [True]
+    assert calls == [True, True]
     assert response.json() == [entry.model_dump() for entry in integration_status()]
     assert all(getattr(settings, name) not in response.text for name in KEY_FIELDS)
 
@@ -191,12 +197,13 @@ def test_quality_and_desc_limit(data_dir):
             {**document('long'), 'body': '긴' * 4100},
             {**document('snippet_ok'), 'fetch_level': 'snippet', 'title': '다섯글자제목', 'body': '', 'snippet': '충분히 긴 설명 내용입니다'},
             {**document('snippet_bad_title'), 'fetch_level': 'snippet', 'title': '짧음', 'snippet': '충분히 긴 설명 내용입니다'},
-            {**document('snippet_bad_desc'), 'fetch_level': 'snippet', 'title': '다섯글자제목', 'body': '', 'snippet': '짧음'}]
+            {**document('snippet_bad_desc'), 'fetch_level': 'snippet', 'title': '다섯글자제목', 'body': '', 'snippet': '짧음'},
+            {**document('snippet_both_short'), 'fetch_level': 'snippet', 'title': '짧음', 'body': '', 'snippet': '짧음'}]
     put_collection(data_dir, 'quality', 'c1', None, docs)
     store.update_session('quality', {'collectionId': 'c1'})
     preprocess_data({'sid': 'quality'})
     result = {d['doc_id']: d for d in load_data('preprocessed/quality/')}
-    assert set(result) == {'full', 'long', 'snippet_ok'}
+    assert set(result) == {'full', 'long', 'snippet_ok', 'snippet_bad_title', 'snippet_bad_desc'}
     assert result['long']['desc'] == '긴' * 4000
 
 
@@ -237,3 +244,74 @@ def test_downstream_context_fallback(client, monkeypatch, module, endpoint, serv
     if module != 'clustering':
         client.post(endpoint, json={'sid': sid, 'bk': 'explicit', 'problemDef': 'explicit question'})
         assert calls[-1]['bk'] == 'explicit' and calls[-1]['problemDef'] == 'explicit question'
+
+
+@pytest.mark.parametrize('module,endpoint,service', [
+    ('training', '/train', 'train_models'), ('personas', '/persona', 'run_persona'),
+    ('clustering', '/cluster', 'run_clustering'), ('clustering', '/cluster-refine', 'refine_clusters')])
+@pytest.mark.parametrize('state', ['null_question', 'null_context', 'missing', 'corrupt'])
+def test_downstream_unavailable_context(client, data_dir, monkeypatch, module, endpoint, service, state):
+    import importlib
+    router = importlib.import_module(f'app.routers.{module}')
+    calls = []
+    monkeypatch.setattr(router, service, lambda config: calls.append(config) or {'status': 'done'})
+    class InlineThread:
+        def __init__(self, target, **kwargs):
+            self.target = target
+        def start(self):
+            self.target()
+    monkeypatch.setattr(router, 'threading', SimpleNamespace(Thread=InlineThread))
+    sid = 'fallback_' + state
+    path = data_dir / 'sessions' / sid / 'session.json'
+    if state == 'null_question':
+        store.write_json(path, {'projectContext': {'bk': 'fallback', 'researchQuestion': None}})
+    elif state == 'null_context':
+        store.write_json(path, {'projectContext': None})
+    elif state == 'corrupt':
+        store.atomic_write(path, '{broken')
+    assert client.post(endpoint, json={'sid': sid}).status_code == 200
+    assert calls[-1].get('bk', '') == ('fallback' if state == 'null_question' else '')
+    assert not calls[-1].get('problemDef')
+
+
+@pytest.mark.parametrize('payload', [None, '{broken', '{"projectContext": {"bk": "fallback", "researchQuestion": 7}}'])
+def test_fallback_unavailable_leaves_config_unchanged(data_dir, caplog, payload):
+    from app.context.compat import fill_bk_problem
+    sid = 'unavailable'
+    if payload is not None:
+        store.atomic_write(data_dir / 'sessions' / sid / 'session.json', payload)
+    config = {'bk': '', 'problemDef': '', 'other': 'preserved'}
+    original = dict(config)
+    fill_bk_problem(config, sid)
+    assert config == original
+    assert sid in caplog.text
+    assert str(data_dir) not in caplog.text
+    assert 'Traceback' not in caplog.text
+
+
+@pytest.mark.parametrize('config', [
+    {'bk': 'explicit', 'problemDef': 'explicit question'},
+    {'bk': 'explicit', 'problemDef': ''},
+    {'bk': '', 'problemDef': 'explicit question'}])
+def test_fallback_preserves_explicit_values(data_dir, config):
+    from app.context.compat import fill_bk_problem
+    store.write_json(data_dir / 'sessions' / 'explicit' / 'session.json', {'projectContext': CTX})
+    original = dict(config)
+    fill_bk_problem(config, 'explicit')
+    assert config == {'bk': original['bk'] or CTX['bk'],
+                      'problemDef': original['problemDef'] or CTX['researchQuestion']['text']}
+
+
+def test_missing_manifest_status_hides_path(client, data_dir):
+    sid = client.post('/context', json=CTX).json()['sid']
+    store.update_session(sid, {'collectionId': 'c2'})
+    preprocess_data({'sid': sid})
+    response = client.get(f'/preprocess-status/{sid}')
+    assert response.status_code == 200
+    assert response.json() == {'status': 'error', 'error': '수집본을 읽을 수 없습니다 (c2)'}
+    assert str(data_dir) not in response.text
+
+
+def test_context_router_has_no_duplicate_integrations():
+    from app.routers.context import router
+    assert not any(route.path == '/integrations' for route in router.routes)

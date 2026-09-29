@@ -29,7 +29,10 @@ def _crawl_docs(sid: str) -> list[dict]:
             raise ValueError("Cyclic crawl collection chain")
         collections.add(cid)
         root = base / cid
-        manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+        try:
+            manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            raise ValueError(f"수집본을 읽을 수 없습니다 ({cid})") from None
         for doc in read_docs(root / "docs"):
             docs.setdefault(doc["doc_id"], doc)
         cid = manifest.get("parent")
@@ -56,7 +59,7 @@ def _passes_quality(item: dict) -> bool:
         return len(item.get("title", "")) >= 5 or len(item.get("desc", "")) >= 10
     if item.get("fetch_level") == "snippet":
         description = item.get("snippet", "") or item.get("body", "")
-        return len(item.get("title", "")) >= 5 and len(description) >= 10
+        return len(item.get("title", "")) >= 5 or len(description) >= 10
     # Full documents (including title-less YouTube threads) use body alone.
     return len(item.get("body", "")) >= 10
 

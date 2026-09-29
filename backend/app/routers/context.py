@@ -9,7 +9,6 @@ from app.context.store import (StoreError, locked, assert_writable, load_session
                                update_session, _update_locked)
 from app.context.category import suggest_category
 from app.context import versions
-from app.external.base import integration_status
 
 
 class ContextRoute(APIRoute):
@@ -115,8 +114,3 @@ def activate(sid: str, body: ActiveRequest):
 @router.get('/sessions/{sid}/compare')
 def compare(sid: str, a: str, b: str, stage: str):
     return versions.compare(sid, a, b, stage)
-
-
-@router.get('/integrations')
-def integrations():
-    return integration_status()
