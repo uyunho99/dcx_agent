@@ -411,3 +411,72 @@ def test_threaded_failure_preserves_superseding_job(client, threaded, monkeypatc
     for key, value in replacement.items():
         assert state[key] == value
     assert state['error'] is None
+
+
+@pytest.mark.parametrize('n', [1, 2, 3, 4])
+def test_regenerate_uncommitted_round(client, monkeypatch, n):
+    through(client, n - 1)
+    first = start(client, n)
+    before_committed = store.load_session('test')['keywords']
+    assert client.post(f'/keywords/test/rounds/{n}').status_code == 409
+    assert client.post(f'/keywords/test/rounds/{n}?regenerate=false').status_code == 409
+    queued = []
+    monkeypatch.setattr(rounds, 'execute', queued.append)
+    response = client.post(f'/keywords/test/rounds/{n}?regenerate=true')
+    assert response.status_code == 200, response.text
+    running = response.json()
+    assert running['jobId'] != first['jobId']
+    assert running['gen'] == first['gen'] + 1
+    assert client.get(f'/keywords/test/rounds/{n}').json()['keywords'] == first['keywords']
+    assert client.post(f'/keywords/test/rounds/{n}?regenerate=true').json()['jobId'] == running['jobId']
+    assert len(queued) == 1
+    # A replacement may legitimately return the same words under fresh IDs.
+    generated = [{**{key: k[key] for key in ('kw', 'axis', 'sub')}, 'why': '상황'}
+                 for k in first['keywords']]
+    fake = FakeBackend({f'kw_round_{n}': json.dumps({'keywords': generated})})
+    monkeypatch.setattr(registry, 'get_backend', lambda task: fake)
+    queued[0]()
+    second = client.get(f'/keywords/test/rounds/{n}').json()
+    assert second['status'] == 'done'
+    assert [k['id'] for k in second['keywords']] == [f'k_r{n}g2_{i:04d}' for i in range(1, 43)]
+    assert store.load_session('test')['keywords'] == before_committed
+    assert commit(client, n, first).status_code == 409
+    assert commit(client, n, second).status_code == 200
+
+
+@pytest.mark.parametrize('n', [1, 2, 3])
+def test_regenerate_committed_round_rejected(client, n):
+    through(client, n)
+    before = client.get(f'/keywords/test/rounds/{n}').json()
+    assert client.post(f'/keywords/test/rounds/{n}?regenerate=true').status_code == 409
+    assert client.get(f'/keywords/test/rounds/{n}').json() == before
+
+
+def test_regenerate_enforces_order(client):
+    assert client.post('/keywords/test/rounds/2?regenerate=true').status_code == 409
+    start(client, 1)
+    assert client.post('/keywords/test/rounds/2?regenerate=true').status_code == 409
+
+
+def test_regenerate_failed_round(client, backend, monkeypatch):
+    from app.llm.base import failure
+    through(client, 1)
+    original = backend.run
+    monkeypatch.setattr(backend, 'run', lambda task: failure('timeout', 'Timed out'))
+    first = start(client, 2)
+    assert first['status'] == 'failed'
+    monkeypatch.setattr(backend, 'run', original)
+    response = client.post('/keywords/test/rounds/2?regenerate=true')
+    assert response.status_code == 200
+    second = client.get('/keywords/test/rounds/2').json()
+    assert second['jobId'] != first['jobId'] and second['gen'] == first['gen'] + 1
+    assert second['status'] == 'done'
+
+
+def test_r4_explicit_regenerate_preserves_committed_keywords(client):
+    through(client, 4)
+    before = store.load_session('test')['keywords']
+    response = client.post('/keywords/test/rounds/4?regenerate=true')
+    assert response.status_code == 200 and response.json()['gen'] == 2
+    assert client.get('/keywords/test/rounds/4').json()['status'] == 'done'
+    assert store.load_session('test')['keywords'] == before

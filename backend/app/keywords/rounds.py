@@ -95,15 +95,17 @@ def _keywords(data):
     return [Keyword.model_validate(k) for k in data.get('keywords', [])]
 
 
-def _all_keywords(data):
+def _all_keywords(data, exclude_round=None):
     by_id = {k.id: k for k in _keywords(data)}
-    for value in data.get('keywordRounds', {}).values():
+    for number, value in data.get('keywordRounds', {}).items():
+        if number == str(exclude_round):
+            continue
         for item in value.get('keywords', []):
             by_id.setdefault(item['id'], Keyword.model_validate(item))
     return list(by_id.values())
 
 
-def start_round(sid, n) -> RoundJob:
+def start_round(sid, n, regenerate: bool = False) -> RoundJob:
     _number(n)
     created = False
     def patch(data):
@@ -115,7 +117,7 @@ def start_round(sid, n) -> RoundJob:
             return {}
         if previous.get('committed') and n != 4:
             raise store.StoreError('이미 확정된 라운드입니다')
-        if (previous.get('job') or {}).get('status') == 'done' and not previous.get('committed'):
+        if (previous.get('job') or {}).get('status') == 'done' and not previous.get('committed') and not regenerate:
             raise store.StoreError('생성된 키워드를 먼저 확정하세요')
         gen = previous.get('gen', 0) + 1
         now = store.now()
@@ -123,7 +125,8 @@ def start_round(sid, n) -> RoundJob:
                        startedAt=now, updatedAt=now)
         created = True
         return {'keywordRounds': {**rounds, str(n): {
-            'round': n, 'gen': gen, 'committed': False, 'keywords': [],
+            'round': n, 'gen': gen, 'committed': False,
+            'keywords': previous.get('keywords', []) if regenerate and not previous.get('committed') else [],
             'inputs': {}, 'below_min': None, 'promptVersion': PROMPT_VERSION[n],
             'job': job.model_dump()}}}
     data = mutate(sid, patch)
@@ -223,7 +226,8 @@ def _run(sid, n, job_id):
         if not result.ok:
             _job_patch(sid, n, job_id, {'job': {'status': 'failed', 'error': result.error.model_dump(), 'updatedAt': store.now()}})
             return
-        cleaned, logs = clean_generated([k.model_dump() for k in result.data.keywords], _all_keywords(data), set())
+        # Retained pending keywords are replaced by this job, not deduplicated against it.
+        cleaned, logs = clean_generated([k.model_dump() for k in result.data.keywords], _all_keywords(data, exclude_round=n), set())
         kws = volumes([Keyword(id=f'k_r{n}g{generation}_{i:04d}', kw=''.join(k['kw'].split()),
                                axis=k['axis'], sub=k['sub'], round=n, origin='llm')
                        for i, k in enumerate(cleaned, 1)])
@@ -231,7 +235,7 @@ def _run(sid, n, job_id):
             current = latest['keywordRounds'][str(n)]
             if current['job']['jobId'] != job_id or current['job']['status'] != 'running':
                 raise _JobSuperseded('작업이 변경되었습니다')
-            existing = {norm_key(k.kw) for k in _all_keywords(latest)}
+            existing = {norm_key(k.kw) for k in _all_keywords(latest, exclude_round=n)}
             kept = [k.model_dump() for k in kws if norm_key(k.kw) not in existing]
             return {'keywordRounds': {str(n): {'keywords': kept, 'normalization': logs,
                     'below_min': {'got': len(kept), 'min': MIN_COUNT[n]} if len(kept) < MIN_COUNT[n] else None,

@@ -265,3 +265,32 @@ def test_atomic_replace_failure_preserves_previous_file(sid, monkeypatch):
 def test_inline_content_cannot_create_extra_sections():
     text = render_feedback_md([event('direction', text='냉방\n## 가짜 헤더')])
     assert len([line for line in text.splitlines() if line.startswith('## ')]) == 4
+
+
+@pytest.mark.parametrize('kw_id', ['k_r1g1_0001', None])
+def test_screen_and_commit_reject_count_once(kw_id):
+    events = [event('reject', kwId=kw_id, kw=kw, tags=['common'])
+              for kw in ['저 소음', '저소음']]
+    text = section(render_feedback_md(events), '거절 사유')
+    assert 'common (흔함) · 1건' in text
+    assert text.count('- 저소음') == 1
+
+
+def test_latest_reject_supplies_tags_and_note():
+    events = [event('reject', kwId='same', kw='저소음', tags=['common'], note='이전 의견'),
+              event('reject', kwId='same', kw='저소음', tags=['sentence'], note='최신 의견')]
+    text = section(render_feedback_md(events), '거절 사유')
+    assert 'common' not in text and '이전 의견' not in text
+    assert 'sentence (문장형) · 1건' in text
+    assert '최신 의견' in text
+
+
+@pytest.mark.parametrize('count', [2, 10])
+def test_reject_counts_distinct_keyword_ids(count):
+    events = [event('reject', kwId=f'keyword-{i}', kw='같은 표기', tags=['common'])
+              for i in range(count) for _ in range(2)]
+    text = section(render_feedback_md(events), '거절 사유')
+    assert f'common (흔함) · {count}건' in text
+    assert text.count('- 같은 표기') == min(count, 8)
+    if count > 8:
+        assert f'외 {count - 8}건' in text

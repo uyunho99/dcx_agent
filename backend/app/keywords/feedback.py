@@ -61,10 +61,15 @@ def render_feedback_md(events: list[KeywordEvent]) -> str:
     rejections = []
     rejected = []
     restored = set()
+    seen_rejects = set()
     for ev in reversed(events):
         if ev.type in ("unreject", "add", "approve"):
             restored.update(_keys(ev))
         elif ev.type == "reject" and restored.isdisjoint(_keys(ev)):
+            key = ("id", ev.kwId) if ev.kwId else ("kw", norm_key(ev.kw or ""))
+            if key in seen_rejects:
+                continue
+            seen_rejects.add(key)
             rejected.append(ev)
     rejected.reverse()
     for tag in REJECT_TAGS:

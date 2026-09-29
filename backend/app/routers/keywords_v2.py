@@ -76,8 +76,8 @@ class EventRequest(BaseModel):
 
 
 @router.post('/{sid}/rounds/{n}')
-def start_round(sid: str, n: int):
-    return rounds.start_round(sid, n)
+def start_round(sid: str, n: int, regenerate: bool = False):
+    return rounds.start_round(sid, n, regenerate=regenerate)
 
 
 @router.get('/{sid}/rounds/{n}')
