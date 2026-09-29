@@ -313,3 +313,54 @@ def test_target_total_counts_documents_and_drains_calls(tmp_path, monkeypatch, t
         detail(tmp_path, snap)
         assert len(calls) == before
         assert json.loads((tmp_path / 'worker_state.json').read_text())['stopReason'] == 'target_reached'
+
+
+@pytest.mark.parametrize('stage', ['list', 'detail'])
+@pytest.mark.parametrize('failure', [False, True])
+def test_worker_closes_adapter(tmp_path, corpus, monkeypatch, stage, failure):
+    snapshot = setup_list(tmp_path) if stage == 'detail' else None
+    closed = []
+    class Owned(FixtureAdapter):
+        def close(self):
+            closed.append(self)
+    monkeypatch.setitem(REGISTRY, 'fixture', lambda: Owned(corpus))
+    if failure:
+        def fail(*args, **kwargs):
+            raise RuntimeError('coordinator failed')
+        monkeypatch.setattr(worker._Run, 'tick', fail)
+    def run():
+        return setup_list(tmp_path) if stage == 'list' else detail(tmp_path, snapshot)
+    if failure:
+        with pytest.raises(RuntimeError, match='coordinator failed'):
+            run()
+    else:
+        run()
+    assert len(closed) == 1
+
+
+@pytest.mark.parametrize('stage', ['list', 'detail'])
+@pytest.mark.parametrize('failure', ['factory', 'run'])
+def test_worker_closes_adapters_on_setup_failure(tmp_path, corpus, monkeypatch, stage, failure):
+    snapshot = setup_list(tmp_path) if stage == 'detail' else None
+    closed = []
+    class Owned(FixtureAdapter):
+        def close(self):
+            closed.append(self)
+    def fail(*args, **kwargs):
+        raise RuntimeError('setup failed')
+    monkeypatch.setitem(REGISTRY, 'fixture', lambda: Owned(corpus))
+    if failure == 'factory':
+        monkeypatch.setitem(REGISTRY, 'broken', fail)
+        if stage == 'detail':
+            with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+                q.add_urls([dict(url='fixture://aircon/broken', source='broken', kw='k')])
+                snapshot = q.take_snapshot()
+    else:
+        monkeypatch.setattr(worker, '_Run', fail)
+    with pytest.raises(RuntimeError, match='setup failed'):
+        if stage == 'list':
+            worker.run_list('S', collection=tmp_path, keywords=['k'],
+                            sources=['fixture', 'broken'] if failure == 'factory' else ['fixture'])
+        else:
+            detail(tmp_path, snapshot)
+    assert len(closed) == 1

@@ -6,7 +6,7 @@ inert by default and intended solely for subprocess tests with fake adapters.
 import argparse
 from collections import deque
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from dataclasses import asdict
 from datetime import datetime, timezone
 import importlib
@@ -22,7 +22,7 @@ import time
 from app.config import settings
 from app.crawl.errors import safe_error
 from app.context.store import load_session, read_json, write_json
-from app.crawl.adapters import REGISTRY, available_sources
+from app.crawl.adapters import REGISTRY, available_sources, managed_adapter
 from app.crawl.adapters.base import AdapterBlocked, FetchedDoc, ListItem, ListPage
 from app.crawl.filters import FilterConfig, check_doc, check_list
 from app.crawl.hashing import author_hash
@@ -260,10 +260,12 @@ def run_list(sid, *, collection=None, keywords=None, sources=None, filters=None,
         sources = available_sources()
     sources = list(dict.fromkeys(sources))
     filters = filters or FilterConfig(**config.get('filters', {}))
-    adapters = {s: REGISTRY[s]() for s in sources}
-    run = _Run(root, sid, 'list', sources, limiters, config)
+    resources = ExitStack()
+    run = None
     status = 'interrupted'
     try:
+        adapters = {s: resources.enter_context(managed_adapter(REGISTRY[s])) for s in sources}
+        run = _Run(root, sid, 'list', sources, limiters, config)
         run.q.add_list_tasks(kws, sources)
         with _stop_event() as stop:
             while not stop.is_set():
@@ -294,7 +296,11 @@ def run_list(sid, *, collection=None, keywords=None, sources=None, filters=None,
                         run.channels[row['source']]['status'] = 'failed'
             return run.snapshot
     finally:
-        run.close(status)
+        try:
+            if run is not None:
+                run.close(status)
+        finally:
+            resources.close()
 
 
 def _clean(text):
@@ -414,8 +420,8 @@ def run_detail(sid, snapshot_id, *, collection=None, filters=None, limiters=None
         sources = [r[0] for r in q.connection.execute('SELECT DISTINCT source FROM snapshot_urls WHERE snapshot_id=?', (snapshot_id,))]
     finally:
         q.close()
-    adapters = {s: REGISTRY[s]() for s in sources}
-    run = _Run(root, sid, 'detail', sources, limiters, config, snapshot_id)
+    resources = ExitStack()
+    run = None
     writer = None
     status = 'interrupted'
     batch = {}
@@ -428,6 +434,8 @@ def run_detail(sid, snapshot_id, *, collection=None, filters=None, limiters=None
             batch.clear()  # Completion is NOT idempotent; never replay a committed batch.
             written = 0
     try:
+        adapters = {s: resources.enter_context(managed_adapter(REGISTRY[s])) for s in sources}
+        run = _Run(root, sid, 'detail', sources, limiters, config, snapshot_id)
         writer = DocWriter(root / 'docs', shard_size=5000)
         run.q.lease_urls(snapshot_id, 0, LEASE_SECONDS)  # Validate snapshot, apply exclusions.
         with _stop_event() as stop:
@@ -477,7 +485,11 @@ def run_detail(sid, snapshot_id, *, collection=None, filters=None, limiters=None
             if writer is not None:
                 writer.close()
         finally:
-            run.close(status)
+            try:
+                if run is not None:
+                    run.close(status)
+            finally:
+                resources.close()
 
 
 def main(argv=None):

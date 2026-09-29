@@ -283,7 +283,7 @@ def test_active_collection_location(tmp_path, corpus, monkeypatch):
     from app.config import settings
     monkeypatch.setattr(settings, 'local_data_dir', str(tmp_path))
     monkeypatch.setattr(worker, 'load_session', lambda sid: {'collectionId': 'c1', 'keywords': ['에어컨']})
-    worker.run_list('S', filters=FilterConfig(date_from=None, date_to=None))
+    worker.run_list('S', sources=['fixture'], filters=FilterConfig(date_from=None, date_to=None))
     assert (tmp_path / 'crawl' / 'S' / 'collections' / 'c1' / 'queue.sqlite').exists()
 
 

@@ -33,13 +33,16 @@ def _author(info: dict) -> str | None:
 
 
 def _blocked(error: BaseException) -> bool:
-    """Follow yt-dlp's exc_info and Python exception chains without text matching."""
+    """Recognize bot confirmation and HTTP blocks through yt-dlp exception chains."""
     pending, seen = [error], set()
     while pending:
         current = pending.pop()
         if not isinstance(current, BaseException) or id(current) in seen:
             continue
         seen.add(id(current))
+        message = str(current).casefold().replace("’", "'")
+        if "confirm you're not a bot" in message:
+            return True
         if getattr(current, 'status', None) in (403, 429) or getattr(current, 'code', None) in (403, 429):
             return True
         pending.extend([current.__cause__, current.__context__, getattr(current, 'cause', None)])

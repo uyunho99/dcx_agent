@@ -653,3 +653,28 @@ def test_collection_without_run_is_not_resumable(env):
     assert response.status_code == 409
     assert 'No unfinished phase to resume' in response.text
     assert not env.calls
+
+
+@pytest.fixture
+def real_sources():
+    # Import yt-dlp before env replaces subprocess.Popen (yt-dlp subclasses it).
+    import yt_dlp
+    from app.crawl.adapters import available_sources
+    return available_sources
+
+
+def test_registered_sources_status_and_project_defaults(real_sources, env, monkeypatch):
+    monkeypatch.setattr(control, 'available_sources', real_sources)
+    monkeypatch.setattr(settings, 'enable_fixture_channel', False)
+    sources = ['youtube', 'clien', 'ppomppu']
+    session = store.load_session('S')
+    session.pop('crawlConfig')
+    session['projectContext'] = {'channels': ['naver_blog', *sources]}
+    store.write_json(store.session_dir('S') / 'session.json', session)
+    status = env.client.get('/crawl/S/status')
+    assert status.status_code == 200
+    assert set(status.json()['available_sources']) == set(sources)
+    control.start_list('S')
+    manifest = store.read_json(control.collection_dir('S') / 'manifest.json')
+    assert manifest['channels'] == sources
+    assert len(env.calls) == 1  # Popen is injected; no real channel is contacted.

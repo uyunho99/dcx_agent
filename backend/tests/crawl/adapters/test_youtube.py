@@ -205,3 +205,22 @@ def test_bounded_search_and_invalid_options(recording):
         YoutubeAdapter(max_comments=-1)
     with pytest.raises(ValueError, match='max_comments'):
         adapter.fetch(page.items[0], max_comments=-1)
+
+
+@pytest.mark.parametrize('message', ["Sign in to confirm you're not a bot", "confirm you’re not a bot", "Video unavailable"])
+@pytest.mark.parametrize('method', ['list', 'fetch'])
+def test_bot_confirmation_download_error(recording, monkeypatch, message, method):
+    from yt_dlp.utils import DownloadError
+    from app.crawl.adapters.base import AdapterBlocked
+    from app.crawl.adapters.youtube import YoutubeAdapter
+
+    adapter = YoutubeAdapter()
+    item = adapter.list_page('test', None).items[0]
+    def fail(*args, **kwargs):
+        raise DownloadError(message)
+    monkeypatch.setattr(yt_dlp.YoutubeDL, 'extract_info', fail)
+    with pytest.raises(DownloadError if message == 'Video unavailable' else AdapterBlocked):
+        if method == 'list':
+            adapter.list_page('test', None)
+        else:
+            adapter.fetch(item)

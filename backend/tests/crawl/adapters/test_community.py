@@ -71,7 +71,8 @@ def check_list(site):
     first = page.items[0]
     assert first.title == ("에어팟 5 무선충전 케이스 모델 후기" if site == "clien" else "전에 살던월세집 세입자를 우연하게 봤는데 개고생하겠다.")
     assert "에어컨" in first.snippet
-    assert first.date.startswith("2026-09")
+    assert first.date == ("2026-09-23" if site == "clien" else "2026-09-17")
+    assert all(len(i.date) == 10 for i in page.items if i.date is not None)
     assert page.next_cursor == ("1" if site == "clien" else None)
     assert a.is_available()
     request = requests[0][0]
@@ -104,6 +105,10 @@ def test_clien_detail_body_comments(index, body, count, author):
     assert doc.title == item.title
     assert doc.author_raw == author
     assert doc.access == "public" and doc.date.startswith("2026-09")
+    assert item.date == doc.date == ["2026-09-23", "2026-09-17", "2026-09-17"][index]
+    assert doc.comments[0].date == doc.date
+    assert len(doc.date) == 10
+    assert all(len(c.date) == 10 for c in doc.comments)
     assert len(doc.comments) == count
     assert any(c.depth == 1 for c in doc.comments)
     assert all(c.text and c.date and len(c.author_hash) == 16 for c in doc.comments)
@@ -126,6 +131,10 @@ def test_ppomppu_detail_body_comments(index, body, count, author, comment):
     assert doc.title == item.title
     assert doc.author_raw == author
     assert doc.access == "public" and doc.date.startswith("2026-09")
+    assert item.date == doc.date == ["2026-09-17", "2026-09-10", "2026-09-10"][index]
+    assert doc.comments[0].date == doc.date
+    assert len(doc.date) == 10
+    assert all(len(c.date) == 10 for c in doc.comments)
     assert len(doc.comments) == count
     assert doc.comments[0].text == comment
     assert all(c.depth == 0 and c.date and len(c.author_hash) == 16 for c in doc.comments)
@@ -212,4 +221,5 @@ def test_ppomppu_reply_structure_and_rendered_comments():
     assert [c.depth for c in doc.comments] == [0, 1, 0, 2]
     assert doc.src_meta["comment_threads"][1] == {"id": "2682217", "parent": "2681812"}
     assert doc.comments[-1].text == "Rendered reply"
+    assert doc.comments[-1].date == "2026-09-17"
     assert doc.src_meta["comment_threads"][-1] == {"id": "999", "parent": "2682217"}

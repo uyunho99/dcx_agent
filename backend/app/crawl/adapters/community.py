@@ -30,7 +30,7 @@ def selected(tree, selector: str) -> str:
 
 
 def date_text(value: str) -> str | None:
-    match = re.search(r"\d{4}[-.]\d{2}[-.]\d{2}(?:\s+\d{2}:\d{2}(?::\d{2})?)?", value)
+    match = re.search(r"\d{4}[-.]\d{2}[-.]\d{2}", value)
     return match.group().replace(".", "-") if match else None
 
 
@@ -99,5 +99,5 @@ class CommunityAdapter:
         raise NotImplementedError
 
     def comment(self, content: str, depth: int, date: str, author: str) -> Comment:
-        return Comment(text=content, depth=depth, date=date,
+        return Comment(text=content, depth=depth, date=date_text(date) or "",
                        author_hash=author_hash(self.source, author) if author else "")

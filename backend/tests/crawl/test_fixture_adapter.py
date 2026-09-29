@@ -79,7 +79,7 @@ def test_fetch_returns_body(corpus):
 def test_disabled_by_default(monkeypatch):
     monkeypatch.setattr(settings, "enable_fixture_channel", False)
     monkeypatch.setattr(settings, "fixture_corpus_path", "")
-    assert set(REGISTRY) == {"fixture"}
+    assert set(REGISTRY) == {"fixture", "youtube", "clien", "ppomppu"}
     assert "fixture" not in available_sources()
 
 
@@ -87,12 +87,12 @@ def test_availability_reads_settings_at_call_time(corpus, monkeypatch):
     path, _ = corpus
     monkeypatch.setattr(settings, "enable_fixture_channel", True)
     monkeypatch.setattr(settings, "fixture_corpus_path", "")
-    assert available_sources() == []
+    assert "fixture" not in available_sources()
     monkeypatch.setattr(settings, "fixture_corpus_path", str(path))
-    assert available_sources() == ["fixture"]
+    assert "fixture" in available_sources()
     assert REGISTRY["fixture"]().list_page("소음", None).total_hint == 10
     monkeypatch.setattr(settings, "enable_fixture_channel", False)
-    assert available_sources() == []
+    assert "fixture" not in available_sources()
 
 
 def test_utf8_bom(tmp_path):

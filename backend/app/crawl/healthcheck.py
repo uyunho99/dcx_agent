@@ -14,6 +14,7 @@ def main(argv=None):
     for source in [args.source] if args.source else available_sources():
         blocked = False
         detail_ok = '0/3'
+        adapter = None
         try:
             adapter = REGISTRY[source]()
             page = adapter.list_page(args.keyword, None)
@@ -32,6 +33,10 @@ def main(argv=None):
                     errors = failed = True
                     blocked |= isinstance(exc, AdapterBlocked)
             detail_ok = 'FAIL' if errors else f'{success}/3'
+        finally:
+            close = getattr(adapter, 'close', None)
+            if callable(close):
+                close()
         print(f'{source}: list_ok {list_ok} · detail_ok {detail_ok} · blocked {str(blocked).lower()}')
     return int(failed)
 
