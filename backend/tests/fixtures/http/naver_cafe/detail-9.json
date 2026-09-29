@@ -1,0 +1,13 @@
+{
+  "result": {
+    "errorCode": "0004",
+    "reason": "로그인하지 않았습니다.",
+    "message": "errorCode: 0004, message: 로그인 하지 않음",
+    "more": {
+      "cafeUrl": "scenicetech100",
+      "cafeName": "세닉 E-TECH CLUB",
+      "pcCafeName": "(공식)르노 세닉 e-tech 100% [찐 차주들이 함께하는  카페]",
+      "cafeId": 31676093
+    }
+  }
+}

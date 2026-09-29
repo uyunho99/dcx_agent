@@ -1,0 +1,43 @@
+{
+  "source": "naver_blog",
+  "keyword": "에어컨 소음",
+  "captured_at": "2026-09-29T09:18:45.809912+00:00",
+  "requests": [
+    {
+      "url": "https://search.naver.com/search.naver?ssc=tab.blog.all&query=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&start=1",
+      "status_code": 200,
+      "encoding": "utf-8",
+      "file": "list-1.html"
+    },
+    {
+      "url": "https://search.naver.com/search.naver?ssc=tab.blog.all&query=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&start=31",
+      "status_code": 200,
+      "encoding": "utf-8",
+      "file": "list-2.html"
+    },
+    {
+      "url": "https://m.blog.naver.com/user_a/224406855054",
+      "status_code": 200,
+      "encoding": "utf-8",
+      "file": "detail-1.html"
+    },
+    {
+      "url": "https://m.blog.naver.com/user_b/224367592974",
+      "status_code": 200,
+      "encoding": "utf-8",
+      "file": "detail-2.html"
+    },
+    {
+      "url": "https://m.blog.naver.com/user_c/224367856146",
+      "status_code": 200,
+      "encoding": "utf-8",
+      "file": "detail-3.html"
+    }
+  ],
+  "notes": [],
+  "masking_stats": {
+    "id": 59,
+    "name": 45,
+    "profile": 7
+  }
+}

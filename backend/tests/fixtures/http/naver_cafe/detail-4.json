@@ -1,0 +1,13 @@
+{
+  "result": {
+    "errorCode": "0004",
+    "reason": "로그인하지 않았습니다.",
+    "message": "errorCode: 0004, message: 로그인 하지 않음",
+    "more": {
+      "cafeUrl": "carmessenger",
+      "cafeName": "EV 오너스클럽",
+      "pcCafeName": "사용자D",
+      "cafeId": 11315238
+    }
+  }
+}

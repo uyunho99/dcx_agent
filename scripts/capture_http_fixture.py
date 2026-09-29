@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import asyncio
 from collections import Counter
 from datetime import datetime, timezone
 import html
@@ -36,6 +35,9 @@ SELECTORS = {
     'ppomppu': '.list_name, .list_name2, .view_name, .comment_name, .nickname, .topTitle-name .baseList-name, .baseList-name, .content .desc > span:nth-child(2)',
     'youtube': '[itemprop="author"]',
 }
+NAVER_NAMES = ('.user_info .name, .user_info .sub, .sub_name, .blog-nick, .nick_name, '
+               '.sds-comps-profile-info-name-text, .sds-comps-profile-info-subtext, '
+               '.mention, .se-mention, .tag_nickname')
 EMAIL = re.compile(r'[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}')
 URL = re.compile(r'(?:https?:)?//[^\s<>"\'\\]+')
 SECRET_KEY = re.compile(r'(?:^key$|api.?key|secret|token|authorization|credential|signature|password|client.?id)', re.I)
@@ -55,7 +57,16 @@ def letters(number):
 
 def strip_query_secrets(url):
     """Keep useful article/search parameters; remove credentials and fragments."""
-    parts = urlsplit(html.unescape(url))
+    try:
+        parts = urlsplit(html.unescape(url))
+    except ValueError:
+        # Regex matches in page scripts are not necessarily valid URLs. Still
+        # remove query credentials without requiring a valid authority.
+        base, separator, query = html.unescape(url).split('#', 1)[0].partition('?')
+        query = '&'.join(pair for pair in query.split('&')
+                         if not SECRET_KEY.search(unquote(pair.split('=', 1)[0])))
+        result = base + ('?' + query if separator and query else '')
+        return result.replace('&', '&amp;') if '&amp;' in url else result
     host = parts.netloc.rsplit('@', 1)[-1]
     query = '&'.join(pair for pair in parts.query.split('&')
                      if not SECRET_KEY.search(unquote(pair.split('=', 1)[0])))
@@ -87,7 +98,15 @@ class Masker:
 
     def discover_url(self, value):
         value = html.unescape(value)
-        parts = urlsplit(value)
+        # Discover query identities even when a malformed authority cannot be
+        # parsed. Returning below must not interrupt the rest of discover_text.
+        for key, val in parse_qsl(value.partition('?')[2].split('#', 1)[0]):
+            if normalized(key) in ID_KEYS:
+                self.remember(val, 'id')
+        try:
+            parts = urlsplit(value)
+        except ValueError:
+            return
         host = (parts.hostname or '').lower()
         for key, val in parse_qsl(parts.query):
             if normalized(key) in ID_KEYS or (parts.path.endswith('/view_info.php') and key == 'id'):
@@ -96,32 +115,43 @@ class Masker:
             first = unquote(parts.path.strip('/').split('/')[0])
             if first and not first.lower().endswith(('.naver', '.nhn')):
                 self.remember(first, 'id')
+        if host in {'cafe.naver.com', 'm.cafe.naver.com'} or not host:
+            member = re.search(r'/members/([^/?]+)', parts.path)
+            if member:
+                self.remember(unquote(member[1]), 'id')
         match = re.search(r'/(?:channel/|user/|@)([^/?]+)', parts.path)
         if host.endswith('youtube.com') and match:
             self.remember(unquote(match[1]), 'id')
         if any(marker in host for marker in ('profile', 'blogpfthumb', 'yt3.')):
             self.remember(value, 'profile')
 
-    def discover_text(self, text):
+    def discover_text(self, text, source=None):
         for value in EMAIL.findall(text):
             self.remember(value, 'email')
         for value in URL.findall(text.replace('\\/', '/')):
             self.discover_url(value)
         # Embedded hydration/config JSON and JavaScript object literals.
-        pattern = r'''["']([\w-]+)["']\s*:\s*(["'])((?:\\.|(?!\2).)*?)\2'''
+        # Naver mobile pages also expose identity through bare JS assignments.
+        pattern = r'''(?:["']([\w-]+)["']|\b([A-Za-z_]\w*))\s*[:=]\s*(["'])((?:\\.|(?!\3).)*?)\3'''
         for match in re.finditer(pattern, text):
-            value = match[3]
+            value = match[4]
             try:
                 value = json.loads('"' + value + '"')
             except ValueError:
                 pass
-            self.discover_field(match[1], value)
+            self.discover_field(match[1] or match[2], value, source)
         for match in re.finditer(r'''(?:showMemberInfo|showMemberMenu|memberInfo)\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]''', text):
             self.remember(match[1], 'id')
             self.remember(match[2], 'name')
 
-    def discover_field(self, key, value):
+    def discover_field(self, key, value, source=None):
         key = normalized(key)
+        # Site/ad script channels are dotted config identifiers. YouTube's
+        # channel field is a display name, even when it has the same syntax.
+        if (key == 'channel' and source in SOURCES and source != 'youtube'
+                and isinstance(value, str)
+                and re.fullmatch(r'[A-Za-z_][\w-]*(?:\.[A-Za-z_][\w-]*)+', value, re.ASCII)):
+            return
         if key in NAME_KEYS:
             self.remember(value, 'name')
         elif key in ID_KEYS:
@@ -129,21 +159,36 @@ class Masker:
         elif key in {normalized(k) for k in PROFILE_KEYS}:
             self.remember(value, 'profile')
 
-    def discover_json(self, obj):
+    def discover_json(self, obj, source=None):
         if isinstance(obj, dict):
             for key, value in obj.items():
+                if normalized(key) in {'writer', 'author'} and isinstance(value, dict):
+                    for field, identity in value.items():
+                        field = normalized(field)
+                        if not isinstance(identity, str) or field.startswith('memberlevel'):
+                            continue
+                        if field.endswith(('memberkey', 'memberid')) or field in {'id', 'userid'}:
+                            self.remember(identity, 'id')
+                        elif ('image' in field or 'profile' in field) and (
+                                field.endswith('url') or identity.startswith(('http://', 'https://', '//', '/'))):
+                            self.remember(identity, 'profile')
+                        elif field in {'nick', 'nickname', 'name'}:
+                            self.remember(identity, 'name')
                 if isinstance(value, str):
-                    self.discover_field(key, value)
-                self.discover_json(value)
+                    self.discover_field(key, value, source)
+                self.discover_json(value, source)
         elif isinstance(obj, list):
             for value in obj:
-                self.discover_json(value)
+                self.discover_json(value, source)
         elif isinstance(obj, str):
-            self.discover_text(obj)
+            if source in {'naver_blog', 'naver_cafe'} and '<' in obj:
+                self.discover_html(source, obj)
+            else:
+                self.discover_text(obj, source)
 
     def discover_html(self, source, text):
         from selectolax.parser import HTMLParser
-        self.discover_text(text)
+        self.discover_text(text, source)
         if source == 'ppomppu':
             for match in re.finditer(r'\bvar\s+initialCommentData\s*=\s*', text):
                 data, _ = json.JSONDecoder().raw_decode(text[match.end():])
@@ -155,7 +200,10 @@ class Masker:
         # that corrupts discovered identities (and audit placeholders) so they
         # no longer match the original text during substitution.
         tree = HTMLParser(text.encode('utf-8', errors='replace'), detect_encoding=False)
-        for node in tree.css(SELECTORS[source]):
+        selectors = SELECTORS[source]
+        if source.startswith('naver_'):
+            selectors += ', ' + NAVER_NAMES
+        for node in tree.css(selectors):
             for value in (node.text(strip=True), node.attributes.get('title'), node.attributes.get('alt')):
                 self.remember(value, 'name')
             for child in node.css('img'):
@@ -165,8 +213,10 @@ class Masker:
             attrs = node.attributes
             if attrs.get('href'):
                 self.discover_url(attrs['href'])
+                if source.startswith('naver_') and re.search(r'/members/|MemberProfile|member[.]nhn', attrs['href'], re.I):
+                    self.remember(node.text(strip=True), 'name')
             for key, value in attrs.items():
-                self.discover_field(key.removeprefix('data-'), value)
+                self.discover_field(key.removeprefix('data-'), value, source)
             marker = ' '.join((attrs.get('class') or '', attrs.get('id') or '')).lower()
             if node.tag == 'img' and any(s in marker for s in ('profile', 'avatar', 'member', 'nick')):
                 for key in ('src', 'data-src', 'srcset'):
@@ -253,7 +303,7 @@ def mask_json(source, obj, masker=None):
     if source not in SOURCES:
         raise ValueError('unsupported source')
     masker = masker or Masker()
-    masker.discover_json(obj)
+    masker.discover_json(obj, source)
     return masker.json(obj)
 
 
@@ -333,7 +383,15 @@ class Recorder:
                 self.pending.append((file, text, encoding))
             if self.source == 'naver_cafe':
                 self.manifest['requests'][-1].update(restriction=restriction(text, str(response.url)))
-            response.raise_for_status()
+            expected_restriction = (self.source == 'naver_cafe' and file.endswith('.json')
+                                    and response.status_code == 401
+                                    and response.json().get('errorCode') == '0004')
+            if expected_restriction:
+                self.manifest['requests'][-1]['restriction'].update(login=True, access='restricted')
+            elif self.source == 'naver_cafe' and file.endswith('.json') and response.status_code == 200:
+                self.manifest['requests'][-1]['restriction']['access'] = 'public'
+            elif not (self.source == 'naver_cafe' and file.endswith('.json')):
+                response.raise_for_status()
             return response
         raise RuntimeError('redirect limit')
 
@@ -341,7 +399,7 @@ class Recorder:
         # Discover across ALL pages first, then write only masked representations.
         for filename, data, _ in self.pending:
             if filename.endswith('.json'):
-                self.masker.discover_json(data)
+                self.masker.discover_json(data, self.source)
             else:
                 self.masker.discover_html(self.source, data)
         self.masker.discover_json(self.manifest)
@@ -383,8 +441,20 @@ def article_urls(source, text, base):
     result = []
     seen = set()
     for node in HTMLParser(text).css('a[href]'):
-        url = urljoin(base, html.unescape(node.attributes['href']))
-        parts = urlsplit(url)
+        try:
+            url = urljoin(base, html.unescape(node.attributes['href']))
+            parts = urlsplit(url)
+        except ValueError:
+            continue
+        if source in {'naver_blog', 'naver_cafe'}:
+            host = 'blog.naver.com' if source == 'naver_blog' else 'cafe.naver.com'
+            if (parts.scheme in {'http', 'https'} and parts.hostname in {host, 'm.' + host}
+                    and re.fullmatch(r'/[^/]+/\d+/?', parts.path)):
+                canonical = 'https://' + host + parts.path.rstrip('/')
+                if canonical not in seen:
+                    seen.add(canonical)
+                    result.append(canonical)
+            continue
         if parts.hostname != urlsplit(base).hostname:
             continue
         query = dict(parse_qsl(parts.query))
@@ -397,47 +467,15 @@ def article_urls(source, text, base):
     return result
 
 
-async def render_cafe(recorder, url, filename):
-    from crawl4ai import AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerRunConfig
-
-    class QuietLogger:
-        def __getattr__(self, name):
-            return lambda *a, **k: None
-
-    async def setup(page, **kwargs):
-        async def route(request_route):
-            if recorder.blocked:
-                await request_route.abort()
-                return
-            # Route.fetch observes redirects itself only when explicitly allowed.
-            async with lock:
-                if recorder.blocked:
-                    await request_route.abort()
-                    return
-                await asyncio.sleep(max(0, 1 - (time.monotonic() - recorder.last_request)))
-                recorder.last_request = time.monotonic()
-                try:
-                    response = await request_route.fetch(timeout=15000, max_redirects=0, max_retries=0)
-                    recorder.record(response.url, response.status)
-                    await request_route.fulfill(response=response)
-                except Blocked:
-                    await request_route.abort()
-        await page.route('**/*', route)
-        return page
-
-    lock = asyncio.Lock()
-    # Null logger and disabled cache prevent unmasked page/URL persistence.
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False), logger=QuietLogger()) as crawler:
-        crawler.crawler_strategy.set_hook('on_page_context_created', setup)
-        result = await crawler.arun(url=url, config=CrawlerRunConfig(
-            cache_mode=CacheMode.DISABLED, verbose=False, page_timeout=15000))
-        if recorder.blocked:
-            raise Blocked()
-        recorder.record(url, result.status_code, 'utf-8', filename,
-                        restriction=restriction(result.html or '', url))
-        if not result.success:
-            raise RuntimeError('render failed')
-        recorder.pending.append((filename, result.html, 'utf-8'))
+def cafe_article_url(url):
+    parts = urlsplit(html.unescape(url))
+    if parts.scheme not in {'http', 'https'} or parts.hostname not in {'cafe.naver.com', 'm.cafe.naver.com'}:
+        raise ValueError('unsupported Naver cafe article URL')
+    match = re.fullmatch(r'/([^/]+)/(\d+)/?', parts.path)
+    if not match:
+        raise ValueError('expected cafeUrl/articleId URL')
+    return (f'https://article.cafe.naver.com/gw/v4/cafes/{quote(unquote(match[1]), safe="")}'
+            f'/articles/{match[2]}?useCafeId=false')
 
 
 def capture_youtube(recorder, keyword, details, urls):
@@ -486,16 +524,27 @@ def capture_http(recorder, args):
     with httpx.Client(headers=HEADERS, timeout=15, follow_redirects=False) as client:
         urls = args.url
         if args.source.startswith('naver_'):
-            client_id, secret = os.getenv('NAVER_CLIENT_ID'), os.getenv('NAVER_CLIENT_SECRET')
-            if client_id and secret:
-                base = os.getenv('NAVER_SEARCH_BASE_URL', 'https://openapi.naver.com').rstrip('/')
-                kind = 'blog' if args.source == 'naver_blog' else 'cafearticle'
-                url = base + f'/v1/search/{kind}.json?' + urlencode({'query': args.keyword, 'display': 10, 'start': 1})
-                response = recorder.get(client, url, 'list-1.json', {
-                    'X-Naver-Client-Id': client_id, 'X-Naver-Client-Secret': secret})
-                urls = urls or [item['link'] for item in response.json().get('items', []) if item.get('link')]
-            else:
-                recorder.manifest['notes'].append('List skipped: NAVER_CLIENT_ID/SECRET missing. Explicit URLs still work.')
+            discovered = []
+            kind = 'blog' if args.source == 'naver_blog' else 'cafe'
+            for page in range(1, args.pages + 1):
+                url = 'https://search.naver.com/search.naver?' + urlencode({
+                    'ssc': f'tab.{kind}.all', 'query': args.keyword, 'start': 1 + 30 * (page - 1)})
+                response = recorder.get(client, url, f'list-{page}.html')
+                discovered.extend(article_urls(args.source, response.text, str(response.url)))
+            urls = list(dict.fromkeys(urls or discovered))
+            if args.source == 'naver_cafe':
+                public = 0
+                limit = args.max_tries if args.max_tries is not None else 3 * args.details
+                for index, url in enumerate(urls[:limit], 1):
+                    if public >= args.details:
+                        break
+                    response = recorder.get(client, cafe_article_url(url), f'detail-{index}.json',
+                                            {'Referer': 'https://m.cafe.naver.com/'})
+                    public += response.status_code == 200
+                if public < args.details:
+                    recorder.manifest['notes'].append(
+                        f'Public article target not reached: {public}/{args.details}; candidates or max-tries exhausted.')
+                return
             urls = [mobile_url(args.source, url) for url in urls]
         else:
             if args.source == 'clien':
@@ -509,8 +558,6 @@ def capture_http(recorder, args):
             client.headers['Referer'] = str(response.url)
         for index, url in enumerate(urls[:args.details], 1):
             recorder.get(client, url, f'detail-{index}.html')
-            if args.render:
-                asyncio.run(render_cafe(recorder, url, f'detail-{index}.rendered.html'))
 
 
 def audit_fixture(directory):
@@ -535,10 +582,13 @@ def audit_fixture(directory):
             if kind == 'email' and re.fullmatch(r'user_[a-z]+@example\.invalid', value):
                 return
             if kind == 'profile':
-                parts = urlsplit(value)
-                if parts.hostname == 'example.invalid':
+                try:
+                    parts = urlsplit(value)
+                except ValueError:
+                    parts = None  # Malformed profile values are still findings.
+                if parts is not None and parts.hostname == 'example.invalid':
                     return
-                if parts.hostname in {'www.youtube.com', 'youtube.com'} and re.fullmatch(
+                if parts is not None and parts.hostname in {'www.youtube.com', 'youtube.com'} and re.fullmatch(
                         r'/(?:channel/|user/|@)?(?:user_[a-z]+|사용자[A-Z]+)',
                         unquote(parts.path)) and not parts.query and not parts.fragment:
                     return
@@ -548,19 +598,23 @@ def audit_fixture(directory):
 
     auditor = Auditor()
     try:
+        if not directory.exists():
+            return {'missing_directory': 1}
+        if not directory.is_dir():
+            return {'not_directory': 1}
+        files = sorted(p for p in directory.iterdir() if p.is_file() and p.suffix in {'.html', '.json'})
+        if not files:
+            return {'empty_directory': 1}
         manifest_path = directory / 'manifest.json'
         manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
         source = manifest.get('source', directory.name)
         if source not in SOURCES or not directory.is_dir():
             return {'error': 1}
         encodings = {r.get('file'): r.get('encoding') for r in manifest.get('requests', [])}
-        files = sorted(p for p in directory.iterdir() if p.suffix in {'.html', '.json'})
-        if not files:
-            return {'error': 1}
         for path in files:
             try:
                 if path.suffix == '.json':
-                    auditor.discover_json(json.loads(path.read_text(encoding='utf-8')))
+                    auditor.discover_json(json.loads(path.read_text(encoding='utf-8')), source)
                 else:
                     encoding = encodings.get(path.name) or ('euc-kr' if source == 'ppomppu' else 'utf-8')
                     auditor.discover_html(source, path.read_bytes().decode(encoding, errors='surrogateescape'))
@@ -578,18 +632,24 @@ def main(argv=None):
     parser.add_argument('--audit', type=Path, metavar='DIRECTORY', help='Audit saved fixtures offline; print counts only')
     parser.add_argument('--details', type=int, default=3)
     parser.add_argument('--out', type=Path, default=Path('backend/tests/fixtures/http'))
-    parser.add_argument('--url', action='append', default=[], help='Repeat for explicit detail URLs; limited by --details')
-    parser.add_argument('--render', action='store_true', help='Also render Naver cafe details using crawl4ai')
+    parser.add_argument('--url', action='append', default=[], help='Repeat to override detail candidates; cafe counts public responses toward --details')
+    parser.add_argument('--pages', type=int, default=1, help='Naver search pages (30 results per page)')
+    parser.add_argument('--max-tries', type=int, help='Cafe article request limit (default: 3 * --details)')
     parser.add_argument('--force', action='store_true')
     args = parser.parse_args(argv)
     if args.audit is not None:
         counts = audit_fixture(args.audit)
-        print(json.dumps({'audit_counts': counts, 'total': sum(counts.values())}))
+        result = {'audit_counts': counts, 'total': sum(counts.values())}
+        for reason in ('missing_directory', 'empty_directory', 'not_directory'):
+            if reason in counts:
+                result.update(status='not_audited', reason=reason)
+                break
+        print(json.dumps(result))
         return int(bool(counts))
     if args.source is None or args.keyword is None:
         parser.error('source and keyword are required for capture')
-    if args.details < 0 or (args.render and args.source != 'naver_cafe'):
-        parser.error('--details must be nonnegative; --render is only for naver_cafe')
+    if args.details < 0 or args.pages < 1 or (args.max_tries is not None and args.max_tries < 0):
+        parser.error('--details and --max-tries must be nonnegative; --pages must be positive')
     secrets = [os.getenv(key, '') for key in ('NAVER_CLIENT_ID', 'NAVER_CLIENT_SECRET', 'YOUTUBE_API_KEY')]
     try:
         recorder = Recorder(args.source, args.keyword, args.out, args.force, secrets)

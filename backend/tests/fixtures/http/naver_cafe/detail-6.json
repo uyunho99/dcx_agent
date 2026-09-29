@@ -1,0 +1,13 @@
+{
+  "result": {
+    "errorCode": "0004",
+    "reason": "로그인하지 않았습니다.",
+    "message": "errorCode: 0004, message: 로그인 하지 않음",
+    "more": {
+      "cafeUrl": "overseer",
+      "cafeName": "셀.인. My Home",
+      "pcCafeName": "사용자F",
+      "cafeId": 23700418
+    }
+  }
+}

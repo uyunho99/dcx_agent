@@ -1,0 +1,135 @@
+{
+  "source": "naver_cafe",
+  "keyword": "에어컨 소음",
+  "captured_at": "2026-09-29T09:18:58.925090+00:00",
+  "requests": [
+    {
+      "url": "https://search.naver.com/search.naver?ssc=tab.cafe.all&query=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&start=1",
+      "status_code": 200,
+      "encoding": "utf-8",
+      "file": "list-1.html",
+      "restriction": {
+        "login": false,
+        "grade_restricted": false,
+        "access": "unknown"
+      }
+    },
+    {
+      "url": "https://search.naver.com/search.naver?ssc=tab.cafe.all&query=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&start=31",
+      "status_code": 200,
+      "encoding": "utf-8",
+      "file": "list-2.html",
+      "restriction": {
+        "login": false,
+        "grade_restricted": false,
+        "access": "unknown"
+      }
+    },
+    {
+      "url": "https://article.cafe.naver.com/gw/v4/cafes/wnd1tkghl/articles/3112364?useCafeId=false",
+      "status_code": 401,
+      "encoding": "utf-8",
+      "file": "detail-1.json",
+      "restriction": {
+        "login": false,
+        "grade_restricted": false,
+        "access": "unknown"
+      }
+    },
+    {
+      "url": "https://article.cafe.naver.com/gw/v4/cafes/jaengid/articles/137246?useCafeId=false",
+      "status_code": 401,
+      "encoding": "utf-8",
+      "file": "detail-2.json",
+      "restriction": {
+        "login": false,
+        "grade_restricted": false,
+        "access": "unknown"
+      }
+    },
+    {
+      "url": "https://article.cafe.naver.com/gw/v4/cafes/bongo312/articles/317927?useCafeId=false",
+      "status_code": 200,
+      "encoding": "utf-8",
+      "file": "detail-3.json",
+      "restriction": {
+        "login": false,
+        "grade_restricted": false,
+        "access": "public"
+      }
+    },
+    {
+      "url": "https://article.cafe.naver.com/gw/v4/cafes/carmessenger/articles/738348?useCafeId=false",
+      "status_code": 401,
+      "encoding": "utf-8",
+      "file": "detail-4.json",
+      "restriction": {
+        "login": false,
+        "grade_restricted": false,
+        "access": "unknown"
+      }
+    },
+    {
+      "url": "https://article.cafe.naver.com/gw/v4/cafes/imsanbu/articles/79645324?useCafeId=false",
+      "status_code": 401,
+      "encoding": "utf-8",
+      "file": "detail-5.json",
+      "restriction": {
+        "login": false,
+        "grade_restricted": false,
+        "access": "unknown"
+      }
+    },
+    {
+      "url": "https://article.cafe.naver.com/gw/v4/cafes/overseer/articles/1704734?useCafeId=false",
+      "status_code": 401,
+      "encoding": "utf-8",
+      "file": "detail-6.json",
+      "restriction": {
+        "login": false,
+        "grade_restricted": false,
+        "access": "unknown"
+      }
+    },
+    {
+      "url": "https://article.cafe.naver.com/gw/v4/cafes/musiloccupant/articles/6725?useCafeId=false",
+      "status_code": 401,
+      "encoding": "utf-8",
+      "file": "detail-7.json",
+      "restriction": {
+        "login": false,
+        "grade_restricted": false,
+        "access": "unknown"
+      }
+    },
+    {
+      "url": "https://article.cafe.naver.com/gw/v4/cafes/campingfirst/articles/2962497?useCafeId=false",
+      "status_code": 200,
+      "encoding": "utf-8",
+      "file": "detail-8.json",
+      "restriction": {
+        "login": false,
+        "grade_restricted": false,
+        "access": "public"
+      }
+    },
+    {
+      "url": "https://article.cafe.naver.com/gw/v4/cafes/scenicetech100/articles/1525?useCafeId=false",
+      "status_code": 401,
+      "encoding": "utf-8",
+      "file": "detail-9.json",
+      "restriction": {
+        "login": false,
+        "grade_restricted": false,
+        "access": "unknown"
+      }
+    }
+  ],
+  "notes": [
+    "Public article target not reached: 2/3; candidates or max-tries exhausted."
+  ],
+  "masking_stats": {
+    "id": 23,
+    "name": 59
+  }
+}

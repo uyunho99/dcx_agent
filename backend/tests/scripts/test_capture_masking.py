@@ -186,11 +186,15 @@ def test_naver_explicit_details_without_keys(tmp_path, monkeypatch):
     monkeypatch.delenv('NAVER_CLIENT_SECRET', raising=False)
     recorder = capture.Recorder('naver_blog', '에어컨', tmp_path)
     calls = []
-    monkeypatch.setattr(recorder, 'get', lambda client, url, file: calls.append((url, file)))
+    def get(client, url, file):
+        calls.append((url, file))
+        return SimpleNamespace(text='<a href="https://blog.naver.com/other/18">글</a>', url=url)
+    monkeypatch.setattr(recorder, 'get', get)
     capture.capture_http(recorder, SimpleNamespace(source='naver_blog', keyword='에어컨', details=1,
-                                                  url=['https://blog.naver.com/private/17'], render=False))
-    assert calls == [('https://m.blog.naver.com/private/17', 'detail-1.html')]
-    assert 'List skipped' in recorder.manifest['notes'][0]
+                                                  url=['https://blog.naver.com/private/17'], pages=1))
+    assert calls[0][1] == 'list-1.html'
+    assert calls[1:] == [('https://m.blog.naver.com/private/17', 'detail-1.html')]
+    assert not recorder.manifest['notes']
 
 
 def test_short_member_id_does_not_corrupt_markup_or_unrelated_words():
@@ -301,7 +305,7 @@ def test_audit_placeholder_urls_and_fail_closed(tmp_path):
     path.write_text('invalid JSON')
     assert capture.audit_fixture(directory) == {'error': 1}
     path.unlink()
-    assert capture.audit_fixture(directory) == {'error': 1}
+    assert capture.audit_fixture(directory) == {'empty_directory': 1}
 
 
 def test_ppomppu_distinct_query_articles_remain_distinct():
@@ -341,3 +345,41 @@ def test_ppomppu_declared_charset_audit_accepts_author_placeholders(tmp_path):
     assert capture.audit_fixture(directory) == {}
     path.write_bytes(raw.replace('사용자A', '가상검색작성자').encode('euc-kr'))
     assert capture.audit_fixture(directory) == {'name': 1}
+
+
+@pytest.mark.parametrize('source,channel', [
+    ('clien', 'clien.ch1'), ('clien', 'clien.ch2'), ('ppomppu', 'ppomppu.ch1'),
+    ('clien', 'ads.sidebar.primary'), ('ppomppu', 'ad_config.slot_2'),
+])
+def test_site_channel_config_is_preserved_and_not_audited(tmp_path, source, channel):
+    data = {'channel': channel}
+    raw = '<script>' + json.dumps(data) + '</script>'
+    assert capture.mask_html(source, raw) == raw
+    assert capture.mask_json(source, data) == data
+    directory = tmp_path / source
+    directory.mkdir()
+    (directory / 'list.html').write_text(raw)
+    (directory / 'detail.json').write_text(json.dumps(data))
+    assert capture.audit_fixture(directory) == {}
+
+
+@pytest.mark.parametrize('channel', ['유튜브 채널 이름', 'clien.ch1', 'creator.channel'])
+def test_youtube_channel_names_remain_private(tmp_path, channel):
+    data = {'channel': channel}
+    raw = '<script>' + json.dumps(data) + '</script>'
+    directory = tmp_path / 'youtube'
+    directory.mkdir()
+    html_path = directory / 'list.html'
+    json_path = directory / 'detail.json'
+    html_path.write_text(raw)
+    json_path.write_text(json.dumps(data))
+    assert capture.audit_fixture(directory) == {'name': 1}
+    masked = capture.mask_json('youtube', data)
+    assert masked['channel'] == '사용자A'
+    html_path.write_text(capture.mask_html('youtube', raw))
+    json_path.write_text(json.dumps(masked))
+    assert capture.audit_fixture(directory) == {}
+
+
+def test_site_channel_display_name_still_masked():
+    assert capture.mask_json('clien', {'channel': '실제 표시 이름'}) == {'channel': '사용자A'}
