@@ -5,6 +5,8 @@ import { MessageCircle, Plug, X } from "lucide-react";
 import { Badge, Button, Icon } from "@/components/ds";
 import { INTERNAL_TOOLS } from "@/lib/internalTools";
 import { InternalToolsProvider } from "@/lib/internalToolsContext";
+import { IntegrationsDrawer } from "@/components/internal/IntegrationsDrawer";
+import { useIntegrations } from "@/lib/api/integrations";
 import StepBar from "@/components/StepBar";
 import ChatPanel from "@/components/ChatPanel";
 import { useSessionStore } from "@/stores/useSessionStore";
@@ -14,6 +16,8 @@ import { getPersistedSid, clearPersistedSid, restoreSessionToStore } from "@/lib
 export default function PipelineLayout({ children }: { children: React.ReactNode }) {
   const [chatOpen, setChatOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const integrations = useIntegrations();
+  const connectedCount = integrations.entries?.filter(entry => entry.connected).length;
   const store = useSessionStore();
   const { sid, bk, kw, step } = store;
 
@@ -56,7 +60,7 @@ export default function PipelineLayout({ children }: { children: React.ReactNode
           <div className="pipeline-foot">
             <div className="ds-t-label text-ink-strong">{bk || "세션 없음"}</div>
             <div className="pipeline-activity" data-slot="activity-badge" aria-live="polite" />
-            {INTERNAL_TOOLS && <div className="pipeline-tools"><Button variant="quiet" size="sm" aria-pressed={drawerOpen} onClick={() => setDrawerOpen(open => !open)}><Icon icon={Plug} />외부 API 열기</Button><Badge>내부용</Badge></div>}
+            {INTERNAL_TOOLS && <div className="pipeline-tools"><Button id="integrations-trigger" style={{ whiteSpace: "normal", height: "auto", minHeight: 28, textAlign: "left" }} variant="quiet" size="sm" aria-haspopup="dialog" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(open => !open)}><Icon icon={Plug} />외부 API · {integrations.error ? "—" : connectedCount ?? "—"}/6 연결 열기</Button><Badge>내부용</Badge></div>}
           </div>
         </aside>
         <div className="pipeline-content">
@@ -73,6 +77,7 @@ export default function PipelineLayout({ children }: { children: React.ReactNode
           <div className="flex-1 min-h-0"><ChatPanel initialMessage="파이프라인 진행이나 결과에 대해 물어보세요." onSend={handleChat} /></div>
         </aside>}
       </div>
+      {INTERNAL_TOOLS && drawerOpen && <IntegrationsDrawer {...integrations} returnFocusId="integrations-trigger" />}
     </InternalToolsProvider>
   );
 }

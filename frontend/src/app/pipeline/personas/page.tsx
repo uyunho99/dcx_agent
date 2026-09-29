@@ -12,7 +12,9 @@ import type { ClusterPersona } from "@/lib/types";
 export default function PersonasPage() {
   const router = useRouter();
   const store = useSessionStore();
-  const { sid, bk, pd, sd } = store;
+  const { sid, sd, projectContext } = store;
+  const bk = sd?.schemaVersion === 2 ? projectContext?.bk ?? "" : store.bk;
+  const pd = sd?.schemaVersion === 2 ? projectContext?.researchQuestion.text ?? "" : store.pd;
 
   const [started, setStarted] = useState(["persona-start", "persona-check", "embed-start", "embed-check", "done"].includes(sd?.step || ""));
 
