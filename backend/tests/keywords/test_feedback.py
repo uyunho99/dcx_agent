@@ -4,10 +4,10 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from app.context.store import StoreError, session_dir, update_session
-from app.context.versions import create_version, set_active
+from app.context.store import StoreError, assert_writable, root_dir, session_dir, update_session
+from app.context.versions import create_version
 from app.keywords.events import KeywordEvent, REJECT_TAGS, append_event, load_events
-from app.keywords.feedback import render_feedback_md, write_feedback_md
+from app.keywords.feedback import _inline, render_feedback_md, write_feedback_md
 
 
 def event(kind, **fields):
@@ -36,6 +36,59 @@ def test_reject_examples_capped_8():
     assert '12건' in text and '외 4건' in text
     for i in range(12):
         assert (f'예시{i:02}' in text) == (i < 8)
+
+
+@pytest.mark.parametrize('kind', ['unreject', 'approve', 'add'])
+@pytest.mark.parametrize('identity', [
+    {'kwId': 'original'},
+    {'kwId': 'different', 'kw': '저 소음'},
+    {'kw': '저 소음'},
+])
+def test_later_restoration_removes_reject(kind, identity):
+    events = [event('direction', text='방향 유지'),
+              event('reject', kwId='original', kw='저소음', tags=['common']),
+              KeywordEvent(ts='2026-09-27T12:00:00Z', round=1, type=kind, **identity)]
+    text = render_feedback_md(events)
+    assert section(text, '거절 사유').strip() == '- 없음'
+    assert '방향 유지' in section(text, '방향 지시')
+
+
+def test_reject_after_unreject_counts_again():
+    events = [event('reject', kw='저소음', tags=['common'], note='이전 의견'),
+              event('unreject', kw='저소음'),
+              event('reject', kw='저소음', tags=['common'], note='새 의견')]
+    text = section(render_feedback_md(events), '거절 사유')
+    assert 'common (흔함) · 1건' in text
+    assert '- 저소음 — 새 의견' in text
+    assert '이전 의견' not in text
+
+
+def test_reject_counts_and_overflow_exclude_restored_keywords():
+    events = [event('reject', kw=f'예시{i:02}', tags=['common'], note=f'의견{i:02}')
+              for i in range(12)]
+    events.extend(event('unreject', kw=f'예시{i:02}') for i in (0, 10))
+    text = section(render_feedback_md(events), '거절 사유')
+    assert 'common (흔함) · 10건' in text
+    assert '외 2건' in text
+    assert '예시00' not in text and '의견00' not in text
+    assert '예시10' not in text and '의견10' not in text
+    assert '예시08' in text and '의견11' in text
+
+
+@pytest.mark.parametrize('value', ['A_B', '에어컨*소음', r'A\B `C` [D] <E> #태그', 'A > B - C 1. D'])
+def test_inline_preserves_content(value):
+    assert _inline(value) == value
+    assert f'- {value} (추가, 라운드 1)' in render_feedback_md([event('add', kw=value)])
+
+
+@pytest.mark.parametrize(('value', 'expected'), [
+    ('  #태그\n내용', r'\#태그 내용'),
+    ('- 항목', r'\- 항목'),
+    ('> 인용', r'\> 인용'),
+    ('12. 항목', r'12\. 항목'),
+])
+def test_inline_escapes_only_leading_structure(value, expected):
+    assert _inline(value) == expected
 
 
 def test_misclassified_records_move():
@@ -149,17 +202,30 @@ def test_write_feedback_md_file_written_atomically(sid, monkeypatch):
 
 
 def test_version_isolation_and_readonly(sid):
-    append_event(sid, event('add', kw='원본'))
-    first = session_dir(sid)
-    create_version(sid, 'v1', 'stage1', '')
-    append_event(sid, event('add', kw='새 버전'))
+    original, added = event('add', kw='원본'), event('add', kw='새 버전')
+    append_event(sid, original)
     write_feedback_md(sid)
-    assert len((first / 'keyword_events.jsonl').read_text().splitlines()) == 1
-    assert not (first / 'keyword_feedback.md').exists()
-    set_active(sid, 'v1')
-    for action in (lambda: append_event(sid, event('add', kw='금지')), lambda: write_feedback_md(sid)):
-        with pytest.raises(StoreError):
-            action()
+    first = root_dir(sid) / 'versions' / 'v1'
+    filenames = ('keyword_events.jsonl', 'keyword_feedback.md')
+    before = {name: (first / name).read_bytes() for name in filenames}
+
+    assert create_version(sid, 'v1', 'stage1', '') == 'v2'
+    second = root_dir(sid) / 'versions' / 'v2'
+    assert session_dir(sid) == second
+    append_event(sid, added)
+    text = write_feedback_md(sid)
+    assert [KeywordEvent.model_validate_json(line) for line in
+            (second / 'keyword_events.jsonl').read_bytes().splitlines()] == [original, added]
+    assert (second / 'keyword_feedback.md').read_text(encoding='utf-8') == text
+    assert text == render_feedback_md([original, added])
+
+    # Keyword writers target only the active version; check past-version refusal
+    # through the store's explicit version guard without activating readonly v1.
+    assert_writable(sid, version='v2')
+    with pytest.raises(StoreError, match='읽기 전용'):
+        assert_writable(sid, version='v1')
+    assert {name: (first / name).read_bytes() for name in filenames} == before
+    assert session_dir(sid) == second
 
 
 def test_legacy_writes_rejected(data_dir):

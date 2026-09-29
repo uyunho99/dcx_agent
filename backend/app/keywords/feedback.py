@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+import re
 import tempfile
 
 from app.context.store import assert_writable, locked, session_dir
@@ -17,9 +18,9 @@ _LABELS = {
 def _inline(value: str | None) -> str:
     """Keep event content on one Markdown line, without creating headings."""
     text = " ".join((value or "").split())
-    for char in ("\\", "`", "*", "_", "[", "]", "<", ">", "#"):
-        text = text.replace(char, "\\" + char)
-    return text
+    if text.startswith(("#", "-", ">")):
+        return "\\" + text
+    return re.sub(r"^(\d+)\.", r"\1\\.", text)
 
 
 def _keyword(ev: KeywordEvent) -> str:
@@ -58,7 +59,14 @@ def render_feedback_md(events: list[KeywordEvent]) -> str:
                   for ev in sorted((ev for ev in events if ev.type == "direction"),
                                    key=lambda ev: ev.ts, reverse=True)]
     rejections = []
-    rejected = [ev for ev in events if ev.type == "reject"]
+    rejected = []
+    restored = set()
+    for ev in reversed(events):
+        if ev.type in ("unreject", "add", "approve"):
+            restored.update(_keys(ev))
+        elif ev.type == "reject" and restored.isdisjoint(_keys(ev)):
+            rejected.append(ev)
+    rejected.reverse()
     for tag in REJECT_TAGS:
         group = [ev for ev in rejected if tag in (ev.tags or [])]
         rejections.extend(_rejection_group(f"{tag} ({_LABELS[tag]})", group))
