@@ -17,7 +17,7 @@ it('blocks known unfinished collections but leaves unknown state to the API', ()
   for (const status of ['running', 'stopping', 'stopped', 'interrupted', 'paused', 'failed']) {
     expect(crawlBlocksVersion({collectionId: 'c1', kind: 'detail', status})).toBe(true);
   }
-  expect(crawlBlocksVersion({collectionId: 'c1', kind: 'list', status: 'done'})).toBe(true);
+  expect(crawlBlocksVersion({collectionId: 'c1', kind: 'list', status: 'done'})).toBe(false);
   expect(crawlBlocksVersion({collectionId: 'c1', kind: 'detail', status: 'done'})).toBe(false);
   expect(crawlBlocksVersion({kind: null, status: 'idle'})).toBe(false);
   expect(crawlBlocksVersion(null)).toBe(false);
@@ -33,11 +33,11 @@ it('blocks version creation and offers resume for done unfinished detail runs', 
   expect(crawlCanResume(finished)).toBe(false);
 });
 
-it('keeps completed list gates blocked without offering resume', () => {
+it('allows completed list gates without offering resume', () => {
   const status = {collectionId: 'c1', kind: 'list' as const, status: 'done', resumable: false};
   expect(crawlCanResume(status)).toBe(false);
   expect(crawlCanResume(status, true)).toBe(false);
-  expect(crawlBlocksVersion(status)).toBe(true);
+  expect(crawlBlocksVersion(status)).toBe(false);
 });
 
 it('preserves resume visibility for older interrupted and paused responses', () => {

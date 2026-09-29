@@ -89,7 +89,8 @@ def create_version(sid, from_v, restart_from, note, version=None) -> str:
         meta = _meta(sid)
         data = _data(sid, from_v)
         # D-091: inspect the source collection before any copy or activation.
-        if _crawl_phase(sid, data.get('collectionId')) in ('running', 'unfinished'):
+        crawl_phase = _crawl_phase(sid, data.get('collectionId'))
+        if crawl_phase in ('running', 'unfinished'):
             raise StoreError(CRAWL_UNFINISHED_MESSAGE)
         _idle(sid, _data(sid, meta['activeVersion']))
         _idle(sid, data)
@@ -99,6 +100,8 @@ def create_version(sid, from_v, restart_from, note, version=None) -> str:
         activated = False
         try:
             shutil.copytree(version_dir(sid, from_v), target)
+            if crawl_phase == 'gate':
+                data['collectionId'] = None
             data.update(version=v, parentVersion=from_v, restartFrom=restart_from, updatedAt=now())
             stale = data.setdefault('stale', {})
             last_stage = max([6, int(restart_from[5:])] + [int(key[5:]) for key in stale.keys() | data.get('stageResults', {}).keys() if re.fullmatch(r'stage[0-9]+', key)])

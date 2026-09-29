@@ -13,6 +13,8 @@ from app.crawl.filters import DEFAULT_AD_WORDS, DEFAULT_EXCLUDE_SOURCES
 
 # Keep existing human-readable messages and HTTP/kind contracts intact.
 ERROR_CODES = {
+    'No paused detail channels': 'no_paused_detail',
+    'Other channels are unfinished': 'other_channels_unfinished',
     'Session not found': 'session_not_found',
     'Invalid session id': 'invalid_session_id',
     'Invalid version': 'invalid_version',
@@ -143,3 +145,8 @@ def resume(sid: str, body: Resume | None = None, version: str | None = None):
 @router.post('/{sid}/stop')
 def stop(sid: str, version: str | None = None):
     return control.stop(sid, version)
+
+
+@router.post('/{sid}/finish-partial')
+def finish_partial(sid: str, version: str | None = None):
+    return control.finish_partial(sid, version)

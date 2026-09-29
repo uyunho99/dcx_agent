@@ -399,6 +399,7 @@ def status(sid):
                     raise
     return dict(**settings_payload, status=state,
                 resumable=state != 'running' and _unfinished_run(queue, run),
+                remaining_by_channel=remaining_by_channel(queue),
                 kind=run['kind'] if run else None, collectionId=root.name,
                 progress=p, channels=p['channels'], paused_channels=worker_state.get('paused_channels', []),
                 stopReason=worker_state.get('stopReason'), snapshot_id=snapshot[0] if snapshot else None,
@@ -471,7 +472,7 @@ def save_config(sid, config, version=None):
 
 
 def phase_state(sid, collection_id=None):
-    """Read-only version guard; list completion still awaits detail collection."""
+    """Read-only version guard; completed lists allow a fresh collection fork."""
     import sqlite3
     store.root_dir(sid)  # Validate even when an explicit collection is supplied.
     if collection_id is None:
@@ -487,8 +488,58 @@ def phase_state(sid, collection_id=None):
         run = latest_run(queue)
         if _run_state(run) == 'running':
             return 'running'
+        if run and run['kind'] == 'list' and run['status'] == 'done':
+            return 'gate'
         if report.can_finalize(queue, run):
             return 'done'
         return 'unfinished'
     except (OSError, sqlite3.Error):
         return 'unfinished'
+
+
+def remaining_by_channel(queue):
+    manifest = store.read_json(queue.path.parent / 'manifest.json') or {}
+    snapshot = manifest.get('snapshotId')
+    with closing(CrawlQueue.open_readonly(queue.path)) as db:
+        return dict(db.execute('''SELECT source,count(*) FROM urls
+            WHERE status IN ('pending','leased') AND (? IS NULL OR EXISTS
+              (SELECT 1 FROM snapshot_urls s WHERE s.snapshot_id=?
+               AND s.url_norm=urls.url_norm AND s.source=urls.source)) GROUP BY source''',
+            (snapshot, snapshot)))
+
+
+def finish_partial(sid, version=None):
+    """D-097: blocked and parse-error pauses may explicitly skip remaining URLs."""
+    def perform(session):
+        root = collection_dir(sid)
+        with collection_lock(root), closing(CrawlQueue(root / 'queue.sqlite')) as queue:
+            if _live(queue):
+                raise store.StoreError('Worker is already running')
+            run = latest_run(queue)
+            state = store.read_json(root / 'worker_state.json') or {}
+            paused = {s: c['status'].removeprefix('paused_')
+                      for s, c in state.get('channels', {}).items()
+                      if c.get('status') in ('paused_blocked', 'paused_parse_error')}
+            if not run or run['kind'] != 'detail' or not paused or not _unfinished_run(queue, run):
+                raise store.StoreError('No paused detail channels')
+            remaining = remaining_by_channel(queue)
+            if any(count and source not in paused for source, count in remaining.items()):
+                raise store.StoreError('Other channels are unfinished')
+            snapshot = (store.read_json(root / 'manifest.json') or {}).get('snapshotId')
+            # Fence and skip in one transaction; a stale worker cannot save later.
+            with queue._write() as db:
+                for source, reason in paused.items():
+                    db.execute('''UPDATE urls SET status='skipped',last_error=?,
+                        lease_until=NULL,lease_run_id=NULL,lease_snapshot_id=NULL,retry_at=NULL
+                        WHERE source=? AND status IN ('pending','leased') AND (? IS NULL OR EXISTS
+                          (SELECT 1 FROM snapshot_urls s WHERE s.snapshot_id=?
+                           AND s.url_norm=urls.url_norm AND s.source=urls.source))''',
+                        (reason, source, snapshot, snapshot))
+                db.execute("UPDATE runs SET status='done',heartbeat_at=? WHERE run_id=?", (time.time(), run['run_id']))
+            for source in paused:
+                state['channels'][source]['status'] = 'done'
+            state.update(paused_channels=[], stopReason='partial_finished')
+            store.write_json(root / 'worker_state.json', state)
+            result = report._write_report_locked(root)
+        return {'step': 'crawl-done'}, {'status': 'done', 'report': result}
+    return _mutate(sid, perform, version)

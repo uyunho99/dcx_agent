@@ -21,7 +21,7 @@ def progress(queue):
         tasks = {r[0]: {'done': r[1], 'target': r[2]} for r in db.execute("SELECT source,sum(status='done'),count(*) FROM list_tasks GROUP BY source")}
     done = counts.get('done', 0)
     elapsed = max(1, ((run['heartbeat_at'] if run['status'] == 'done' else time.time()) - run['started_at'])) if run else 1
-    return dict(done=done, target=sum(counts.values())-counts.get('filtered', 0)-counts.get('excluded', 0),
+    return dict(done=done, target=sum(counts.values())-counts.get('filtered', 0)-counts.get('excluded', 0)-counts.get('skipped', 0),
                 full=levels.get('full', 0), snippet=levels.get('snippet', 0), restricted=restricted,
                 per_minute=done * 60 / elapsed, channels=channels(queue), list_tasks=tasks)
 
@@ -40,7 +40,8 @@ def build_report(queue):
         distribution = {}
         for source, docs in db.execute('SELECT source,sum(doc_count) FROM urls GROUP BY source'):
             errors = [{'error': safe_error(r[0]), 'count': r[1]} for r in db.execute('SELECT last_error,count(*) FROM urls WHERE source=? AND last_error IS NOT NULL GROUP BY last_error ORDER BY count(*) DESC LIMIT 5', (source,))]
-            distribution[source] = dict(docs=docs, share=docs / totals['doc_count'] if totals['doc_count'] else 0,
+            skipped = db.execute("SELECT count(*),max(last_error) FROM urls WHERE source=? AND status='skipped'", (source,)).fetchone()
+            distribution[source] = dict(skipped=skipped[0], skip_reason=skipped[1], docs=docs, share=docs / totals['doc_count'] if totals['doc_count'] else 0,
                 status=p['channels'].get(source, {}).get('status', 'idle'), errors_top=errors)
     state = store.read_json(queue.path.parent / 'worker_state.json') or {}
     return dict(matrix=cells, channels=distribution, totals=totals,

@@ -1,8 +1,8 @@
 import type { CrawlStatus } from '../api/crawl';
 
-// A completed list still awaits detail collection. Unknown state is checked by the API.
+// Completed list gates allow a fresh collection fork (D-096).
 export function crawlBlocksVersion(status?: Pick<CrawlStatus, 'collectionId' | 'kind' | 'status' | 'resumable'> | null) {
-  return !!status?.collectionId && !(status.kind === 'detail' && status.status === 'done' && !status.resumable);
+  return !!status?.collectionId && !((status.kind === 'detail' || status.kind === 'list') && status.status === 'done' && !status.resumable);
 }
 
 // Older status responses expose interruption through status and channel pauses.

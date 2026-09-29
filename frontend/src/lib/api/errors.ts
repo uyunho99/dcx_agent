@@ -2,6 +2,8 @@ export const versionQuery = (path: string, version?: string) => version ? `${pat
 const genericError = '요청에 실패했습니다. 다시 시도하세요.';
 const hasHangul = (message: string) => /[가-힣]/.test(message);
 const messages: Record<string, string> = {
+ no_paused_detail: '차단 또는 파싱 오류로 멈춘 상세 수집 채널이 없습니다.',
+ other_channels_unfinished: '다른 채널에도 수집할 URL이 남아 있습니다. 이어서 진행한 뒤 다시 시도하세요.',
  crawl_unfinished: '크롤링 수집을 끝낸 뒤 새 버전을 만드세요.',
  storage_error: '저장 공간에 쓰지 못했습니다. 디스크 여유 공간을 확인하고 이어서 진행하세요.',
  no_collection: '선택된 수집본이 없습니다. 목록 수집을 시작하세요.',

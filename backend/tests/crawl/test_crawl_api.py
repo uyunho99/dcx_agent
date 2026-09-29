@@ -540,7 +540,7 @@ def test_done_list_status_is_not_resumable(env):
     assert data['kind'] == 'list'
     assert data['status'] == 'done'
     assert data['resumable'] is False
-    assert control.phase_state('S') == 'unfinished'
+    assert control.phase_state('S') == 'gate'
 
 
 def test_done_list_resume_rejected_and_gate_can_start_detail(env):
@@ -549,7 +549,7 @@ def test_done_list_resume_rejected_and_gate_can_start_detail(env):
     assert response.status_code == 409
     assert 'No unfinished phase to resume' in response.text
     assert not env.calls
-    assert control.phase_state('S') == 'unfinished'
+    assert control.phase_state('S') == 'gate'
     assert env.client.post('/crawl/S/detail', json={'snapshot_id': snap}).status_code == 200
     assert len(env.calls) == 1
 

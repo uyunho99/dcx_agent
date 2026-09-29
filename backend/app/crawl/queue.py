@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS urls (
  kw_axis TEXT NOT NULL, kw_sub TEXT NOT NULL, snippet TEXT NOT NULL, title TEXT NOT NULL,
  date TEXT, src_meta_json TEXT NOT NULL,
  status TEXT NOT NULL DEFAULT 'pending'
- CHECK(status IN ('pending','leased','done','failed','excluded','filtered')),
+ CHECK(status IN ('pending','leased','done','failed','excluded','filtered','skipped')),
  lease_until REAL, lease_run_id TEXT, lease_snapshot_id TEXT, attempts INTEGER NOT NULL DEFAULT 0,
  last_error TEXT, doc_count INTEGER NOT NULL DEFAULT 0, first_seen_kw_order INTEGER NOT NULL,
  fetch_level TEXT, access TEXT, retry_at REAL, filter_rule TEXT,
@@ -188,6 +188,17 @@ class CrawlQueue:
                 db.execute('ALTER TABLE urls ADD COLUMN lease_snapshot_id TEXT')
             if 'max_attempts' not in {r['name'] for r in db.execute('PRAGMA table_info(urls)')}:
                 db.execute('ALTER TABLE urls ADD COLUMN max_attempts INTEGER NOT NULL DEFAULT 3')
+            # SQLite CHECK constraints require an atomic table rebuild. Related
+            # tables use logical keys (no foreign keys); preserve every URL column.
+            sql = db.execute("SELECT sql FROM sqlite_master WHERE name='urls'").fetchone()[0]
+            if "'skipped'" not in sql:
+                db.execute('ALTER TABLE urls RENAME TO old_urls')
+                url_ddl = DDL.split('CREATE TABLE IF NOT EXISTS urls (', 1)[1].split(';', 1)[0]
+                db.execute('CREATE TABLE urls (' + url_ddl)
+                names = ','.join(r['name'] for r in db.execute('PRAGMA table_info(old_urls)'))
+                db.execute(f'INSERT INTO urls ({names}) SELECT {names} FROM old_urls')
+                db.execute('DROP TABLE old_urls')
+                db.execute('CREATE INDEX urls_status_source ON urls(status, source)')
             columns = {r['name'] for r in db.execute('PRAGMA table_info(snapshots)')}
             if 'exclusion_version' not in columns:
                 db.execute('ALTER TABLE snapshots ADD COLUMN exclusion_version INTEGER NOT NULL DEFAULT 0')

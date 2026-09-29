@@ -17,7 +17,7 @@ def test_crawl_confirm_and_nonconfirm_paths(env):
     assert store.load_session('S')['stale'] == {'stage1': 'old', 'stage2': 'old'}
 
 
-@pytest.mark.parametrize('status', ['running', 'stopped', 'interrupted', 'paused', 'done'])
+@pytest.mark.parametrize('status', ['running', 'stopped', 'interrupted', 'paused'])
 def test_fork_refuses_actual_unfinished_queue_before_copy(env, status, monkeypatch):
     root, _ = prepared(env)
     with closing(CrawlQueue(root / 'queue.sqlite')) as queue:
