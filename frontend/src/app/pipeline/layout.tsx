@@ -7,7 +7,7 @@ import { INTERNAL_TOOLS } from "@/lib/internalTools";
 import { InternalToolsProvider } from "@/lib/internalToolsContext";
 import { IntegrationsDrawer } from "@/components/internal/IntegrationsDrawer";
 import { useIntegrations } from "@/lib/api/integrations";
-import { VersionProvider } from "@/components/versions/VersionProvider";
+import { VersionProvider, VersionContent } from "@/components/versions/VersionProvider";
 import { VersionRouteBoundary } from "@/components/versions/StageVersion";
 import { VersionPicker } from "@/components/versions/VersionPicker";
 import StepBar from "@/components/StepBar";
@@ -69,7 +69,7 @@ export default function PipelineLayout({ children }: { children: React.ReactNode
         </aside>
         <div className="pipeline-content">
           <main className="pipeline-main">
-            {restoring ? <div className="pipeline-loading" role="status">처리 중…</div> : <div className="pipeline-wrap"><VersionRouteBoundary>{children}</VersionRouteBoundary></div>}
+            {restoring ? <div className="pipeline-loading" role="status">처리 중…</div> : <div className="pipeline-wrap"><VersionContent><VersionRouteBoundary>{children}</VersionRouteBoundary></VersionContent></div>}
           </main>
           {!chatOpen && <Button variant="quiet" className="pipeline-chat-open ds-btn-icon" onClick={() => setChatOpen(true)} aria-label="챗봇 열기" title="챗봇 열기"><Icon icon={MessageCircle} /></Button>}
         </div>

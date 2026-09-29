@@ -30,6 +30,7 @@ export default function KeywordsPage() {
 }
 function KeywordScreen({ sid }: { sid: string }) {
   const { version, readonly } = useVersion();
+  const [initialReadonly] = useState(readonly);
   const router = useRouter(); const [data, setData] = useState<KeywordState | null>(null); const [round, setRound] = useState(1);
   const [overrides, setOverrides] = useState<Record<string, Decision>>({}); const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false); const lock = useRef(false); const queue = useRef(createActionQueue()); const pendingActions = useRef(0); const [error, setError] = useState(''); const [notice, setNotice] = useState('');
@@ -48,12 +49,12 @@ function KeywordScreen({ sid }: { sid: string }) {
       const n = Math.max(1, ...Object.keys(fresh.keywordRounds).map(Number)); const r = fresh.keywordRounds[String(n)];
       setData(fresh); setRound(n);
       const draft = session.data?.drafts?.keywords?.[`r${n}`];
-      if (draft && draft.gen === (r?.gen ?? 0)) { if (!r?.committed) setOverrides(Object.fromEntries(draft.decisions.map(d => [d.id, d]))); setCustom(draft.groups ?? []); setNotice('임시 저장한 검토를 불러왔습니다. 저장하면 이 라운드를 확정합니다.'); }
+      if (draft && draft.gen === (r?.gen ?? 0)) { if (!r?.committed) setOverrides(Object.fromEntries(draft.decisions.map(d => [d.id, d]))); setCustom(draft.groups ?? []); setNotice(initialReadonly ? '' : '임시 저장한 검토를 불러왔습니다. 저장하면 이 라운드를 확정합니다.'); }
       const kws = [...fresh.keywords, ...Object.values(fresh.keywordRounds).flatMap(r => r.keywords)];
-      setFilter(!readonly && filterKeywords(kws).length ? '판단 필요' : '전체');
+      setFilter(!initialReadonly && filterKeywords(kws).length ? '판단 필요' : '전체');
     }).catch(e => { if (!cancelled) reportError(e); });
     return () => { cancelled = true; };
-  }, [sid, version, readonly, reportError]);
+  }, [sid, version, initialReadonly, reportError]);
   useEffect(() => {
     if (!running || readonly) return;
     let cancelled = false; let timer: ReturnType<typeof setTimeout>;
@@ -128,7 +129,7 @@ function KeywordScreen({ sid }: { sid: string }) {
         <fieldset disabled={busy} className="kw-add"><Select label="새 하위 카테고리 축" value={customAxis} onChange={e => setCustomAxis(e.target.value)}><option value="">축 선택</option>{axes.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}</Select><Input label="새 하위 카테고리 이름" value={customName} onChange={e => setCustomName(e.target.value)} /><Button disabled={!customAxis || !customName.trim()} onClick={() => { const g = { axis: customAxis as Axis, sub: `custom:${customName.trim()}` }; if (!groups.some(v => groupKey(v) === groupKey(g))) { setCustom(c => [...c, g]); setDirty(true); } reveal(g); setCustomName(''); }}>하위 카테고리 추가하기</Button></fieldset>
   </>;
   return <div className="kw-screen"><StageVersionAction stage="stage1" /><div className="ds-eyebrow">1단계 · 키워드</div><h1 className={data.keywordRounds['2']?.committed ? 'ds-t-section' : 'ds-t-screen'}>{ui.final ? '최종 키워드를 검토합니다' : `R${round} ${names[round - 1]} 결과 ${ui.canEdit ? current?.keywords.length ?? 0 : 0}개를 검토합니다`}</h1><p>거절할 키워드를 누르고 사유를 남기면 다음 라운드에 반영됩니다. 드래그하거나 M 키로 하위 카테고리를 옮길 수 있습니다.</p><Stepper label="라운드 진행" steps={steps} />
-    {error && <Banner tone="danger">{error}{duplicate && <Button size="sm" onClick={() => { reveal(duplicate); setDuplicate(null); }}>중복 키워드 확인하기</Button>}</Banner>}{notice && <Banner>{notice}</Banner>}
+    {error && <Banner tone="danger">{error}{duplicate && <Button size="sm" onClick={() => { reveal(duplicate); setDuplicate(null); }}>중복 키워드 확인하기</Button>}</Banner>}{notice && !readonly && <Banner>{notice}</Banner>}
     <div className="kw-layout"><div className="kw-main space-y-4"><Card><fieldset disabled={busy || running}><Input label="다음 라운드 방향 지시 (선택)" value={direction} onChange={e => setDirection(e.target.value)} placeholder="예: 영유아 관련 맥락을 더 발산해줘" /><div className="ds-actions"><Button disabled={!direction.trim()} onClick={() => void action(saveDirection)}>지시 저장하기</Button></div></fieldset></Card>
       {running ? <Card><p role="status" aria-live="polite">처리 중… R{round} 생성 중 · 보통 30~90초 · 경과 {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}</p><div className="space-y-4 mt-4">{[0, 1, 2].map(i => <Skeleton key={i} height={112} />)}</div><p className="ds-t-caption">다른 화면으로 이동해도 생성은 계속됩니다.</p></Card> : <>
       {current?.job.status === 'failed' && <Banner tone="danger" actions={<Button disabled={busy} onClick={() => void generate(round)}>다시 생성하기</Button>}>R{round} 생성에 실패했습니다(원인: {reasons[current.job.error?.kind ?? ''] ?? '생성 도구 오류'}). 승인한 키워드는 그대로 있습니다. 다시 생성하세요.{current.job.error?.kind === 'backend' && ' 설정에서 claude_api로 바꿀 수 있습니다.'}</Banner>}

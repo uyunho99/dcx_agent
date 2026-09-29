@@ -7,23 +7,28 @@ import { useSessionStore } from '@/stores/useSessionStore';
 import type { CrawlConfig } from '@/lib/api/crawl';
 import { contextLabels } from '@/lib/contextLabels';
 import { INTERNAL_TOOLS } from '@/lib/internalTools';
+import { prepareRestartVersion } from '@/lib/logic/restartVersion';
 import { useVersion } from './VersionProvider';
 const routes = ['start','keywords','crawling','preprocess','labeling','training','clustering','personas'];
-export function RestartVersion({stage, from, label = '이 단계부터 다시', disabled = false}: {stage: Stage; from?: string; label?: string; disabled?: boolean}) {
+export function RestartVersion({stage, from, label = '이 단계부터 다시', disabled = false}: {stage?: Stage; from?: string; label?: string; disabled?: boolean}) {
   const view = useVersion(); const router = useRouter(); const [open, setOpen] = useState(false); const [note, setNote] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const lock = useRef(false);
+  const [chosenStage, setChosenStage] = useState<Stage | ''>('');
+  const restartStage = stage ?? chosenStage;
   if (!view.sid || !view.meta) return null;
   async function restart() {
-    if (lock.current) return; lock.current = true; setBusy(true); setError('');
+    if (lock.current || !restartStage) return; lock.current = true; setBusy(true); setError('');
     try {
-      const {version} = await createVersion(view.sid!, from ?? view.meta!.activeVersion, stage, note);
-      view.select(version);
-      const {data} = await getVersionSession(view.sid!, version);
+      const {version, data} = await prepareRestartVersion(
+        () => createVersion(view.sid!, from ?? view.meta!.activeVersion, restartStage, note),
+        version => getVersionSession(view.sid!, version),
+      );
       useSessionStore.getState().setSession({sd: data, step: data.step, projectContext: data.projectContext ?? null});
-      router.push(`/pipeline/${routes[Number(stage.slice(5))] ?? 'start'}`); setOpen(false);
+      router.push(`/pipeline/${routes[Number(restartStage.slice(5))] ?? 'start'}`); setOpen(false);
+      view.select(version);
     } catch (e) { setError(e instanceof Error && e.message.includes('진행 중인 작업') ? '진행 중인 작업이 끝난 뒤 다시 시도하세요' : '새 버전을 만들지 못했습니다. 버전 목록을 확인하고 다시 시도하세요.'); }
     finally {lock.current = false; setBusy(false);}
   }
-  return <Popover label="새 버전 만들기" open={open} onOpenChange={setOpen} renderTrigger={({ref, props}) => <button ref={ref} {...props} className="ds-btn ds-secondary" disabled={disabled || busy}>{label}</button>}><div className="space-y-3"><Input label="다시 시작하는 이유" hint="메모는 선택 입력입니다." value={note} disabled={busy} onChange={e => setNote(e.target.value)} />{error && <Banner tone="danger">{error}</Banner>}<Button variant="primary" loading={busy} onClick={() => void restart()}>새 버전 만들기</Button></div></Popover>;
+  return <Popover label="새 버전 만들기" open={open} onOpenChange={setOpen} renderTrigger={({ref, props}) => <button ref={ref} {...props} className="ds-btn ds-secondary" disabled={disabled || busy}>{label}</button>}><div className="space-y-3">{!stage && <label className="ds-field">다시 시작할 단계<select className="ds-inp" value={chosenStage} disabled={busy} onChange={e => setChosenStage(e.target.value as Stage)}><option value="">단계 선택</option>{routes.map((route, i) => <option key={route} value={`stage${i}`}>{i}단계</option>)}</select></label>}<Input label="다시 시작하는 이유" hint="메모는 선택 입력입니다." value={note} disabled={busy} onChange={e => setNote(e.target.value)} />{error && <Banner tone="danger">{error}</Banner>}<Button variant="primary" loading={busy} disabled={!restartStage} onClick={() => void restart()}>새 버전 만들기</Button></div></Popover>;
 }
 export function StageVersionAction({stage}: {stage: Stage}) { const view = useVersion(); return <div className="flex justify-end"><RestartVersion stage={stage} disabled={view.readonly} /></div>; }
 export function StaleBanner({stage, session}: {stage: Stage; session: VersionSession | null}) {
@@ -33,11 +38,12 @@ export function StaleBanner({stage, session}: {stage: Stage; session: VersionSes
 }
 export function VersionBanner({stage}: {stage: Stage}) {
   const view = useVersion();
-  return <>{view.readonly && <Banner actions={<RestartVersion stage={stage} from={view.version} label="이 버전에서 새로 시작하기" />}>읽기 전용 버전입니다 ·</Banner>}<StaleBanner stage={stage} session={view.session} /></>;
+  return <>{view.readonly && <Banner>{view.version} · 읽기 전용 · <RestartVersion stage={stage} from={view.version} label="이 버전에서 새로 시작하기" /></Banner>}<StaleBanner stage={stage} session={view.session} /></>;
 }
 export function VersionStage({stage, children}: {stage: Stage; children: ReactNode}) {
   const view = useVersion();
-  return <div className="space-y-4"><VersionBanner stage={stage} /><fieldset disabled={view.readonly} className="min-w-0" onClickCapture={e => {if(view.readonly){e.preventDefault();e.stopPropagation();}}} onDragStartCapture={e => {if(view.readonly)e.preventDefault();}} onDropCapture={e => {if(view.readonly){e.preventDefault();e.stopPropagation();}}}>{stage === 'stage2' && view.readonly ? <HistoricalCrawl /> : children}</fieldset></div>;
+  const [openedReadonly] = useState(view.readonly);
+  return <div className="space-y-4"><VersionBanner stage={stage} /><fieldset disabled={view.readonly} className="min-w-0" onClickCapture={e => {if(view.readonly){e.preventDefault();e.stopPropagation();}}} onDragStartCapture={e => {if(view.readonly)e.preventDefault();}} onDropCapture={e => {if(view.readonly){e.preventDefault();e.stopPropagation();}}}>{stage === 'stage2' && openedReadonly ? <HistoricalCrawl /> : children}</fieldset></div>;
 }
 function HistoricalCrawl() {
   const {session} = useVersion();

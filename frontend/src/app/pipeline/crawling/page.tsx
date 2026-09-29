@@ -24,7 +24,7 @@ export default function CrawlingPage() {
   return <VersionStage stage="stage2"><CrawlScreen key={`${sid}:${String(sd.version??'')}`} sid={sid}/></VersionStage>;
 }
 function CrawlScreen({sid}:{sid:string}) {
-  const { version } = useVersion();
+  const { version, readonly } = useVersion();
   const router=useRouter(); const context=useSessionStore(s=>s.projectContext);
   const [retry,setRetry]=useState(0);
   const [session,setSession]=useState<CrawlSession|null>(null);const [config,setConfig]=useState<CrawlConfig|null>(null);const [savedConfig,setSavedConfig]=useState<CrawlConfig|null>(null);const [draftConfig,setDraftConfig]=useState<CrawlConfig|null>(null);
@@ -34,12 +34,12 @@ function CrawlScreen({sid}:{sid:string}) {
   const refresh=useCallback(async()=>{const generationAtStart=generation.current;const next=await getCrawlStatus(sid);if(alive.current&&generationAtStart===generation.current){latestStatus.current=next;setStatus(next);setHealthy(true);setPollError('');}return next;},[sid]);
   useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
   useEffect(()=>{
-    if(!hydrated)return;
+    if(!hydrated || readonly)return;
     let cancelled=false;let timer:ReturnType<typeof setTimeout>;
     const delay=()=>latestStatus.current?.status==='running'||latestStatus.current?.status==='stopping'?3000:10000;
     async function poll(){try{if(!lock.current)await refresh();}catch{if(!cancelled){setHealthy(false);setPollError('수집 상태를 불러오지 못했습니다. 다시 확인하세요.');}}if(!cancelled)timer=setTimeout(poll,delay());}
     timer=setTimeout(poll,delay());return()=>{cancelled=true;clearTimeout(timer);};
-  },[refresh,hydrated]);
+  },[refresh,hydrated,readonly]);
   useEffect(()=>{
     let cancelled=false;
     Promise.all([contextRequest<{data:CrawlSession}>(versionPath(`/session/${encodeURIComponent(sid)}`, version)),getCrawlConnections(),refresh()]).then(([result,integrations,initial])=>{
