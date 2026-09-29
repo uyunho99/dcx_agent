@@ -666,14 +666,15 @@ def real_sources():
 def test_registered_sources_status_and_project_defaults(real_sources, env, monkeypatch):
     monkeypatch.setattr(control, 'available_sources', real_sources)
     monkeypatch.setattr(settings, 'enable_fixture_channel', False)
-    sources = ['youtube', 'clien', 'ppomppu']
+    sources = ['naver_blog', 'naver_cafe', 'youtube', 'clien', 'ppomppu']
     session = store.load_session('S')
     session.pop('crawlConfig')
-    session['projectContext'] = {'channels': ['naver_blog', *sources]}
+    # The disabled fixture channel is excluded; available project channels persist.
+    session['projectContext'] = {'channels': ['fixture', *sources]}
     store.write_json(store.session_dir('S') / 'session.json', session)
     status = env.client.get('/crawl/S/status')
     assert status.status_code == 200
-    assert set(status.json()['available_sources']) == set(sources)
+    assert set(status.json()['available_sources']) == {'naver_blog', 'naver_cafe', 'youtube', 'clien', 'ppomppu'}
     control.start_list('S')
     manifest = store.read_json(control.collection_dir('S') / 'manifest.json')
     assert manifest['channels'] == sources

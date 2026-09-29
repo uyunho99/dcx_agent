@@ -39,6 +39,8 @@ def test_real_registry_availability_is_offline(monkeypatch):
     from app.crawl.adapters.youtube import YoutubeAdapter
     from app.crawl.adapters.clien import ClienAdapter
     from app.crawl.adapters.ppomppu import PpomppuAdapter
+    from app.crawl.adapters.naver_blog import NaverBlogAdapter
+    from app.crawl.adapters.naver_cafe import NaverCafeAdapter
     import httpx
     import yt_dlp
     def forbidden(*args, **kwargs):
@@ -46,8 +48,10 @@ def test_real_registry_availability_is_offline(monkeypatch):
     monkeypatch.setattr(httpx.Client, 'send', forbidden)
     monkeypatch.setattr(yt_dlp.YoutubeDL, 'extract_info', forbidden)
     monkeypatch.setattr(settings, 'enable_fixture_channel', False)
-    assert set(available_sources()) == {'youtube', 'clien', 'ppomppu'}
-    for source, cls in [('youtube', YoutubeAdapter), ('clien', ClienAdapter), ('ppomppu', PpomppuAdapter)]:
+    assert set(available_sources()) == {'youtube', 'clien', 'ppomppu', 'naver_blog', 'naver_cafe'}
+    for source, cls in [('youtube', YoutubeAdapter), ('clien', ClienAdapter),
+                        ('ppomppu', PpomppuAdapter), ('naver_blog', NaverBlogAdapter),
+                        ('naver_cafe', NaverCafeAdapter)]:
         adapter = REGISTRY[source]()
         try:
             assert isinstance(adapter, cls)

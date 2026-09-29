@@ -79,7 +79,7 @@ def test_fetch_returns_body(corpus):
 def test_disabled_by_default(monkeypatch):
     monkeypatch.setattr(settings, "enable_fixture_channel", False)
     monkeypatch.setattr(settings, "fixture_corpus_path", "")
-    assert set(REGISTRY) == {"fixture", "youtube", "clien", "ppomppu"}
+    assert set(REGISTRY) == {"fixture", "youtube", "clien", "ppomppu", "naver_blog", "naver_cafe"}
     assert "fixture" not in available_sources()
 
 

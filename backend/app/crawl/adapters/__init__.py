@@ -15,9 +15,13 @@ from app.crawl.adapters.fixture import FixtureAdapter
 from app.crawl.adapters.youtube import YoutubeAdapter
 from app.crawl.adapters.clien import ClienAdapter
 from app.crawl.adapters.ppomppu import PpomppuAdapter
+from app.crawl.adapters.naver_blog import NaverBlogAdapter
+from app.crawl.adapters.naver_cafe import NaverCafeAdapter
 
 
 REGISTRY: dict[str, Callable[[], ChannelAdapter]] = {
+    "naver_blog": lambda: NaverBlogAdapter(),
+    "naver_cafe": lambda: NaverCafeAdapter(),
     "fixture": lambda: FixtureAdapter(settings.fixture_corpus_path),
     "youtube": lambda: YoutubeAdapter(),
     "clien": lambda: ClienAdapter(),
