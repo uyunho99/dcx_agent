@@ -1,12 +1,14 @@
 import hashlib
 import json
+import multiprocessing
+import re
 import stat
 
 import pytest
 from pydantic import ValidationError
 
 from app.config import settings
-from app.crawl.hashing import author_hash
+from app.crawl.hashing import _read_salt, author_hash
 from app.crawl.schema import Doc
 
 
@@ -26,11 +28,62 @@ def test_author_hash_stable_and_no_raw(tmp_path, monkeypatch):
     salt_path.write_text("changed")
     assert author_hash("naver_cafe", raw_id) == result
     other_path = tmp_path / "other_salt"
-    other_path.write_text("existing-salt")
+    existing_salt = "aB" * 32
+    other_path.write_text(" \n" + existing_salt + "\n")
     monkeypatch.setattr(settings, "author_salt_path", str(other_path))
     assert author_hash("naver_cafe", raw_id) == hashlib.sha256(
-        ("existing-salt" + "naver_cafe" + raw_id).encode()
+        (existing_salt + "naver_cafe" + raw_id).encode()
     ).hexdigest()[:16]
+
+
+@pytest.mark.parametrize("content", ["", " \n", "g" * 64, "a" * 63, "a" * 65])
+def test_author_hash_rejects_invalid_existing_salt(tmp_path, monkeypatch, content):
+    salt_path = tmp_path / ".author_salt"
+    salt_path.write_text(content)
+    monkeypatch.setattr(settings, "author_salt_path", str(salt_path))
+    with pytest.raises(ValueError, match="Invalid author salt.*64 hexadecimal characters"):
+        author_hash("naver_cafe", "author")
+
+
+def _create_salt_in_process(salt_path, barrier, results):
+    settings.author_salt_path = salt_path
+    barrier.wait(timeout=10)
+    result = author_hash("naver_cafe", "same-author")
+    results.put((_read_salt(), result))
+
+
+def test_author_hash_concurrent_process_creation(tmp_path):
+    salt_path = tmp_path / ".author_salt"
+    context = multiprocessing.get_context("spawn")
+    barrier = context.Barrier(2)
+    results = context.Queue()
+    processes = [
+        context.Process(target=_create_salt_in_process,
+                        args=(str(salt_path), barrier, results))
+        for _ in range(2)
+    ]
+    try:
+        for process in processes:
+            process.start()
+        values = [results.get(timeout=15) for _ in processes]
+        for process in processes:
+            process.join(timeout=10)
+            assert process.exitcode == 0
+        assert values[0] == values[1]
+        salt, hashed = values[0]
+        assert re.fullmatch(r"[0-9a-fA-F]{64}", salt)
+        assert salt_path.read_text() == salt
+        assert hashed == hashlib.sha256((salt + "naver_cafe" + "same-author").encode()).hexdigest()[:16]
+        assert stat.S_IMODE(salt_path.stat().st_mode) == 0o600
+        assert list(tmp_path.iterdir()) == [salt_path]
+    finally:
+        for process in processes:
+            if process.is_alive():
+                process.terminate()
+            if process.pid is not None:
+                process.join(timeout=10)
+        results.close()
+        results.join_thread()
 
 
 @pytest.fixture

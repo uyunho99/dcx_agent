@@ -21,6 +21,38 @@ def test_strips_tracking_params():
     assert normalize_url(url, "naver_cafe") == expected
 
 
+@pytest.mark.parametrize("path", [
+    "/ca-fe/cafes/123/articles/456", "/ca-fe/mamcafe/not-numeric",
+    "/ca-fe/mamcafe", "/ca-fe/mamcafe/123/extra",
+])
+def test_normalize_url_preserves_other_ca_fe_paths(path):
+    assert normalize_url("https://m.cafe.naver.com" + path + "/?utm_source=x#fragment", "naver_cafe") == "https://cafe.naver.com" + path
+
+
+@pytest.mark.parametrize("source", ["naver_cafe", "naver_blog", "youtube", "ppomppu", "clien", "fixture"])
+def test_naver_trackers_are_source_scoped(source):
+    url = "https://example.com/post?art=x&query=x&where=x&sm=x&utm_source=x&FBCLID=x&gclid=x"
+    expected = "https://example.com/post"
+    if source not in {"naver_cafe", "naver_blog"}:
+        expected += "?art=x&query=x&sm=x&where=x"
+    assert normalize_url(url, source) == expected
+
+
+@pytest.mark.parametrize("url", [
+    "https://youtu.be/ID?si=abc",
+    "https://youtu.be/ID?si=abc&feature=share&t=10&pp=abc&utm_source=x&fbclid=x&gclid=x",
+    "https://m.youtube.com/watch?v=ID&SI=abc&FEATURE=share&T=10&PP=abc",
+])
+def test_youtube_trackers_are_removed(url):
+    assert normalize_url(url, "youtube") == "https://www.youtube.com/watch?v=ID"
+
+
+@pytest.mark.parametrize("source", ["naver_cafe", "naver_blog", "ppomppu", "clien", "fixture"])
+def test_youtube_trackers_are_preserved_for_other_sources(source):
+    url = "https://example.com/post?si=abc&feature=share&t=10&pp=abc"
+    assert normalize_url(url, source) == "https://example.com/post?feature=share&pp=abc&si=abc&t=10"
+
+
 @pytest.mark.parametrize("source,prefix", [
     ("naver_cafe", "nc"), ("naver_blog", "nb"), ("youtube", "yt"),
     ("ppomppu", "pp"), ("clien", "cl"), ("fixture", "fx"),

@@ -1,11 +1,14 @@
 """Canonical content URLs and deterministic document identifiers."""
 
 import hashlib
+import re
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
 _PREFIXES = {"naver_cafe":"nc","naver_blog":"nb","youtube":"yt","ppomppu":"pp","clien":"cl","fixture":"fx"}
-_TRACKERS = {"fbclid", "gclid", "art", "query", "where", "sm"}
+_TRACKERS = {"fbclid", "gclid"}
+_NAVER_TRACKERS = {"art", "query", "where", "sm"}
+_YOUTUBE_TRACKERS = {"si", "feature", "t", "pp"}
 
 
 def normalize_url(url: str, source: str) -> str:
@@ -21,14 +24,19 @@ def normalize_url(url: str, source: str) -> str:
     if separator:
         netloc = userinfo + "@" + netloc
     path = parts.path.rstrip("/")
+    trackers = _TRACKERS
+    if source in {"naver_cafe", "naver_blog"}:
+        trackers = trackers | _NAVER_TRACKERS
+    elif source == "youtube":
+        trackers = trackers | _YOUTUBE_TRACKERS
     params = [
         (key, value) for key, value in parse_qsl(parts.query, keep_blank_values=True)
-        if not key.lower().startswith("utm_") and key.lower() not in _TRACKERS
+        if not key.lower().startswith("utm_") and key.lower() not in trackers
     ]
 
     if source == "naver_cafe" and host in {"m.cafe.naver.com", "cafe.naver.com"}:
         scheme, netloc = "https", "cafe.naver.com"
-        if path.startswith("/ca-fe/"):
+        if re.fullmatch(r"/ca-fe/[^/]+/[0-9]+", path):
             path = path.removeprefix("/ca-fe")
     elif source == "naver_blog" and host in {"m.blog.naver.com", "blog.naver.com"}:
         scheme, netloc = "https", "blog.naver.com"

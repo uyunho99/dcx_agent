@@ -3,7 +3,9 @@
 import hashlib
 import os
 from pathlib import Path
+import re
 import secrets
+import tempfile
 from threading import Lock
 
 from app.config import settings
@@ -19,14 +21,25 @@ def _read_salt() -> str:
         if path not in _salts:
             path.parent.mkdir(parents=True, exist_ok=True)
             try:
-                fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-            except FileExistsError:
                 salt = path.read_text(encoding="utf-8")
-            else:
-                with os.fdopen(fd, "w", encoding="utf-8") as salt_file:
-                    os.chmod(path, 0o600)
-                    salt = secrets.token_hex(32)
-                    salt_file.write(salt)
+            except FileNotFoundError:
+                fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+                try:
+                    with os.fdopen(fd, "w", encoding="utf-8") as salt_file:
+                        os.fchmod(salt_file.fileno(), 0o600)
+                        salt_file.write(secrets.token_hex(32))
+                        salt_file.flush()
+                        os.fsync(salt_file.fileno())
+                    try:
+                        os.link(tmp, path)
+                    except FileExistsError:
+                        pass  # Another process published a complete salt first.
+                finally:
+                    os.unlink(tmp)
+                salt = path.read_text(encoding="utf-8")
+            salt = salt.strip()
+            if re.fullmatch(r"[0-9a-fA-F]{64}", salt) is None:
+                raise ValueError(f"Invalid author salt at {path}: expected 64 hexadecimal characters")
             _salts[path] = salt
         return _salts[path]
 
