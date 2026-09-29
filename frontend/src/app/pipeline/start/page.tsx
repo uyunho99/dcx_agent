@@ -9,16 +9,10 @@ import { restoreSessionToStore } from "@/lib/sessionPersist";
 import { createContext, getContext, patchSession, putContext, suggestCategory } from "@/lib/api/context";
 import { contextLabels as labels } from "@/lib/contextLabels";
 import { INTERNAL_TOOLS } from "@/lib/internalTools";
+import { emptyStartForm as empty, mergeStartForm, nextStepOnStart } from "@/lib/logic/startForm";
 import { isDirty } from "@/lib/logic/isDirty";
 import type { ProjectContext, SessionInfo } from "@/lib/types";
 
-const empty: ProjectContext = {
-  schemaVersion: 1, bk: "", oneLiner: "", researchQuestion: {text: ""},
-  projectType: {choice: "", note: ""}, analysisGoal: {choice: "", note: ""},
-  keyMetrics: [], constraints: [], positioning: {price: "", market: ""}, channels: [], knownInsights: [],
-  productCategory: {l1: "", l2: "", l3: "", source: "user"},
-  targetScope: {ageRanges: [], genders: [], households: [], lifeStages: [], note: ""}, futureCustomer: {choices: [], note: ""},
-};
 const options = (group: Record<string, string>) => Object.entries(group).map(([value,label]) => ({value,label}));
 const localDraft = "dcx_start_draft";
 function ListInput({label, value, onChange, required}: {label: string; value: string[]; onChange: (v: string[]) => void; required?: boolean}) {
@@ -56,15 +50,17 @@ export default function StartPage() {
     createdSid.current = store.sid;
     setLoadError(false);
     if (!store.sid) {
-      try { const raw = localStorage.getItem(localDraft); if (raw) { const draft = JSON.parse(raw); setForm(draft); setSaved(draft); } else { setForm(empty); setSaved(empty); } } catch { /* Keep an empty editable form. */ }
+      let draft = mergeStartForm(null);
+      try { const raw = localStorage.getItem(localDraft); if (raw) draft = mergeStartForm(JSON.parse(raw)); } catch { /* Storage is optional; use the empty form. */ }
+      setForm(draft); setSaved(draft);
       setReturned(null); return;
     }
     if (legacy) return;
     setLoading(true);
     getContext(store.sid).then(data => {
       if (!active) return;
-      const value = data.draft || data.projectContext;
-      setForm(value); setSaved(value); setReturned(data.projectContext);
+      const value = mergeStartForm(data.draft || data.projectContext);
+      setForm(value); setSaved(value); setReturned(mergeStartForm(data.projectContext));
     }).catch(() => { if(active) { setLoadError(true); setMessage("입력값을 불러오지 못했습니다. 세션을 다시 여세요."); } }).finally(() => {if(active) setLoading(false);});
     return () => { active = false; };
   }, [store.sid, legacy, reload]);
@@ -81,14 +77,19 @@ export default function StartPage() {
       let sid = store.sid || createdSid.current;
       if (draft) {
         if (sid) await patchSession(sid, {drafts: {start: snapshot}});
-        else localStorage.setItem(localDraft, JSON.stringify(snapshot));
+        else {
+          try { localStorage.setItem(localDraft, JSON.stringify(snapshot)); }
+          catch { setMessage("이 브라우저에 임시 저장하지 못했습니다. 입력값은 그대로 있습니다."); return; }
+        }
         setSaved(snapshot); setMessage(sid ? "임시 저장했습니다." : "이 브라우저에 임시 저장했습니다. 필수값을 채운 뒤 저장하세요.");
       } else {
+        const step = navigate ? nextStepOnStart(sid ? store.step : undefined) : undefined;
         if (!sid) { sid = (await createContext(snapshot)).sid; createdSid.current = sid; }
         else { await putContext(sid, snapshot); }
-        await patchSession(sid, {drafts: {start: null}, ...(navigate ? {step: "r1"} : {})});
+        await patchSession(sid, {drafts: {start: null}, ...(step ? {step} : {})});
         await restoreSessionToStore(sid, useSessionStore.getState());
-        setSaved(snapshot); setReturned(useSessionStore.getState().projectContext); localStorage.removeItem(localDraft);
+        setSaved(snapshot); setReturned(mergeStartForm(useSessionStore.getState().projectContext));
+        try { localStorage.removeItem(localDraft); } catch { /* A storage failure must not block a successful server save. */ }
         setMessage("저장했습니다.");
         if (navigate) router.push("/pipeline/keywords");
       }
@@ -116,9 +117,9 @@ export default function StartPage() {
     } catch { setCategoryError("제품군을 제안하지 못했습니다. 직접 입력하세요."); }
     finally { setSuggesting(false); }
   };
-  const single = (key: "projectType" | "analysisGoal", title: string) => <div className="space-y-2" tabIndex={-1} aria-invalid={!form[key].choice || undefined}>
-    <h3 className="ds-t-label">{title} *</h3><ChoiceChips label={title} options={options(labels[key])} value={form[key].choice} onChange={choice => update(key, {...form[key], choice})} />
-    {!form[key].choice && <p className="ds-err">하나를 선택하세요.</p>}<Input label={`${title} 보충 설명`} value={form[key].note} onChange={e => update(key, {...form[key], note: e.target.value})} />
+  const single = (key: "projectType" | "analysisGoal", title: string) => <div className="space-y-2" role="group" aria-labelledby={`${key}-heading`} aria-describedby={!form[key].choice ? `${key}-error` : undefined} tabIndex={-1} aria-invalid={!form[key].choice || undefined}>
+    <h3 id={`${key}-heading`} className="ds-t-label">{title} *</h3><ChoiceChips label={title} options={options(labels[key])} value={form[key].choice} onChange={choice => update(key, {...form[key], choice})} />
+    {!form[key].choice && <p id={`${key}-error`} className="ds-err">하나를 선택하세요.</p>}<Input label={`${title} 보충 설명`} value={form[key].note} onChange={e => update(key, {...form[key], note: e.target.value})} />
   </div>;
   const target = form.targetScope || empty.targetScope!;
   return <div className="space-y-6">
@@ -136,8 +137,8 @@ export default function StartPage() {
             <div className="space-y-2"><div className="flex flex-wrap gap-2">{["사용 중 불편 탐색하기", "비사용자의 망설임 탐색하기", "대체 방법과 이유 탐색하기"].map((title,i) => <Button key={title} size="sm" onClick={() => update("researchQuestion", {template: String(i+1), text: [`${form.bk || "제품"}을 쓰는 사람들은 언제·어디서·무엇을 하다가 어떤 불편을 겪는가?`, `${form.bk || "제품"}을 아직 안 쓰는 사람들은 무엇 때문에 망설이는가?`, `${form.bk || "제품"}을 대신해 사람들이 쓰는 방법은 무엇이고, 왜 그 방법을 택하는가?`][i]})}>{title}</Button>)}</div><Input label="리서치 질문" required value={form.researchQuestion.text} onChange={e => update("researchQuestion", {...form.researchQuestion, text:e.target.value})} error={!form.researchQuestion.text.trim() ? "리서치 질문을 입력하세요." : undefined} hint="템플릿을 고르면 채워지고, 자유롭게 고칠 수 있습니다." /></div>
             <div className="grid gap-6 md:grid-cols-2">{single("projectType","프로젝트 성격")}{single("analysisGoal","분석 목적")}</div>
             <div className="grid gap-6 md:grid-cols-2"><ListInput label="핵심 지표" required value={form.keyMetrics} onChange={v => update("keyMetrics",v)} /><ListInput label="사내 제약" value={form.constraints} onChange={v => update("constraints",v)} /></div>
-            <div className="grid gap-6 md:grid-cols-2"><div className="space-y-2" tabIndex={-1} aria-invalid={!form.positioning.price || !form.positioning.market || undefined}><h3 className="ds-t-label">브랜드 포지셔닝 *</h3>{(["price", "market"] as const).map(key => <Segmented key={key} label={key === "price" ? "가격대" : "시장 위치"} options={options(labels[key])} value={form.positioning[key]} onChange={v => update("positioning", {...form.positioning, [key]:v})} />)}{(!form.positioning.price || !form.positioning.market) && <p className="ds-err">가격대와 시장 위치를 선택하세요.</p>}</div>
-            <div tabIndex={-1} aria-invalid={!form.channels.length || undefined}><h3 className="ds-t-label">수집 채널 *</h3><ChoiceChips multiple label="수집 채널" options={options(labels.channels).filter(o => INTERNAL_TOOLS || o.value !== "fixture")} value={form.channels} onChange={v => update("channels",v)} />{!form.channels.length && <p className="ds-err">채널을 하나 이상 선택하세요.</p>}</div></div>
+            <div className="grid gap-6 md:grid-cols-2"><div className="space-y-2" role="group" aria-labelledby="positioning-heading" aria-describedby={!form.positioning.price || !form.positioning.market ? "positioning-error" : undefined} tabIndex={-1} aria-invalid={!form.positioning.price || !form.positioning.market || undefined}><h3 id="positioning-heading" className="ds-t-label">브랜드 포지셔닝 *</h3>{(["price", "market"] as const).map(key => <Segmented key={key} label={key === "price" ? "가격대" : "시장 위치"} options={options(labels[key])} value={form.positioning[key]} onChange={v => update("positioning", {...form.positioning, [key]:v})} />)}{(!form.positioning.price || !form.positioning.market) && <p id="positioning-error" className="ds-err">가격대와 시장 위치를 선택하세요.</p>}</div>
+            <div role="group" aria-labelledby="channels-heading" aria-describedby={!form.channels.length ? "channels-error" : undefined} tabIndex={-1} aria-invalid={!form.channels.length || undefined}><h3 id="channels-heading" className="ds-t-label">수집 채널 *</h3><ChoiceChips multiple label="수집 채널" options={options(labels.channels).filter(o => INTERNAL_TOOLS || o.value !== "fixture")} value={form.channels} onChange={v => update("channels",v)} />{!form.channels.length && <p id="channels-error" className="ds-err">채널을 하나 이상 선택하세요.</p>}</div></div>
             <ListInput label="이미 아는 것" value={form.knownInsights} onChange={v => update("knownInsights",v)} />
           </Card>
           <Card className="space-y-6"><div className="flex justify-between gap-3"><div><h2 className="ds-t-card">0-B 분석 대상 · 초기 기준선</h2><p className="ds-t-caption">선택 · 대조되는 값. 우선 탐색하되 범위 밖 발견도 배제하지 않습니다.</p></div><Badge>기준선</Badge></div>
