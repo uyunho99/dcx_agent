@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routers import (
     sessions,
+    context,
     keywords,
     crawling,
     preprocessing,
@@ -27,6 +28,7 @@ app.add_middleware(
 )
 
 app.include_router(sessions.router)
+app.include_router(context.router)
 app.include_router(keywords.router)
 app.include_router(crawling.router)
 app.include_router(preprocessing.router)

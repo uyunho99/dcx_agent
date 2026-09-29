@@ -1,4 +1,8 @@
-import json
+import shutil
+from pathlib import Path
+
+from app.config import settings
+from app.context import store, versions
 from fastapi import APIRouter
 
 from app.services.s3 import save_json, load_json, list_prefixes, delete_object
@@ -11,15 +15,29 @@ router = APIRouter()
 @router.post("/save-session")
 def save_session(req: SessionSaveRequest):
     try:
-        save_json(f"sessions/{req.sid}/session.json", req.data)
+        existing = store.load_session(req.sid)
+        if (existing and not store.is_legacy(existing)) or req.data.get("schemaVersion") == 2:
+            owned = {"projectContext", "knownInsights", "keywords", "keywordRounds", "coverage",
+                     "crawlConfig", "collectionId", "drafts", "schemaVersion", "sid",
+                     "parentVersion", "restartFrom", "stale", "updatedAt"}
+            patch = {k: v for k, v in req.data.items() if k not in owned and not k.startswith("version")}
+            if existing is None:
+                patch.update(schemaVersion=2, sid=req.sid)
+            store.update_session(req.sid, patch)
+        else:
+            save_json(f"sessions/{req.sid}/session.json", req.data)
         return {"status": "saved"}
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
 
 @router.get("/session/{sid}")
-def get_session(sid: str):
-    data = load_json(f"sessions/{sid}/session.json")
+def get_session(sid: str, version: str | None = None):
+    try:
+        data = versions._data(sid, version) if version else store.load_session(sid) or load_json(f"sessions/{sid}/session.json")
+    except store.StoreError as exc:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=exc.status, content={"status": "error", "error": {"kind": exc.kind, "message": str(exc)}})
     if data:
         return {"status": "ok", "data": data}
     return {"status": "not_found", "data": None}
@@ -28,19 +46,23 @@ def get_session(sid: str):
 @router.get("/sessions")
 def list_sessions():
     try:
-        prefixes = list_prefixes("sessions/")
+        prefixes = set(list_prefixes("sessions/"))
+        root = Path(settings.local_data_dir) / "sessions"
+        if root.exists():
+            prefixes.update(f"sessions/{p.name}/" for p in root.iterdir() if p.is_dir())
         sessions = []
         for p in prefixes:
             sid = p.replace("sessions/", "").rstrip("/")
-            d = load_json(f"sessions/{sid}/session.json")
-            if d:
-                sessions.append({"sid": sid, "bk": d.get("bk", ""), "step": d.get("step", "")})
-            else:
-                sessions.append({"sid": sid, "bk": "", "step": ""})
-        return {
-            "status": "ok",
-            "sessions": sorted(sessions, key=lambda x: x["sid"], reverse=True)[:20],
-        }
+            d = store.load_session(sid) or load_json(f"sessions/{sid}/session.json")
+            if not d:
+                continue
+            sessions.append({"sid": sid, "bk": d.get("projectContext", {}).get("bk", d.get("bk", "")),
+                             "step": d.get("step", ""), "schemaVersion": d.get("schemaVersion"),
+                             "legacy": store.is_legacy(d), "activity": store.session_activity(sid, d),
+                             "updatedAt": d.get("updatedAt", d.get("createdAt", sid))})
+        sessions.sort(key=lambda item: (item["updatedAt"], item["sid"]), reverse=True)
+        sessions.sort(key=lambda item: store.activity_rank(item["activity"]))
+        return {"status": "ok", "sessions": sessions[:20]}
     except Exception:
         return {"status": "error", "sessions": []}
 
@@ -48,7 +70,19 @@ def list_sessions():
 @router.delete("/delete-session/{sid}")
 def delete_session(sid: str):
     try:
-        delete_object(f"sessions/{sid}/session.json")
+        root = store.root_dir(sid)
+        if (root / "meta.json").exists():
+            with store.locked(sid):
+                # Keep the lock inode stable for writers already waiting on it.
+                for child in root.iterdir():
+                    if child.name == ".lock":
+                        continue
+                    if child.is_symlink() or child.is_file():
+                        child.unlink()
+                    elif child.is_dir():
+                        shutil.rmtree(child)
+        else:
+            delete_object(f"sessions/{sid}/session.json")
         return {"status": "ok"}
     except Exception as e:
         return {"status": "error", "error": str(e)}
@@ -65,7 +99,7 @@ def pipeline_status(sid: str):
         "embed": job_manager.get("embed", sid),
         "persona": job_manager.get("persona", sid),
     }
-    data = load_json(f"sessions/{sid}/session.json")
+    data = store.load_session(sid) or load_json(f"sessions/{sid}/session.json")
     if data:
         result["session"] = data
     return result
