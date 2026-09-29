@@ -4,10 +4,10 @@
     "reason": "로그인하지 않았습니다.",
     "message": "errorCode: 0004, message: 로그인 하지 않음",
     "more": {
-      "cafeUrl": "musiloccupant",
-      "cafeName": "원주무실 입주자카페",
-      "pcCafeName": "사용자G",
-      "cafeId": 31451074
+      "cafeUrl": "jaengid",
+      "cafeName": "열일하는인테리어쟁이",
+      "pcCafeName": "열일·셀프인테리어/집수리/공사/시공/업체/자재/견적 정보/추천",
+      "cafeId": 21776715
     }
   }
 }

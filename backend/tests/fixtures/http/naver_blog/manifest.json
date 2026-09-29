@@ -1,7 +1,7 @@
 {
   "source": "naver_blog",
   "keyword": "에어컨 소음",
-  "captured_at": "2026-09-29T09:18:45.809912+00:00",
+  "captured_at": "2026-09-29T10:00:55.891746+00:00",
   "requests": [
     {
       "url": "https://search.naver.com/search.naver?ssc=tab.blog.all&query=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&start=1",
@@ -36,8 +36,8 @@
   ],
   "notes": [],
   "masking_stats": {
-    "id": 59,
-    "name": 45,
+    "id": 60,
+    "name": 57,
     "profile": 7
   }
 }

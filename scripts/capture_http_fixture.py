@@ -78,6 +78,17 @@ def strip_query_secrets(url):
     return result.replace('&', '&amp;') if '&amp;' in url else result
 
 
+def identity_text_parts(node):
+    """Yield text tokens inside this identity element, never its siblings."""
+    child = node.child
+    while child is not None:
+        if child.tag == '-text':
+            yield child.text(strip=True)
+        else:
+            yield from identity_text_parts(child)
+        child = child.next
+
+
 class Masker:
     """One in-memory mapping shared by every response and manifest in a capture."""
     def __init__(self, secrets=()):
@@ -208,7 +219,12 @@ class Masker:
         if source.startswith('naver_'):
             selectors += ', ' + NAVER_NAMES
         for node in tree.css(selectors):
-            for value in (node.text(strip=True), node.attributes.get('title'), node.attributes.get('alt')):
+            # Blog profile titles may repeat or split names across nested spans.
+            # html() substitutes individual text tokens, so discover those same
+            # tokens instead of a concatenation absent from the original markup.
+            names = (list(identity_text_parts(node)) if source == 'naver_blog'
+                     else [node.text(strip=True)])
+            for value in (*names, node.attributes.get('title'), node.attributes.get('alt')):
                 self.remember(value, 'name')
             for child in node.css('img'):
                 self.remember(child.attributes.get('alt'), 'name')

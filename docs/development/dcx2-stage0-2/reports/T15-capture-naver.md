@@ -60,3 +60,13 @@ Removed `.user_info .sub` and `.sds-comps-profile-info-subtext` from person disc
 Added 18 synthetic failing regressions before implementation, covering legacy/SDS date fields, relative and absolute dates, public cafe titles across title variants, private cafe member names/IDs, blog title names/IDs, and audit/CLI behavior. Corrected the earlier synthetic test that treated cafe profile titles as people by limiting its blog markup to the blog source.
 
 Verification: `backend/.venv/bin/python -m pytest -q backend/tests/scripts; echo rc=$?` → **83 passed, 1 existing Pydantic warning; rc=0**. No network requests, git writes, fixture edits, or changes to backend application/frontend files.
+
+## Follow-up: nested blog profile titles (2026-09-29)
+
+Inspected the two on-disk blog list pages read-only, reporting only selector structures and counts. Both have 30 `.sds-comps-profile-info-title-text` elements containing a link with multiple text spans. The selector was already present: discovery concatenated the spans' text, while HTML masking substitutes individual text tokens. Repeated or split blog titles therefore produced a discovered name that did not occur as a contiguous original token. Dates remain in the separate `.sds-comps-profile-info-subtext` element.
+
+Added synthetic tests before the fix for a blog title containing a nickname plus `의 블로그` / `님 블로그`, with nested, repeated-sibling, and plain markup, alongside a date. Initial targeted result: 4 failed, 2 passed, rc=1. Blog identity discovery now visits text tokens strictly inside each selected identity element, matching the masking boundary and shared audit discovery. It does not traverse the element's siblings. The existing blog profile-title selectors remain unchanged; cafe display-name and date selectors remain excluded from person masking. Existing cafe public-name/date preservation regressions still pass.
+
+Required verification: `backend/.venv/bin/python -m pytest -q backend/tests/scripts; echo rc=$?` → **89 passed, 1 existing Pydantic warning; rc=0**. A shared-map masking check of both real list pages, written only to temporary copies, returned **audit_counts={}** and verified all selected date texts unchanged. Original fixtures remain untouched and require coordinator re-capture; no actual names were printed. No network requests or git writes.
+
+Files changed: `scripts/capture_http_fixture.py`, `backend/tests/scripts/test_capture_naver.py`, and this report.

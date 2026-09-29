@@ -1,7 +1,7 @@
 {
   "source": "naver_cafe",
   "keyword": "에어컨 소음",
-  "captured_at": "2026-09-29T09:18:58.925090+00:00",
+  "captured_at": "2026-09-29T09:56:01.534406+00:00",
   "requests": [
     {
       "url": "https://search.naver.com/search.naver?ssc=tab.cafe.all&query=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&start=1",
@@ -92,7 +92,7 @@
       }
     },
     {
-      "url": "https://article.cafe.naver.com/gw/v4/cafes/musiloccupant/articles/6725?useCafeId=false",
+      "url": "https://article.cafe.naver.com/gw/v4/cafes/jaengid/articles/141846?useCafeId=false",
       "status_code": 401,
       "encoding": "utf-8",
       "file": "detail-7.json",
@@ -103,25 +103,25 @@
       }
     },
     {
-      "url": "https://article.cafe.naver.com/gw/v4/cafes/campingfirst/articles/2962497?useCafeId=false",
-      "status_code": 200,
+      "url": "https://article.cafe.naver.com/gw/v4/cafes/musiloccupant/articles/6725?useCafeId=false",
+      "status_code": 401,
       "encoding": "utf-8",
       "file": "detail-8.json",
       "restriction": {
         "login": false,
         "grade_restricted": false,
-        "access": "public"
+        "access": "unknown"
       }
     },
     {
-      "url": "https://article.cafe.naver.com/gw/v4/cafes/scenicetech100/articles/1525?useCafeId=false",
-      "status_code": 401,
+      "url": "https://article.cafe.naver.com/gw/v4/cafes/campingfirst/articles/2962497?useCafeId=false",
+      "status_code": 200,
       "encoding": "utf-8",
       "file": "detail-9.json",
       "restriction": {
         "login": false,
         "grade_restricted": false,
-        "access": "unknown"
+        "access": "public"
       }
     }
   ],
@@ -130,6 +130,6 @@
   ],
   "masking_stats": {
     "id": 23,
-    "name": 59
+    "name": 10
   }
 }

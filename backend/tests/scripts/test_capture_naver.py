@@ -296,3 +296,27 @@ def test_blog_search_title_identity_is_masked_and_audited(tmp_path, selector):
     assert '2026.09.15.' in masked
     path.write_text(masked)
     assert capture.audit_fixture(directory) == {}
+
+
+@pytest.mark.parametrize('suffix', ['의 블로그', '님 블로그'])
+@pytest.mark.parametrize('title_markup', [
+    '<span><span>홍길동</span>{suffix}</span>',
+    '<span>홍길동{suffix}</span><span class="fender-ui_0cb57fb2">홍길동{suffix}</span>',
+    '<span>홍길동{suffix}</span>',
+])
+def test_blog_profile_title_split_across_markup_masks_nickname_keeps_date(tmp_path, suffix, title_markup):
+    raw = ('<div data-template-id="ugcItem">'
+           '<span class="sds-comps-profile-info-title-text"><a>'
+           f'{title_markup.format(suffix=suffix)}'
+           '</a></span><span class="sds-comps-profile-info-subtext">2026.09.15.</span></div>')
+    directory = tmp_path / 'naver_blog'
+    directory.mkdir()
+    path = directory / 'list-1.html'
+    path.write_text(raw)
+    assert capture.audit_fixture(directory).get('name', 0) > 0
+    masked = capture.mask_html('naver_blog', raw)
+    assert '홍길동' not in masked
+    assert '사용자' in masked
+    assert '2026.09.15.' in masked
+    path.write_text(masked)
+    assert capture.audit_fixture(directory) == {}
