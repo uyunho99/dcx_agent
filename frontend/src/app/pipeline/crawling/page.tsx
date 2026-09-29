@@ -1,6 +1,9 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { VersionStage, StageVersionAction } from "@/components/versions/StageVersion";
+import { useVersion } from "@/components/versions/VersionProvider";
+import { versionPath } from "@/lib/api/versions";
 import { useSessionStore } from '@/stores/useSessionStore';
 import { Badge, Banner, Button, Card, InsightCard, StatGrid } from '@/components/ds';
 import { SaveBar } from '@/components/SaveBar';
@@ -18,9 +21,10 @@ export default function CrawlingPage() {
   const {sid,sd}=useSessionStore(); const router=useRouter();
   if(!sid) return <Banner actions={<Button onClick={()=>router.push('/pipeline/start')}>프로젝트 선택하기</Button>}>프로젝트를 먼저 선택하세요.</Banner>;
   if(sd?.schemaVersion!==2) return <Banner tone="warning" actions={<Button onClick={()=>router.push('/pipeline/preprocess')}>전처리 화면으로</Button>}>구버전 세션은 0~2단계를 편집할 수 없습니다. 3단계 이후 화면에서 결과를 확인하세요.</Banner>;
-  return <CrawlScreen key={`${sid}:${String(sd.version??'')}`} sid={sid}/>;
+  return <VersionStage stage="stage2"><CrawlScreen key={`${sid}:${String(sd.version??'')}`} sid={sid}/></VersionStage>;
 }
 function CrawlScreen({sid}:{sid:string}) {
+  const { version } = useVersion();
   const router=useRouter(); const context=useSessionStore(s=>s.projectContext);
   const [retry,setRetry]=useState(0);
   const [session,setSession]=useState<CrawlSession|null>(null);const [config,setConfig]=useState<CrawlConfig|null>(null);const [savedConfig,setSavedConfig]=useState<CrawlConfig|null>(null);const [draftConfig,setDraftConfig]=useState<CrawlConfig|null>(null);
@@ -38,7 +42,7 @@ function CrawlScreen({sid}:{sid:string}) {
   },[refresh,hydrated]);
   useEffect(()=>{
     let cancelled=false;
-    Promise.all([contextRequest<{data:CrawlSession}>(`/session/${encodeURIComponent(sid)}`),getCrawlConnections(),refresh()]).then(([result,integrations,initial])=>{
+    Promise.all([contextRequest<{data:CrawlSession}>(versionPath(`/session/${encodeURIComponent(sid)}`, version)),getCrawlConnections(),refresh()]).then(([result,integrations,initial])=>{
       if(cancelled)return;
       const data=result.data; const raw=data.crawlConfig;
       const now=new Date();const from=new Date(now);from.setDate(from.getDate()-365);
@@ -47,7 +51,7 @@ function CrawlScreen({sid}:{sid:string}) {
       const draft=data.drafts?.crawl;const gate=raw?.gateExclusions??[];const selection=draft?.gate?.snapshot_id===initial.snapshot_id?draft.gate.exclusions:gate;
       setSession(data);setConfig(draft?.config??base);setSavedConfig(raw?.channels?base:null);setDraftConfig(draft?.config??base);setExcluded(selection);setSavedGate(gate);setDraftGate(selection);setConnections(integrations);
     }).catch(()=>{if(!cancelled)setError('설정을 불러오지 못했습니다. 다시 확인하세요.');});return()=>{cancelled=true;};
-  },[sid,context,retry,refresh]);
+  },[sid,version,context,retry,refresh]);
   const running=status?.status==='running'||status?.status==='stopping';const disabled=busy||!!running||!healthy||!!session?.readonly;
   const gateView=!settings&&status?.kind==='list'&&status.status==='done'&&status.gate!==null;
   const setupView=settings||(!status?.kind&&!status?.report);
@@ -59,10 +63,9 @@ function CrawlScreen({sid}:{sid:string}) {
   async function draft(){if(disabled)return;await action(async()=>{await patchSession(sid,{drafts:{crawl:gateView?{gate:{exclusions:excluded,snapshot_id:status!.snapshot_id}}:{config}}});if(gateView)setDraftGate([...excluded]);else setDraftConfig(config);setNotice('임시 저장했습니다. 저장하면 수집 설정에 반영합니다.');});}
   async function save(){if(disabled)return;await action(async()=>{if(gateView){await saveCrawlGate(sid,excluded,session?.version);setSavedGate([...excluded]);setDraftGate([...excluded]);await patchSession(sid,{drafts:{crawl:{gate:null}}});}else if(config&&valid){await saveCrawlConfig(sid,config,session?.version);setSavedConfig(config);setDraftConfig(config);await patchSession(sid,{drafts:{crawl:{config:null}}});}setNotice('저장했습니다. 수집 시작 버튼을 누르면 수집합니다.');});}
   const paused=Object.values(status?.channels??{}).some(c=>c.status==='paused_blocked'||c.status==='paused_parse_error');
-  return <div className="crawl-screen"><header><div className="ds-eyebrow">2단계 · 크롤링</div><h1 className={gateView?'ds-t-section':'ds-t-screen'}>{gateView?'본문 수집 전에 키워드를 정리합니다':setupView?`확정 키워드 ${keywords.length}개로 목록을 수집합니다`:status?.report?'수집 결과를 확인합니다':status?.kind==='list'?'채널별 글 목록을 수집합니다':'본문과 댓글을 수집합니다'}</h1>{setupView&&<p>먼저 채널별 글 목록(URL)만 모읍니다. 수집 효율을 확인한 뒤 본문·댓글 수집을 시작합니다. 검색어에는 제품명을 붙이지 않습니다.</p>}</header>
+  return <div className="crawl-screen"><header><StageVersionAction stage="stage2" /><div className="ds-eyebrow">2단계 · 크롤링</div><h1 className={gateView?'ds-t-section':'ds-t-screen'}>{gateView?'본문 수집 전에 키워드를 정리합니다':setupView?`확정 키워드 ${keywords.length}개로 목록을 수집합니다`:status?.report?'수집 결과를 확인합니다':status?.kind==='list'?'채널별 글 목록을 수집합니다':'본문과 댓글을 수집합니다'}</h1>{setupView&&<p>먼저 채널별 글 목록(URL)만 모읍니다. 수집 효율을 확인한 뒤 본문·댓글 수집을 시작합니다. 검색어에는 제품명을 붙이지 않습니다.</p>}</header>
     {(error||pollError)&&<Banner tone="danger" actions={<Button onClick={()=>void action(async()=>{await refresh();if(!config)setRetry(v=>v+1);},true)}>다시 확인하기</Button>}>{error||pollError}</Banner>}{notice&&<Banner>{notice}</Banner>}
     {!config||!status?<p role="status">처리 중…</p>:<>
-    {session?.readonly&&<Banner>이 버전은 읽기 전용입니다.</Banner>}
     {added>0&&<Banner actions={<Button disabled={disabled||configChanged} onClick={()=>void action(async()=>{await startCrawlList(sid,true,session?.version);setSettings(false);})}>추가된 키워드만 수집</Button>}>기존 수집본 사용 중 · 추가된 키워드 {added}개</Banner>}
     {(status.status==='interrupted'||paused)&&<Banner tone="warning" actions={<Button disabled={disabled} onClick={()=>void action(async()=>{await resumeCrawl(sid,session?.version);setSettings(false);})}>{status.status==='interrupted'?'중단됨 · 이어서 진행':'이어서 진행'}</Button>}>{status.status==='interrupted'?'수집 워커가 중단되었습니다. 완료된 결과는 저장되어 있습니다. 이어서 진행하세요.':'일부 채널이 차단 또는 파싱 오류로 멈췄습니다. 채널 상태를 확인하고 이어서 진행하세요.'}</Banner>}
     {setupView?<Settings config={config} onChange={setConfig} connections={connections} availableSources={status.available_sources} axes={axes} disabled={disabled}/>:gateView?<>

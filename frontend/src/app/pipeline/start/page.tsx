@@ -4,9 +4,12 @@ import { useRouter } from "next/navigation";
 import SessionList from "@/components/SessionList";
 import { SaveBar } from "@/components/SaveBar";
 import { Badge, Banner, Button, Card, ChoiceChips, Input, Segmented, Skeleton } from "@/components/ds";
+import { VersionStage, StageVersionAction } from "@/components/versions/StageVersion";
+import { useVersion } from "@/components/versions/VersionProvider";
+import { getVersionContext } from "@/lib/api/versions";
 import { useSessionStore } from "@/stores/useSessionStore";
 import { restoreSessionToStore } from "@/lib/sessionPersist";
-import { createContext, getContext, patchSession, putContext, suggestCategory } from "@/lib/api/context";
+import { createContext, patchSession, putContext, suggestCategory } from "@/lib/api/context";
 import { contextLabels as labels } from "@/lib/contextLabels";
 import { INTERNAL_TOOLS } from "@/lib/internalTools";
 import { emptyStartForm as empty, mergeStartForm, nextStepOnStart } from "@/lib/logic/startForm";
@@ -27,7 +30,9 @@ function preview(context: ProjectContext) {
   const label = (group: Record<string,string>, code: string) => group[code] || code;
   return `# 프로젝트 맥락 (참고용)\n## 0-A 프로젝트 개요\n- 제품: ${context.bk}\n- 한줄 정의: ${context.oneLiner}\n- 리서치 질문: ${context.researchQuestion.text}\n- 프로젝트 성격: ${label(labels.projectType, context.projectType.choice)} · ${context.projectType.note}\n- 분석 목적: ${label(labels.analysisGoal, context.analysisGoal.choice)} · ${context.analysisGoal.note}\n- 핵심 지표: ${context.keyMetrics.join(", ")}\n- 사내 제약: ${context.constraints.join(", ")}\n- 포지셔닝: ${label(labels.price, context.positioning.price)} · ${label(labels.market, context.positioning.market)}\n- 수집 채널: ${context.channels.map(v => label(labels.channels,v)).join(", ")}\n\n## 0-B 분석 대상 · 초기 기준선\n우선 탐색하되 범위 밖 발견도 배제하지 말 것.\n- 제품군: ${[context.productCategory.l1, context.productCategory.l2, context.productCategory.l3].filter(Boolean).join(" › ")}\n- 연령대: ${context.targetScope?.ageRanges.join(", ") || "전체"}\n- 성별: ${context.targetScope?.genders.join(", ") || "전체"}\n- 가구 형태: ${context.targetScope?.households.map(v => label(labels.households,v)).join(", ") || "전체"}\n- 생애주기: ${context.targetScope?.lifeStages.map(v => label(labels.lifeStages,v)).join(", ") || "전체"}\n- 대상 보충 설명: ${context.targetScope?.note || ""}\n- 미래 고객: ${context.futureCustomer?.choices.map(v => label(labels.futureCustomer,v)).join(", ") || ""} · ${context.futureCustomer?.note || ""}\n\n## 이미 아는 것\n${context.knownInsights.map(v => `- ${v}`).join("\n")}`;
 }
-export default function StartPage() {
+export default function StartPage() { return <VersionStage stage="stage0"><StartScreen /></VersionStage>; }
+function StartScreen() {
+  const { version } = useVersion();
   const router = useRouter();
   const store = useSessionStore();
   const [form, setForm] = useState<ProjectContext>(empty);
@@ -57,13 +62,13 @@ export default function StartPage() {
     }
     if (legacy) return;
     setLoading(true);
-    getContext(store.sid).then(data => {
+    getVersionContext(store.sid, version).then(data => {
       if (!active) return;
       const value = mergeStartForm(data.draft || data.projectContext);
       setForm(value); setSaved(value); setReturned(mergeStartForm(data.projectContext));
     }).catch(() => { if(active) { setLoadError(true); setMessage("입력값을 불러오지 못했습니다. 세션을 다시 여세요."); } }).finally(() => {if(active) setLoading(false);});
     return () => { active = false; };
-  }, [store.sid, legacy, reload]);
+  }, [store.sid, legacy, reload, version]);
   const valid = !!(form.bk.trim() && form.oneLiner.trim() && form.researchQuestion.text.trim() && form.projectType.choice && form.analysisGoal.choice && form.keyMetrics.length && form.positioning.price && form.positioning.market && form.channels.length);
   const persist = async (draft: boolean, navigate = false) => {
     if (operation.current) return;
@@ -127,7 +132,7 @@ export default function StartPage() {
     {message && <Banner tone={message.includes("못") || message.includes("실패") ? "danger" : "info"}>{message}</Banner>}
     {store.persistError && <Banner tone="danger">{store.persistError}</Banner>}
     {legacy ? <Banner tone="warning" actions={<><Button onClick={() => router.push("/pipeline/preprocess")}>전처리 화면으로</Button><Button onClick={() => store.reset()}>새 프로젝트 만들기</Button></>}>구버전 세션은 0~2단계를 편집할 수 없습니다. 3단계 이후 화면에서 결과를 확인하세요.</Banner> : <>
-      <header><p className="ds-t-eyebrow">0단계 · 입력</p><h1 className="ds-t-screen">새 프로젝트를 설정합니다</h1><p className="ds-t-body">0-A는 이후 모든 단계가 참고하는 프로젝트 개요입니다. 0-B는 분석 결과와 대조할 초기 기준선이며 전부 선택 입력입니다.</p></header>
+      <header><StageVersionAction stage="stage0" /><p className="ds-t-eyebrow">0단계 · 입력</p><h1 className="ds-t-screen">새 프로젝트를 설정합니다</h1><p className="ds-t-body">0-A는 이후 모든 단계가 참고하는 프로젝트 개요입니다. 0-B는 분석 결과와 대조할 초기 기준선이며 전부 선택 입력입니다.</p></header>
       {store.sid && <Button onClick={() => { if (!isDirty(saved, form) || window.confirm("저장되지 않은 변경이 있습니다. 새 프로젝트를 만드시겠습니까?")) store.reset(); }}>새 프로젝트 만들기</Button>}
       {loadError ? <Button onClick={() => setReload(value => value + 1)}>입력값 다시 불러오기</Button> : loading ? <div role="status">처리 중…<Skeleton /><Skeleton /><Skeleton /></div> : <div className={INTERNAL_TOOLS ? "grid gap-6 lg:grid-cols-3" : "grid gap-6"}>
         <div className={INTERNAL_TOOLS ? "lg:col-span-2 space-y-6" : "space-y-6"} ref={formRef}>

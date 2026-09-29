@@ -7,6 +7,9 @@ import { INTERNAL_TOOLS } from "@/lib/internalTools";
 import { InternalToolsProvider } from "@/lib/internalToolsContext";
 import { IntegrationsDrawer } from "@/components/internal/IntegrationsDrawer";
 import { useIntegrations } from "@/lib/api/integrations";
+import { VersionProvider } from "@/components/versions/VersionProvider";
+import { VersionRouteBoundary } from "@/components/versions/StageVersion";
+import { VersionPicker } from "@/components/versions/VersionPicker";
 import StepBar from "@/components/StepBar";
 import ChatPanel from "@/components/ChatPanel";
 import { useSessionStore } from "@/stores/useSessionStore";
@@ -52,20 +55,21 @@ export default function PipelineLayout({ children }: { children: React.ReactNode
   );
 
   return (
-    <InternalToolsProvider value={{ drawerOpen, setDrawerOpen }}>
+    <VersionProvider><InternalToolsProvider value={{ drawerOpen, setDrawerOpen }}>
       <div className="pipeline-shell">
         <aside className="pipeline-side" aria-label="파이프라인">
           <Image className="pipeline-logo" src="/person-a-logo.png" alt="Person A" width={104} height={32} priority />
           <StepBar currentStep={step} />
           <div className="pipeline-foot">
             <div className="ds-t-label text-ink-strong">{bk || "세션 없음"}</div>
+            <VersionPicker />
             <div className="pipeline-activity" data-slot="activity-badge" aria-live="polite" />
             {INTERNAL_TOOLS && <div className="pipeline-tools"><Button id="integrations-trigger" style={{ whiteSpace: "normal", height: "auto", minHeight: 28, textAlign: "left" }} variant="quiet" size="sm" aria-haspopup="dialog" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(open => !open)}><Icon icon={Plug} />외부 API · {integrations.error ? "—" : connectedCount ?? "—"}/6 연결 열기</Button><Badge>내부용</Badge></div>}
           </div>
         </aside>
         <div className="pipeline-content">
           <main className="pipeline-main">
-            {restoring ? <div className="pipeline-loading" role="status">처리 중…</div> : <div className="pipeline-wrap">{children}</div>}
+            {restoring ? <div className="pipeline-loading" role="status">처리 중…</div> : <div className="pipeline-wrap"><VersionRouteBoundary>{children}</VersionRouteBoundary></div>}
           </main>
           {!chatOpen && <Button variant="quiet" className="pipeline-chat-open ds-btn-icon" onClick={() => setChatOpen(true)} aria-label="챗봇 열기" title="챗봇 열기"><Icon icon={MessageCircle} /></Button>}
         </div>
@@ -78,6 +82,6 @@ export default function PipelineLayout({ children }: { children: React.ReactNode
         </aside>}
       </div>
       {INTERNAL_TOOLS && drawerOpen && <IntegrationsDrawer {...integrations} returnFocusId="integrations-trigger" />}
-    </InternalToolsProvider>
+    </InternalToolsProvider></VersionProvider>
   );
 }

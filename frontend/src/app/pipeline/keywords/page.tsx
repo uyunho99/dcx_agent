@@ -1,13 +1,16 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { VersionStage, StageVersionAction } from "@/components/versions/StageVersion";
+import { useVersion } from "@/components/versions/VersionProvider";
+import { versionPath, getVersionKeywords, getVersionRound } from "@/lib/api/versions";
 import { useSessionStore } from '@/stores/useSessionStore';
 import { Banner, Badge, BarList, Button, Card, ChoiceChips, Input, Popover, Select, Skeleton, Stepper, Tabs, type StepperItem } from '@/components/ds';
 import { SaveBar } from '@/components/SaveBar';
 import { KeywordGroup } from '@/components/keywords/KeywordGroup';
 import { CoveragePanel } from '@/components/keywords/CoveragePanel';
 import { axes, destinations, groupKey, groupLabel } from '@/components/keywords/taxonomy';
-import { addKeyword, commitRound, getCoverage, getKeywords, getRound, KeywordApiError, postEvent, regenerateRound, startRound, suggestWords, type Axis, type Decision, type Destination, type Draft, type Keyword, type KeywordState, type Rejection } from '@/lib/api/keywords';
+import { addKeyword, commitRound, getCoverage, KeywordApiError, postEvent, regenerateRound, startRound, suggestWords, type Axis, type Decision, type Destination, type Draft, type Keyword, type KeywordState, type Rejection } from '@/lib/api/keywords';
 import { contextRequest, patchSession } from '@/lib/api/context';
 import { filterKeywords, keywordFilters, type KeywordFilter } from '@/lib/logic/filterKeywords';
 import { createActionQueue } from '@/lib/logic/actionQueue';
@@ -23,45 +26,46 @@ export default function KeywordsPage() {
   const sid = useSessionStore(s => s.sid); const sd = useSessionStore(s => s.sd); const router = useRouter();
   if (!sid) return <Banner actions={<Button onClick={() => router.push('/pipeline/start')}>프로젝트 선택하기</Button>}>프로젝트를 먼저 선택하세요.</Banner>;
   if (sd?.schemaVersion !== 2) return <Banner tone="warning" actions={<Button onClick={() => router.push('/pipeline/preprocess')}>전처리 화면으로</Button>}>구버전 세션은 0~2단계를 편집할 수 없습니다. 3단계 이후 화면에서 결과를 확인하세요.</Banner>;
-  return <KeywordScreen key={sid} sid={sid} />;
+  return <VersionStage stage="stage1"><KeywordScreen key={sid} sid={sid} /></VersionStage>;
 }
 function KeywordScreen({ sid }: { sid: string }) {
+  const { version, readonly } = useVersion();
   const router = useRouter(); const [data, setData] = useState<KeywordState | null>(null); const [round, setRound] = useState(1);
   const [overrides, setOverrides] = useState<Record<string, Decision>>({}); const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false); const lock = useRef(false); const queue = useRef(createActionQueue()); const pendingActions = useRef(0); const [error, setError] = useState(''); const [notice, setNotice] = useState('');
-  const [direction, setDirection] = useState(''); const [axis, setAxis] = useState('physical'); const [filter, setFilter] = useState<KeywordFilter>('판단 필요'); const [query, setQuery] = useState('');
+  const [direction, setDirection] = useState(''); const [axis, setAxis] = useState(readonly ? 'all' : 'physical'); const [filter, setFilter] = useState<KeywordFilter>('판단 필요'); const [query, setQuery] = useState('');
   const [custom, setCustom] = useState<Destination[]>([]); const [customAxis, setCustomAxis] = useState(''); const [customName, setCustomName] = useState('');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({}); const [help, setHelp] = useState(false); const [elapsed, setElapsed] = useState(0);
   const [duplicate, setDuplicate] = useState<Keyword | null>(null);
   const current = data?.keywordRounds[String(round)]; const ui = roundUi({ round, status: current?.job.status, committed: current?.committed, gen: current?.gen, jobGen: current?.job.gen, dirty });
   const running = current?.job.status === 'running';
   const reportError = useCallback((e: unknown) => setError(e instanceof Error ? e.message : '요청에 실패했습니다. 다시 시도하세요.'), []);
-  const reload = useCallback(async () => { const fresh = await getKeywords(sid); setData(fresh); return fresh; }, [sid]);
+  const reload = useCallback(async () => { const fresh = await getVersionKeywords(sid, version); setData(fresh); return fresh; }, [sid, version]);
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getKeywords(sid), contextRequest<{ data: { drafts?: { keywords?: Record<string, Draft> } } }>(`/session/${encodeURIComponent(sid)}`)]).then(([fresh, session]) => {
+    Promise.all([getVersionKeywords(sid, version), contextRequest<{ data: { drafts?: { keywords?: Record<string, Draft> } } }>(versionPath(`/session/${encodeURIComponent(sid)}`, version))]).then(([fresh, session]) => {
       if (cancelled) return;
       const n = Math.max(1, ...Object.keys(fresh.keywordRounds).map(Number)); const r = fresh.keywordRounds[String(n)];
       setData(fresh); setRound(n);
       const draft = session.data?.drafts?.keywords?.[`r${n}`];
       if (draft && draft.gen === (r?.gen ?? 0)) { if (!r?.committed) setOverrides(Object.fromEntries(draft.decisions.map(d => [d.id, d]))); setCustom(draft.groups ?? []); setNotice('임시 저장한 검토를 불러왔습니다. 저장하면 이 라운드를 확정합니다.'); }
       const kws = [...fresh.keywords, ...Object.values(fresh.keywordRounds).flatMap(r => r.keywords)];
-      setFilter(filterKeywords(kws).length ? '판단 필요' : '전체');
+      setFilter(!readonly && filterKeywords(kws).length ? '판단 필요' : '전체');
     }).catch(e => { if (!cancelled) reportError(e); });
     return () => { cancelled = true; };
-  }, [sid, reportError]);
+  }, [sid, version, readonly, reportError]);
   useEffect(() => {
-    if (!running) return;
+    if (!running || readonly) return;
     let cancelled = false; let timer: ReturnType<typeof setTimeout>;
     async function poll() {
-      try { const result = await getRound(sid, round); if (cancelled) return;
+      try { const result = await getVersionRound(sid, round, version); if (cancelled) return;
         setData(old => old ? { ...old, keywordRounds: { ...old.keywordRounds, [round]: { ...old.keywordRounds[round], ...result, job: result } } } : old);
         if (result.status !== 'running') { const fresh = await reload(); setFilter(filterKeywords([...fresh.keywords, ...Object.values(fresh.keywordRounds).flatMap(r => r.keywords)]).length ? '판단 필요' : '전체'); return; }
       } catch (e) { if (!cancelled) reportError(e); }
       if (!cancelled) timer = setTimeout(poll, 3000);
     }
     void poll(); return () => { cancelled = true; clearTimeout(timer); };
-  }, [running, round, sid, reload, reportError]);
+  }, [running, round, sid, version, readonly, reload, reportError]);
   useEffect(() => {
     if (!running || !current?.job.startedAt) return;
     const started = Date.parse(current.job.startedAt);
@@ -73,7 +77,7 @@ function KeywordScreen({ sid }: { sid: string }) {
   const tabGroups = groups.filter(g => axis === 'all' || g.axis === axis);
   const tabKeywords = all.filter(k => axis === 'all' || k.axis === axis);
   const visible = filterKeywords(tabKeywords, filter, query);
-  const isCollapsed = (g: Destination) => collapsed[`${axis}:${groupKey(g)}`] ?? tabGroups.length >= 10;
+  const isCollapsed = (g: Destination) => readonly ? false : collapsed[`${axis}:${groupKey(g)}`] ?? tabGroups.length >= 10;
   const decisions = (): Decision[] => (current?.keywords ?? []).map(k => overrides[k.id] ?? { id: k.id, status: k.status === 'rejected' ? 'rejected' : 'approved', reject: k.reject });
   async function action(fn: () => Promise<void>, waitForLock = false) {
     if (lock.current && !waitForLock) return;
@@ -123,7 +127,7 @@ function KeywordScreen({ sid }: { sid: string }) {
         {tabGroups.map(g => <KeywordGroup key={groupKey(g)} group={g} groups={groups} keywords={visible.filter(k => groupKey(k) === groupKey(g))} disabled={busy || !ui.canEdit} collapsed={isCollapsed(g)} toggle={() => setCollapsed(c => ({ ...c, [`${axis}:${groupKey(g)}`]: !isCollapsed(g) }))} onAdd={add} onSuggest={suggest} onMove={move} onReview={review} />)}
         <fieldset disabled={busy} className="kw-add"><Select label="새 하위 카테고리 축" value={customAxis} onChange={e => setCustomAxis(e.target.value)}><option value="">축 선택</option>{axes.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}</Select><Input label="새 하위 카테고리 이름" value={customName} onChange={e => setCustomName(e.target.value)} /><Button disabled={!customAxis || !customName.trim()} onClick={() => { const g = { axis: customAxis as Axis, sub: `custom:${customName.trim()}` }; if (!groups.some(v => groupKey(v) === groupKey(g))) { setCustom(c => [...c, g]); setDirty(true); } reveal(g); setCustomName(''); }}>하위 카테고리 추가하기</Button></fieldset>
   </>;
-  return <div className="kw-screen"><div className="ds-eyebrow">1단계 · 키워드</div><h1 className={data.keywordRounds['2']?.committed ? 'ds-t-section' : 'ds-t-screen'}>{ui.final ? '최종 키워드를 검토합니다' : `R${round} ${names[round - 1]} 결과 ${ui.canEdit ? current?.keywords.length ?? 0 : 0}개를 검토합니다`}</h1><p>거절할 키워드를 누르고 사유를 남기면 다음 라운드에 반영됩니다. 드래그하거나 M 키로 하위 카테고리를 옮길 수 있습니다.</p><Stepper label="라운드 진행" steps={steps} />
+  return <div className="kw-screen"><StageVersionAction stage="stage1" /><div className="ds-eyebrow">1단계 · 키워드</div><h1 className={data.keywordRounds['2']?.committed ? 'ds-t-section' : 'ds-t-screen'}>{ui.final ? '최종 키워드를 검토합니다' : `R${round} ${names[round - 1]} 결과 ${ui.canEdit ? current?.keywords.length ?? 0 : 0}개를 검토합니다`}</h1><p>거절할 키워드를 누르고 사유를 남기면 다음 라운드에 반영됩니다. 드래그하거나 M 키로 하위 카테고리를 옮길 수 있습니다.</p><Stepper label="라운드 진행" steps={steps} />
     {error && <Banner tone="danger">{error}{duplicate && <Button size="sm" onClick={() => { reveal(duplicate); setDuplicate(null); }}>중복 키워드 확인하기</Button>}</Banner>}{notice && <Banner>{notice}</Banner>}
     <div className="kw-layout"><div className="kw-main space-y-4"><Card><fieldset disabled={busy || running}><Input label="다음 라운드 방향 지시 (선택)" value={direction} onChange={e => setDirection(e.target.value)} placeholder="예: 영유아 관련 맥락을 더 발산해줘" /><div className="ds-actions"><Button disabled={!direction.trim()} onClick={() => void action(saveDirection)}>지시 저장하기</Button></div></fieldset></Card>
       {running ? <Card><p role="status" aria-live="polite">처리 중… R{round} 생성 중 · 보통 30~90초 · 경과 {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}</p><div className="space-y-4 mt-4">{[0, 1, 2].map(i => <Skeleton key={i} height={112} />)}</div><p className="ds-t-caption">다른 화면으로 이동해도 생성은 계속됩니다.</p></Card> : <>
