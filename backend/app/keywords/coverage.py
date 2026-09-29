@@ -20,7 +20,7 @@ class CoverageReport:
     m1: float | None
     m2: list[float | None]
     m6: float | None
-    m7: float
+    m7: float | None
     missing_top: list[tuple[str, int]]
     llm_only_ids: list[str]
 
@@ -61,7 +61,8 @@ def compute(human: list[tuple[str, int]], llm: list[Keyword],
     """Compute metrics; absent human data yields None for m1/m2/m6.
 
     m7 uses the design's fixed <10 cutoff. With no human rows it uses
-    available keyword volumes alone. Incomplete axis labels yield m6=None.
+    available keyword volumes alone; no known volumes yields m7=None.
+    Incomplete axis labels yield m6=None.
     The returned IDs let callers attach llm_only badges without side effects.
     """
     human_keys = [norm_key(query) for query, _ in human]
@@ -90,7 +91,9 @@ def compute(human: list[tuple[str, int]], llm: list[Keyword],
                                     Counter(kw.axis for kw in llm))
     return CoverageReport(
         m1=_weighted(rows), m2=deciles, m6=axis_distance,
-        m7=len(only_ids) / len(llm) if llm else 0.0,
+        m7=len(only_ids) / len(llm) if any(
+            (kw.volume or {}).get('monthly') is not None for kw in llm
+        ) else None,
         missing_top=[(query, count) for query, count, matched in rows if not matched][:20],
         llm_only_ids=only_ids,
     )

@@ -12,7 +12,8 @@ from app.external.base import LAST_ERRORS, Unconnected, configured
 from app.keywords.normalize import norm_key
 
 client_factory = httpx.Client
-LOW_COUNT_ESTIMATE = 5  # SearchAd's censored '< 10' count, below the default threshold.
+# Estimate each censored '< 10' side as 4 so both sides total at most 8 < 10.
+LOW_COUNT_ESTIMATE = 4
 _URI = '/keywordstool'
 
 

@@ -75,8 +75,21 @@ def test_related_and_original_keys_low_counts():
             {'relKeyword': 'AB', 'monthlyPcQcCnt': '< 10', 'monthlyMobileQcCnt': 0},
             {'relKeyword': 'related', 'monthlyPcQcCnt': '20', 'monthlyMobileQcCnt': 30}]})
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
-        assert naver_searchad.monthly_volume(['a b'], client=client) == {'a b': 5}
-        assert naver_searchad.related_queries(['a b'], client=client) == [('AB', 5), ('related', 50)]
+        assert naver_searchad.monthly_volume(['a b'], client=client) == {'a b': 4}
+        assert naver_searchad.related_queries(['a b'], client=client) == [('AB', 4), ('related', 50)]
+
+
+@pytest.mark.parametrize(('mobile', 'monthly', 'low_volume'), [
+    ('< 10', 8, True),
+    (20, 24, False),
+])
+def test_censored_counts_attachment(monkeypatch, mobile, monthly, low_volume):
+    monkeypatch.setattr(naver_searchad, 'client_factory', lambda: httpx.Client(transport=httpx.MockTransport(
+        lambda request: httpx.Response(200, json={'keywordList': [
+            {'relKeyword': 'censored', 'monthlyPcQcCnt': '< 10', 'monthlyMobileQcCnt': mobile}]}))))
+    result = volume.attach_volumes([keyword('censored')])[0]
+    assert result.volume['monthly'] == monthly
+    assert ('low_volume' in result.badges) is low_volume
 
 
 def test_connected_attachment_copies_and_refreshes(monkeypatch):
@@ -87,7 +100,7 @@ def test_connected_attachment_copies_and_refreshes(monkeypatch):
             {'relKeyword': 'boundary', 'monthlyPcQcCnt': 5, 'monthlyMobileQcCnt': 5}]}))))
     inputs = [keyword('low'), keyword('boundary')]
     result = volume.attach_volumes(inputs)
-    assert result[0].volume == {'monthly': 5, 'source': 'searchad', 'at': '2026-09-29'}
+    assert result[0].volume == {'monthly': 4, 'source': 'searchad', 'at': '2026-09-29'}
     assert result[0].badges == ['retained', 'low_volume']
     assert result[1].badges == ['retained']
     assert all(a is not b and b.volume is None for a, b in zip(result, inputs))

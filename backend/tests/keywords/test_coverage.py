@@ -71,5 +71,18 @@ def test_empty_and_unknown_volume():
     assert result.m2 == [None] * 10
     assert result.m6 is None
     assert result.m7 == 0.5
-    assert compute([], [], None).m7 == 0
+    assert compute([], [], None).m7 is None
     assert compute([('zero', 0)], [], None).m1 is None
+
+
+@pytest.mark.parametrize('volume', [None, {}, {'monthly': None, 'source': 'unconnected'}])
+def test_m7_none_without_known_volume(volume):
+    unknown = keyword('unknown')
+    unknown.volume = volume
+    result = compute([('human', 100)], [unknown], None)
+    assert result.m7 is None
+    assert result.llm_only_ids == []
+
+
+def test_m7_known_zero_volume_is_available():
+    assert compute([], [keyword('zero', 0)], None).m7 == 1.0
