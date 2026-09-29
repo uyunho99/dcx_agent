@@ -7,7 +7,7 @@ import shutil
 import uuid
 
 from app.context.store import (StoreError, root_dir, read_json, write_json, locked,
-                               now, session_activities)
+                               now, session_activities, assert_writable)
 
 
 def version_dir(sid, version):
@@ -70,14 +70,40 @@ def _idle(sid, data):
         raise StoreError('진행 중인 작업이 끝난 뒤 다시 시도하세요')
 
 
-def create_version(sid, from_v, restart_from, note) -> str:
+def _crawl_phase(sid):
+    from app.crawl import control
+    if hasattr(control, 'phase_state'):
+        return control.phase_state(sid)
+    # Transitional compatibility until W2 exposes phase_state. latest_run opens
+    # CrawlQueue.open_readonly; no recovery, schema creation or run mutation.
+    from app.context.store import load_session
+    data = load_session(sid) or {}
+    if not data.get('collectionId'):
+        return 'none'
+    root = control.collection_dir(sid)
+    if not (root / 'queue.sqlite').exists():
+        return 'none'
+    run = control.latest_run(control.ReadQueue(root / 'queue.sqlite'))
+    if control._run_state(run) == 'running':
+        return 'running'
+    if (root / 'report.json').exists():
+        return 'done'
+    return 'unfinished' if run else 'none'
+
+
+def create_version(sid, from_v, restart_from, note, version=None) -> str:
     if not re.fullmatch(r'stage[0-9]+', restart_from):
         raise StoreError('Invalid restartFrom', 400, 'validation')
     with locked(sid):
+        if version is not None:
+            assert_writable(sid, version)
         meta = _meta(sid)
         data = _data(sid, from_v)
         _idle(sid, _data(sid, meta['activeVersion']))
         _idle(sid, data)
+        phase = _crawl_phase(sid)
+        if phase == 'running':
+            raise StoreError('진행 중인 작업이 끝난 뒤 다시 시도하세요')
         v = f"v{max(int(e['id'][1:]) for e in meta['versions']) + 1}"
         target = version_dir(sid, v)
         previous_active = meta['activeVersion']
@@ -89,6 +115,12 @@ def create_version(sid, from_v, restart_from, note) -> str:
             last_stage = max([6, int(restart_from[5:])] + [int(key[5:]) for key in stale.keys() | data.get('stageResults', {}).keys() if re.fullmatch(r'stage[0-9]+', key)])
             for stage in range(int(restart_from[5:]), last_stage + 1):
                 stale[f'stage{stage}'] = f'{restart_from} changed in {v}'
+            if phase == 'unfinished':
+                data['collectionId'] = None
+                stale['stage2'] = f'unfinished collection detached in {v}'
+            if int(restart_from[5:]) <= 1:
+                for round_data in data.get('keywordRounds', {}).values():
+                    round_data['needsRegeneration'] = True
             write_json(target / 'session.json', data)
             for entry in meta['versions']:
                 entry['readonly'] = True
@@ -106,8 +138,10 @@ def create_version(sid, from_v, restart_from, note) -> str:
         return v
 
 
-def set_active(sid, v):
+def set_active(sid, v, version=None):
     with locked(sid):
+        if version is not None:
+            assert_writable(sid, version)
         meta = _meta(sid)
         _data(sid, v)
         _idle(sid, _data(sid, meta['activeVersion']))

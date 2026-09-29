@@ -1,5 +1,6 @@
 """Deterministic, cumulative feedback for subsequent keyword rounds."""
 
+from contextlib import nullcontext
 import os
 from pathlib import Path
 import re
@@ -97,11 +98,11 @@ def render_feedback_md(events: list[KeywordEvent]) -> str:
                        for name, lines in sections) + "\n"
 
 
-def write_feedback_md(sid: str) -> str:
-    with locked(sid):
+def write_feedback_md(sid: str, *, directory=None) -> str:
+    with locked(sid) if directory is None else nullcontext():
         assert_writable(sid)
-        text = render_feedback_md(load_events(sid))
-        directory = session_dir(sid)
+        directory = directory or session_dir(sid)
+        text = render_feedback_md(load_events(sid, directory=directory))
         fd, name = tempfile.mkstemp(prefix=".keyword-feedback-", suffix=".tmp", dir=directory)
         temporary = Path(name)
         try:

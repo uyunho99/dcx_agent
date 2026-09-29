@@ -1,5 +1,6 @@
 """Append-only HITL events stored alongside the active session version."""
 
+from contextlib import nullcontext
 from datetime import datetime, timezone
 import logging
 import os
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 class KeywordEvent(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
+    id: str | None = None
     ts: datetime
     round: int = Field(ge=1, le=4)
     type: Literal["direction", "approve", "reject", "move", "add", "unreject"]
@@ -35,11 +37,14 @@ class KeywordEvent(BaseModel):
         return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
 
 
-def append_event(sid: str, ev: KeywordEvent) -> None:
+def append_event(sid: str, ev: KeywordEvent, *, directory=None, version=None) -> None:
     payload = (ev.model_dump_json(by_alias=True, exclude_none=True) + "\n").encode("utf-8")
-    with locked(sid):
-        assert_writable(sid)
-        path = session_dir(sid) / "keyword_events.jsonl"
+    with locked(sid) if directory is None else nullcontext():
+        assert_writable(sid, version)
+        directory = directory or session_dir(sid)
+        if ev.id and any(old.id == ev.id for old in load_events(sid, directory=directory)):
+            return
+        path = directory / "keyword_events.jsonl"
         # Keep a damaged/unterminated tail separate from the next complete event.
         if path.exists() and path.stat().st_size:
             with path.open("rb") as stream:
@@ -56,8 +61,8 @@ def append_event(sid: str, ev: KeywordEvent) -> None:
             os.close(fd)
 
 
-def load_events(sid: str) -> list[KeywordEvent]:
-    path = session_dir(sid) / "keyword_events.jsonl"
+def load_events(sid: str, *, directory=None) -> list[KeywordEvent]:
+    path = (directory or session_dir(sid)) / "keyword_events.jsonl"
     try:
         stream = path.open("rb")
     except FileNotFoundError:

@@ -222,7 +222,7 @@ def test_version_isolation_and_readonly(sid):
     # Keyword writers target only the active version; check past-version refusal
     # through the store's explicit version guard without activating readonly v1.
     assert_writable(sid, version='v2')
-    with pytest.raises(StoreError, match='읽기 전용'):
+    with pytest.raises(StoreError, match='다른 버전이 활성화되었습니다'):
         assert_writable(sid, version='v1')
     assert {name: (first / name).read_bytes() for name in filenames} == before
     assert session_dir(sid) == second

@@ -1,0 +1,7 @@
+{
+  "axes": {
+    "소음": "physical",
+    "냄새": "physical",
+    "전기세": "psychological"
+  }
+}

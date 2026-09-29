@@ -82,7 +82,7 @@ def put_context(sid: str, ctx: ProjectContext, version: str | None = None):
             for field in ('oneLiner', 'researchQuestion'):
                 if old.get('projectContext', {}).get(field) != patch['projectContext'][field]:
                     warnings.append(field + '_changed_after_r1')
-        data = _update_locked(sid, patch)
+        data = _update_locked(sid, patch, confirm_stage='stage0')
         return {'projectContext': data['projectContext'], 'warnings': warnings}
 
 
@@ -101,13 +101,13 @@ def get_versions(sid: str):
 
 
 @router.post('/sessions/{sid}/versions', status_code=201)
-def post_version(sid: str, body: VersionRequest):
-    return {'version': versions.create_version(sid, body.from_v, body.restartFrom, body.note)}
+def post_version(sid: str, body: VersionRequest, version: str | None = None):
+    return {'version': versions.create_version(sid, body.from_v, body.restartFrom, body.note, version=version)}
 
 
 @router.put('/sessions/{sid}/active-version')
-def activate(sid: str, body: ActiveRequest):
-    versions.set_active(sid, body.version)
+def activate(sid: str, body: ActiveRequest, version: str | None = None):
+    versions.set_active(sid, body.version, version=version)
     return {'activeVersion': body.version}
 
 

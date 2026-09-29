@@ -19,7 +19,7 @@ INTEGRATIONS = {
     'naver_search': (['NAVER_CLIENT_ID', 'NAVER_CLIENT_SECRET'], ['crawl']),
     'naver_searchad': (['SEARCHAD_API_KEY', 'SEARCHAD_SECRET', 'SEARCHAD_CUSTOMER_ID'], ['coverage']),
     'youtube': (['YOUTUBE_API_KEY'], ['crawl']),
-    'openai': (['OPENAI_API_KEY'], ['llm']),
+    'openai': (['OPENAI_API_KEY', 'OPENAI_MODEL'], ['llm']),
     'claude': (['CLAUDE_API_KEY'], ['llm']),
 }
 LAST_ERRORS: dict[str, str] = {}

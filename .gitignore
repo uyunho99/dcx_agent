@@ -75,3 +75,4 @@ data/
 !.env.example
 backend/.venv/
 .superpowers/
+backend/tests/fixtures/aircon_qa.csv

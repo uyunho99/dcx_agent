@@ -50,14 +50,14 @@ class _CheckedPatch(dict):
     validation until then makes read/check/write atomic without nesting flock or
     bypassing the required public writer. Callbacks must not perform I/O writes.
     """
-    def __init__(self, sid, build):
+    def __init__(self, sid, build, version=None):
         super().__init__()
-        self.sid, self.build = sid, build
+        self.sid, self.build, self.version = sid, build, version
 
     def items(self):
         if self.build is not None:
             build, self.build = self.build, None
-            self.update(build(store.assert_writable(self.sid)))
+            self.update(build(store.assert_writable(self.sid, self.version)))
         return super().items()
 
 
@@ -70,8 +70,8 @@ class _Replacement:
         return deepcopy(self.value, memo)
 
 
-def mutate(sid, build):
-    return store.update_session(sid, _CheckedPatch(sid, build))
+def mutate(sid, build, version=None, confirm_stage=None):
+    return store.update_session(sid, _CheckedPatch(sid, build, version), confirm_stage=confirm_stage)
 
 
 def execute(fn):
@@ -87,7 +87,8 @@ def _number(n):
 
 
 def _order(data, n):
-    if any(not data.get('keywordRounds', {}).get(str(i), {}).get('committed') for i in range(1, n)):
+    if any(not data.get('keywordRounds', {}).get(str(i), {}).get('committed')
+           or data.get('keywordRounds', {}).get(str(i), {}).get('needsRegeneration') for i in range(1, n)):
         raise store.StoreError('이전 라운드를 먼저 확정하세요')
 
 
@@ -96,7 +97,8 @@ def _keywords(data):
 
 
 def _all_keywords(data, exclude_round=None):
-    by_id = {k.id: k for k in _keywords(data)}
+    replacing = data.get('keywordRounds', {}).get(str(exclude_round), {}).get('replacing', False)
+    by_id = {k.id: k for k in _keywords(data) if not (replacing and k.round == exclude_round and k.origin == 'llm')}
     for number, value in data.get('keywordRounds', {}).items():
         if number == str(exclude_round):
             continue
@@ -105,7 +107,7 @@ def _all_keywords(data, exclude_round=None):
     return list(by_id.values())
 
 
-def start_round(sid, n, regenerate: bool = False) -> RoundJob:
+def start_round(sid, n, regenerate: bool = False, version=None) -> RoundJob:
     _number(n)
     created = False
     def patch(data):
@@ -115,9 +117,11 @@ def start_round(sid, n, regenerate: bool = False) -> RoundJob:
         previous = rounds.get(str(n), {})
         if (previous.get('job') or {}).get('status') == 'running':
             return {}
-        if previous.get('committed') and n != 4:
+        restarting = previous.get('needsRegeneration', False) or (
+            bool(data.get('stale', {}).get('stage1')) and previous.get('committed', False))
+        if previous.get('committed') and n != 4 and not restarting:
             raise store.StoreError('이미 확정된 라운드입니다')
-        if (previous.get('job') or {}).get('status') == 'done' and not previous.get('committed') and not regenerate:
+        if (previous.get('job') or {}).get('status') == 'done' and not previous.get('committed') and not regenerate and not restarting:
             raise store.StoreError('생성된 키워드를 먼저 확정하세요')
         gen = previous.get('gen', 0) + 1
         now = store.now()
@@ -126,10 +130,12 @@ def start_round(sid, n, regenerate: bool = False) -> RoundJob:
         created = True
         return {'keywordRounds': {**rounds, str(n): {
             'round': n, 'gen': gen, 'committed': False,
+            'replacing': restarting or previous.get('replacing', False),
+            'needsRegeneration': False,
             'keywords': previous.get('keywords', []) if regenerate and not previous.get('committed') else [],
             'inputs': {}, 'below_min': None, 'promptVersion': PROMPT_VERSION[n],
             'job': job.model_dump()}}}
-    data = mutate(sid, patch)
+    data = mutate(sid, patch, version=version)
     job = RoundJob.model_validate(data['keywordRounds'][str(n)]['job'])
     if created:
         execute(lambda: _run(sid, n, job.jobId))
@@ -274,7 +280,7 @@ def recover_interrupted():
             logger.warning('Skipping recovery for session %s', path.name)
 
 
-def commit_round(sid, n, decisions: list, gen: int | None = None) -> None:
+def commit_round(sid, n, decisions: list, gen: int | None = None, version=None) -> None:
     _number(n)
     events = []
     def patch(data):
@@ -306,22 +312,35 @@ def commit_round(sid, n, decisions: list, gen: int | None = None) -> None:
                                        kwId=kw['id'], kw=kw['kw'], tags=reject.get('tags'), note=reject.get('note')))
         if any(k['status'] == 'pending' for k in wanted.values()):
             raise store.StoreError('모든 키워드를 검토하세요', 422, 'validation')
-        return {'keywords': [k for k in data.get('keywords', []) if k['id'] not in wanted] + list(wanted.values()),
-                'keywordRounds': {str(n): {'keywords': list(wanted.values()), 'committed': True}}}
-    mutate(sid, patch)
-    for event in events:
-        append_event(sid, event)
-    write_feedback_md(sid)
+        return {'keywords': [k for k in data.get('keywords', []) if k['id'] not in wanted
+                    and not (current.get('replacing') and k.get('round') == n and k.get('origin') == 'llm')] + list(wanted.values()),
+                'keywordRounds': {str(n): {'keywords': list(wanted.values()), 'committed': True, 'needsRegeneration': False, 'replacing': False},
+                    **{number: {'committed': False, 'needsRegeneration': True}
+                       for number in data.get('keywordRounds', {}) if int(number) > n and current.get('replacing')}}}
+    with store.locked(sid):
+        data = store.assert_writable(sid, version)
+        directory = store.session_dir(sid)
+        pinned_version = data.get('version')
+        values = patch(data)
+        generation = data['keywordRounds'][str(n)]['gen']
+        for event in events:
+            event.id = f'commit:{n}:{generation}:{event.kwId}:{event.type}'
+            append_event(sid, event, directory=directory)
+        store._update_locked(sid, values, confirm_stage='stage1')
+        write_feedback_md(sid, directory=directory)
     if n == 2:
-        compute_coverage(sid)
+        compute_coverage(sid, version=pinned_version)
 
 
 class HumanAxes(BaseModel):
     axes: dict[str, str]
 
 
-def compute_coverage(sid):
-    data = store.assert_writable(sid)
+def compute_coverage(sid, version=None):
+    with store.locked(sid):
+        data = store.assert_writable(sid, version)
+        version = data.get("version")
+        directory = store.session_dir(sid)
     approved = [k for k in _keywords(data) if k.status == 'approved']
     saved = data.get('coverage') or {}
     try:
@@ -332,7 +351,7 @@ def compute_coverage(sid):
             human = naver_searchad.related_queries([h for h in hints if h])
         human_axes = saved.get('humanAxes')
         if human and human_axes is None:
-            context_md = (store.session_dir(sid) / 'project_context.md').read_text(encoding='utf-8')
+            context_md = (directory / 'project_context.md').read_text(encoding='utf-8')
             classification = run_task(LLMTask(task='kw_axis_classify', sid=sid,
                 instructions='각 검색어를 physical, psychological, behavioral 중 하나로 분류하세요. axes는 검색어→축 매핑입니다.\n'
                              + json.dumps(human, ensure_ascii=False),
@@ -352,7 +371,7 @@ def compute_coverage(sid):
         ids = value.get('llm_only_ids', [])
         keywords = [{**k, 'badges': [b for b in k.get('badges', []) if b != 'llm_only'] + (['llm_only'] if k['id'] in ids else [])} for k in keywords]
         return {'coverage': _Replacement(value), 'keywords': keywords}
-    mutate(sid, patch)
+    mutate(sid, patch, version=version)
     return value
 
 
@@ -362,8 +381,10 @@ class Duplicate(store.StoreError):
         self.duplicateOf = keyword_id
 
 
-def add_manual(sid, kw, axis, sub, origin='manual'):
-    store.assert_writable(sid)
+def add_manual(sid, kw, axis, sub, origin='manual', version=None):
+    with store.locked(sid):
+        data = store.assert_writable(sid, version)
+        version = data.get('version')
     if not norm_key(kw) or not is_valid(axis, sub):
         raise store.StoreError('키워드와 분류를 확인하세요', 422, 'validation')
     keyword = volumes([Keyword(id='manual-' + uuid4().hex, kw=''.join(kw.split()), axis=axis,
@@ -374,9 +395,12 @@ def add_manual(sid, kw, axis, sub, origin='manual'):
             raise Duplicate(duplicate.id)
         keyword.round = max((int(n) for n in data.get('keywordRounds', {})), default=1)
         return {'keywords': data.get('keywords', []) + [keyword.model_dump()]}
-    mutate(sid, patch)
-    append_event(sid, KeywordEvent(ts=store.now(), round=keyword.round, type='add', kwId=keyword.id, kw=keyword.kw))
-    write_feedback_md(sid)
+    with store.locked(sid):
+        data = store.assert_writable(sid, version)
+        directory = store.session_dir(sid)
+        store._update_locked(sid, patch(data), confirm_stage='stage1')
+        append_event(sid, KeywordEvent(ts=store.now(), round=keyword.round, type='add', kwId=keyword.id, kw=keyword.kw), directory=directory)
+        write_feedback_md(sid, directory=directory)
     return keyword
 
 
@@ -389,11 +413,13 @@ class Suggestions(BaseModel):
     words: list[SuggestedWord] = Field(default_factory=list)
 
 
-def suggest_words(sid, axis, sub):
-    data = store.assert_writable(sid)
+def suggest_words(sid, axis, sub, version=None):
+    with store.locked(sid):
+        data = store.assert_writable(sid, version)
+        directory = store.session_dir(sid)
     if not is_valid(axis, sub):
         raise store.StoreError('분류를 확인하세요', 422, 'validation')
-    context_md = (store.session_dir(sid) / 'project_context.md').read_text(encoding='utf-8')
+    context_md = (directory / 'project_context.md').read_text(encoding='utf-8')
     task = LLMTask(task='kw_suggest_words', sid=sid, max_tokens=2000,
         instructions=f'{axis}/{sub}의 경험을 나타내는 형용사와 동사를 10~15개 제안하세요. 1~2단어. '
                      f'기존 단어 제외: {json.dumps([k.kw for k in _all_keywords(data)], ensure_ascii=False)}',

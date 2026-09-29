@@ -95,6 +95,8 @@ def assert_writable(sid, version=None):
         raise StoreError('구버전 세션은 0~2단계를 편집할 수 없습니다')
     meta = read_json(root_dir(sid) / 'meta.json')
     if meta:
+        if version is not None and version != meta['activeVersion']:
+            raise StoreError('다른 버전이 활성화되었습니다')
         selected = version or meta['activeVersion']
         entry = next((v for v in meta['versions'] if v['id'] == selected), None)
         if not entry or selected != meta['activeVersion'] or entry['readonly']:
@@ -102,12 +104,17 @@ def assert_writable(sid, version=None):
     return data
 
 
-def update_session(sid, patch: dict) -> dict:
+def update_session(sid, patch: dict, confirm_stage=None) -> dict:
+    """Only an explicit stage confirmation clears that stage stale marker.
+
+    Crawl list creation passes confirm_stage="stage2"; configuration/gate and
+    background writes omit it. _update_locked has the same contract.
+    """
     with locked(sid):
-        return _update_locked(sid, patch)
+        return _update_locked(sid, patch, confirm_stage=confirm_stage)
 
 
-def _update_locked(sid, patch):
+def _update_locked(sid, patch, confirm_stage=None):
     """Caller must hold locked(sid); used to keep API validation and writes together."""
     root = root_dir(sid)
     previous = load_session(sid) or {}
@@ -120,14 +127,8 @@ def _update_locked(sid, patch):
             raise StoreError('읽기 전용 버전입니다')
         result['version'] = meta['activeVersion']
         result['updatedAt'] = now()
-        # A confirmed stage write clears only that stage's stale marker.
-        stages = {'projectContext': 'stage0', 'keywords': 'stage1', 'keywordRounds': 'stage1',
-                  'crawlConfig': 'stage2', 'collectionId': 'stage2'}
-        for key, stage in stages.items():
-            if key in patch:
-                result.get('stale', {}).pop(stage, None)
-        for stage in patch.get('stageResults', {}):
-            result.get('stale', {}).pop(stage, None)
+        if confirm_stage is not None:
+            result.get('stale', {}).pop(confirm_stage, None)
         if 'projectContext' in patch:
             from app.context.models import ProjectContext
             from app.context.render import render_context_md

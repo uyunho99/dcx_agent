@@ -3,7 +3,9 @@ from app.context.versions import create_version, compare
 from test_api import create
 
 
-def test_create_version_copies_all_but_collection(client, data_dir):
+def test_create_version_copies_all_but_collection(client, data_dir, monkeypatch):
+    from app.crawl import control
+    monkeypatch.setattr(control, 'phase_state', lambda sid: 'done')
     sid = create(client)
     update_session(sid, {'collectionId': 'c1'})
     (session_dir(sid) / 'keyword_events.jsonl').write_text('event')
@@ -22,7 +24,7 @@ def test_restart_marks_downstream_stale(client):
     sid = create(client)
     create_version(sid, 'v1', 'stage1', '')
     assert 'stage2' in load_session(sid)['stale']
-    update_session(sid, {'keywords': []})
+    update_session(sid, {'keywords': []}, confirm_stage='stage1')
     assert 'stage1' not in load_session(sid)['stale']
     assert 'stage2' in load_session(sid)['stale']
 
@@ -53,7 +55,9 @@ def test_compare_stage1_added_removed_moved(client):
     assert diff['distribution'] == {'x': -2, 'y': 2}
 
 
-def test_compare_stage2_same_collection(client):
+def test_compare_stage2_same_collection(client, monkeypatch):
+    from app.crawl import control
+    monkeypatch.setattr(control, 'phase_state', lambda sid: 'done')
     sid = create(client)
     update_session(sid, {'collectionId': 'c1'})
     create_version(sid, 'v1', 'stage2', '')
