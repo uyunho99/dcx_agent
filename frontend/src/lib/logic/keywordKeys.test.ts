@@ -17,3 +17,7 @@ it('uses physical M for Korean input but ignores modifiers and composition', () 
   }
   expect(isMoveShortcut({ ...event, code: 'KeyN', key: 'm' })).toBe(false);
 });
+it('does not submit Enter while Korean IME composition is active', () => {
+  expect(popoverKeyAction('INPUT', 'Enter', true)).toBe('native');
+  expect(popoverKeyAction('INPUT', 'Enter', false)).toBe('submit');
+});

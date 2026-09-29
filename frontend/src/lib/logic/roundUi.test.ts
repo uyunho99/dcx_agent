@@ -24,3 +24,12 @@ it('regenerates only done, uncommitted rounds including R4', () => {
     }
   }
 });
+it('locks failed and mismatched generations while keeping retries available', () => {
+  expect(roundUi({ round: 1, status: 'failed', gen: 1, jobGen: 2 })).toMatchObject({ canEdit: false, canCommit: false, canStart: true });
+  expect(roundUi({ round: 1, status: 'done', gen: 1, jobGen: 2 })).toMatchObject({ canEdit: false, canCommit: false });
+  expect(roundUi({ round: 1, status: 'done', gen: 2, jobGen: 2 }).canEdit).toBe(true);
+});
+it('requires saving dirty decisions before regeneration', () => {
+  expect(roundUi({ round: 1, status: 'done', dirty: true }).canRegenerate).toBe(false);
+  expect(roundUi({ round: 1, status: 'done', dirty: false }).canRegenerate).toBe(true);
+});

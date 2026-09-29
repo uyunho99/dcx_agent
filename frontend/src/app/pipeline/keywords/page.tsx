@@ -11,6 +11,7 @@ import { addKeyword, commitRound, getCoverage, getKeywords, getRound, KeywordApi
 import { contextRequest, patchSession } from '@/lib/api/context';
 import { filterKeywords, keywordFilters, type KeywordFilter } from '@/lib/logic/filterKeywords';
 import { createActionQueue } from '@/lib/logic/actionQueue';
+import { reviewKeywords } from '@/lib/logic/reviewKeywords';
 import { roundUi } from '@/lib/logic/roundUi';
 import { INTERNAL_TOOLS } from '@/lib/internalTools';
 import '@/components/keywords/keywords.css';
@@ -32,7 +33,7 @@ function KeywordScreen({ sid }: { sid: string }) {
   const [custom, setCustom] = useState<Destination[]>([]); const [customAxis, setCustomAxis] = useState(''); const [customName, setCustomName] = useState('');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({}); const [help, setHelp] = useState(false); const [elapsed, setElapsed] = useState(0);
   const [duplicate, setDuplicate] = useState<Keyword | null>(null);
-  const current = data?.keywordRounds[String(round)]; const ui = roundUi({ round, status: current?.job.status, committed: current?.committed });
+  const current = data?.keywordRounds[String(round)]; const ui = roundUi({ round, status: current?.job.status, committed: current?.committed, gen: current?.gen, jobGen: current?.job.gen, dirty });
   const running = current?.job.status === 'running';
   const reportError = useCallback((e: unknown) => setError(e instanceof Error ? e.message : '요청에 실패했습니다. 다시 시도하세요.'), []);
   const reload = useCallback(async () => { const fresh = await getKeywords(sid); setData(fresh); return fresh; }, [sid]);
@@ -67,7 +68,7 @@ function KeywordScreen({ sid }: { sid: string }) {
     const timer = setInterval(() => setElapsed(Math.max(0, Math.floor((Date.now() - started) / 1000))), 1000);
     return () => clearInterval(timer);
   }, [running, current?.job.startedAt]);
-  const all = [...new Map([...Object.values(data?.keywordRounds ?? {}).flatMap(r => r.keywords ?? []), ...(data?.keywords ?? [])].map(k => [k.id, k])).values()].map(k => overrides[k.id] ? { ...k, ...overrides[k.id] } : k);
+  const all = reviewKeywords({ keywordRounds: data?.keywordRounds ?? {}, keywords: data?.keywords ?? [] }).map(k => overrides[k.id] ? { ...k, ...overrides[k.id] } : k);
   const groups = [...new Map([...destinations, ...custom, ...all.map(k => ({ axis: k.axis, sub: k.sub }))].map(g => [groupKey(g), g])).values()];
   const tabGroups = groups.filter(g => axis === 'all' || g.axis === axis);
   const tabKeywords = all.filter(k => axis === 'all' || k.axis === axis);
@@ -84,7 +85,7 @@ function KeywordScreen({ sid }: { sid: string }) {
     });
   }
   async function saveDirection(targetRound = round) { if (direction.trim()) { const result = await postEvent(sid, { round: targetRound, type: 'direction', text: direction.trim() }); setData(d => d ? { ...d, feedback_md: result.feedback_md } : d); setDirection(''); } }
-  async function generate(n: number, regenerate = false) { if (regenerate && !ui.canRegenerate) return; await action(async () => { await saveDirection(n); const job = await (regenerate ? regenerateRound(sid, n) : startRound(sid, n)); setOverrides({}); setDirty(false); setElapsed(0); setRound(n); setData(d => d ? { ...d, keywordRounds: { ...d.keywordRounds, [n]: { round: n, gen: job.gen, job, committed: false, keywords: [] } } } : d); await patchSession(sid, { step: `r${n}` }); useSessionStore.getState().setSession({ step: `r${n}` }); }); }
+  async function generate(n: number, regenerate = false) { if ((dirty && current) || (regenerate && !ui.canRegenerate)) return; await action(async () => { await saveDirection(n); const job = await (regenerate ? regenerateRound(sid, n) : startRound(sid, n)); setOverrides({}); setDirty(false); setElapsed(0); setRound(n); setData(d => d ? { ...d, keywordRounds: { ...d.keywordRounds, [n]: { round: n, gen: job.gen, job, committed: false, keywords: [] } } } : d); await patchSession(sid, { step: `r${n}` }); useSessionStore.getState().setSession({ step: `r${n}` }); }); }
   async function review(k: Keyword, rejection: Rejection | null, to?: Destination) {
     let failed: unknown;
     await action(async () => { try {
@@ -110,7 +111,7 @@ function KeywordScreen({ sid }: { sid: string }) {
     }); return success;
   }
   async function suggest(to: Destination) { let words: string[] = []; await action(async () => { words = (await suggestWords(sid, to)).words.map(w => w.word); }); return words; }
-  async function draft() { if (running) return; await action(async () => { await patchSession(sid, { drafts: { keywords: { [`r${round}`]: { round, gen: current?.gen ?? 0, decisions: decisions(), groups: custom } } } }); setDirty(false); setNotice('검토를 임시 저장했습니다. 저장하면 이 라운드를 확정합니다.'); }); }
+  async function draft() { if (!ui.canEdit) return; await action(async () => { await patchSession(sid, { drafts: { keywords: { [`r${round}`]: { round, gen: current?.gen ?? 0, decisions: decisions(), groups: custom } } } }); setDirty(false); setNotice('검토를 임시 저장했습니다. 저장하면 이 라운드를 확정합니다.'); }); }
   async function commit() { if (!current || !ui.canCommit) return; await action(async () => { await commitRound(sid, round, current.gen, decisions()); setOverrides({}); setDirty(false); await reload(); await patchSession(sid, { drafts: { keywords: { [`r${round}`]: null } } }); setNotice(`R${round}을 저장했습니다. 다음 작업을 선택하세요.`); }); }
   async function next() { if (!ui.canNext || dirty) return; if (round < 4) await generate(round + 1); else await action(async () => { await saveDirection(); await patchSession(sid, { step: 'crawl-setup' }); useSessionStore.getState().setSession({ step: 'crawl-setup' }); router.push('/pipeline/crawling'); }); }
   const approved = all.filter(k => k.status !== 'rejected'); const counts = axes.map(a => approved.filter(k => k.axis === a.value).length); const minimum = counts.indexOf(Math.min(...counts));
@@ -122,15 +123,15 @@ function KeywordScreen({ sid }: { sid: string }) {
         {tabGroups.map(g => <KeywordGroup key={groupKey(g)} group={g} groups={groups} keywords={visible.filter(k => groupKey(k) === groupKey(g))} disabled={busy || !ui.canEdit} collapsed={isCollapsed(g)} toggle={() => setCollapsed(c => ({ ...c, [`${axis}:${groupKey(g)}`]: !isCollapsed(g) }))} onAdd={add} onSuggest={suggest} onMove={move} onReview={review} />)}
         <fieldset disabled={busy} className="kw-add"><Select label="새 하위 카테고리 축" value={customAxis} onChange={e => setCustomAxis(e.target.value)}><option value="">축 선택</option>{axes.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}</Select><Input label="새 하위 카테고리 이름" value={customName} onChange={e => setCustomName(e.target.value)} /><Button disabled={!customAxis || !customName.trim()} onClick={() => { const g = { axis: customAxis as Axis, sub: `custom:${customName.trim()}` }; if (!groups.some(v => groupKey(v) === groupKey(g))) { setCustom(c => [...c, g]); setDirty(true); } reveal(g); setCustomName(''); }}>하위 카테고리 추가하기</Button></fieldset>
   </>;
-  return <div className="kw-screen"><div className="ds-eyebrow">1단계 · 키워드</div><h1 className={data.keywordRounds['2']?.committed ? 'ds-t-section' : 'ds-t-screen'}>{ui.final ? '최종 키워드를 검토합니다' : `R${round} ${names[round - 1]} 결과 ${current?.keywords.length ?? 0}개를 검토합니다`}</h1><p>거절할 키워드를 누르고 사유를 남기면 다음 라운드에 반영됩니다. 드래그하거나 M 키로 하위 카테고리를 옮길 수 있습니다.</p><Stepper label="라운드 진행" steps={steps} />
+  return <div className="kw-screen"><div className="ds-eyebrow">1단계 · 키워드</div><h1 className={data.keywordRounds['2']?.committed ? 'ds-t-section' : 'ds-t-screen'}>{ui.final ? '최종 키워드를 검토합니다' : `R${round} ${names[round - 1]} 결과 ${ui.canEdit ? current?.keywords.length ?? 0 : 0}개를 검토합니다`}</h1><p>거절할 키워드를 누르고 사유를 남기면 다음 라운드에 반영됩니다. 드래그하거나 M 키로 하위 카테고리를 옮길 수 있습니다.</p><Stepper label="라운드 진행" steps={steps} />
     {error && <Banner tone="danger">{error}{duplicate && <Button size="sm" onClick={() => { reveal(duplicate); setDuplicate(null); }}>중복 키워드 확인하기</Button>}</Banner>}{notice && <Banner>{notice}</Banner>}
     <div className="kw-layout"><div className="kw-main space-y-4"><Card><fieldset disabled={busy || running}><Input label="다음 라운드 방향 지시 (선택)" value={direction} onChange={e => setDirection(e.target.value)} placeholder="예: 영유아 관련 맥락을 더 발산해줘" /><div className="ds-actions"><Button disabled={!direction.trim()} onClick={() => void action(saveDirection)}>지시 저장하기</Button></div></fieldset></Card>
       {running ? <Card><p role="status" aria-live="polite">처리 중… R{round} 생성 중 · 보통 30~90초 · 경과 {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}</p><div className="space-y-4 mt-4">{[0, 1, 2].map(i => <Skeleton key={i} height={112} />)}</div><p className="ds-t-caption">다른 화면으로 이동해도 생성은 계속됩니다.</p></Card> : <>
       {current?.job.status === 'failed' && <Banner tone="danger" actions={<Button disabled={busy} onClick={() => void generate(round)}>다시 생성하기</Button>}>R{round} 생성에 실패했습니다(원인: {reasons[current.job.error?.kind ?? ''] ?? '생성 도구 오류'}). 승인한 키워드는 그대로 있습니다. 다시 생성하세요.{current.job.error?.kind === 'backend' && ' 설정에서 claude_api로 바꿀 수 있습니다.'}</Banner>}
-      {ui.canRegenerate && (current?.keywords.length === 0 ? <Banner actions={<Button disabled={busy} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}>새 키워드가 나오지 않았습니다. 방향 지시를 바꾸거나 다시 생성하세요.</Banner> : current?.below_min ? <Banner actions={<Button disabled={busy} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}>목표 {current.below_min.min}개 중 {current.below_min.got}개가 생성되었습니다. 그대로 검토하거나 다시 생성하세요.</Banner> : null)}
-      <Card><Tabs label="3축" value={axis} onChange={setAxis} items={[{ value: 'all', label: '전체' }, ...axes].map(a => ({ ...a, count: all.filter(k => a.value === 'all' || k.axis === a.value).length, content: a.value === axis ? reviewPanel : null }))} />
+      {current?.job.status === 'done' && !current.committed && (current?.keywords.length === 0 ? <Banner actions={<Button disabled={busy || !ui.canRegenerate} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}>새 키워드가 나오지 않았습니다. 방향 지시를 바꾸거나 다시 생성하세요.</Banner> : current?.below_min ? <Banner actions={<Button disabled={busy || !ui.canRegenerate} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}>목표 {current.below_min.min}개 중 {current.below_min.got}개가 생성되었습니다. 그대로 검토하거나 다시 생성하세요.</Banner> : null)}
+      {ui.canEdit && <Card><Tabs label="3축" value={axis} onChange={setAxis} items={[{ value: 'all', label: '전체' }, ...axes].map(a => ({ ...a, count: all.filter(k => a.value === 'all' || k.axis === a.value).length, content: a.value === axis ? reviewPanel : null }))} />
 
-      </Card></>}
+      </Card>}</>}
     </div><aside className="kw-side space-y-4"><Card><h2 className="ds-t-card">축 분포</h2><p className="ds-t-caption">승인 예정 포함 {approved.length}개 기준 · 부족한 축은 다음 라운드가 채웁니다.</p><BarList max={Math.max(1, approved.length)} highlightIndex={minimum} items={axes.map((a, i) => ({ label: a.label, value: counts[i], displayValue: `${counts[i]}개 · ${approved.length ? Math.round(counts[i] / approved.length * 100) : 0}%` }))} /></Card>
     {!data.keywordRounds['2']?.committed && <Card><h2 className="ds-t-card">커버리지</h2><Badge>R2 확정 후 계산</Badge></Card>}
     {INTERNAL_TOOLS && <Card><details><summary>keyword_feedback.md 미리보기 <Badge>내부용</Badge></summary><pre className="ds-t-caption">{data.feedback_md || '아직 기록된 피드백이 없습니다.'}</pre></details></Card>}</aside></div>
