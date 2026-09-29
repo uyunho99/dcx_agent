@@ -13,3 +13,4 @@ selectolax
 crawl4ai
 yt-dlp
 pydantic>=2
+openai
