@@ -1,8 +1,7 @@
 """Process-local SQLite crawl queue. Adapter objects are accepted by attributes.
 
-Use one instance per process (and serialize use within that process). List workers
-schedule each returned ListTask once; next_list_task is a peek, not a list lease.
-Call register_run('detail') before leasing to associate leases with a worker.
+Use one connection per thread/process. Register a run before claiming work.
+List and URL claims are atomic; fenced workers receive LeaseLost.
 """
 from contextlib import closing, contextmanager
 from dataclasses import dataclass, field
@@ -19,6 +18,12 @@ from uuid import uuid4
 from app.crawl.urls import normalize_url
 
 HEARTBEAT_INTERVAL = 10
+STALE_AFTER_S = 60
+
+
+class LeaseLost(Exception):
+    """The run has stopped or no longer owns the requested work."""
+
 
 DDL = """
 CREATE TABLE IF NOT EXISTS runs (
@@ -28,9 +33,9 @@ CREATE TABLE IF NOT EXISTS runs (
 );
 CREATE TABLE IF NOT EXISTS list_tasks (
  kw TEXT NOT NULL, source TEXT NOT NULL, cursor TEXT NOT NULL DEFAULT '',
- status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','done','failed')),
+ status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','running','done','failed')),
  fetched INTEGER NOT NULL DEFAULT 0, total_hint INTEGER,
- attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT,
+ attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT, lease_run_id TEXT,
  PRIMARY KEY(kw, source, cursor)
 );
 CREATE TABLE IF NOT EXISTS keyword_meta (
@@ -45,6 +50,7 @@ CREATE TABLE IF NOT EXISTS urls (
  lease_until REAL, lease_run_id TEXT, attempts INTEGER NOT NULL DEFAULT 0,
  last_error TEXT, doc_count INTEGER NOT NULL DEFAULT 0, first_seen_kw_order INTEGER NOT NULL,
  fetch_level TEXT, access TEXT, retry_at REAL, filter_rule TEXT,
+ exhausted INTEGER NOT NULL DEFAULT 0, max_attempts INTEGER NOT NULL DEFAULT 3,
  UNIQUE(url_norm, source)
 );
 CREATE TABLE IF NOT EXISTS url_hits (
@@ -109,6 +115,7 @@ class ListTask:
     total_hint: int | None = None
     attempts: int = 0
     last_error: str | None = None
+    lease_run_id: str | None = None
 
 
 @dataclass
@@ -133,6 +140,7 @@ class UrlRow:
     fetch_level: str | None
     access: str | None
     first_seen_kw_order: int
+    exhausted: bool = False
 
     @property
     def url(self) -> str:
@@ -160,6 +168,23 @@ class CrawlQueue:
         self.run_id: str | None = None
         self.connection = self._connect(self.path, readonly=False)
         self.connection.executescript(DDL)
+        # Upgrade databases created by T11 before list leasing was introduced.
+        with self._write() as db:
+            columns = {r['name'] for r in db.execute('PRAGMA table_info(list_tasks)')}
+            if 'lease_run_id' not in columns:
+                db.execute('ALTER TABLE list_tasks RENAME TO old_list_tasks')
+                list_ddl = DDL.split('CREATE TABLE IF NOT EXISTS list_tasks (', 1)[1].split(';', 1)[0]
+                db.execute('CREATE TABLE list_tasks (' + list_ddl)
+                db.execute("""INSERT INTO list_tasks
+                    (kw,source,cursor,status,fetched,total_hint,attempts,last_error)
+                    SELECT kw,source,cursor,status,fetched,total_hint,attempts,last_error
+                    FROM old_list_tasks""")
+                db.execute('DROP TABLE old_list_tasks')
+                db.execute('CREATE INDEX list_tasks_status ON list_tasks(status)')
+            if 'exhausted' not in {r['name'] for r in db.execute('PRAGMA table_info(urls)')}:
+                db.execute('ALTER TABLE urls ADD COLUMN exhausted INTEGER NOT NULL DEFAULT 0')
+            if 'max_attempts' not in {r['name'] for r in db.execute('PRAGMA table_info(urls)')}:
+                db.execute('ALTER TABLE urls ADD COLUMN max_attempts INTEGER NOT NULL DEFAULT 3')
 
     @staticmethod
     def _connect(path, readonly):
@@ -204,15 +229,52 @@ class CrawlQueue:
                 db.executemany('INSERT OR IGNORE INTO list_tasks(kw,source) VALUES (?,?)',
                                [(k.kw, s) for s in sources])
 
+    def _require_run(self, db):
+        if self.run_id is None:
+            raise RuntimeError('Register a run before claiming work')
+        if not db.execute("SELECT 1 FROM runs WHERE run_id=? AND pid=? AND status='running'",
+                          (self.run_id, os.getpid())).fetchone():
+            raise LeaseLost('Run is no longer running')
+
+    def next_list_tasks(self, source: str | None, n: int) -> list[ListTask]:
+        if n < 0:
+            raise ValueError('n must be nonnegative')
+        with self._write() as db:
+            self._require_run(db)
+            rows = db.execute("""SELECT t.*, m.kw_axis, m.kw_sub, m.kw_order
+                FROM list_tasks t JOIN keyword_meta m USING(kw)
+                WHERE status='pending' AND (? IS NULL OR source=?)
+                ORDER BY kw_order, source, cursor LIMIT ?""", (source, source, n)).fetchall()
+            tasks = []
+            for row in rows:
+                db.execute("""UPDATE list_tasks SET status='running',lease_run_id=?
+                    WHERE kw=? AND source=? AND cursor=?""",
+                           (self.run_id, row['kw'], row['source'], row['cursor']))
+                data = {k: row[k] for k in ListTask.__dataclass_fields__}
+                data.update(cursor=row['cursor'] or None, lease_run_id=self.run_id)
+                tasks.append(ListTask(**data))
+            return tasks
+
     def next_list_task(self) -> ListTask | None:
-        with closing(self.open_readonly(self.path)) as db:
-            row = db.execute('''SELECT t.*, m.kw_axis, m.kw_sub, m.kw_order
-                FROM list_tasks t JOIN keyword_meta m USING(kw) WHERE status='pending'
-                ORDER BY kw_order, source, cursor LIMIT 1''').fetchone()
-        if row is None:
-            return None
-        return ListTask(**{k: row[k] for k in ListTask.__dataclass_fields__ if k != 'cursor'},
-                        cursor=row['cursor'] or None)
+        tasks = self.next_list_tasks(None, 1)
+        return tasks[0] if tasks else None
+
+    def _list_owner(self, db, task):
+        self._require_run(db)
+        row = db.execute('SELECT * FROM list_tasks WHERE kw=? AND source=? AND cursor=?',
+                         (task.kw, task.source, task.cursor or '')).fetchone()
+        if (row is None or row['lease_run_id'] != self.run_id
+                or task.lease_run_id != self.run_id or row['status'] != 'running'):
+            raise LeaseLost('List task is no longer owned by this run')
+        return row
+
+    def mark_list_failed(self, task: ListTask, err: str) -> None:
+        with self._write() as db:
+            row = self._list_owner(db, task)
+            db.execute("""UPDATE list_tasks SET attempts=attempts+1,last_error=?,
+                status=?,lease_run_id=NULL WHERE kw=? AND source=? AND cursor=?""",
+                       (err, 'failed' if row['attempts'] + 1 >= 3 else 'pending',
+                        task.kw, task.source, task.cursor or ''))
 
     def _prepare(self, items, task=None):
         result = []
@@ -245,15 +307,10 @@ class CrawlQueue:
     def record_list_page(self, task: ListTask, items: list[ListItemLike], next_cursor: str | None):
         prepared = self._prepare(items, task)
         with self._write() as db:
-            row = db.execute('SELECT status FROM list_tasks WHERE kw=? AND source=? AND cursor=?',
-                             (task.kw, task.source, task.cursor or '')).fetchone()
-            if row is None:
-                raise ValueError('Unknown list task')
-            if row['status'] == 'done':
-                return
+            self._list_owner(db, task)
             self._insert_urls(db, prepared)
             db.execute('''UPDATE list_tasks SET status='done', fetched=?, attempts=attempts+1,
-                last_error=NULL WHERE kw=? AND source=? AND cursor=?''',
+                last_error=NULL,lease_run_id=NULL WHERE kw=? AND source=? AND cursor=?''',
                        (len(prepared), task.kw, task.source, task.cursor or ''))
             if next_cursor is not None:
                 db.execute('INSERT OR IGNORE INTO list_tasks(kw,source,cursor) VALUES (?,?,?)',
@@ -286,6 +343,7 @@ class CrawlQueue:
             raise ValueError('n must be nonnegative and lease_s positive')
         now = time.time()
         with self._write() as db:
+            self._require_run(db)
             self._snapshot(db, snapshot_id)
             rows = db.execute('''SELECT u.*, h.kw AS hit_kw, h.kw_axis AS hit_axis,
                     h.kw_sub AS hit_sub, h.kw_order AS hit_order
@@ -300,14 +358,16 @@ class CrawlQueue:
                               (snapshot_id, now, snapshot_id, n)).fetchall()
             result = []
             for row in rows:
+                exhausted = bool(row['exhausted'] or row['attempts'] >= row['max_attempts'])
+                attempts = row['attempts'] if exhausted else row['attempts'] + 1
                 db.execute('''UPDATE urls SET status='leased', lease_until=?, lease_run_id=?,
-                    attempts=attempts+1, kw=?, kw_axis=?, kw_sub=?, retry_at=NULL
+                    attempts=?, exhausted=?, kw=?, kw_axis=?, kw_sub=?, retry_at=NULL
                     WHERE url_norm=? AND source=?''',
-                           (now + lease_s, self.run_id, row['hit_kw'], row['hit_axis'], row['hit_sub'],
+                           (now + lease_s, self.run_id, attempts, exhausted, row['hit_kw'], row['hit_axis'], row['hit_sub'],
                             row['url_norm'], row['source']))
                 data = dict(row)
                 data.update(kw=row['hit_kw'], kw_axis=row['hit_axis'], kw_sub=row['hit_sub'],
-                            kw_order=row['hit_order'], attempts=row['attempts'] + 1,
+                            kw_order=row['hit_order'], attempts=attempts, exhausted=exhausted,
                             status='leased', lease_until=now + lease_s, lease_run_id=self.run_id,
                             src_meta=json.loads(row['src_meta_json']),
                             kw_hits=[r[0] for r in db.execute('''SELECT kw FROM url_hits
@@ -316,52 +376,58 @@ class CrawlQueue:
                 result.append(UrlRow(**{k: data[k] for k in UrlRow.__dataclass_fields__}))
         return result
 
-    def _owns_completion(self, db, url_norm, source):
-        row = db.execute('SELECT lease_run_id FROM urls WHERE url_norm=? AND source=?',
+    def _owns_completion(self, db, url_norm, source, allow_pending=False):
+        if self.run_id is None:
+            raise LeaseLost('No calling run')
+        self._require_run(db)
+        row = db.execute('SELECT * FROM urls WHERE url_norm=? AND source=?',
                          (url_norm, source)).fetchone()
-        if row is None or row['lease_run_id'] not in (None, self.run_id):
-            return False
-        return self.run_id is None or db.execute(
-            "SELECT 1 FROM runs WHERE run_id=? AND status='running' AND pid=?",
-            (self.run_id, os.getpid())).fetchone() is not None
+        if row is not None:
+            if row['status'] == 'leased' and row['lease_run_id'] == self.run_id:
+                return row
+            # P1 filters may reject newly discovered URLs before detail leasing.
+            if (allow_pending and row['status'] == 'pending' and row['attempts'] == 0
+                    and row['lease_run_id'] is None):
+                return row
+        raise LeaseLost('URL is no longer owned by this run')
 
     def mark_done(self, url_norm: str, source: str, doc_count: int, last_error=None,
-                  fetch_level=None, access=None):
+                  fetch_level=None, access=None) -> None:
+        self.mark_done_many([(url_norm, source, doc_count, last_error, fetch_level, access)])
+
+    def mark_done_many(self, rows: list[tuple[str, str, int, str | None, str | None, str | None]]) -> None:
+        """Commit a batch after the worker has flushed and fsynced its documents."""
         with self._write() as db:
-            if not self._owns_completion(db, url_norm, source):
-                return
-            db.execute('''UPDATE urls SET status='done',doc_count=?,last_error=?,fetch_level=?,
-                access=?,lease_until=NULL,lease_run_id=NULL,retry_at=NULL
-                WHERE url_norm=? AND source=? AND status NOT IN ('excluded','filtered')''',
-                       (doc_count, last_error, fetch_level, access, url_norm, source))
+            for url_norm, source, doc_count, last_error, fetch_level, access in rows:
+                self._owns_completion(db, url_norm, source)
+                db.execute("""UPDATE urls SET status='done',doc_count=?,last_error=?,fetch_level=?,
+                    access=?,lease_until=NULL,lease_run_id=NULL,retry_at=NULL
+                    WHERE url_norm=? AND source=?""",
+                           (doc_count, last_error, fetch_level, access, url_norm, source))
 
     def mark_failed_attempt(self, url_norm: str, source: str, last_error: str,
-                            max_attempts: int = 3, backoff_s: float = 1):
-        """Attempts increment on lease. At limit, worker must persist snippet then mark_done.
-
-        'failed' is the awaiting-fallback state; never fabricate a persisted document here.
-        """
+                            max_attempts: int = 3, backoff_s: float = 1) -> str:
+        """Return pending for retry, or exhausted while retaining the snippet lease."""
         with self._write() as db:
-            if not self._owns_completion(db, url_norm, source):
-                return
-            row = db.execute('SELECT attempts,status FROM urls WHERE url_norm=? AND source=?',
-                             (url_norm, source)).fetchone()
-            if row is None or row['status'] != 'leased':
-                return
-            exhausted = row['attempts'] >= max_attempts
-            db.execute('''UPDATE urls SET status=?,last_error=?,retry_at=?,lease_until=NULL,
-                lease_run_id=NULL WHERE url_norm=? AND source=?''',
-                       ('failed' if exhausted else 'pending', last_error,
-                        None if exhausted else time.time() + backoff_s * 2 ** (row['attempts'] - 1),
+            row = self._owns_completion(db, url_norm, source)
+            db.execute('UPDATE urls SET max_attempts=? WHERE url_norm=? AND source=?',
+                       (max_attempts, url_norm, source))
+            if row['exhausted'] or row['attempts'] >= max_attempts:
+                db.execute('UPDATE urls SET exhausted=1,last_error=? WHERE url_norm=? AND source=?',
+                           (last_error, url_norm, source))
+                return 'exhausted'
+            db.execute("""UPDATE urls SET status='pending',last_error=?,retry_at=?,
+                lease_until=NULL,lease_run_id=NULL WHERE url_norm=? AND source=?""",
+                       (last_error, time.time() + backoff_s * 2 ** (row['attempts'] - 1),
                         url_norm, source))
+            return 'pending'
 
-    def mark_filtered(self, url_norm: str, source: str, rule: str):
+    def mark_filtered(self, url_norm: str, source: str, rule: str) -> None:
         with self._write() as db:
-            if not self._owns_completion(db, url_norm, source):
-                return
-            db.execute('''UPDATE urls SET status='filtered',filter_rule=?,last_error=?,
-                lease_until=NULL,lease_run_id=NULL WHERE url_norm=? AND source=?
-                AND status NOT IN ('done','excluded')''', (rule, rule, url_norm, source))
+            self._owns_completion(db, url_norm, source, allow_pending=True)
+            db.execute("""UPDATE urls SET status='filtered',filter_rule=?,last_error=?,
+                lease_until=NULL,lease_run_id=NULL WHERE url_norm=? AND source=?""",
+                       (rule, rule, url_norm, source))
 
     def exclude_keywords(self, snapshot_id: str, kws: Iterable[str]) -> int:
         with self._write() as db:
@@ -376,7 +442,7 @@ class CrawlQueue:
             member = """EXISTS (SELECT 1 FROM snapshot_urls s WHERE s.snapshot_id=?
                 AND s.url_norm=urls.url_norm AND s.source=urls.source)"""
             count = db.execute(f"""UPDATE urls SET status='excluded',lease_until=NULL,
-                lease_run_id=NULL WHERE status!='excluded' AND {member}
+                lease_run_id=NULL WHERE status IN ('pending','failed') AND {member}
                 AND NOT EXISTS ({eligible})""", (snapshot_id, snapshot_id)).rowcount
             db.execute(f"""UPDATE urls SET (kw,kw_axis,kw_sub)=(
                 SELECT h.kw,h.kw_axis,h.kw_sub FROM url_hits h
@@ -384,7 +450,7 @@ class CrawlQueue:
                 AND NOT EXISTS (SELECT 1 FROM excluded_keywords e
                     WHERE e.snapshot_id=? AND e.kw=h.kw)
                 ORDER BY h.kw_order,h.kw LIMIT 1)
-                WHERE {member} AND EXISTS ({eligible})""",
+                WHERE status IN ('pending','failed') AND {member} AND EXISTS ({eligible})""",
                        (snapshot_id, snapshot_id, snapshot_id))
             return count
 
@@ -393,13 +459,17 @@ class CrawlQueue:
         with self._write() as db:
             runs = db.execute('SELECT run_id,pid,heartbeat_at,status FROM runs').fetchall()
             stale = {r['run_id'] for r in runs if not _alive(r['pid']) or
-                     r['heartbeat_at'] < now - 3 * HEARTBEAT_INTERVAL or r['status'] != 'running'}
+                     r['heartbeat_at'] < now - STALE_AFTER_S or r['status'] != 'running'}
             rows = db.execute("SELECT url_norm,source,lease_until,lease_run_id FROM urls WHERE status='leased'").fetchall()
             keys = [(r['url_norm'], r['source']) for r in rows
                     if r['lease_until'] is None or r['lease_until'] <= now or r['lease_run_id'] in stale]
             db.executemany("UPDATE urls SET status='pending',lease_until=NULL,lease_run_id=NULL WHERE url_norm=? AND source=?", keys)
+            list_count = 0
+            for run_id in stale:
+                list_count += db.execute("""UPDATE list_tasks SET status='pending',lease_run_id=NULL
+                    WHERE status='running' AND lease_run_id=?""", (run_id,)).rowcount
             db.executemany("UPDATE runs SET status='interrupted' WHERE run_id=? AND status='running'", [(r,) for r in stale])
-        return len(keys)
+        return len(keys) + list_count
 
     def register_run(self, kind: str) -> str:
         if kind not in ('list', 'detail'):
@@ -410,7 +480,7 @@ class CrawlQueue:
         with self._write() as db:
             rows = db.execute("SELECT * FROM runs WHERE sid=? AND kind=? AND status='running'", (sid, kind)).fetchall()
             for row in rows:
-                if _alive(row['pid']) and row['heartbeat_at'] >= now - 3 * HEARTBEAT_INTERVAL:
+                if _alive(row['pid']) and row['heartbeat_at'] >= now - STALE_AFTER_S:
                     raise RuntimeError('A live worker of this kind is already registered')
                 db.execute("UPDATE runs SET status='interrupted' WHERE run_id=?", (row['run_id'],))
             db.execute('INSERT INTO runs VALUES (?,?,?,?,?,?,?,?)',
@@ -421,8 +491,11 @@ class CrawlQueue:
 
     def heartbeat(self, run_id: str):
         with self._write() as db:
-            db.execute("UPDATE runs SET heartbeat_at=? WHERE run_id=? AND pid=? AND status='running'",
-                       (time.time(), run_id, os.getpid()))
+            if run_id != self.run_id:
+                raise LeaseLost('Heartbeat does not belong to the calling run')
+            if not db.execute("UPDATE runs SET heartbeat_at=? WHERE run_id=? AND pid=? AND status='running'",
+                              (time.time(), run_id, os.getpid())).rowcount:
+                raise LeaseLost('Run is no longer running')
 
     def finish_run(self, run_id: str, status: str):
         with self._write() as db:

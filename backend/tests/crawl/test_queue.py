@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
+import threading
 import multiprocessing as mp
 import os
 import sqlite3
@@ -6,6 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from app.crawl import queue as queue_module
 from app.crawl.queue import CrawlQueue, KwMeta, QueueListItem
 
 
@@ -19,6 +22,7 @@ def add(q, kw, order, urls, source='fixture'):
 @pytest.fixture
 def queue(tmp_path):
     q = CrawlQueue(tmp_path / 'queue.sqlite')
+    q.register_run('list')
     yield q
     q.close()
 
@@ -80,9 +84,11 @@ def test_shared_url_excluded_only_if_all_hits_excluded(queue):
     row = queue.lease_urls(snap, 1, 30)[0]
     assert row.kw == 'B' and row.kw_order == 1
     assert row.kw_hits == ['A', 'B']
+    queue.mark_failed_attempt(row.url_norm, row.source, 'retry', backoff_s=0)
     assert queue.exclude_keywords(snap, ['B']) == 1
     assert queue.lease_urls(snap, 1, 30) == []
-    queue.mark_done(row.url_norm, row.source, 1)
+    with pytest.raises(queue_module.LeaseLost):
+        queue.mark_done(row.url_norm, row.source, 1)
     assert queue.counts()['excluded'] == 1
 
 
@@ -93,13 +99,21 @@ def writer(path, kind, ready, start, results):
         q = CrawlQueue(path)
         run = q.register_run('detail' if kind == 'done' else 'list') if kind != 'exclude' else None
         snap = q.connection.execute('SELECT snapshot_id FROM snapshots').fetchone()[0]
+        if kind == 'done':
+            q.lease_urls(snap, 1, 30)
         ready.put(True)
         start.wait(10)
         until = time.monotonic() + 5
         while time.monotonic() < until:
             try:
                 if kind == 'done':
-                    q.mark_done('fixture://aircon/1', 'fixture', 1)
+                    if ops:
+                        q.add_urls([QueueListItem(url=f'fixture://aircon/write{ops}', kw='A', source='fixture')])
+                        snap = q.take_snapshot()
+                        row = q.lease_urls(snap, 1, 30)[0]
+                        q.mark_done(row.url_norm, row.source, 1)
+                    else:
+                        q.mark_done('fixture://aircon/1', 'fixture', 1)
                 elif kind == 'exclude':
                     q.exclude_keywords(snap, ['B'])
                 else:
@@ -118,6 +132,7 @@ def test_concurrent_writers_no_locked_error(queue):
     add(queue, 'A', 0, ['fixture://aircon/1'])
     add(queue, 'B', 1, ['fixture://aircon/2'])
     queue.take_snapshot()
+    queue.finish_run(queue.run_id, 'done')
     ctx = mp.get_context('spawn')
     ready, results, start = ctx.Queue(), ctx.Queue(), ctx.Event()
     procs = [ctx.Process(target=writer, args=(queue.path, k, ready, start, results))
@@ -169,9 +184,10 @@ def test_stale_heartbeat_and_registration(queue):
     with pytest.raises(RuntimeError):
         queue.register_run('detail')
     queue.lease_urls(queue.take_snapshot(), 1, 3600)
-    queue.connection.execute('UPDATE runs SET heartbeat_at=?', (time.time() - 31,))
+    queue.connection.execute('UPDATE runs SET heartbeat_at=?', (time.time() - 61,))
     assert queue.reclaim_expired_leases() == 1
-    queue.heartbeat(run)
+    with pytest.raises(queue_module.LeaseLost):
+        queue.heartbeat(run)
     queue.finish_run(run, 'done')
     assert queue.register_run('detail') != run
 
@@ -224,14 +240,18 @@ def test_reclaimed_lease_rejects_previous_worker_completion(queue):
     first = queue.register_run('detail')
     snap = queue.take_snapshot()
     queue.lease_urls(snap, 1, 30)
-    queue.connection.execute('UPDATE runs SET heartbeat_at=?', (time.time() - 31,))
+    queue.connection.execute('UPDATE runs SET heartbeat_at=?', (time.time() - 61,))
     other = CrawlQueue(queue.path)
     try:
         second = other.register_run('detail')
         assert first != second
         other.lease_urls(snap, 1, 30)
-        queue.mark_done('fixture://aircon/1', 'fixture', 999)
-        queue.mark_failed_attempt('fixture://aircon/1', 'fixture', 'old error')
+        with pytest.raises(queue_module.LeaseLost):
+            queue.mark_done('fixture://aircon/1', 'fixture', 999)
+        with pytest.raises(queue_module.LeaseLost):
+            queue.mark_failed_attempt('fixture://aircon/1', 'fixture', 'old error')
+        with pytest.raises(queue_module.LeaseLost):
+            queue.mark_filtered('fixture://aircon/1', 'fixture', '②')
         assert queue.counts()['leased'] == 1
         other.mark_done('fixture://aircon/1', 'fixture', 1)
         assert queue.counts()['doc_count'] == 1
@@ -254,4 +274,199 @@ def test_bad_page_has_no_partial_writes(queue):
         queue.record_list_page(task, [QueueListItem(url='fixture://aircon/1'),
                                      QueueListItem(url='fixture://aircon/2', src_meta={'bad': object()})], None)
     assert queue.counts()['total'] == 0
-    assert queue.next_list_task() == task
+    assert queue.next_list_task() is None
+    assert queue.connection.execute('SELECT status FROM list_tasks').fetchone()[0] == 'running'
+    queue.record_list_page(task, [], None)
+
+
+def test_exclusions_preserve_completed_filtered_and_leased(queue):
+    urls = [f'fixture://aircon/{i}' for i in range(3)]
+    add(queue, 'A', 0, urls)
+    add(queue, 'B', 1, urls)
+    snap = queue.take_snapshot()
+    rows = queue.lease_urls(snap, 3, 30)
+    queue.mark_done(rows[0].url_norm, 'fixture', 2, fetch_level='full', access='public')
+    queue.mark_filtered(rows[1].url_norm, 'fixture', '②')
+    before = queue.counts()
+    for kws in (['A'], ['B']):
+        assert queue.exclude_keywords(snap, kws) == 0
+        assert queue.counts() == before
+        assert [r[0] for r in queue.connection.execute('SELECT kw FROM urls')] == ['A'] * 3
+
+
+@pytest.mark.parametrize('recover', [False, True])
+@pytest.mark.parametrize('max_attempts', [2, 3, 4])
+def test_exhausted_snippet_survives_crash(queue, recover, max_attempts):
+    add(queue, 'A', 0, ['fixture://aircon/1'])
+    snap = queue.take_snapshot()
+    for attempt in range(max_attempts):
+        row = queue.lease_urls(snap, 1, 3600)[0]
+        assert not row.exhausted
+        result = queue.mark_failed_attempt(row.url_norm, row.source, 'timeout',
+                                           max_attempts=max_attempts, backoff_s=0)
+        assert result == ('exhausted' if attempt == max_attempts - 1 else 'pending')
+    state = queue.connection.execute('SELECT status,lease_run_id FROM urls').fetchone()
+    assert tuple(state) == ('leased', queue.run_id)
+    if recover:
+        queue.connection.execute("UPDATE runs SET status='interrupted' WHERE run_id=?", (queue.run_id,))
+        queue.register_run('list')
+        row = queue.lease_urls(snap, 1, 30)[0]
+        assert row.exhausted and row.attempts == max_attempts
+        assert row.last_error == 'timeout'
+    queue.mark_done(row.url_norm, row.source, 1, 'timeout', 'snippet', 'restricted')
+    assert queue.counts()['done'] == 1
+    assert queue.counts()['fetch_level'] == {'snippet': 1}
+
+
+def test_crash_on_last_attempt_goes_to_snippet(queue):
+    add(queue, 'A', 0, ['fixture://aircon/1'])
+    snap = queue.take_snapshot()
+    for _ in range(2):
+        row = queue.lease_urls(snap, 1, 30)[0]
+        queue.mark_failed_attempt(row.url_norm, row.source, 'timeout', backoff_s=0)
+    queue.lease_urls(snap, 1, 30)
+    queue.connection.execute('UPDATE urls SET lease_until=0')
+    assert queue.reclaim_expired_leases() == 1
+    row = queue.lease_urls(snap, 1, 30)[0]
+    assert row.exhausted and row.attempts == 3
+
+
+def test_list_tasks_concurrent_claims_and_source(queue):
+    queue.add_list_tasks([KwMeta(str(i), '', '', i) for i in range(10)], ['a', 'b'])
+    barrier = threading.Barrier(2)
+    run = queue.run_id
+    def claim():
+        q = CrawlQueue(queue.path)
+        try:
+            q.run_id = run
+            barrier.wait(timeout=5)
+            return q.next_list_tasks('a', 10)
+        finally:
+            q.close()
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(claim) for _ in range(2)]
+        tasks = [t for f in futures for t in f.result()]
+    assert len(tasks) == 10
+    assert len({(t.kw, t.source, t.cursor) for t in tasks}) == 10
+    assert all(t.source == 'a' and t.lease_run_id == run for t in tasks)
+    assert len(queue.next_list_tasks(None, 20)) == 10
+    assert queue.next_list_task() is None
+
+
+def test_list_failure_retry_limit(queue):
+    queue.add_list_tasks([KwMeta('A', '', '', 0)], ['a'])
+    for i in range(3):
+        task = queue.next_list_task()
+        assert task.attempts == i
+        queue.mark_list_failed(task, 'page timeout')
+        row = queue.connection.execute('SELECT * FROM list_tasks').fetchone()
+        assert row['attempts'] == i + 1 and row['last_error'] == 'page timeout'
+        assert row['status'] == ('failed' if i == 2 else 'pending')
+        assert row['lease_run_id'] is None
+    assert queue.next_list_task() is None
+
+
+@pytest.mark.parametrize('dead', [True, False])
+def test_list_reclaim_and_fencing(queue, monkeypatch, dead):
+    queue.add_list_tasks([KwMeta('A', '', '', 0)], ['a'])
+    task = queue.next_list_task()
+    if dead:
+        monkeypatch.setattr(queue_module, '_alive', lambda pid: False)
+    else:
+        queue.connection.execute('UPDATE runs SET heartbeat_at=0')
+    assert queue.reclaim_expired_leases() == 1
+    with pytest.raises(queue_module.LeaseLost):
+        queue.record_list_page(task, [], None)
+    with pytest.raises(queue_module.LeaseLost):
+        queue.mark_list_failed(task, 'late')
+    monkeypatch.setattr(queue_module, '_alive', lambda pid: True)
+    queue.register_run('list')
+    assert queue.next_list_task().kw == 'A'
+
+
+def test_stale_window_is_sixty_seconds(queue, monkeypatch):
+    assert queue_module.STALE_AFTER_S == 60
+    assert queue_module.HEARTBEAT_INTERVAL == 10
+    add(queue, 'A', 0, ['fixture://aircon/1'])
+    queue.lease_urls(queue.take_snapshot(), 1, 3600)
+    queue.connection.execute('UPDATE runs SET heartbeat_at=?', (time.time() - 40,))
+    assert queue.reclaim_expired_leases() == 0
+    with pytest.raises(RuntimeError):
+        queue.register_run('list')
+    monkeypatch.setattr(queue_module, 'STALE_AFTER_S', 30)
+    assert queue.reclaim_expired_leases() == 1
+    with pytest.raises(queue_module.LeaseLost):
+        queue.heartbeat(queue.run_id)
+
+
+def test_leasing_requires_registered_running_run(tmp_path):
+    q = CrawlQueue(tmp_path / 'unregistered.sqlite')
+    try:
+        snap = q.take_snapshot()
+        with pytest.raises(RuntimeError):
+            q.lease_urls(snap, 1, 30)
+        with pytest.raises(RuntimeError):
+            q.next_list_tasks(None, 1)
+        run = q.register_run('detail')
+        q.connection.execute("UPDATE runs SET status='interrupted'")
+        with pytest.raises(queue_module.LeaseLost):
+            q.lease_urls(snap, 1, 30)
+        with pytest.raises(queue_module.LeaseLost):
+            q.heartbeat(run)
+    finally:
+        q.close()
+
+
+def test_done_many_one_transaction_and_atomic_fencing(queue):
+    add(queue, 'A', 0, ['fixture://aircon/1', 'fixture://aircon/2'])
+    rows = queue.lease_urls(queue.take_snapshot(), 2, 30)
+    batch = [(r.url_norm, r.source, 1, 'timeout', 'snippet', 'restricted') for r in rows]
+    queue.connection.execute('UPDATE urls SET lease_run_id=? WHERE url_norm=?', ('other', rows[1].url_norm))
+    with pytest.raises(queue_module.LeaseLost):
+        queue.mark_done_many(batch)
+    assert queue.counts()['leased'] == 2 and queue.counts()['doc_count'] == 0
+    queue.connection.execute('UPDATE urls SET lease_run_id=?', (queue.run_id,))
+    trace = []
+    queue.connection.set_trace_callback(trace.append)
+    try:
+        queue.mark_done_many(batch)
+    finally:
+        queue.connection.set_trace_callback(None)
+    assert trace.count('BEGIN IMMEDIATE') == trace.count('COMMIT') == 1
+    assert queue.counts()['done'] == queue.counts()['doc_count'] == 2
+    assert queue.counts()['fetch_level'] == {'snippet': 2}
+    assert queue.counts()['access'] == {'restricted': 2}
+    assert [r[0] for r in queue.connection.execute('SELECT last_error FROM urls')] == ['timeout'] * 2
+
+
+@pytest.mark.parametrize('method', ['mark_done', 'mark_filtered', 'mark_failed_attempt'])
+def test_reclaimed_unowned_url_raises(queue, method):
+    add(queue, 'A', 0, ['fixture://aircon/1'])
+    queue.lease_urls(queue.take_snapshot(), 1, 30)
+    queue.connection.execute('UPDATE urls SET lease_until=0')
+    queue.reclaim_expired_leases()
+    with pytest.raises(queue_module.LeaseLost):
+        getattr(queue, method)('fixture://aircon/1', 'fixture', 1 if method == 'mark_done' else 'error')
+
+
+
+def test_upgrade_existing_list_schema(tmp_path):
+    path = tmp_path / 'old.sqlite'
+    with sqlite3.connect(path) as db:
+        db.execute("""CREATE TABLE list_tasks (
+            kw TEXT NOT NULL, source TEXT NOT NULL, cursor TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','done','failed')),
+            fetched INTEGER NOT NULL DEFAULT 0, total_hint INTEGER,
+            attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT,
+            PRIMARY KEY(kw,source,cursor))""")
+        db.execute("INSERT INTO list_tasks(kw,source,attempts,last_error) VALUES ('A','a',1,'timeout')")
+    q = CrawlQueue(path)
+    try:
+        q.register_run('list')
+        q.add_list_tasks([KwMeta('A', '', '', 0)], ['a'])
+        task = q.next_list_task()
+        assert task.attempts == 1 and task.last_error == 'timeout'
+        assert task.lease_run_id == q.run_id
+        q.record_list_page(task, [], None)
+    finally:
+        q.close()

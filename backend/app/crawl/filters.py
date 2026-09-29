@@ -68,7 +68,7 @@ def _check(item, cfg, detail):
             return '③'
         if cfg.include_sources and not _contains(source, cfg.include_sources):
             return '④'
-    if cfg.product_name_filter and cfg.bk.casefold() not in text:
+    if detail and cfg.product_name_filter and cfg.bk.casefold() not in str(_get(item, 'body', '') or '').casefold():
         return '⑤'
     return None
 

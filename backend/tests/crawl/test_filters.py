@@ -22,7 +22,8 @@ def test_product_filter_on_uses_body():
     assert check_doc(item(body='에어컨 좋아요'), c) is None
     assert check_doc(item(), c) == '⑤'
     assert check_list(item(snippet='에어컨 좋아요'), c) is None
-    assert check_list(item(), c) == '⑤'
+    assert check_list(item(), c) is None
+    assert check_doc(item(title='에어컨', body='시원해요'), c) == '⑤'
 
 
 def test_ad_words_blog_sponsored():
