@@ -155,8 +155,8 @@ def test_r4_regen_gen_ids_unique(client):
     assert commit(client, 4, first).status_code == 200
     second = start(client, 4)
     assert first['gen'] == 1 and second['gen'] == 2
-    assert all('g1' in k['id'] for k in first['keywords'])
-    assert all('g2' in k['id'] for k in second['keywords'])
+    assert [k['id'] for k in first['keywords']] == [f'k_r4g1_{i:04d}' for i in range(1, 43)]
+    assert [k['id'] for k in second['keywords']] == [f'k_r4g2_{i:04d}' for i in range(1, 43)]
     assert not ({k['id'] for k in first['keywords']} & {k['id'] for k in second['keywords']})
     assert commit(client, 4, first).status_code == 409
     assert commit(client, 4, second).status_code == 200
@@ -293,3 +293,121 @@ def test_unconnected_coverage_replaces_old_failure(client):
     store.update_session('test', {'coverage': {'status': 'failed', 'error': {'kind': 'request_failed'}}})
     assert client.post('/keywords/test/coverage').json() == {'status': 'unconnected'}
     assert store.load_session('test')['coverage'] == {'status': 'unconnected'}
+
+
+@pytest.fixture
+def threaded(monkeypatch):
+    workers = []
+    def execute(fn):
+        workers.append(THREADED_EXECUTE(fn))
+    monkeypatch.setattr(rounds, 'execute', execute)
+    yield workers
+    for worker in workers:
+        worker.join(5)
+        assert not worker.is_alive()
+
+
+def finish_threaded(client, workers):
+    response = client.post('/keywords/test/rounds/1')
+    assert response.status_code == 200
+    workers[-1].join(5)
+    assert not workers[-1].is_alive()
+    return client.get('/keywords/test/rounds/1').json()
+
+
+@pytest.mark.parametrize('source', ['_inputs', 'attach_volumes'])
+def test_threaded_store_error_fails_job(client, threaded, monkeypatch, source):
+    original = getattr(rounds, source)
+    def fail(*args):
+        raise store.StoreError('private store detail')
+    monkeypatch.setattr(rounds, source, fail)
+    failed = finish_threaded(client, threaded)
+    assert failed['status'] == 'failed'
+    assert failed['error']['kind'] == 'backend'
+    assert 'private store detail' not in json.dumps(failed)
+    monkeypatch.setattr(rounds, source, original)
+    retried = finish_threaded(client, threaded)
+    assert retried['jobId'] != failed['jobId']
+    assert retried['status'] == 'done'
+
+
+@pytest.mark.parametrize('bad_sid', ['legacy.old', 'corrupt'])
+def test_threaded_round_skips_bad_prior_session(client, data_dir, threaded, bad_sid):
+    # Write minimal context directly to avoid unrelated ProjectContext validation.
+    path = store.session_dir('test') / 'session.json'
+    data = store.load_session('test')
+    data['projectContext'] = {'bk': '냉방'}
+    store.write_json(path, data)
+    bad = data_dir / 'sessions' / bad_sid
+    bad.mkdir()
+    (bad / 'session.json').write_text('{private broken contents')
+    assert finish_threaded(client, threaded)['status'] == 'done'
+
+
+@pytest.mark.parametrize('bad_sid', ['legacy.old', 'corrupt'])
+def test_startup_skips_bad_sessions(client, data_dir, caplog, bad_sid):
+    bad = data_dir / 'sessions' / bad_sid
+    bad.mkdir()
+    (bad / 'session.json').write_text('{private broken contents')
+    for sid in ['test', 'valid']:
+        store.update_session(sid, {'schemaVersion': 2, 'keywordRounds': {
+            '1': {'job': {'jobId': 'lost', 'status': 'running'}}}})
+    with TestClient(app) as restarted:
+        for sid in ['test', 'valid']:
+            state = restarted.get(f'/keywords/{sid}/rounds/1').json()
+            assert state['status'] == 'failed'
+            assert state['error']['kind'] == 'interrupted'
+    assert bad_sid in caplog.text
+    assert 'private broken contents' not in caplog.text
+
+
+@pytest.mark.parametrize('coverage,signal,status', [
+    ({'status': 'connected', 'missing_top': []}, '부족 축 없음', 'ok'),
+    ({'status': 'ok', 'missing_top': []}, '부족 축 없음', 'ok'),
+    ({'status': 'failed'}, '커버리지 계산 실패 — 축 분포 균형에 집중', 'ok'),
+    ({'status': 'unconnected'}, '커버리지 정보 없음', 'empty:searchad_unconnected'),
+    ({}, '커버리지 정보 없음', 'empty:searchad_unconnected'),
+])
+def test_r3_coverage_signal_truth(client, backend, monkeypatch, coverage, signal, status):
+    through(client, 2)
+    store.update_session('test', {'coverage': rounds._Replacement(coverage)})
+    for key in ['searchad_api_key', 'searchad_secret', 'searchad_customer_id']:
+        monkeypatch.setattr(settings, key, 'configured')
+    monkeypatch.setattr(rounds, 'attach_volumes', lambda kws: kws)
+    state = start(client, 3)
+    assert state['status'] == 'done'
+    assert state['inputs']['coverage'] == status
+    assert signal in backend.calls[-1].instructions
+    if coverage.get('status') not in ('connected', 'ok'):
+        assert '부족 축 없음' not in backend.calls[-1].instructions
+
+
+def test_commit_explicit_generation(client):
+    state = start(client, 1)
+    assert state['keywords'][0]['id'] == 'k_r1g1_0001'
+    decisions = [{'id': k['id'], 'status': 'approved'} for k in state['keywords']]
+    with pytest.raises(store.StoreError) as exc:
+        rounds.commit_round('test', 1, decisions, gen=2)
+    assert exc.value.status == 409
+    rounds.commit_round('test', 1, decisions, gen=1)
+
+
+def test_empty_commit_stale_generation(client, backend, monkeypatch):
+    monkeypatch.setattr(backend, 'run', FakeBackend({'kw_r1': '{"keywords": []}'}).run)
+    # Empty successful drafts still require the explicit generation check.
+    start(client, 1)
+    store.update_session('test', {'keywordRounds': {'1': {'keywords': [], 'job': {'status': 'done'}}}})
+    assert client.post('/keywords/test/rounds/1/commit', json={'gen': 2, 'decisions': []}).status_code == 409
+    assert client.post('/keywords/test/rounds/1/commit', json={'gen': 1, 'decisions': []}).status_code == 200
+
+
+@pytest.mark.parametrize('replacement', [{'jobId': 'replacement'}, {'status': 'done'}])
+def test_threaded_failure_preserves_superseding_job(client, threaded, monkeypatch, replacement):
+    def superseded(*args):
+        store.update_session('test', {'keywordRounds': {'1': {'job': replacement}}})
+        raise store.StoreError('old worker failed')
+    monkeypatch.setattr(rounds, '_inputs', superseded)
+    state = finish_threaded(client, threaded)
+    for key, value in replacement.items():
+        assert state[key] == value
+    assert state['error'] is None

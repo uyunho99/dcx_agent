@@ -1,7 +1,8 @@
-"""Persistent keyword jobs. IDs are r{round}g{generation}-{1-based index}."""
+"""Persistent keyword jobs. IDs are k_r{round}g{generation}_{1-based index:04d}."""
 from copy import deepcopy
 from dataclasses import asdict
 import json
+import logging
 from pathlib import Path
 from threading import Thread
 from uuid import uuid4
@@ -11,7 +12,7 @@ from pydantic import BaseModel, Field
 from app.config import settings
 from app.context import store
 from app.external import naver_searchad
-from app.external.base import Unconnected, configured
+from app.external.base import Unconnected
 from app.keywords import coverage
 from app.keywords.events import KeywordEvent, append_event, load_events
 from app.keywords.feedback import write_feedback_md
@@ -22,6 +23,13 @@ from app.keywords.taxonomy import AXES, is_valid
 from app.keywords.volume import attach_volumes
 from app.llm.base import Attachment, LLMTask
 from app.llm.registry import run_task
+
+
+logger = logging.getLogger(__name__)
+
+
+class _JobSuperseded(store.StoreError):
+    """The worker no longer owns a running job."""
 
 
 class RoundJob(BaseModel):
@@ -144,17 +152,20 @@ def _past_zero_keywords(sid, data):
     for path in (Path(settings.local_data_dir) / 'sessions').iterdir():
         if not path.is_dir() or path.name == sid:
             continue
-        prior = store.load_session(path.name) or {}
-        if prior.get('projectContext', {}).get('bk') != bk:
-            continue
-        result.extend(prior.get('past_zero_kws', []))
-        collection = prior.get('collectionId')
-        if collection and Path(collection).name == collection:
-            report_path = Path(settings.local_data_dir) / 'crawl' / path.name / 'collections' / collection / 'report.json'
-            report = store.read_json(report_path) or {}
-            for kw, counts in report.get('counts', {}).items():
-                if isinstance(counts, dict) and counts and all(isinstance(v, (int, float)) and v == 0 for v in counts.values()):
-                    result.append(kw)
+        try:
+            prior = store.load_session(path.name) or {}
+            if prior.get('projectContext', {}).get('bk') != bk:
+                continue
+            result.extend(prior.get('past_zero_kws', []))
+            collection = prior.get('collectionId')
+            if collection and Path(collection).name == collection:
+                report_path = Path(settings.local_data_dir) / 'crawl' / path.name / 'collections' / collection / 'report.json'
+                report = store.read_json(report_path) or {}
+                for kw, counts in report.get('counts', {}).items():
+                    if isinstance(counts, dict) and counts and all(isinstance(v, (int, float)) and v == 0 for v in counts.values()):
+                        result.append(kw)
+        except Exception:
+            logger.warning('Skipping prior session %s', path.name)
     return list(dict.fromkeys(result))
 
 
@@ -165,10 +176,11 @@ def _inputs(sid, data, n):
     rejected = [k for k in _keywords(data) if k.status == 'rejected']
     signals = '\n'.join(f'{k.kw}: {json.dumps(k.reject, ensure_ascii=False)}' for k in rejected) or None
     cov = data.get('coverage') or {}
-    connected = all(configured(k) for k in ('SEARCHAD_API_KEY', 'SEARCHAD_SECRET', 'SEARCHAD_CUSTOMER_ID'))
-    coverage_text = None
-    if cov.get('status') == 'connected' or connected:
+    coverage_text = ''
+    if cov.get('status') in ('connected', 'ok'):
         coverage_text = json.dumps(cov['missing_top'], ensure_ascii=False) if cov.get('missing_top') else '부족 축 없음'
+    elif cov.get('status') == 'failed':
+        coverage_text = '커버리지 계산 실패 — 축 분포 균형에 집중'
     project_type = ctx.get('projectType', {'choice': 'renewal'})
     return RoundInputs(
         context_md=(store.session_dir(sid) / 'project_context.md').read_text(encoding='utf-8'),
@@ -196,7 +208,7 @@ def _job_patch(sid, n, job_id, values):
     def patch(data):
         current = data['keywordRounds'][str(n)]
         if current['job']['jobId'] != job_id or current['job']['status'] != 'running':
-            raise store.StoreError('작업이 변경되었습니다')
+            raise _JobSuperseded('작업이 변경되었습니다')
         return {'keywordRounds': {str(n): values}}
     return mutate(sid, patch)
 
@@ -212,23 +224,28 @@ def _run(sid, n, job_id):
             _job_patch(sid, n, job_id, {'job': {'status': 'failed', 'error': result.error.model_dump(), 'updatedAt': store.now()}})
             return
         cleaned, logs = clean_generated([k.model_dump() for k in result.data.keywords], _all_keywords(data), set())
-        kws = volumes([Keyword(id=f'r{n}g{generation}-{i}', kw=''.join(k['kw'].split()),
+        kws = volumes([Keyword(id=f'k_r{n}g{generation}_{i:04d}', kw=''.join(k['kw'].split()),
                                axis=k['axis'], sub=k['sub'], round=n, origin='llm')
                        for i, k in enumerate(cleaned, 1)])
         def finish(latest):
             current = latest['keywordRounds'][str(n)]
             if current['job']['jobId'] != job_id or current['job']['status'] != 'running':
-                raise store.StoreError('작업이 변경되었습니다')
+                raise _JobSuperseded('작업이 변경되었습니다')
             existing = {norm_key(k.kw) for k in _all_keywords(latest)}
             kept = [k.model_dump() for k in kws if norm_key(k.kw) not in existing]
             return {'keywordRounds': {str(n): {'keywords': kept, 'normalization': logs,
                     'below_min': {'got': len(kept), 'min': MIN_COUNT[n]} if len(kept) < MIN_COUNT[n] else None,
                     'job': {'status': 'done', 'progress': 1, 'error': None, 'updatedAt': store.now()}}}}
         mutate(sid, finish)
-    except store.StoreError:
-        raise
+    except _JobSuperseded:
+        return
     except Exception:
-        _job_patch(sid, n, job_id, {'job': {'status': 'failed', 'error': {'kind': 'backend', 'message': '생성 작업에 실패했습니다'}, 'updatedAt': store.now()}})
+        try:
+            _job_patch(sid, n, job_id, {'job': {'status': 'failed', 'error': {'kind': 'backend', 'message': '생성 작업에 실패했습니다'}, 'updatedAt': store.now()}})
+        except _JobSuperseded:
+            return
+        except Exception:
+            logger.error('Could not persist failed keyword job for session %s', sid)
 
 
 def recover_interrupted():
@@ -238,19 +255,22 @@ def recover_interrupted():
     for path in root.iterdir():
         if not path.is_dir():
             continue
-        data = store.load_session(path.name)
-        if not data or store.is_legacy(data):
-            continue
-        if not any((r.get('job') or {}).get('status') == 'running' for r in data.get('keywordRounds', {}).values()):
-            continue
-        def patch(current):
-            return {'keywordRounds': {n: {'job': {'status': 'failed', 'updatedAt': store.now(),
-                'error': {'kind': 'interrupted', 'message': '작업이 중단되었습니다. 다시 생성하세요'}}}
-                for n, r in current.get('keywordRounds', {}).items() if (r.get('job') or {}).get('status') == 'running'}}
-        mutate(path.name, patch)
+        try:
+            data = store.load_session(path.name)
+            if not data or store.is_legacy(data):
+                continue
+            if not any((r.get('job') or {}).get('status') == 'running' for r in data.get('keywordRounds', {}).values()):
+                continue
+            def patch(current):
+                return {'keywordRounds': {n: {'job': {'status': 'failed', 'updatedAt': store.now(),
+                    'error': {'kind': 'interrupted', 'message': '작업이 중단되었습니다. 다시 생성하세요'}}}
+                    for n, r in current.get('keywordRounds', {}).items() if (r.get('job') or {}).get('status') == 'running'}}
+            mutate(path.name, patch)
+        except Exception:
+            logger.warning('Skipping recovery for session %s', path.name)
 
 
-def commit_round(sid, n, decisions: list) -> None:
+def commit_round(sid, n, decisions: list, gen: int | None = None) -> None:
     _number(n)
     events = []
     def patch(data):
@@ -258,7 +278,7 @@ def commit_round(sid, n, decisions: list) -> None:
         current = data.get('keywordRounds', {}).get(str(n), {})
         if (current.get('job') or {}).get('status') != 'done' or current.get('committed'):
             raise store.StoreError('확정할 작업이 없습니다')
-        if getattr(decisions, 'gen', current['gen']) != current['gen']:
+        if gen is not None and gen != current['gen']:
             raise store.StoreError('다른 창에서 새로 생성되었습니다. 새로고침하세요')
         wanted = {k['id']: k.copy() for k in current.get('keywords', [])}
         if len({d['id'] for d in decisions}) != len(decisions):

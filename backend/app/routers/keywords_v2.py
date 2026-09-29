@@ -93,10 +93,8 @@ def round_status(sid: str, n: int, version: str | None = None):
 
 @router.post('/{sid}/rounds/{n}/commit')
 def commit_round(sid: str, n: int, body: CommitRequest):
-    class Decisions(list):
-        gen = body.gen
-    decisions = Decisions(d.model_dump() for d in body.decisions)
-    rounds.commit_round(sid, n, decisions)
+    decisions = [d.model_dump() for d in body.decisions]
+    rounds.commit_round(sid, n, decisions, gen=body.gen)
     return {'status': 'ok', 'round': n, 'gen': body.gen}
 
 
