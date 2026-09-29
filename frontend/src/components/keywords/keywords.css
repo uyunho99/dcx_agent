@@ -1,0 +1,26 @@
+.kw-screen { color:var(--ink); font:var(--type-body); }
+.kw-screen h1 { margin:8px 0 12px; }
+.kw-layout { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,1fr); gap:24px; margin-top:24px; }
+.kw-main, .kw-side { min-width:0; }
+.kw-group { border:1px solid var(--line); border-radius:var(--r-button); margin:12px 0; }
+.kw-group-head { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:8px; background:var(--soft); border-radius:var(--r-button); }
+.kw-group-body { padding:12px; }
+.kw-chip-list { display:flex; flex-wrap:wrap; gap:8px; }
+.kw-chip { display:inline-flex; align-items:center; flex-wrap:wrap; gap:6px; min-height:32px; padding:4px 10px; border:1px solid var(--line-strong); border-radius:var(--r-button); background:var(--paper); color:var(--ink-strong); font:var(--type-label); cursor:pointer; }
+.kw-chip:focus-visible { outline:2px solid var(--action); outline-offset:2px; }
+.kw-chip:disabled { cursor:default; }
+.kw-rejected { background:var(--danger-soft); border-color:var(--danger); }
+.kw-drop { border-color:var(--blue); background:var(--blue-soft); }
+.kw-add { display:flex; align-items:end; flex-wrap:wrap; gap:8px; }
+.kw-add .ds-field { flex:1; min-width:140px; }
+.kw-filters { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin:16px 0; }
+.kw-metrics { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; margin:16px 0; font-variant-numeric:tabular-nums; }
+.kw-table-wrap { overflow-x:auto; }
+.kw-table { width:100%; border-collapse:collapse; font:var(--type-label); font-variant-numeric:tabular-nums; }
+.kw-table th,.kw-table td { text-align:left; padding:12px; border-bottom:1px solid var(--line); overflow-wrap:anywhere; }
+.kw-screen pre { white-space:pre-wrap; overflow-wrap:anywhere; font-family:var(--mono); }
+.kw-screen fieldset { min-width:0; }
+@media(max-width:1100px) { .kw-layout { grid-template-columns:minmax(0,1fr); } }
+.kw-coverage { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,1fr); gap:24px; }
+.kw-coverage > .ds-note,.kw-coverage > .kw-table-wrap { grid-column:1/-1; }
+@media(max-width:1100px) { .kw-coverage { grid-template-columns:minmax(0,1fr); } }
