@@ -417,3 +417,49 @@ def test_estimate_cached_at_gate_and_never_computed_during_detail(env, monkeypat
     for _ in range(5):
         assert control.status('S')['progress']['target'] == 1
     assert not calls
+
+
+@pytest.mark.parametrize('collected', [False, True])
+def test_status_defaults_and_available_sources(env, collected):
+    from app.crawl.filters import DEFAULT_AD_WORDS, DEFAULT_EXCLUDE_SOURCES
+    if collected:
+        prepared(env)
+    response = env.client.get('/crawl/S/status')
+    assert response.status_code == 200
+    data = response.json()
+    assert data['defaults'] == {'adWords': DEFAULT_AD_WORDS, 'excludeSources': DEFAULT_EXCLUDE_SOURCES}
+    assert data['available_sources'] == ['fixture']
+    if not collected:
+        assert data['collection_keywords'] == []
+        assert data['added_keywords_count'] == 0
+
+
+def test_save_config_replaces_removed_channel(env, monkeypatch):
+    monkeypatch.setattr(control, 'available_sources', lambda: ['fixture', 'youtube'])
+    first = {'channels': ['fixture', 'youtube'], 'perChannel': {'fixture': {}, 'youtube': {}}}
+    assert env.client.put('/crawl/S/config', json=first).status_code == 200
+    store.update_session('S', {'crawlConfig': {'gateExclusions': ['alpha']}})
+    second = {'channels': ['fixture'], 'perChannel': {'fixture': {}}}
+    response = env.client.put('/crawl/S/config', json=second)
+    assert response.status_code == 200
+    saved = store.load_session('S')['crawlConfig']
+    assert 'youtube' not in saved['perChannel']
+    assert 'gateExclusions' not in saved
+    assert saved == response.json()['crawlConfig']
+    assert env.client.put('/crawl/S/config', json=saved).status_code == 200
+
+
+def test_status_added_keywords_across_chain_normalized(env):
+    prepared(env)
+    old = store.load_session('S')['keywords']
+    store.update_session('S', {'keywords': old + [{'kw': '가 나', 'status': 'approved'}]})
+    control.start_list('S', mode='added-keywords')
+    store.update_session('S', {'keywords': [
+        {'kw': ' AL PHA ', 'status': 'approved'},
+        {'kw': '가나', 'status': 'approved'},
+        {'kw': 'new', 'status': 'approved'},
+        {'kw': 'ignored', 'status': 'candidate'},
+    ]})
+    data = env.client.get('/crawl/S/status').json()
+    assert set(data['collection_keywords']) == {'alpha', 'beta', '가 나'}
+    assert data['added_keywords_count'] == 1

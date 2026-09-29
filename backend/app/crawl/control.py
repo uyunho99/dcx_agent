@@ -5,6 +5,7 @@ The collection lock serializes queue inspection and process launch. A 'starting'
 run reserves the child PID without conflicting with the worker's register_run.
 """
 from contextlib import closing, contextmanager
+from copy import deepcopy
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 import fcntl
@@ -20,6 +21,8 @@ from uuid import uuid4
 from app.config import settings
 from app.context import store
 from app.crawl.adapters import available_sources
+from app.crawl.filters import DEFAULT_AD_WORDS, DEFAULT_EXCLUDE_SOURCES
+from app.keywords.normalize import norm_key
 from app.crawl.queue import CrawlQueue, KwMeta
 from app.crawl import gate, report
 
@@ -268,12 +271,38 @@ def _gate_table(root, queue, cfg):
     return cached
 
 
+def _status_settings(session):
+    keywords, known, visited = [], set(), set()
+    ancestor = session.get('collectionId')
+    base = Path(settings.local_data_dir).resolve() / 'crawl' / session['sid'] / 'collections'
+    while ancestor:
+        if ancestor in visited or not re.fullmatch(r'c[1-9][0-9]*', ancestor):
+            raise store.StoreError('Invalid collection ancestry')
+        visited.add(ancestor)
+        meta = store.read_json(base / ancestor / 'meta.json')
+        if not meta:
+            raise store.StoreError('Parent collection not found', 404, 'not_found')
+        for keyword in meta['keywords']:
+            text = keyword['kw']
+            key = norm_key(text)
+            if key not in known:
+                keywords.append(text)
+                known.add(key)
+        ancestor = meta.get('parent')
+    added = {norm_key(k.get('kw', k.get('text', ''))) for k in session.get('keywords', [])
+             if k.get('status') == 'approved'} - known - {''}
+    return dict(defaults=dict(adWords=DEFAULT_AD_WORDS.copy(), excludeSources=DEFAULT_EXCLUDE_SOURCES.copy()),
+                available_sources=available_sources(), collection_keywords=keywords,
+                added_keywords_count=len(added) if session.get('collectionId') else 0)
+
+
 def status(sid):
     session = store.load_session(sid)
     if session is None:
         raise store.StoreError('Session not found', 404, 'not_found')
+    settings_payload = _status_settings(session)
     if not session.get('collectionId'):
-        return dict(status='idle', kind=None, progress=None, gate=None, report=None, channels={}, updatedAt=session.get('updatedAt'))
+        return dict(**settings_payload, status='idle', kind=None, progress=None, gate=None, report=None, channels={}, updatedAt=session.get('updatedAt'))
     root = collection_dir(sid)
     queue = ReadQueue(root / 'queue.sqlite')
     run = latest_run(queue)
@@ -300,7 +329,7 @@ def status(sid):
             except store.StoreError as exc:
                 if exc.status != 409:
                     raise
-    return dict(status=state, kind=run['kind'] if run else None, collectionId=root.name,
+    return dict(**settings_payload, status=state, kind=run['kind'] if run else None, collectionId=root.name,
                 progress=p, channels=p['channels'], snapshot_id=snapshot[0] if snapshot else None,
                 gate=table.get('rows') if isinstance(table, dict) else table,
                 estimate=table.get('estimate') if isinstance(table, dict) else None,
@@ -347,9 +376,18 @@ def save_gate(sid, exclusions, version=None):
     return _mutate(sid, perform, version)
 
 
+class _Replacement:
+    """Use the store's deepcopy-on-nondict branch to replace a mapping."""
+    def __init__(self, value):
+        self.value = value
+
+    def __deepcopy__(self, memo):
+        return deepcopy(self.value, memo)
+
+
 def save_config(sid, config, version=None):
     def perform(session):
         if set(config['channels']) - set(available_sources()):
             raise store.StoreError('Sources are unavailable', 422, 'validation')
-        return {'crawlConfig': config}, {'status': 'ok', 'crawlConfig': dict(session.get('crawlConfig', {}), **config)}
+        return {'crawlConfig': _Replacement(config)}, {'status': 'ok', 'crawlConfig': config}
     return _mutate(sid, perform, version)

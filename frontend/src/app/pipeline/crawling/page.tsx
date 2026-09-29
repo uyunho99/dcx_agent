@@ -9,6 +9,7 @@ import { GateTable } from '@/components/crawl/GateTable';
 import { Progress } from '@/components/crawl/Progress';
 import { contextRequest, patchSession } from '@/lib/api/context';
 import { getCrawlConnections, getCrawlStatus, resumeCrawl, saveCrawlConfig, saveCrawlGate, startCrawlDetail, startCrawlList, stopCrawl, type CrawlConfig, type CrawlSession, type CrawlStatus, type Integration } from '@/lib/api/crawl';
+import { prefillFilters } from '@/lib/logic/crawlConfig';
 import { isDirty } from '@/lib/logic/isDirty';
 import { INTERNAL_TOOLS } from '@/lib/internalTools';
 import '@/components/crawl/crawl.css';
@@ -25,43 +26,46 @@ function CrawlScreen({sid}:{sid:string}) {
   const [session,setSession]=useState<CrawlSession|null>(null);const [config,setConfig]=useState<CrawlConfig|null>(null);const [savedConfig,setSavedConfig]=useState<CrawlConfig|null>(null);const [draftConfig,setDraftConfig]=useState<CrawlConfig|null>(null);
   const [excluded,setExcluded]=useState<string[]>([]);const [savedGate,setSavedGate]=useState<string[]>([]);const [draftGate,setDraftGate]=useState<string[]>([]);
   const [status,setStatus]=useState<CrawlStatus|null>(null);const [connections,setConnections]=useState<Integration[]>([]);const [busy,setBusy]=useState(false);const lock=useRef(false);const [error,setError]=useState('');const [notice,setNotice]=useState('');const [healthy,setHealthy]=useState(false);const [settings,setSettings]=useState(false);
-  const generation=useRef(0);const alive=useRef(true);
-  const refresh=useCallback(async()=>{const generationAtStart=generation.current;const next=await getCrawlStatus(sid);if(alive.current&&generationAtStart===generation.current){setStatus(next);setHealthy(true);}return next;},[sid]);
+  const generation=useRef(0);const alive=useRef(true);const latestStatus=useRef<CrawlStatus|null>(null);const [pollError,setPollError]=useState('');const hydrated=!!session;
+  const refresh=useCallback(async()=>{const generationAtStart=generation.current;const next=await getCrawlStatus(sid);if(alive.current&&generationAtStart===generation.current){latestStatus.current=next;setStatus(next);setHealthy(true);setPollError('');}return next;},[sid]);
+  useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
   useEffect(()=>{
-    alive.current=true;let cancelled=false;let timer:ReturnType<typeof setTimeout>;
-    async function poll(){let delay=10000;try{if(!lock.current){const next=await refresh();delay=next.status==='running'||next.status==='stopping'?3000:10000;}}catch{if(!cancelled){setHealthy(false);setError('수집 상태를 불러오지 못했습니다. 다시 확인하세요.');}}if(!cancelled)timer=setTimeout(poll,delay);}
-    void poll();return()=>{cancelled=true;alive.current=false;clearTimeout(timer);};
-  },[refresh,status?.status]);
+    if(!hydrated)return;
+    let cancelled=false;let timer:ReturnType<typeof setTimeout>;
+    const delay=()=>latestStatus.current?.status==='running'||latestStatus.current?.status==='stopping'?3000:10000;
+    async function poll(){try{if(!lock.current)await refresh();}catch{if(!cancelled){setHealthy(false);setPollError('수집 상태를 불러오지 못했습니다. 다시 확인하세요.');}}if(!cancelled)timer=setTimeout(poll,delay());}
+    timer=setTimeout(poll,delay());return()=>{cancelled=true;clearTimeout(timer);};
+  },[refresh,hydrated]);
   useEffect(()=>{
     let cancelled=false;
-    Promise.all([contextRequest<{data:CrawlSession}>(`/session/${encodeURIComponent(sid)}`),getCrawlConnections(),getCrawlStatus(sid)]).then(([result,integrations,initial])=>{
+    Promise.all([contextRequest<{data:CrawlSession}>(`/session/${encodeURIComponent(sid)}`),getCrawlConnections(),refresh()]).then(([result,integrations,initial])=>{
       if(cancelled)return;
       const data=result.data; const raw=data.crawlConfig;
       const now=new Date();const from=new Date(now);from.setDate(from.getDate()-365);
       const channels=raw?.channels??context?.channels??['naver_cafe','naver_blog'];
-      const base:CrawlConfig={channels,dateFrom:raw?.dateFrom===undefined?from.toISOString().slice(0,10):raw.dateFrom,dateTo:raw?.dateTo===undefined?now.toISOString().slice(0,10):raw.dateTo,adWords:raw?.adWords??['협찬','광고','제공받','원고료','체험단','서포터즈','소정의'],excludeSources:raw?.excludeSources??[],includeSources:raw?.includeSources??[],product_name_filter:raw?.product_name_filter??false,perChannel:raw?.perChannel??Object.fromEntries(channels.map(s=>[s,limits(s)])),youtube:raw?.youtube??{videos_per_keyword:20,max_comments:500},target_total:raw?.target_total??1000000};
+      const base:CrawlConfig={channels,dateFrom:raw?.dateFrom===undefined?from.toISOString().slice(0,10):raw.dateFrom,dateTo:raw?.dateTo===undefined?now.toISOString().slice(0,10):raw.dateTo,...prefillFilters(raw,initial.defaults),includeSources:raw?.includeSources??[],product_name_filter:raw?.product_name_filter??false,perChannel:raw?.perChannel??Object.fromEntries(channels.map(s=>[s,limits(s)])),youtube:raw?.youtube??{videos_per_keyword:20,max_comments:500},target_total:raw?.target_total??1000000};
       const draft=data.drafts?.crawl;const gate=raw?.gateExclusions??[];const selection=draft?.gate?.snapshot_id===initial.snapshot_id?draft.gate.exclusions:gate;
       setSession(data);setConfig(draft?.config??base);setSavedConfig(raw?.channels?base:null);setDraftConfig(draft?.config??base);setExcluded(selection);setSavedGate(gate);setDraftGate(selection);setConnections(integrations);
     }).catch(()=>{if(!cancelled)setError('설정을 불러오지 못했습니다. 다시 확인하세요.');});return()=>{cancelled=true;};
-  },[sid,context,retry]);
+  },[sid,context,retry,refresh]);
   const running=status?.status==='running'||status?.status==='stopping';const disabled=busy||!!running||!healthy||!!session?.readonly;
   const gateView=!settings&&status?.kind==='list'&&status.status==='done'&&status.gate!==null;
   const setupView=settings||(!status?.kind&&!status?.report);
   const configChanged=isDirty(savedConfig,config);const gateChanged=isDirty([...savedGate].sort(),[...excluded].sort());
   const valid=!!config&&config.channels.length>0&&(!config.dateFrom||!config.dateTo||config.dateFrom<=config.dateTo)&&(config.target_total===null||Number.isInteger(config.target_total)&&config.target_total>0)&&Object.values(config.perChannel).every(v=>Number.isInteger(v.concurrency)&&v.concurrency>=1&&v.concurrency<=64&&v.min_interval_s>=0&&Number.isInteger(v.max_per_keyword)&&v.max_per_keyword>0)&&config.youtube.videos_per_keyword>=1&&Number.isInteger(config.youtube.videos_per_keyword)&&config.youtube.max_comments>=0&&Number.isInteger(config.youtube.max_comments);
   const keywords=(session?.keywords??[]).filter(k=>k.status==='approved');const axes:Record<string,number>={};keywords.forEach(k=>{axes[k.axis]=(axes[k.axis]??0)+1;});
-  const added=status?.added_keywords_count??(status?.collection_keywords?keywords.filter(k=>!status.collection_keywords!.includes(k.kw)).length:0);
+  const added=status?.added_keywords_count??0;
   async function action(fn:()=>Promise<void>,allowRunning=false){if(lock.current||(!allowRunning&&running)||session?.readonly)return;lock.current=true;generation.current++;setBusy(true);setHealthy(false);setError('');setNotice('');try{await fn();await refresh();}catch(e){setError(e instanceof Error && /storage|disk/i.test(e.message)?'저장 공간에 쓰지 못했습니다. 디스크 여유 공간을 확인하고 이어서 진행하세요.':'요청에 실패했습니다. 입력값은 그대로 있습니다. 상태를 확인하고 다시 시도하세요.');}finally{lock.current=false;setBusy(false);}}
   async function draft(){if(disabled)return;await action(async()=>{await patchSession(sid,{drafts:{crawl:gateView?{gate:{exclusions:excluded,snapshot_id:status!.snapshot_id}}:{config}}});if(gateView)setDraftGate([...excluded]);else setDraftConfig(config);setNotice('임시 저장했습니다. 저장하면 수집 설정에 반영합니다.');});}
   async function save(){if(disabled)return;await action(async()=>{if(gateView){await saveCrawlGate(sid,excluded,session?.version);setSavedGate([...excluded]);setDraftGate([...excluded]);await patchSession(sid,{drafts:{crawl:{gate:null}}});}else if(config&&valid){await saveCrawlConfig(sid,config,session?.version);setSavedConfig(config);setDraftConfig(config);await patchSession(sid,{drafts:{crawl:{config:null}}});}setNotice('저장했습니다. 수집 시작 버튼을 누르면 수집합니다.');});}
   const paused=Object.values(status?.channels??{}).some(c=>c.status==='paused_blocked'||c.status==='paused_parse_error');
   return <div className="crawl-screen"><header><div className="ds-eyebrow">2단계 · 크롤링</div><h1 className={gateView?'ds-t-section':'ds-t-screen'}>{gateView?'본문 수집 전에 키워드를 정리합니다':setupView?`확정 키워드 ${keywords.length}개로 목록을 수집합니다`:status?.report?'수집 결과를 확인합니다':status?.kind==='list'?'채널별 글 목록을 수집합니다':'본문과 댓글을 수집합니다'}</h1>{setupView&&<p>먼저 채널별 글 목록(URL)만 모읍니다. 수집 효율을 확인한 뒤 본문·댓글 수집을 시작합니다. 검색어에는 제품명을 붙이지 않습니다.</p>}</header>
-    {error&&<Banner tone="danger" actions={<Button onClick={()=>void action(async()=>{await refresh();if(!config)setRetry(v=>v+1);},true)}>다시 확인하기</Button>}>{error}</Banner>}{notice&&<Banner>{notice}</Banner>}
+    {(error||pollError)&&<Banner tone="danger" actions={<Button onClick={()=>void action(async()=>{await refresh();if(!config)setRetry(v=>v+1);},true)}>다시 확인하기</Button>}>{error||pollError}</Banner>}{notice&&<Banner>{notice}</Banner>}
     {!config||!status?<p role="status">처리 중…</p>:<>
     {session?.readonly&&<Banner>이 버전은 읽기 전용입니다.</Banner>}
     {added>0&&<Banner actions={<Button disabled={disabled||configChanged} onClick={()=>void action(async()=>{await startCrawlList(sid,true,session?.version);setSettings(false);})}>추가된 키워드만 수집</Button>}>기존 수집본 사용 중 · 추가된 키워드 {added}개</Banner>}
     {(status.status==='interrupted'||paused)&&<Banner tone="warning" actions={<Button disabled={disabled} onClick={()=>void action(async()=>{await resumeCrawl(sid,session?.version);setSettings(false);})}>{status.status==='interrupted'?'중단됨 · 이어서 진행':'이어서 진행'}</Button>}>{status.status==='interrupted'?'수집 워커가 중단되었습니다. 완료된 결과는 저장되어 있습니다. 이어서 진행하세요.':'일부 채널이 차단 또는 파싱 오류로 멈췄습니다. 채널 상태를 확인하고 이어서 진행하세요.'}</Banner>}
-    {setupView?<Settings config={config} onChange={setConfig} connections={connections} axes={axes} disabled={disabled}/>:gateView?<>
+    {setupView?<Settings config={config} onChange={setConfig} connections={connections} availableSources={status.available_sources} axes={axes} disabled={disabled}/>:gateView?<>
       <div className="crawl-columns"><InsightCard eyebrow="목록 신호" insight={`키워드 ${status.gate!.filter(r=>r.badges.length).length}개를 검토하세요`} interpretation={status.gate!.every(r=>r.listed===0)?'수집된 목록이 없습니다. 날짜 범위와 채널을 확인하고 목록을 다시 수집하세요.':'0건 · 저수율 · 고유 기여 낮음 배지를 확인하고 제외할 키워드를 선택하세요.'} evidence={[{label:'키워드',value:`${status.gate!.length}개`}]} nextAction={<Button disabled={disabled} onClick={()=>setSettings(true)}>설정으로 돌아가기</Button>}/><Card><h2 className="ds-t-card">상세 수집 예상</h2><StatGrid items={[{label:'대상 URL',value:status.estimate?.urls.toLocaleString()??'—'},{label:'예상 소요',value:status.estimate?`약 ${Math.ceil(status.estimate.minutes)}분`:'—'}]}/><p className="ds-t-caption">저장된 제외 목록 기준입니다. 중간에 멈춰도 이어서 진행합니다.</p></Card></div><GateTable rows={status.gate!} excluded={excluded} onChange={setExcluded} disabled={disabled}/>
     </>:<Progress status={status}/>}
     {INTERNAL_TOOLS&&status.snapshot_id&&<p className="ds-t-caption"><Badge>내부용</Badge> 스냅샷 {status.snapshot_id}</p>}
