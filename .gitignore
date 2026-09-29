@@ -72,3 +72,6 @@ data/
 # ========================
 *.log
 .harness/
+!.env.example
+backend/.venv/
+.superpowers/

@@ -8,3 +8,8 @@ voyageai
 pinecone-client
 scikit-learn
 gunicorn
+httpx
+selectolax
+crawl4ai
+yt-dlp
+pydantic>=2
