@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from dataclasses import asdict
 from datetime import datetime, timezone
 import importlib
+import inspect
 import json
 import os
 from pathlib import Path
@@ -101,10 +102,14 @@ class _Run:
             self.q.close()
             raise
         self.channels = {s: dict(status='running', attempts=0, parse_errors=0, blocked=0) for s in sources}
+        self.config = config
+        self.stop_reason = None
+        self.target_total = config.get('target_total') or 0
+        self.completed_docs = self.q.counts()['doc_count'] if kind == 'detail' else 0
         self.limiters = {}
         for s in sources:
             defaults = (2, 0) if s == 'youtube' else ((1, 1) if s in ('clien', 'ppomppu') else (4, 0))
-            opts = config.get('channel_limits', {}).get(s, {})
+            opts = config.get('perChannel', config.get('channel_limits', {})).get(s, {})
             self.limiters[s] = (limiters or {}).get(s) or ChannelLimiter(
                 opts.get('concurrency', defaults[0]), opts.get('min_interval_s', defaults[1]))
         self.pools = {s: ThreadPoolExecutor(max_workers=l.concurrency) for s, l in self.limiters.items()}
@@ -113,7 +118,27 @@ class _Run:
 
     def save(self):
         write_json(self.root / 'worker_state.json', dict(sid=self.sid, kind=self.kind,
-                   run_id=self.id, snapshot_id=self.snapshot, channels=self.channels))
+                   run_id=self.id, snapshot_id=self.snapshot, channels=self.channels,
+                   **({'stopReason': self.stop_reason} if self.stop_reason else {})))
+
+    def target_reached(self):
+        if self.target_total > 0 and self.completed_docs >= self.target_total:
+            self.stop_reason = 'target_reached'
+            return True
+        return False
+
+    def list_remaining(self, task):
+        opts = self.config.get('perChannel', self.config.get('channel_limits', {}))
+        caps = [opts.get(task.source, {}).get('max_per_keyword') or 0]
+        if task.source == 'youtube':
+            caps.append(self.config.get('youtube', {}).get('videos_per_keyword') or 0)
+        caps = [cap for cap in caps if cap > 0]
+        if not caps:
+            return None
+        listed = self.q.connection.execute(
+            'SELECT coalesce(sum(fetched),0) FROM list_tasks WHERE kw=? AND source=?',
+            (task.kw, task.source)).fetchone()[0]
+        return max(0, min(caps) - listed)
 
     def tick(self):
         now = time.monotonic()
@@ -221,12 +246,21 @@ def run_list(sid, *, collection=None, keywords=None, sources=None, filters=None,
                         for task in run.q.next_list_tasks(s, run.limiters[s].concurrency)]
                 if not jobs:
                     break
-                for task, page, error in run.execute(jobs, adapters, 'list', stop):
+                dispatch = []
+                for task in jobs:
+                    if run.list_remaining(task) == 0:
+                        run.q.record_list_page(task, [], None)
+                    else:
+                        dispatch.append(task)
+                for task, page, error in run.execute(dispatch, adapters, 'list', stop):
                     if error:
                         run.q.mark_list_failed(task, _error(error))
                         continue
-                    run.q.record_list_page(task, page.items, page.next_cursor)
-                    for item in page.items:
+                    remaining = run.list_remaining(task)
+                    items = page.items if remaining is None else page.items[:remaining]
+                    cursor = None if remaining is not None and len(items) >= remaining else page.next_cursor
+                    run.q.record_list_page(task, items, cursor)
+                    for item in items:
                         rule = check_list(dict(asdict(item), source=task.source), filters)
                         if rule:
                             # Discovery may encounter a previously filtered/shared URL.
@@ -281,13 +315,28 @@ def _detail_results(run, adapters, stop, batch, commit):
     """
     futures = {}
     running = dict.fromkeys(run.channels, 0)
+    fetch_options = {}
+    for source, adapter in adapters.items():
+        options = {}
+        max_comments = run.config.get('youtube', {}).get('max_comments') or 0
+        if source == 'youtube' and max_comments > 0:
+            # Optional adapter contract: fetch(item, *, max_comments=N), or
+            # **kwargs. Inspect before calling; never retry a fetch on TypeError.
+            try:
+                inspect.signature(adapter.fetch).bind(None, max_comments=max_comments)
+            except (TypeError, ValueError):
+                pass  # Legacy/uninspectable adapters keep their original call.
+            else:
+                options['max_comments'] = max_comments
+        fetch_options[source] = options
 
     def call(future, row, started):
         try:
             run.limiters[row.source].wait_start()
             started.append(time.monotonic())
             docs = adapters[row.source].fetch(
-                ListItem(row.url_norm, row.title, row.snippet, row.date, row.src_meta))
+                ListItem(row.url_norm, row.title, row.snippet, row.date, row.src_meta),
+                **fetch_options[row.source])
             if not isinstance(docs, list) or any(not isinstance(d, FetchedDoc) for d in docs):
                 raise AdapterParseError('Expected a list of FetchedDoc records')
             future.set_result(docs)
@@ -301,7 +350,7 @@ def _detail_results(run, adapters, stop, batch, commit):
                 for source, limiter in run.limiters.items())):
             commit()
         for source in run.channels:
-            while (not stop.is_set() and run.active(source)
+            while (not stop.is_set() and not run.target_reached() and run.active(source)
                    and running[source] < run.limiters[source].concurrency
                    and len(batch) + len(futures) < BATCH_SIZE):
                 rows = run.q.lease_urls(run.snapshot, 1, LEASE_SECONDS, sources=[source])
@@ -316,7 +365,7 @@ def _detail_results(run, adapters, stop, batch, commit):
                 running[source] += 1
                 threading.Thread(target=call, args=(future, row, started), daemon=True).start()
         if not futures:
-            if stop.is_set() or not _remaining(run):
+            if stop.is_set() or run.target_reached() or not _remaining(run):
                 break
             stop.wait(0.05)
             continue
@@ -397,10 +446,13 @@ def run_detail(sid, snapshot_id, *, collection=None, filters=None, limiters=None
                 level = 'snippet' if fallback or any(d.fetch_level == 'snippet' for d in docs) else 'full'
                 access = 'restricted' if any(d.access == 'restricted' for d in docs) else 'public'
                 batch[(row.url_norm, row.source)] = (row.url_norm, row.source, len(docs), last_error, level, access)
+                # Include accepted, uncommitted documents so refilling slots cannot
+                # run past the target while waiting for a completion transaction.
+                run.completed_docs += len(docs)
                 if len(batch) >= BATCH_SIZE:
                     commit()
             commit()
-            status = 'stopped' if stop.is_set() else 'done'
+            status = 'done' if run.target_reached() else ('stopped' if stop.is_set() else 'done')
     finally:
         # Never complete pending writes after fencing or another exception.
         try:

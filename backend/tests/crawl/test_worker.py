@@ -213,3 +213,103 @@ def test_hung_fetch_times_out_and_channel_continues(tmp_path, monkeypatch):
         assert len(calls) == 5
     finally:
         release.set()
+
+
+def write_limits(root, config):
+    (root / 'manifest.json').write_text(json.dumps({'config': config}))
+
+
+@pytest.mark.parametrize('config, expected', [
+    ({'perChannel': {'fixture': {'max_per_keyword': 5}, 'youtube': {'max_per_keyword': 7}}}, {'fixture': 5, 'youtube': 7}),
+    ({'youtube': {'videos_per_keyword': 5}}, {'fixture': 12, 'youtube': 5}),
+    ({'perChannel': {'youtube': {'max_per_keyword': 7}}, 'youtube': {'videos_per_keyword': 5}}, {'fixture': 12, 'youtube': 5}),
+    ({}, {'fixture': 12, 'youtube': 12}),
+    ({'perChannel': {'fixture': {'max_per_keyword': 0}}, 'youtube': {'videos_per_keyword': 0}}, {'fixture': 12, 'youtube': 12}),
+])
+def test_listing_limits_per_keyword_source(tmp_path, monkeypatch, config, expected):
+    from collections import Counter
+    from app.crawl.adapters.base import ListItem, ListPage
+    calls = Counter()
+    class Pages:
+        def __init__(self, source):
+            self.source = source
+        def list_page(self, kw, cursor):
+            calls[kw, self.source] += 1
+            start = int(cursor or 0)
+            return ListPage([ListItem(f'https://example.com/{kw}/{i}', '', '', None, {})
+                             for i in range(start, start + 4)],
+                            str(start + 4) if start < 8 else None, 12)
+    # Register the fake YouTube source through the worker's existing module hook.
+    (tmp_path / 'limit_adapter_hook.py').write_text(
+        'from app.crawl.adapters import REGISTRY\nREGISTRY["youtube"] = REGISTRY["fixture"]\n')
+    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.setenv('DCX_TEST_ADAPTER_MODULE', 'limit_adapter_hook')
+    monkeypatch.delitem(__import__('sys').modules, 'limit_adapter_hook', raising=False)
+    monkeypatch.setitem(REGISTRY, 'youtube', None)
+    monkeypatch.setitem(REGISTRY, 'fixture', lambda: Pages('youtube'))
+    worker._load_hook()
+    monkeypatch.setitem(REGISTRY, 'fixture', lambda: Pages('fixture'))
+    write_limits(tmp_path, config)
+    for _ in range(2):
+        worker.run_list('S', collection=tmp_path, keywords=['k1', 'k2'], sources=['fixture', 'youtube'],
+                        filters=FilterConfig(date_from=None, date_to=None))
+    with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+        for kw in ('k1', 'k2'):
+            for source, count in expected.items():
+                assert q.connection.execute('SELECT count(*) FROM url_hits WHERE kw=? AND source=?',
+                                            (kw, source)).fetchone()[0] == count
+                assert calls[kw, source] == (count + 3) // 4
+        assert not q.connection.execute("SELECT 1 FROM list_tasks WHERE status!='done'").fetchone()
+
+
+@pytest.mark.parametrize('accepts_option', [True, False])
+@pytest.mark.parametrize('limit', [None, 0, 17])
+def test_youtube_max_comments_option(tmp_path, monkeypatch, accepts_option, limit):
+    from app.crawl.adapters.base import FetchedDoc
+    snap = seed_channels(tmp_path, [('youtube', 2)])
+    received = []
+    class Adapter:
+        def fetch(self, item, *, max_comments=None):
+            received.append(max_comments)
+            return [FetchedDoc('', 'body', [], None, {}, 'public', None)]
+    class Legacy:
+        def fetch(self, item):
+            return Adapter().fetch(item)
+    monkeypatch.setitem(REGISTRY, 'youtube', Adapter if accepts_option else Legacy)
+    write_limits(tmp_path, {'youtube': {} if limit is None else {'max_comments': limit}})
+    detail(tmp_path, snap)
+    assert received == [17 if accepts_option and limit == 17 else None] * 2
+    assert len(list(read_docs(tmp_path / 'docs'))) == 2
+
+
+@pytest.mark.parametrize('target', [None, 0, 13])
+def test_target_total_counts_documents_and_drains_calls(tmp_path, monkeypatch, target):
+    from app.crawl.adapters.base import FetchedDoc
+    from app.crawl.ratelimit import ChannelLimiter
+    snap = seed_channels(tmp_path, [('fixture', 90)])
+    calls = []
+    class Adapter:
+        def fetch(self, item):
+            calls.append(item.url)
+            return [FetchedDoc('', 'body', [], None, {}, 'public', None, str(i)) for i in range(3)]
+    monkeypatch.setitem(REGISTRY, 'fixture', Adapter)
+    write_limits(tmp_path, {} if target is None else {'target_total': target})
+    detail(tmp_path, snap, limiters={'fixture': ChannelLimiter(4, 0)})
+    with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+        counts = q.counts()
+        assert counts['doc_count'] == len(list(read_docs(tmp_path / 'docs'))) == len(calls) * 3
+        assert q.connection.execute("SELECT status FROM runs ORDER BY started_at DESC LIMIT 1").fetchone()[0] == 'done'
+        assert not q.connection.execute("SELECT 1 FROM urls WHERE status NOT IN ('pending','done')").fetchone()
+        if target:
+            assert target <= counts['doc_count'] <= target + worker.BATCH_SIZE
+            assert counts['pending'] > 0
+            assert not q.connection.execute("SELECT 1 FROM urls WHERE status='pending' AND attempts!=0").fetchone()
+        else:
+            assert counts['doc_count'] == 270
+    saved = json.loads((tmp_path / 'worker_state.json').read_text())
+    assert saved.get('stopReason') == ('target_reached' if target else None)
+    if target:
+        before = len(calls)
+        detail(tmp_path, snap)
+        assert len(calls) == before
+        assert json.loads((tmp_path / 'worker_state.json').read_text())['stopReason'] == 'target_reached'
