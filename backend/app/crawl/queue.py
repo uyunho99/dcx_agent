@@ -313,11 +313,16 @@ class CrawlQueue:
             db.execute('INSERT OR IGNORE INTO url_hits VALUES (?,?,?,?,?,?)', row[:5] + (row[9],))
         return added
 
-    def record_list_page(self, task: ListTask, items: list[ListItemLike], next_cursor: str | None):
+    def record_list_page(self, task: ListTask, items: list[ListItemLike], next_cursor: str | None, *, filter_rules=None):
         prepared = self._prepare(items, task)
         with self._write() as db:
             self._list_owner(db, task)
             self._insert_urls(db, prepared)
+            for row, rule in zip(prepared, filter_rules or [None] * len(prepared)):
+                if rule:
+                    db.execute("""UPDATE urls SET status='filtered',filter_rule=?,last_error=?
+                        WHERE url_norm=? AND source=? AND status='pending' AND attempts=0""",
+                        (rule, rule, row[0], row[1]))
             db.execute('''UPDATE list_tasks SET status='done', fetched=?, attempts=attempts+1,
                 last_error=NULL,lease_run_id=NULL WHERE kw=? AND source=? AND cursor=?''',
                        (len(prepared), task.kw, task.source, task.cursor or ''))

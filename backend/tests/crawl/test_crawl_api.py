@@ -85,7 +85,7 @@ def test_gate_exclusions_survive_config_save_then_detail(env):
 def test_report_matrix_fields(env):
     root, _ = prepared(env)
     with closing(CrawlQueue(root / 'queue.sqlite')) as q:
-        assert set(report.build_report(q)['matrix']['alpha']['fixture']) == {'listed', 'filtered', 'excluded', 'full', 'snippet', 'restricted', 'unique'}
+        assert set(report.build_report(q)['matrix']['alpha']['fixture']) == {'listed', 'filtered', 'excluded', 'full', 'snippet', 'restricted', 'unique', 'urls_listed', 'urls_done'}
 
 
 def test_status_interrupted_when_pid_dead(env, monkeypatch):
@@ -134,6 +134,7 @@ def test_report_built_on_phase_end_only(env):
     assert not (root / 'report.json').exists()
     with closing(CrawlQueue(root / 'queue.sqlite')) as q:
         q.connection.execute("UPDATE runs SET status='done'")
+        q.connection.execute("UPDATE urls SET status='done'")
     control.status('S')
     before = (root / 'report.json').stat().st_mtime_ns
     control.status('S')

@@ -276,7 +276,7 @@ def test_sigterm_commits_current_work(tmp_path, corpus, monkeypatch):
 def test_cli_missing_collection_is_clear(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(worker, 'load_session', lambda sid: {})
     assert worker.main(['list', '--sid', 'S']) == 1
-    assert 'no collectionId' in capsys.readouterr().err
+    assert capsys.readouterr().err == 'Worker error: ValueError\n'
 
 
 def test_active_collection_location(tmp_path, corpus, monkeypatch):

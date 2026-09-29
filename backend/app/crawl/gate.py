@@ -1,10 +1,9 @@
 """P1 review aggregates, including shared keyword discoveries."""
 from contextlib import closing
 from dataclasses import dataclass
+from app.config import settings
 from app.crawl.queue import CrawlQueue
 
-GATE_LOW_COUNT = 10
-GATE_LOW_UNIQUE = 0.2
 
 
 @dataclass
@@ -17,9 +16,10 @@ class GateRow:
     after_filter: int
     unique_ratio: float
     badges: list[str]
+    count_unit: str = 'urls'
 
 
-def matrix(queue):
+def matrix(queue, *, documents=False):
     with closing(CrawlQueue.open_readonly(queue.path)) as db:
         db.execute('BEGIN')
         rows = db.execute('''SELECT h.kw,h.source,count(*) listed,
@@ -37,6 +37,17 @@ def matrix(queue):
                 ['listed', 'filtered', 'excluded', 'full', 'snippet', 'restricted', 'unique'], 0)
         for row in rows:
             result.setdefault(row['kw'], {})[row['source']] = {k: row[k] for k in row.keys() if k not in ('kw', 'source')}
+        if documents:
+            for sources in result.values():
+                for cell in sources.values():
+                    cell.update(full=0, snippet=0, restricted=0, urls_listed=cell['listed'], urls_done=0)
+            for row in db.execute("""SELECT h.kw,h.source,
+                sum(CASE WHEN u.status='done' AND u.fetch_level='full' THEN u.doc_count ELSE 0 END) AS "full",
+                sum(CASE WHEN u.status='done' AND u.fetch_level='snippet' THEN u.doc_count ELSE 0 END) snippet,
+                sum(CASE WHEN u.status='done' AND u.access='restricted' THEN u.doc_count ELSE 0 END) restricted,
+                sum(u.status='done') urls_done
+                FROM url_hits h JOIN urls u USING(url_norm,source) GROUP BY h.kw,h.source"""):
+                result[row['kw']][row['source']].update({k: row[k] for k in ('full','snippet','restricted','urls_done')})
         return result
 
 
@@ -50,7 +61,7 @@ def compute_gate(queue):
         listed = sum(v['listed'] for v in sources.values())
         after = listed - sum(v['filtered'] for v in sources.values())
         ratio = sum(v['unique'] for v in sources.values()) / listed if listed else 0
-        badges = (['zero'] if listed == 0 else []) + (['low'] if after < GATE_LOW_COUNT else []) + (['low_unique'] if listed and ratio < GATE_LOW_UNIQUE else [])
+        badges = (['zero'] if listed == 0 else []) + (['low'] if after < settings.gate_low_count else []) + (['low_unique'] if listed and ratio < settings.gate_low_unique else [])
         result.append(GateRow(m['kw'], m['kw_axis'], m['kw_sub'], sources, listed, after, ratio, badges))
     return sorted(result, key=lambda r: not bool(r.badges))
 

@@ -23,7 +23,7 @@ from app.context import store
 from app.crawl.adapters import available_sources
 from app.crawl.filters import DEFAULT_AD_WORDS, DEFAULT_EXCLUDE_SOURCES
 from app.keywords.normalize import norm_key
-from app.crawl.queue import CrawlQueue, KwMeta
+from app.crawl.queue import CrawlQueue, KwMeta, STALE_AFTER_S
 from app.crawl import gate, report
 
 
@@ -62,12 +62,20 @@ def collection_lock(root):
             fcntl.flock(stream, fcntl.LOCK_UN)
 
 
-def _mutate(sid, callback, version=None):
+def _mutate(sid, callback, version=None, confirm_stage=None):
     with store.locked(sid):
         session = store.assert_writable(sid, version)
         patch, result = callback(session)
         if patch:
-            store._update_locked(sid, patch)
+            if confirm_stage:
+                try:
+                    store._update_locked(sid, patch, confirm_stage=confirm_stage)
+                except TypeError as exc:
+                    if 'confirm_stage' not in str(exc):
+                        raise
+                    store._update_locked(sid, patch)
+            else:
+                store._update_locked(sid, patch)
         return result
 
 
@@ -77,7 +85,7 @@ def _run_state(run):
     if run['status'] == 'done':
         return 'done'
     if (run['status'] in ('running', 'starting')
-            and run['heartbeat_at'] >= time.time() - 60 and pid_alive(run['pid'])):
+            and run['heartbeat_at'] >= time.time() - (30 if run['status'] == 'starting' else STALE_AFTER_S) and pid_alive(run['pid'])):
         return 'running'
     return 'interrupted'
 
@@ -97,7 +105,18 @@ def _live(queue):
         rows = db.execute('''SELECT * FROM runs r WHERE status IN ('running','starting')
             AND (status!='starting' OR NOT EXISTS(SELECT 1 FROM runs w WHERE w.pid=r.pid
                 AND w.kind=r.kind AND w.status!='starting' AND w.started_at>=r.started_at))''').fetchall()
-    return next((dict(r) for r in rows if pid_alive(r['pid'])), None)
+    for row in rows:
+        if _run_state(row) == 'running':
+            return dict(row)
+        if pid_alive(row['pid']):
+            try:
+                command = subprocess.run(['ps', '-p', str(row['pid']), '-o', 'args='],
+                                         capture_output=True, text=True, timeout=2).stdout
+                if 'app.crawl.worker' in command:
+                    os.kill(row['pid'], signal.SIGTERM)
+            except (OSError, subprocess.SubprocessError):
+                pass
+    return None
 
 
 def _spawn(sid, root, queue, kind, snapshot=None):
@@ -152,18 +171,18 @@ def start_list(sid, mode=None, version=None):
             meta = store.read_json(base / ancestor / 'meta.json')
             if not meta:
                 raise store.StoreError('Parent collection not found', 404, 'not_found')
-            known.update(k['kw'] for k in meta['keywords'])
+            known.update(norm_key(k['kw']) for k in meta['keywords'])
             ancestor = meta['parent']
         keywords = []
         for kw in session.get('keywords', []):
             text = kw.get('kw', kw.get('text', ''))
-            if kw.get('status') == 'approved' and text and text not in known:
-                keywords.append(dict(kw, kw=text))
-                known.add(text)
+            if kw.get('status') == 'approved' and text and norm_key(text) not in known:
+                keywords.append(dict(kw, kw=text, crawlExcluded=False))
+                known.add(norm_key(text))
         if not keywords:
             raise store.StoreError('No approved new keywords', 422, 'validation')
         cfg = session.get('crawlConfig', {})
-        sources = cfg.get('channels', cfg.get('sources', available_sources()))
+        sources = cfg.get('channels', cfg.get('sources', [s for s in session.get('projectContext', {}).get('channels', []) if s in available_sources()]))
         if not sources or set(sources) - set(available_sources()):
             raise store.StoreError('Sources are unavailable', 422, 'validation')
         number = max([int(p.name[1:]) for p in base.iterdir() if re.fullmatch(r'c[1-9][0-9]*', p.name)] or [0]) + 1
@@ -178,12 +197,12 @@ def start_list(sid, mode=None, version=None):
             if source in cfg:
                 filters[target] = cfg[source]
         filters['bk'] = session.get('projectContext', {}).get('bk', '')
-        config = dict(cfg, filters=filters, channel_limits=cfg.get('perChannel', {}))
+        config = dict(cfg, gateExclusions=[], filters=filters, channel_limits=cfg.get('perChannel', {}))
         store.write_json(root / 'manifest.json', dict(meta, channels=sources, config=config, snapshotId=None))
         with collection_lock(root), closing(CrawlQueue(root / 'queue.sqlite')) as queue:
             queue.add_list_tasks([KwMeta(k['kw'], k.get('axis', ''), k.get('sub', ''), i) for i,k in enumerate(keywords)], sources)
-        return {'collectionId': root.name, 'step': 'crawl-list', 'crawlConfig': {'gateExclusions': []}}, {'collectionId': root.name, 'version': session['version']}
-    created = _mutate(sid, perform, version)
+        return {'collectionId': root.name, 'step': 'crawl-list', 'crawlConfig': {'gateExclusions': []}, 'keywords': [dict(k, crawlExcluded=False) for k in session.get('keywords', [])]}, {'collectionId': root.name, 'version': session['version']}
+    created = _mutate(sid, perform, version, confirm_stage='stage2')
     # Persist collectionId before launch so both the worker and session readers
     # observe the new collection. Revalidate after reacquiring the session lock.
     def launch(session):
@@ -225,7 +244,7 @@ def start_detail(sid, snapshot_id, version=None):
     return _mutate(sid, perform, version)
 
 
-def resume(sid, version=None):
+def resume(sid, version=None, min_interval_s=None):
     def perform(session):
         root = collection_dir(sid)
         with collection_lock(root), closing(CrawlQueue(root / 'queue.sqlite')) as queue:
@@ -235,6 +254,30 @@ def resume(sid, version=None):
             if not _live(queue):
                 queue.reclaim_expired_leases()
             manifest = store.read_json(root / 'manifest.json')
+            if not min_interval_s and not _live(queue):
+                state = store.read_json(root / 'worker_state.json') or {}
+                for channel in state.get('channels', {}).values():
+                    if channel.get('status', '').startswith('paused'):
+                        channel.update(status='running', attempts=0, blocked=0, parse_errors=0)
+                state['paused_channels'] = []
+                state.pop('stopReason', None)
+                store.write_json(root / 'worker_state.json', state)
+            if min_interval_s:
+                if set(min_interval_s) - set(manifest['channels']):
+                    raise store.StoreError('Unknown resume channel', 422, 'validation')
+                if _live(queue):
+                    raise store.StoreError('Worker is already running')
+                config = manifest.setdefault('config', {})
+                limits = config.setdefault('perChannel', deepcopy(config.get('channel_limits', {})))
+                state = store.read_json(root / 'worker_state.json') or {}
+                for source, interval in min_interval_s.items():
+                    limits.setdefault(source, {})['min_interval_s'] = interval
+                    state.get('channels', {}).get(source, {}).update(status='running', attempts=0, blocked=0, parse_errors=0)
+                config['channel_limits'] = deepcopy(limits)
+                state['paused_channels'] = [s for s, c in state.get('channels', {}).items() if c['status'].startswith('paused')]
+                state.pop('stopReason', None)
+                store.write_json(root / 'manifest.json', manifest)
+                store.write_json(root / 'worker_state.json', state)
             result = _spawn(sid, root, queue, run['kind'], manifest.get('snapshotId'))
         return {'step': 'crawl-' + run['kind']}, result
     return _mutate(sid, perform, version)
@@ -307,6 +350,7 @@ def status(sid):
     queue = ReadQueue(root / 'queue.sqlite')
     run = latest_run(queue)
     state = _run_state(run)
+    worker_state = store.read_json(root / 'worker_state.json') or {}
     p = report.progress(queue)
     with closing(CrawlQueue.open_readonly(queue.path)) as db:
         snapshot = db.execute('SELECT snapshot_id FROM snapshots ORDER BY created_at DESC LIMIT 1').fetchone()
@@ -330,7 +374,8 @@ def status(sid):
                 if exc.status != 409:
                     raise
     return dict(**settings_payload, status=state, kind=run['kind'] if run else None, collectionId=root.name,
-                progress=p, channels=p['channels'], snapshot_id=snapshot[0] if snapshot else None,
+                progress=p, channels=p['channels'], paused_channels=worker_state.get('paused_channels', []),
+                stopReason=worker_state.get('stopReason'), snapshot_id=snapshot[0] if snapshot else None,
                 gate=table.get('rows') if isinstance(table, dict) else table,
                 estimate=table.get('estimate') if isinstance(table, dict) else None,
                 report=result, updatedAt=datetime.fromtimestamp(run['heartbeat_at'], timezone.utc).isoformat() if run else session.get('updatedAt'))
@@ -368,11 +413,12 @@ def save_gate(sid, exclusions, version=None):
             run = latest_run(ReadQueue(root / 'queue.sqlite'))
             if not run or run['kind'] != 'list' or run['status'] != 'done':
                 raise store.StoreError('Gate is editable only after list completion')
-            known = {k['kw'] for k in store.read_json(root / 'meta.json')['keywords']}
-            if set(exclusions) - known:
+            known = {norm_key(k['kw']): k['kw'] for k in store.read_json(root / 'meta.json')['keywords']}
+            if {norm_key(k) for k in exclusions} - known.keys():
                 raise store.StoreError('Unknown gate keyword', 422, 'validation')
-        keywords = [dict(k, crawlExcluded=k.get('kw', k.get('text')) in exclusions) for k in session.get('keywords', [])]
-        return {'crawlConfig': {'gateExclusions': exclusions}, 'keywords': keywords, 'step': 'crawl-gate'}, {'status': 'ok', 'exclusions': exclusions}
+            canonical = list(dict.fromkeys(known[norm_key(k)] for k in exclusions))
+        keywords = [dict(k, crawlExcluded=norm_key(k.get('kw', k.get('text', ''))) in {norm_key(e) for e in canonical}) for k in session.get('keywords', [])]
+        return {'crawlConfig': {'gateExclusions': canonical}, 'keywords': keywords, 'step': 'crawl-gate'}, {'status': 'ok', 'exclusions': canonical}
     return _mutate(sid, perform, version)
 
 
@@ -396,3 +442,22 @@ def save_config(sid, config, version=None):
             replacement['gateExclusions'] = current['gateExclusions']
         return {'crawlConfig': _Replacement(replacement)}, {'status': 'ok', 'crawlConfig': replacement}
     return _mutate(sid, perform, version)
+
+
+def phase_state(sid):
+    """Read-only version guard; list completion still awaits detail collection."""
+    import sqlite3
+    session = store.load_session(sid)
+    if not session or not session.get('collectionId'):
+        return 'none'
+    try:
+        root = collection_dir(sid)
+        queue = ReadQueue(root / 'queue.sqlite')
+        run = latest_run(queue)
+        if _run_state(run) == 'running':
+            return 'running'
+        if report.can_finalize(queue, run):
+            return 'done'
+        return 'unfinished'
+    except (OSError, sqlite3.Error):
+        return 'unfinished'

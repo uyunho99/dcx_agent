@@ -67,7 +67,7 @@ def test_fetch_failure_falls_back_to_snippet(tmp_path, corpus, monkeypatch):
     assert all(d['fetch_level'] == 'snippet' for d in docs)
     q = CrawlQueue(tmp_path / 'queue.sqlite')
     assert q.counts()['done'] == 80
-    assert all(r[0] == 'OSError: offline' for r in q.connection.execute('SELECT last_error FROM urls'))
+    assert all(r[0] == 'OSError' for r in q.connection.execute('SELECT last_error FROM urls'))
     q.close()
 
 
@@ -103,7 +103,7 @@ def test_list_dropped_invalid_url(tmp_path, monkeypatch):
             return ListPage([ListItem('', '광고', '', None, {})], None, 1)
     original = CrawlQueue.record_list_page
     monkeypatch.setattr(CrawlQueue, 'record_list_page',
-                        lambda self, task, items, cursor: original(self, task, [], cursor))
+                        lambda self, task, items, cursor, **kwargs: original(self, task, [], cursor))
     monkeypatch.setitem(REGISTRY, 'fixture', Invalid)
     assert setup_list(tmp_path)
 

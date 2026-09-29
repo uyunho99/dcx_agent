@@ -20,7 +20,8 @@ import threading
 import time
 
 from app.config import settings
-from app.context.store import load_session, write_json
+from app.crawl.errors import safe_error
+from app.context.store import load_session, read_json, write_json
 from app.crawl.adapters import REGISTRY, available_sources
 from app.crawl.adapters.base import AdapterBlocked, FetchedDoc, ListItem, ListPage
 from app.crawl.filters import FilterConfig, check_doc, check_list
@@ -101,7 +102,12 @@ class _Run:
         except BaseException:
             self.q.close()
             raise
+        previous = read_json(root / 'worker_state.json') or {}
         self.channels = {s: dict(status='running', attempts=0, parse_errors=0, blocked=0) for s in sources}
+        if previous.get('kind') == kind:
+            for source, channel in previous.get('channels', {}).items():
+                if source in self.channels and channel.get('status', '').startswith('paused'):
+                    self.channels[source] = channel
         self.config = config
         self.stop_reason = None
         self.target_total = config.get('target_total') or 0
@@ -119,6 +125,7 @@ class _Run:
     def save(self):
         write_json(self.root / 'worker_state.json', dict(sid=self.sid, kind=self.kind,
                    run_id=self.id, snapshot_id=self.snapshot, channels=self.channels,
+                   paused_channels=[s for s, c in self.channels.items() if c['status'].startswith('paused')],
                    **({'stopReason': self.stop_reason} if self.stop_reason else {})))
 
     def target_reached(self):
@@ -209,6 +216,18 @@ class _Run:
                 yield job, result, error
 
     def close(self, status):
+        if status == 'done' and self.stop_reason != 'target_reached':
+            if self.kind == 'list':
+                pending = self.q.connection.execute(
+                    "SELECT 1 FROM list_tasks WHERE status IN ('pending','running','leased') LIMIT 1").fetchone()
+            else:
+                pending = self.q.connection.execute(
+                    "SELECT 1 FROM urls JOIN snapshot_urls USING(url_norm,source) "
+                    "WHERE snapshot_id=? AND status IN ('pending','leased') LIMIT 1",
+                    (self.snapshot,)).fetchone()
+            if pending:
+                status = 'paused'
+                self.stop_reason = 'pending_channels'
         try:
             self.q.finish_run(self.id, status)
             for c in self.channels.values():
@@ -222,7 +241,7 @@ class _Run:
 
 
 def _error(exc):
-    return f'{type(exc).__name__}: {exc}'
+    return safe_error(exc)
 
 
 def run_list(sid, *, collection=None, keywords=None, sources=None, filters=None, limiters=None):
@@ -259,15 +278,8 @@ def run_list(sid, *, collection=None, keywords=None, sources=None, filters=None,
                     remaining = run.list_remaining(task)
                     items = page.items if remaining is None else page.items[:remaining]
                     cursor = None if remaining is not None and len(items) >= remaining else page.next_cursor
-                    run.q.record_list_page(task, items, cursor)
-                    for item in items:
-                        rule = check_list(dict(asdict(item), source=task.source), filters)
-                        if rule:
-                            # Discovery may encounter a previously filtered/shared URL.
-                            row = run.q.connection.execute('SELECT status,attempts FROM urls WHERE url_norm=? AND source=?',
-                                (normalize_url(item.url, task.source), task.source)).fetchone()
-                            if row is not None and row['status'] == 'pending' and row['attempts'] == 0:
-                                run.q.mark_filtered(normalize_url(item.url, task.source), task.source, rule)
+                    rules = [check_list(dict(asdict(item), source=task.source), filters) for item in items]
+                    run.q.record_list_page(task, items, cursor, filter_rules=rules)
             run.snapshot = run.q.take_snapshot()
             status = 'stopped' if stop.is_set() else 'done'
             if not stop.is_set():
@@ -414,7 +426,7 @@ def run_detail(sid, snapshot_id, *, collection=None, filters=None, limiters=None
         run.q.lease_urls(snapshot_id, 0, LEASE_SECONDS)  # Validate snapshot, apply exclusions.
         with _stop_event() as stop:
             for row, fetched, error in _detail_results(run, adapters, stop, batch, commit):
-                last_error = row.last_error
+                last_error = safe_error(row.last_error) if row.last_error else None
                 if error:
                     last_error = _error(error)
                     result = run.q.mark_failed_attempt(row.url_norm, row.source, last_error,

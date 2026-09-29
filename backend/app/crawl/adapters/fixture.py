@@ -13,18 +13,19 @@ _CORPUS_CACHE: dict[tuple[Path, int], list[str]] = {}
 _CACHE_LOCK = Lock()
 
 
-def _row_date(row: int) -> str:
-    return (date(2025, 1, 1) + timedelta(days=row)).isoformat()
+def _row_date(row: int, today: date | None = None) -> str:
+    return ((today or date.today()) - timedelta(days=364) + timedelta(days=row % 365)).isoformat()
 
 
 class FixtureAdapter:
     source = "fixture"
 
-    def __init__(self, corpus_path: str | Path, page_size: int = 100):
+    def __init__(self, corpus_path: str | Path, page_size: int = 100, *, today: date | None = None):
         if page_size <= 0:
             raise ValueError("page_size must be positive")
         self.corpus_path = corpus_path
         self.page_size = page_size
+        self.today = today or date.today()
         self._reviews: list[str] | None = None
 
     def is_available(self) -> bool:
@@ -60,7 +61,7 @@ class FixtureAdapter:
                 url=f"fixture://aircon/{row}",
                 title=review[:30],
                 snippet=review[:30],
-                date=_row_date(row),
+                date=_row_date(row, self.today),
                 src_meta={"row": row},
             )
             for row, review in matches[start:end]
@@ -79,7 +80,7 @@ class FixtureAdapter:
             title=body[:30],
             body=body,
             comments=[],
-            date=_row_date(row),
+            date=_row_date(row, self.today),
             src_meta={"row": row},
             access="public",
             author_raw=None,

@@ -57,11 +57,11 @@ def test_query_is_keyword_only(corpus):
 
 def test_fetch_returns_body(corpus):
     path, reviews = corpus
-    adapter = FixtureAdapter(path)
+    adapter = FixtureAdapter(path, today=date(2026, 9, 29))
     for row, item in enumerate(adapter.list_page("", None).items):
         assert item.url == f"fixture://aircon/{row}"
         assert item.title == reviews[row][:30]
-        assert item.date == (date(2025, 1, 1) + timedelta(days=row)).isoformat()
+        assert item.date == (date(2026, 9, 29) - timedelta(days=364) + timedelta(days=row % 365)).isoformat()
         assert item.src_meta == {"row": row}
         documents = adapter.fetch(item)
         assert len(documents) == 1

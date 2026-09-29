@@ -2,6 +2,7 @@
 from contextlib import closing
 import time
 from app.context import store
+from app.crawl.errors import safe_error
 from app.crawl.gate import matrix
 from app.crawl.queue import CrawlQueue
 
@@ -26,17 +27,19 @@ def progress(queue):
 
 
 def build_report(queue):
-    cells = matrix(queue)
+    cells = matrix(queue, documents=True)
     p = progress(queue)
     with closing(CrawlQueue.open_readonly(queue.path)) as db:
         totals = dict(db.execute('SELECT status,count(*) FROM urls GROUP BY status'))
         totals['total'] = sum(totals.values())
+        totals['urls_listed'] = totals['total']
+        totals['urls_done'] = totals.get('done', 0)
         totals['doc_count'] = db.execute("SELECT coalesce(sum(doc_count),0) FROM urls WHERE status='done'").fetchone()[0]
         run = db.execute("SELECT * FROM runs WHERE kind='detail' ORDER BY started_at DESC LIMIT 1").fetchone()
         snap = db.execute('SELECT snapshot_id FROM snapshots ORDER BY created_at DESC LIMIT 1').fetchone()
         distribution = {}
         for source, docs in db.execute('SELECT source,sum(doc_count) FROM urls GROUP BY source'):
-            errors = [{'error': r[0], 'count': r[1]} for r in db.execute('SELECT last_error,count(*) FROM urls WHERE source=? AND last_error IS NOT NULL GROUP BY last_error ORDER BY count(*) DESC LIMIT 5', (source,))]
+            errors = [{'error': safe_error(r[0]), 'count': r[1]} for r in db.execute('SELECT last_error,count(*) FROM urls WHERE source=? AND last_error IS NOT NULL GROUP BY last_error ORDER BY count(*) DESC LIMIT 5', (source,))]
             distribution[source] = dict(docs=docs, share=docs / totals['doc_count'] if totals['doc_count'] else 0,
                 status=p['channels'].get(source, {}).get('status', 'idle'), errors_top=errors)
     state = store.read_json(queue.path.parent / 'worker_state.json') or {}
@@ -54,7 +57,7 @@ def _write_report_locked(root):
         return store.read_json(path)
     queue = ReadQueue(root / 'queue.sqlite')
     run = latest_run(queue)
-    if not run or run['kind'] != 'detail' or run['status'] != 'done':
+    if not can_finalize(queue, run):
         return None
     result = build_report(queue)
     store.write_json(path, result)
@@ -70,3 +73,18 @@ def write_report(sid):
     root = collection_dir(sid)
     with collection_lock(root):
         return _write_report_locked(root)
+
+
+def can_finalize(queue, run):
+    if not run or run['kind'] != 'detail' or run['status'] != 'done':
+        return False
+    state = store.read_json(queue.path.parent / 'worker_state.json') or {}
+    if state.get('stopReason') == 'target_reached':
+        return True
+    manifest = store.read_json(queue.path.parent / 'manifest.json') or {}
+    snapshot = state.get('snapshot_id') or manifest.get('snapshotId')
+    with closing(CrawlQueue.open_readonly(queue.path)) as db:
+        if snapshot:
+            return not db.execute("""SELECT 1 FROM urls JOIN snapshot_urls USING(url_norm,source)
+                WHERE snapshot_id=? AND status IN ('pending','leased') LIMIT 1""", (snapshot,)).fetchone()
+        return not db.execute("SELECT 1 FROM urls WHERE status IN ('pending','leased') LIMIT 1").fetchone()

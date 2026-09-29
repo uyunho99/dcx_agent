@@ -67,7 +67,7 @@ def offline(data_dir, monkeypatch):
     return pending
 
 
-def full_flow(client, offline):
+def full_flow(client, offline, default_config=False):
     responses = []
     def request(method, path, **kwargs):
         response = client.request(method, path, **kwargs)
@@ -90,7 +90,7 @@ def full_flow(client, offline):
         request('POST', f'/keywords/{sid}/rounds/{n}/commit', json={
             'gen': state['gen'], 'decisions': [{'id': k['id'], 'status': 'approved'} for k in state['keywords']]})
     request('PUT', f'/crawl/{sid}/config', json={
-        'channels': ['fixture'], 'dateFrom': None, 'dateTo': None,
+        'channels': ['fixture'], **({} if default_config else {'dateFrom': None, 'dateTo': None}),
         'perChannel': {'fixture': {'concurrency': 4, 'min_interval_s': 0}}})
     request('POST', f'/crawl/{sid}/list')
     work()
@@ -356,3 +356,13 @@ def test_missing_manifest_status_hides_path(client, data_dir):
 def test_context_router_has_no_duplicate_integrations():
     from app.routers.context import router
     assert not any(route.path == '/integrations' for route in router.routes)
+
+
+def test_default_crawl_config_reaches_preprocess(client, offline):
+    # Independent of shared corpus fixtures edited by other work waves.
+    import csv
+    with Path(settings.fixture_corpus_path).open('w', newline='') as stream:
+        writer = csv.writer(stream)
+        writer.writerow(['review'])
+        writer.writerows([[f'냉방1단어0 에어컨 사용 경험을 기록합니다 {i}'] for i in range(200)])
+    full_flow(client, offline, default_config=True)

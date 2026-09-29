@@ -1,4 +1,5 @@
 """Version-aware crawl API with the shared v2 error envelope."""
+from typing import Annotated
 from datetime import date, timedelta
 from fastapi import APIRouter
 from fastapi.exceptions import RequestValidationError
@@ -98,9 +99,14 @@ def status(sid: str):
     return control.status(sid)
 
 
+class Resume(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    min_interval_s: dict[str, Annotated[float, Field(ge=0, allow_inf_nan=False)]] = Field(default_factory=dict)
+
+
 @router.post('/{sid}/resume')
-def resume(sid: str, version: str | None = None):
-    return control.resume(sid, version)
+def resume(sid: str, body: Resume | None = None, version: str | None = None):
+    return control.resume(sid, version, body.min_interval_s if body else None)
 
 
 @router.post('/{sid}/stop')
