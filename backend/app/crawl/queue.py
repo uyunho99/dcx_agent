@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS urls (
  date TEXT, src_meta_json TEXT NOT NULL,
  status TEXT NOT NULL DEFAULT 'pending'
  CHECK(status IN ('pending','leased','done','failed','excluded','filtered')),
- lease_until REAL, lease_run_id TEXT, attempts INTEGER NOT NULL DEFAULT 0,
+ lease_until REAL, lease_run_id TEXT, lease_snapshot_id TEXT, attempts INTEGER NOT NULL DEFAULT 0,
  last_error TEXT, doc_count INTEGER NOT NULL DEFAULT 0, first_seen_kw_order INTEGER NOT NULL,
  fetch_level TEXT, access TEXT, retry_at REAL, filter_rule TEXT,
  exhausted INTEGER NOT NULL DEFAULT 0, max_attempts INTEGER NOT NULL DEFAULT 3,
@@ -183,6 +183,8 @@ class CrawlQueue:
                 db.execute('CREATE INDEX list_tasks_status ON list_tasks(status)')
             if 'exhausted' not in {r['name'] for r in db.execute('PRAGMA table_info(urls)')}:
                 db.execute('ALTER TABLE urls ADD COLUMN exhausted INTEGER NOT NULL DEFAULT 0')
+            if 'lease_snapshot_id' not in {r['name'] for r in db.execute('PRAGMA table_info(urls)')}:
+                db.execute('ALTER TABLE urls ADD COLUMN lease_snapshot_id TEXT')
             if 'max_attempts' not in {r['name'] for r in db.execute('PRAGMA table_info(urls)')}:
                 db.execute('ALTER TABLE urls ADD COLUMN max_attempts INTEGER NOT NULL DEFAULT 3')
 
@@ -345,6 +347,7 @@ class CrawlQueue:
         with self._write() as db:
             self._require_run(db)
             self._snapshot(db, snapshot_id)
+            self._apply_exclusions(db, snapshot_id)
             rows = db.execute('''SELECT u.*, h.kw AS hit_kw, h.kw_axis AS hit_axis,
                     h.kw_sub AS hit_sub, h.kw_order AS hit_order
                 FROM urls u JOIN snapshot_urls s USING(url_norm,source)
@@ -361,9 +364,9 @@ class CrawlQueue:
                 exhausted = bool(row['exhausted'] or row['attempts'] >= row['max_attempts'])
                 attempts = row['attempts'] if exhausted else row['attempts'] + 1
                 db.execute('''UPDATE urls SET status='leased', lease_until=?, lease_run_id=?,
-                    attempts=?, exhausted=?, kw=?, kw_axis=?, kw_sub=?, retry_at=NULL
+                    attempts=?, exhausted=?, kw=?, kw_axis=?, kw_sub=?, retry_at=NULL, lease_snapshot_id=?
                     WHERE url_norm=? AND source=?''',
-                           (now + lease_s, self.run_id, attempts, exhausted, row['hit_kw'], row['hit_axis'], row['hit_sub'],
+                           (now + lease_s, self.run_id, attempts, exhausted, row['hit_kw'], row['hit_axis'], row['hit_sub'], snapshot_id,
                             row['url_norm'], row['source']))
                 data = dict(row)
                 data.update(kw=row['hit_kw'], kw_axis=row['hit_axis'], kw_sub=row['hit_sub'],
@@ -420,6 +423,7 @@ class CrawlQueue:
                 lease_until=NULL,lease_run_id=NULL WHERE url_norm=? AND source=?""",
                        (last_error, time.time() + backoff_s * 2 ** (row['attempts'] - 1),
                         url_norm, source))
+            self._apply_exclusions(db, keys=[(url_norm, source)])
             return 'pending'
 
     def mark_filtered(self, url_norm: str, source: str, rule: str) -> None:
@@ -434,25 +438,40 @@ class CrawlQueue:
             self._snapshot(db, snapshot_id)
             db.executemany('INSERT OR IGNORE INTO excluded_keywords VALUES (?,?)',
                            [(snapshot_id, kw) for kw in kws])
-            # Set-based updates avoid a Python round trip per URL under the write lock.
-            eligible = """SELECT h.kw FROM url_hits h
-                WHERE h.url_norm=urls.url_norm AND h.source=urls.source
-                AND NOT EXISTS (SELECT 1 FROM excluded_keywords e
-                    WHERE e.snapshot_id=? AND e.kw=h.kw)"""
-            member = """EXISTS (SELECT 1 FROM snapshot_urls s WHERE s.snapshot_id=?
-                AND s.url_norm=urls.url_norm AND s.source=urls.source)"""
-            count = db.execute(f"""UPDATE urls SET status='excluded',lease_until=NULL,
-                lease_run_id=NULL WHERE status IN ('pending','failed') AND {member}
-                AND NOT EXISTS ({eligible})""", (snapshot_id, snapshot_id)).rowcount
-            db.execute(f"""UPDATE urls SET (kw,kw_axis,kw_sub)=(
-                SELECT h.kw,h.kw_axis,h.kw_sub FROM url_hits h
-                WHERE h.url_norm=urls.url_norm AND h.source=urls.source
-                AND NOT EXISTS (SELECT 1 FROM excluded_keywords e
-                    WHERE e.snapshot_id=? AND e.kw=h.kw)
-                ORDER BY h.kw_order,h.kw LIMIT 1)
-                WHERE status IN ('pending','failed') AND {member} AND EXISTS ({eligible})""",
-                       (snapshot_id, snapshot_id, snapshot_id))
-            return count
+            return self._apply_exclusions(db, snapshot_id, include_failed=True)
+
+    @staticmethod
+    def _apply_exclusions(db, snapshot_id=None, *, keys=None, include_failed=False):
+        """Apply D9 to selected rows inside the caller's write transaction.
+
+        Without an explicit snapshot, use each row's persisted lease snapshot.
+        Older leases without one are repaired by the next lease_urls sweep.
+        """
+        snapshot = '?' if snapshot_id is not None else 'urls.lease_snapshot_id'
+        eligible = f"""SELECT h.kw FROM url_hits h
+            WHERE h.url_norm=urls.url_norm AND h.source=urls.source
+            AND NOT EXISTS (SELECT 1 FROM excluded_keywords e
+                WHERE e.snapshot_id={snapshot} AND e.kw=h.kw)"""
+        member = f"""EXISTS (SELECT 1 FROM snapshot_urls s WHERE s.snapshot_id={snapshot}
+            AND s.url_norm=urls.url_norm AND s.source=urls.source)"""
+        statuses = "('pending','failed')" if include_failed else "('pending')"
+        target = f'status IN {statuses} AND {member}'
+        if keys is not None:
+            target += ' AND url_norm=? AND source=?'
+        selected = [()] if keys is None else keys
+        params = (snapshot_id,) if snapshot_id is not None else ()
+        count = db.executemany(f"""UPDATE urls SET status='excluded',lease_until=NULL,
+            lease_run_id=NULL WHERE {target} AND NOT EXISTS ({eligible})""",
+            [params + tuple(key) + params for key in selected]).rowcount
+        db.executemany(f"""UPDATE urls SET (kw,kw_axis,kw_sub)=(
+            SELECT h.kw,h.kw_axis,h.kw_sub FROM url_hits h
+            WHERE h.url_norm=urls.url_norm AND h.source=urls.source
+            AND NOT EXISTS (SELECT 1 FROM excluded_keywords e
+                WHERE e.snapshot_id={snapshot} AND e.kw=h.kw)
+            ORDER BY h.kw_order,h.kw LIMIT 1)
+            WHERE {target} AND EXISTS ({eligible})""",
+            [params + params + tuple(key) + params for key in selected])
+        return count
 
     def reclaim_expired_leases(self) -> int:
         now = time.time()
@@ -464,6 +483,7 @@ class CrawlQueue:
             keys = [(r['url_norm'], r['source']) for r in rows
                     if r['lease_until'] is None or r['lease_until'] <= now or r['lease_run_id'] in stale]
             db.executemany("UPDATE urls SET status='pending',lease_until=NULL,lease_run_id=NULL WHERE url_norm=? AND source=?", keys)
+            self._apply_exclusions(db, keys=keys)
             list_count = 0
             for run_id in stale:
                 list_count += db.execute("""UPDATE list_tasks SET status='pending',lease_run_id=NULL

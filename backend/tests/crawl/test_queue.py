@@ -470,3 +470,84 @@ def test_upgrade_existing_list_schema(tmp_path):
         q.record_list_page(task, [], None)
     finally:
         q.close()
+
+
+@pytest.mark.parametrize('recover', [False, True])
+@pytest.mark.parametrize('exclude_all', [False, True])
+def test_mid_lease_exclusion_rechecked_on_pending(queue, recover, exclude_all):
+    url = 'fixture://aircon/1'
+    add(queue, 'A', 0, [url])
+    add(queue, 'C', 2, [url])
+    add(queue, 'B', 1, [url])
+    snap = queue.take_snapshot()
+    row = queue.lease_urls(snap, 1, 30)[0]
+    assert queue.exclude_keywords(snap, ['A', 'B', 'C'] if exclude_all else ['A']) == 0
+    if recover:
+        queue.connection.execute('UPDATE urls SET lease_until=0')
+        # Recovery must retain the snapshot even through a new connection.
+        with_queue = CrawlQueue(queue.path)
+        try:
+            assert with_queue.reclaim_expired_leases() == 1
+        finally:
+            with_queue.close()
+    else:
+        assert queue.mark_failed_attempt(row.url_norm, row.source, 'timeout', backoff_s=0) == 'pending'
+    state = queue.connection.execute('SELECT status,kw,lease_run_id FROM urls').fetchone()
+    assert tuple(state) == ('excluded' if exclude_all else 'pending', 'A' if exclude_all else 'B', None)
+    assert queue.counts()['pending'] == (0 if exclude_all else 1)
+    rows = queue.lease_urls(snap, 1, 30)
+    if exclude_all:
+        assert rows == []
+    else:
+        assert [(r.kw, r.kw_order) for r in rows] == [('B', 1)]
+
+
+def test_lease_cleans_stranded_pending_in_snapshot(queue):
+    add(queue, 'A', 0, ['fixture://aircon/1'])
+    snap = queue.take_snapshot()
+    queue.exclude_keywords(snap, ['A'])
+    # Simulate a pending row stranded by the previous implementation, in backoff.
+    queue.connection.execute("UPDATE urls SET status='pending',retry_at=?", (time.time() + 3600,))
+    add(queue, 'B', 1, ['fixture://aircon/outside'])
+    assert queue.lease_urls(snap, 10, 30) == []
+    assert queue.counts()['excluded'] == 1
+    assert queue.counts()['pending'] == 1  # Outside-snapshot work is untouched.
+
+
+@pytest.mark.parametrize('recover', [False, True])
+def test_full_run_finishes_after_mid_lease_exclusions(queue, recover):
+    urls = [f'fixture://aircon/{i}' for i in range(3)]
+    add(queue, 'A', 0, urls)
+    add(queue, 'B', 1, urls[1:])
+    snap = queue.take_snapshot()
+    rows = queue.lease_urls(snap, 3, 30)
+    queue.mark_done(rows[2].url_norm, rows[2].source, 1)
+    assert queue.exclude_keywords(snap, ['A']) == 0
+    if recover:
+        queue.connection.execute("UPDATE urls SET lease_until=0 WHERE status='leased'")
+        assert queue.reclaim_expired_leases() == 2
+    else:
+        for row in rows[:2]:
+            queue.mark_failed_attempt(row.url_norm, row.source, 'timeout', backoff_s=0)
+    for row in queue.lease_urls(snap, 10, 30):
+        assert row.kw == 'B'
+        queue.mark_done(row.url_norm, row.source, 1)
+    assert queue.lease_urls(snap, 10, 30) == []
+    counts = queue.counts()
+    assert (counts['pending'], counts['leased'], counts['excluded'], counts['done']) == (0, 0, 1, 2)
+
+
+@pytest.mark.parametrize('recover', [False, True])
+def test_pending_recheck_uses_lease_snapshot(queue, recover):
+    add(queue, 'A', 0, ['fixture://aircon/1'])
+    snap = queue.take_snapshot()
+    row = queue.lease_urls(snap, 1, 30)[0]
+    other_snap = queue.take_snapshot()
+    assert queue.exclude_keywords(other_snap, ['A']) == 0
+    if recover:
+        queue.connection.execute('UPDATE urls SET lease_until=0')
+        queue.reclaim_expired_leases()
+    else:
+        queue.mark_failed_attempt(row.url_norm, row.source, 'timeout', backoff_s=0)
+    assert queue.counts()['pending'] == 1
+    assert len(queue.lease_urls(snap, 1, 30)) == 1
