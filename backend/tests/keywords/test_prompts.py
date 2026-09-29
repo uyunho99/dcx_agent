@@ -69,15 +69,50 @@ def test_r3_empty_inputs_explicit(state):
     }
 
 
+def desired_direction_block(text):
+    return text.split("사용자가 직접 추가 · 이동한 키워드(원하는 방향)\n", 1)[1].split(
+        "\n커버리지 신호:", 1
+    )[0].strip()
+
+
 def test_r3_uses_user_moves_when_no_rejections(state):
     manual = [Keyword(id=str(i), kw=kw, axis="physical", sub="time", round=2,
                       origin="manual", status="approved")
               for i, kw in enumerate(["대기시간", "반복작업"])]
     state = replace(state, approved=manual, feedback_md="## 원하는 방향\n- 이동: 탐색부담 → info_search\n")
     text = build_round_task("sid", 3, state).instructions
-    wanted = text.split("사용자가 직접 추가 · 이동한 키워드(원하는 방향)", 1)[1]
-    assert "대기시간" in wanted and "반복작업" in wanted and "탐색부담" in wanted
+    wanted = desired_direction_block(text)
+    assert wanted == (
+        "- 대기시간 (physical/time)\n- 반복작업 (physical/time)\n"
+        '첨부 keyword_feedback.md의 "원하는 방향" · "오분류 이동" 항목도 원하는 방향으로 본다.'
+    )
     assert "거절 없음." in text
+
+
+def test_r3_desired_direction_excludes_rejected_feedback(state):
+    feedback = "## 원하는 방향\n- 탐색부담\n## 거절\n- [범위 밖] 거절예시단어\n"
+    text = build_round_task("sid", 3, replace(state, feedback_md=feedback)).instructions
+    wanted = desired_direction_block(text)
+    assert "거절예시단어" not in wanted
+    assert feedback not in text
+    assert wanted == (
+        "직접 추가 없음.\n"
+        '첨부 keyword_feedback.md의 "원하는 방향" · "오분류 이동" 항목도 원하는 방향으로 본다.'
+    )
+
+
+def test_r3_desired_direction_includes_suggested_only_from_approved(state):
+    approved = [
+        Keyword(id="suggested", kw="탐색부담", axis="behavioral", sub="info_search",
+                round=2, origin="suggested", status="approved"),
+        Keyword(id="llm", kw="자동생성단어", axis="physical", sub="time",
+                round=2, origin="llm", status="approved"),
+    ]
+    text = build_round_task("sid", 3, replace(state, approved=approved)).instructions
+    assert desired_direction_block(text) == (
+        "- 탐색부담 (behavioral/info_search)\n"
+        '첨부 keyword_feedback.md의 "원하는 방향" · "오분류 이동" 항목도 원하는 방향으로 본다.'
+    )
 
 
 @pytest.mark.parametrize("n", [1, 2, 3, 4])
@@ -86,7 +121,7 @@ def test_attachments_include_feedback_md(state, n, feedback):
     state = replace(state, feedback_md=feedback)
     task = build_round_task("sid", n, state)
     expected = [("project_context.md", state.context_md)]
-    if n >= 2 and feedback is not None:
+    if feedback:
         expected.append(("keyword_feedback.md", feedback))
     assert [(a.title, a.body) for a in task.attachments] == expected
 

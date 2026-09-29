@@ -29,7 +29,7 @@ class RoundInputs:
 
     context_md is the complete render_context_md result. Its labeled research
     question is quoted in the mission; no additional context field is required.
-    approved manual keywords also supply desired-direction signals for R3.
+    Approved manual/suggested keywords also supply desired-direction signals for R3.
     """
 
     context_md: str
@@ -108,14 +108,11 @@ def build_round_task(sid: str, n: Literal[1, 2, 3, 4], state: RoundInputs) -> LL
     channel_rules = f"채널별 검색 문법을 따른다. 수집 채널: {channels}."
     if set(state.channels) & {"youtube", "naver_cafe", "ppomppu", "clien", "community"}:
         channel_rules += " 구어 · 줄임말 표현도 허용."
-    manual = _listing([kw.kw for kw in state.approved if kw.origin == "manual"])
-    desired_direction = manual
-    if _present(state.feedback_md):
-        # Keep the feedback verbatim: its section syntax belongs to T07.
-        desired_direction += (
-            "\n아래 피드백의 직접 추가 · 이동 기록을 원하는 방향으로 반영한다.\n"
-            + state.feedback_md
-        )
+    desired_direction = _listing(
+        [f"{kw.kw} ({kw.axis}/{kw.sub})" for kw in state.approved
+         if kw.origin in {"manual", "suggested"}],
+        empty="직접 추가 없음.",
+    )
     values = {
         "prompt_version": PROMPT_VERSION[n],
         "min_count": MIN_COUNT[n],
@@ -136,7 +133,7 @@ def build_round_task(sid: str, n: Literal[1, 2, 3, 4], state: RoundInputs) -> LL
     template = Path(__file__).with_name("prompts") / f"{PROMPT_VERSION[n]}.md"
     instructions = template.read_text(encoding="utf-8").format_map(values)
     attachments = [Attachment(title="project_context.md", body=state.context_md)]
-    if n >= 2 and state.feedback_md is not None:
+    if state.feedback_md:
         attachments.append(Attachment(title="keyword_feedback.md", body=state.feedback_md))
     return LLMTask(
         task=f"kw_round_{n}", sid=sid, instructions=instructions,
