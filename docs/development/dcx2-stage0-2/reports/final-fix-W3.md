@@ -154,3 +154,38 @@ Compiled successfully; TypeScript 통과; static pages 14/14, exit 0
 `git diff --check -- frontend docs/development/dcx2-stage0-2/reports/final-fix-W3.md` 통과. 요청한 제목/trailer로 범위를 제한한 commit을 시도한다.
 
 scoped `git add` 및 지정 제목/`Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`를 넣은 `git commit --only` 모두 exit 128: worktree의 `index.lock` 생성이 `Operation not permitted`로 거부되었다. 결과는 **uncommitted**이며 변경을 그대로 남겼다.
+
+## Follow-up FX-F2
+
+R-67에 따라 이 절과 지정된 frontend 파일 5개만 수정했다. 위 FX-F의 I1/M1 설명은 아래 내용으로 대체한다. dev server를 실행하거나 하위 에이전트를 사용하지 않았으며 기존 `.DS_Store` 변경은 건드리지 않았다.
+
+- fresh setup은 `restartFrom === 'stage2' && !!stale.stage2`일 때만 켜진다. stage0/1 재시작은 stage2 stale 여부와 무관하게 추가 키워드 수집 경로를 유지한다. stage2의 `start_list` 확인 후 backend가 stale을 지우면 reload 후에도 fresh setup이 꺼진다. 최초 수집은 일반 설정과 `목록 수집 시작`, fresh setup만 `새 수집 시작`을 쓴다.
+- 오류는 등록된 code의 한국어 매핑을 우선하고, 그 외에는 Hangul이 포함된 backend `error.message`를 그대로 보존한다. 영어/메시지 부재는 일반 한국어 fallback을 쓴다. 화면에서 다시 소실되지 않도록 `displayError`도 한국어 메시지를 보존한다.
+- `storage_error`는 설계 8.1의 디스크 쓰기 실패 문구를 사용한다. `no_collection`, `snapshot_conflict`, `no_unfinished_phase`, `gate_not_editable`의 한국어 안내도 추가했다. crawling 화면의 영어 storage/disk 정규식 분기를 제거했다. 409 `dcx-version-conflict` 이벤트는 코드 및 코드 없는 한국어 메시지 양쪽에서 유지한다.
+
+테스트를 먼저 작성하고 기존 구현에서 RED를 확인했다:
+
+```text
+npm --prefix frontend test -- src/lib/logic/finalFix.test.ts src/lib/api/errors.test.ts
+Test Files 2 failed; Tests 11 failed | 19 passed (30), exit 1
+```
+
+구현 후 검증:
+
+```text
+npm --prefix frontend test
+Test Files 21 passed; Tests 94 passed (94), exit 0
+npm --prefix frontend run lint
+exit 0, 0 problems
+```
+
+```text
+npm --prefix frontend run build
+Turbopack: binding to a port / Operation not permitted (os error 1), exit 1
+npm --prefix frontend run build -- --webpack
+Compiled successfully; TypeScript 통과; static pages 14/14, exit 0
+```
+
+기존 Node DEP0205 경고가 남는다. 브라우저 QA 세션에 접근하지 않았으며 실제 backend worker 왕복은 별도 QA 대상이다. 지정 파일만 staging하고 요청한 제목 및 co-author trailer로 commit을 시도한다.
+
+`git diff --check`는 통과했다. scoped `git add`와 지정 제목/trailer의 `git commit --only`는 모두 exit 128: `/Users/persona1/Desktop/dcx_agent/.git/worktrees/dcx_agent-dcx2-stage0-2/index.lock` 생성이 `Operation not permitted`로 거부되었다. 결과는 **uncommitted**이며 권한 우회 없이 변경을 남겼다.
