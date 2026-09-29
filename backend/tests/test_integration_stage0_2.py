@@ -7,12 +7,14 @@ import time
 from types import SimpleNamespace
 
 import numpy as np
+import httpx
 import pytest
 
 from app.config import settings
 from app.context import store
 from app.crawl import control, worker
 from app.crawl.writer import DocWriter
+from app.external import naver_searchad, naver_shopping
 from app.external.base import integration_status
 from app.jobs.manager import job_manager
 from app.keywords import rounds
@@ -135,6 +137,39 @@ def test_integrations_never_exposes_configured_secrets(client, offline, monkeypa
     sentinels = [f'SENTINEL_{name.upper()}_9f3a' for name in KEY_FIELDS]
     for name, sentinel in zip(KEY_FIELDS, sentinels):
         monkeypatch.setattr(settings, name, sentinel)
+    external_requests = {'shopping': [], 'searchad': []}
+
+    def record_request(service, request):
+        external_requests[service].append(request)
+        assert all(sentinel not in str(request.url) for sentinel in sentinels)
+        assert all(sentinel not in part
+                   for key, value in request.url.params.multi_items()
+                   for part in (key, value) for sentinel in sentinels)
+
+    def shopping_handler(request):
+        record_request('shopping', request)
+        assert request.url.host == 'openapi.naver.com'
+        assert request.url.path == '/v1/search/shop.json'
+        assert request.headers['X-Naver-Client-Id'] == settings.naver_client_id
+        assert request.headers['X-Naver-Client-Secret'] == settings.naver_client_secret
+        return httpx.Response(200, json={'items': [
+            {'title': '샘플 에어컨', 'category1': '디지털/가전',
+             'category2': '계절가전', 'category3': '에어컨'}]})
+
+    def searchad_handler(request):
+        record_request('searchad', request)
+        assert request.url.host == 'api.searchad.naver.com'
+        assert request.url.path == '/keywordstool'
+        assert request.headers['X-API-KEY'] == settings.searchad_api_key
+        assert request.headers['X-Customer'] == settings.searchad_customer_id
+        return httpx.Response(200, json={'keywordList': [
+            {'relKeyword': kw, 'monthlyPcQcCnt': 20, 'monthlyMobileQcCnt': 30}
+            for kw in request.url.params['hintKeywords'].split(',')]})
+
+    monkeypatch.setattr(naver_shopping, 'client_factory', lambda: httpx.Client(
+        transport=httpx.MockTransport(shopping_handler)))
+    monkeypatch.setattr(naver_searchad, 'client_factory', lambda: httpx.Client(
+        transport=httpx.MockTransport(searchad_handler)))
     from app.routers import integrations
     calls = []
     def status():
@@ -142,6 +177,12 @@ def test_integrations_never_exposes_configured_secrets(client, offline, monkeypa
         return integration_status()
     monkeypatch.setattr(integrations, 'integration_status', status)
     _, _, responses = full_flow(client, offline)
+    assert all(external_requests.values()), 'Both configured HTTP clients must be exercised'
+    assert responses[0]['source'] == 'shopping'
+    round_states = [body for body in responses if 'keywords' in body and body.get('status') == 'done']
+    assert len(round_states) == 4
+    assert all(kw['volume']['source'] == 'searchad' and kw['volume']['monthly'] == 50
+               for state in round_states for kw in state['keywords'])
     assert all(sentinel not in json.dumps(responses) for sentinel in sentinels)
     response = client.get('/integrations')
     assert calls == [True, True]
