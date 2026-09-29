@@ -98,8 +98,8 @@ def test_cafe_json_masks_writers_mentions_and_audits(tmp_path):
     assert capture.audit_fixture(directory) == {}
 
 
-@pytest.mark.parametrize('source', ['naver_blog', 'naver_cafe'])
-def test_search_rows_and_blog_markup_masking_and_audit(tmp_path, source):
+def test_search_rows_and_blog_markup_masking_and_audit(tmp_path):
+    source = 'naver_blog'
     raw = ('<div class="detail_box"><div class="user_info"><a class="name">검색별명</a></div>'
            '<a class="title_link" href="https://blog.naver.com/hiddenblog/123">제목</a></div>'
            '<div class="sds-comps-profile"><span class="sds-comps-profile-info-name-text">새검색별명</span></div>'
@@ -239,4 +239,60 @@ def test_cafe_audit_detects_only_remaining_ba_member_keys(tmp_path):
     path.write_text(json.dumps(raw))
     assert capture.audit_fixture(directory) == {'id': 2}
     path.write_text(json.dumps(capture.mask_json('naver_cafe', raw)))
+    assert capture.audit_fixture(directory) == {}
+
+
+@pytest.mark.parametrize('source', ['naver_blog', 'naver_cafe'])
+@pytest.mark.parametrize('date', ['3일 전', '2026.09.15.', '2시간 전'])
+@pytest.mark.parametrize('selector', ['sub', 'sds-comps-profile-info-subtext'])
+def test_search_date_metadata_is_preserved_and_audit_clean(tmp_path, capsys, source, date, selector):
+    raw = f'<div class="user_info"><span class="{selector}">{date}</span></div>'
+    assert capture.mask_html(source, raw) == raw
+    directory = tmp_path / source
+    directory.mkdir()
+    (directory / 'list-1.html').write_text(raw)
+    assert capture.audit_fixture(directory) == {}
+    assert capture.main(['--audit', str(directory)]) == 0
+    assert json.loads(capsys.readouterr().out)['audit_counts'] == {}
+
+
+@pytest.mark.parametrize('selector', ['name', 'sds-comps-profile-info-title-text',
+                                      'sds-comps-profile-info-name-text'])
+def test_cafe_search_public_title_and_private_member(tmp_path, capsys, selector):
+    raw = (f'<div class="user_info"><a class="{selector}" '
+           'href="https://cafe.naver.com/syntheticcommunity">합성공개카페</a>'
+           '<span class="sub">3일 전</span></div>'
+           '<a class="nickname" href="/ca-fe/cafes/123/members/syntheticmember">합성회원별명</a>')
+    directory = tmp_path / 'naver_cafe'
+    directory.mkdir()
+    path = directory / 'list-1.html'
+    path.write_text(raw)
+    assert capture.audit_fixture(directory) == {'name': 1, 'id': 1}
+    assert capture.main(['--audit', str(directory)]) == 1
+    output = capsys.readouterr().out
+    assert '합성회원별명' not in output and 'syntheticmember' not in output
+    masked = capture.mask_html('naver_cafe', raw)
+    assert '합성공개카페' in masked and '3일 전' in masked
+    assert '합성회원별명' not in masked and 'syntheticmember' not in masked
+    assert 'https://cafe.naver.com/syntheticcommunity' in masked
+    path.write_text(masked)
+    assert capture.audit_fixture(directory) == {}
+    assert capture.main(['--audit', str(directory)]) == 0
+
+
+@pytest.mark.parametrize('selector', ['name', 'sds-comps-profile-info-title-text',
+                                      'sds-comps-profile-info-name-text'])
+def test_blog_search_title_identity_is_masked_and_audited(tmp_path, selector):
+    raw = (f'<div class="user_info"><span class="{selector}">'
+           '<a href="https://blog.naver.com/syntheticblog"><span>합성블로거</span></a>'
+           '</span><span class="sds-comps-profile-info-subtext">2026.09.15.</span></div>')
+    directory = tmp_path / 'naver_blog'
+    directory.mkdir()
+    path = directory / 'list-1.html'
+    path.write_text(raw)
+    assert capture.audit_fixture(directory) == {'name': 1, 'id': 1}
+    masked = capture.mask_html('naver_blog', raw)
+    assert '합성블로거' not in masked and 'syntheticblog' not in masked
+    assert '2026.09.15.' in masked
+    path.write_text(masked)
     assert capture.audit_fixture(directory) == {}

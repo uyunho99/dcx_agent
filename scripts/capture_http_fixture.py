@@ -29,14 +29,18 @@ ID_KEYS = {'authorid', 'memberid', 'memberkey', 'userid', 'blogid', 'writerid', 
 PROFILE_KEYS = {'author_thumbnail', 'profileimage', 'profileimageurl', 'profileurl', 'avatar', 'avatarurl',
                 'authorurl', 'uploaderurl', 'channelurl'}
 SELECTORS = {
-    'naver_blog': '.nick, .nickname, .blog_author, .blogger, .writer, .user_name',
+    'naver_blog': ('.nick, .nickname, .blog_author, .blogger, .writer, .user_name, '
+                   '.user_info .name, .sds-comps-profile-info-name-text, '
+                   '.sds-comps-profile-info-title-text'),
     'naver_cafe': '.nick, .nickname, .nick_name, .comment_nickname, .ArticleWriter .nickname',
     'clien': '.nickname, .nick, .member, .comment_view .nickname',
     'ppomppu': '.list_name, .list_name2, .view_name, .comment_name, .nickname, .topTitle-name .baseList-name, .baseList-name, .content .desc > span:nth-child(2)',
     'youtube': '[itemprop="author"]',
 }
-NAVER_NAMES = ('.user_info .name, .user_info .sub, .sub_name, .blog-nick, .nick_name, '
-               '.sds-comps-profile-info-name-text, .sds-comps-profile-info-subtext, '
+# Search profile titles identify bloggers only on blog pages; on cafe pages
+# they identify public communities. .user_info .sub and SDS profile subtext
+# contain dates/metadata, not people. Audit shares these discovery selectors.
+NAVER_NAMES = ('.sub_name, .blog-nick, .nick_name, '
                '.mention, .se-mention, .tag_nickname')
 EMAIL = re.compile(r'[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}')
 URL = re.compile(r'(?:https?:)?//[^\s<>"\'\\]+')
