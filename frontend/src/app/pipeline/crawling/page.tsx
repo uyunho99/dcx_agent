@@ -11,7 +11,7 @@ import { Settings, channelNames } from '@/components/crawl/Settings';
 import { GateTable } from '@/components/crawl/GateTable';
 import { Progress } from '@/components/crawl/Progress';
 import { contextRequest, patchSession } from '@/lib/api/context';
-import { finishPartialCrawl, getCrawlConnections, getCrawlStatus, resumeCrawl, saveCrawlConfig, saveCrawlGate, startCrawlDetail, startCrawlList, stopCrawl, type CrawlConfig, type CrawlSession, type CrawlStatus, type Integration } from '@/lib/api/crawl';
+import { finishPartialCrawl, getCrawlConnections, getCrawlStatus, resumeCrawl, saveCrawlConfig, saveCrawlGate, startCrawlDetail, startCrawlList, stopCrawl, type CrawlConfig, type CrawlSession, type CrawlStatus } from '@/lib/api/crawl';
 import { displayError } from '@/lib/api/errors';
 import { crawlNeedsSetup, crawlStartLabel, increasedResumeIntervals } from '@/lib/logic/finalFix';
 import { approvedCrawlKeywords, deriveCrawlLoad } from '@/lib/logic/crawlConfig';
@@ -39,7 +39,7 @@ function CrawlScreen({sid}:{sid:string}) {
   const setExcluded=(value:string[])=>setGateSelection(old=>old?{...old,excluded:value}:old);
   const setSavedGate=(value:string[])=>setGateSelection(old=>old?{...old,saved:value}:old);
   const setDraftGate=(value:string[])=>setGateSelection(old=>old?{...old,draft:value}:old);
-  const [status,setStatus]=useState<CrawlStatus|null>(null);const [connections,setConnections]=useState<Integration[]>([]);const [busy,setBusy]=useState(false);const lock=useRef(false);const [error,setError]=useState('');const [notice,setNotice]=useState('');const [healthy,setHealthy]=useState(false);const [settings,setSettings]=useState(false);
+  const [status,setStatus]=useState<CrawlStatus|null>(null);const [busy,setBusy]=useState(false);const lock=useRef(false);const [error,setError]=useState('');const [notice,setNotice]=useState('');const [healthy,setHealthy]=useState(false);const [settings,setSettings]=useState(false);
   const generation=useRef(0);const alive=useRef(true);const latestStatus=useRef<CrawlStatus|null>(null);const [pollError,setPollError]=useState('');const hydrated=!!session;
   const refresh=useCallback(async()=>{
     const generationAtStart=generation.current;const next=await getCrawlStatus(sid);
@@ -61,10 +61,10 @@ function CrawlScreen({sid}:{sid:string}) {
   },[refresh,hydrated,readonly]);
   useEffect(()=>{
     let cancelled=false;
-    Promise.all([contextRequest<{data:CrawlSession}>(versionPath(`/session/${encodeURIComponent(sid)}`, version)),getCrawlConnections(),refresh()]).then(([result,integrations,initial])=>{
+    Promise.all([contextRequest<{data:CrawlSession}>(versionPath(`/session/${encodeURIComponent(sid)}`, version)),getCrawlConnections(),refresh()]).then(([result,,initial])=>{
       if(cancelled)return;
       const loaded=deriveCrawlLoad(result,initial,context,INTERNAL_TOOLS);
-      setSession(loaded.data);setConfig(loaded.config);setSavedConfig(loaded.savedConfig);setDraftConfig(loaded.config);setConnections(integrations);setError('');
+      setSession(loaded.data);setConfig(loaded.config);setSavedConfig(loaded.savedConfig);setDraftConfig(loaded.config);setError('');
     }).catch((e)=>{if(!cancelled)setError(displayError(e, '설정을 불러오지 못했습니다. 다시 확인하세요.'));});return()=>{cancelled=true;};
   },[sid,version,context,retry,refresh]);
   const running=status?.status==='running'||status?.status==='stopping';const disabled=busy||!!running||!healthy||!!session?.readonly;
@@ -86,7 +86,7 @@ function CrawlScreen({sid}:{sid:string}) {
     {!freshSetup&&added>0&&<Banner actions={<Button disabled={disabled||configChanged} onClick={()=>void action(async()=>{await startCrawlList(sid,true,version);setSettings(false);})}>추가된 키워드만 수집</Button>}>기존 수집본 사용 중 · 추가된 키워드 {added}개</Banner>}
     {!freshSetup&&crawlCanResume(status,paused)&&<Banner tone="warning" actions={<><Button disabled={disabled} onClick={()=>void action(async()=>{await resumeCrawl(sid,version);setSettings(false);})}>이어서 진행</Button><Button disabled={disabled} onClick={()=>void action(async()=>{const min_interval_s=increasedResumeIntervals(pausedChannels,status,config);await resumeCrawl(sid,version,{min_interval_s});setSettings(false);})}>간격을 늘리고 재개</Button>{canFinishPartial(status)&&<Button disabled={disabled} onClick={()=>{if(window.confirm(finishPartialConfirmation(status,channelNames)))void action(async()=>{await finishPartialCrawl(sid,version);setSettings(false);});}}>여기까지로 마치기</Button>}</>}>수집이 멈췄습니다. 완료된 결과는 저장되어 있습니다. 이어서 진행하세요. {status.stopReason === 'paused' ? '채널 차단 또는 파싱 오류로 멈췄습니다.' : ''}<div className="flex flex-wrap gap-2">{pausedChannels.filter(s=>INTERNAL_TOOLS||s!=='fixture').map(source=><Badge key={source}>{channelNames[source]??source}</Badge>)}</div><p>간격을 늘리면 멈춘 채널의 요청 간격을 두 배로 늘립니다(최소 1초).</p></Banner>}
 
-    {setupView?<Settings config={config} onChange={setConfig} connections={connections} availableSources={status.available_sources} axes={axes} disabled={disabled}/>:gateView?<>
+    {setupView?<Settings config={config} onChange={setConfig} availableSources={status.available_sources} axes={axes} disabled={disabled}/>:gateView?<>
       <div className="crawl-columns"><InsightCard eyebrow="목록 신호" insight={`키워드 ${status.gate!.filter(r=>r.badges.length).length}개를 검토하세요`} interpretation={status.gate!.every(r=>r.listed===0)?'수집된 목록이 없습니다. 날짜 범위와 채널을 확인하고 목록을 다시 수집하세요.':'0건 · 저수율 · 고유 기여 낮음 배지를 확인하고 제외할 키워드를 선택하세요.'} evidence={[{label:'키워드',value:`${status.gate!.length}개`}]} nextAction={<Button disabled={disabled} onClick={()=>setSettings(true)}>설정으로 돌아가기</Button>}/><Card><h2 className="ds-t-card">상세 수집 예상</h2><StatGrid items={[{label:'대상 URL',value:status.estimate?.urls.toLocaleString()??'—'},{label:'예상 소요',value:status.estimate?`약 ${Math.ceil(status.estimate.minutes)}분`:'—'}]}/><p className="ds-t-caption">저장된 제외 목록 기준입니다. 중간에 멈춰도 이어서 진행합니다.</p></Card></div><GateTable rows={status.gate!} excluded={excluded} onChange={setExcluded} disabled={disabled}/>
     </>:<Progress status={status}/>}
     {!freshSetup&&INTERNAL_TOOLS&&status.snapshot_id&&<p className="ds-t-caption"><Badge>내부용</Badge> 스냅샷 {status.snapshot_id}</p>}

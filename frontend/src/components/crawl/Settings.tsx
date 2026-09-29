@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Badge, Card, Input, Switch, Table } from '@/components/ds';
-import type { CrawlConfig, Integration } from '@/lib/api/crawl';
+import type { CrawlConfig } from '@/lib/api/crawl';
 import { parseList, settingsSources, limits } from '@/lib/logic/crawlConfig';
 import { contextLabels } from '@/lib/contextLabels';
 import { INTERNAL_TOOLS } from '@/lib/internalTools';
@@ -10,7 +10,7 @@ function ListInput({label,value,onChange}:{label:string;value:string[];onChange:
   const [text,setText]=useState<string|null>(null);
   return <Input label={label} hint="쉼표로 구분합니다. 포함 소스를 비우면 전체를 수집합니다." value={text??value.join(',')} onChange={e=>{setText(e.target.value);onChange(parseList(e.target.value));}} onBlur={()=>setText(null)}/>;
 }
-export function Settings({config,onChange,availableSources,axes,disabled}:{config:CrawlConfig;onChange:(c:CrawlConfig)=>void;connections:Integration[];availableSources?:string[];axes:Record<string,number>;disabled:boolean}) {
+export function Settings({config,onChange,availableSources,axes,disabled}:{config:CrawlConfig;onChange:(c:CrawlConfig)=>void;availableSources?:string[];axes:Record<string,number>;disabled:boolean}) {
   const set = <K extends keyof CrawlConfig>(key:K,value:CrawlConfig[K]) => onChange({...config,[key]:value});
   const sources = settingsSources(Object.keys(channelNames),config.channels,availableSources ?? []).filter(source => INTERNAL_TOOLS || source !== 'fixture');
   return <div className="crawl-columns"><div className="crawl-stack"><Card><h2 className="ds-t-card">채널</h2><p className="ds-t-caption">0-A 수집 채널에서 가져왔습니다</p><Table><thead><tr><th>채널</th><th>목록 · 본문</th>{INTERNAL_TOOLS && <th>연결 <Badge>내부용</Badge></th>}<th>사용</th></tr></thead><tbody>{sources.map(source=>{

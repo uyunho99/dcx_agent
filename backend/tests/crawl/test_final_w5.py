@@ -11,10 +11,17 @@ from tests.crawl.test_crawl_api import env, prepared
 
 def test_gate_fork_does_not_inherit(env):
     root, _ = prepared(env)
+    store.update_session('S', {'drafts': {'crawl': {
+        'gate': {'collectionId': 'c1', 'snapshot_id': 'old', 'exclusions': ['alpha']},
+        'config': {'channels': ['fixture']},
+    }, 'start': {'note': 'keep'}}})
     before = store.read_json(versions.version_dir('S', 'v1') / 'session.json')
     assert control.phase_state('S') == 'gate'
     assert versions.create_version('S', 'v1', 'stage2', '') == 'v2'
     assert store.load_session('S')['collectionId'] is None
+    assert store.load_session('S')['drafts'] == {
+        'crawl': {'config': {'channels': ['fixture']}}, 'start': {'note': 'keep'},
+    }
     assert store.read_json(versions.version_dir('S', 'v1') / 'session.json') == before
     assert root.exists()
 
@@ -46,12 +53,31 @@ def test_finish_partial(env, reason, monkeypatch):
     assert result['resumable'] is False
     assert result['progress']['target'] == result['progress']['done']
     assert control.phase_state('S') == 'done'
+    resumed = env.client.post('/crawl/S/resume?version=v1')
+    assert resumed.status_code == 409, resumed.text
+    assert 'No unfinished phase to resume' in resumed.text
     saved = []
     monkeypatch.setattr(preprocessing, 'save_jsonl', lambda path, docs: saved.extend(docs))
     preprocessing.preprocess_data({'sid': 'S'})
     assert [doc['doc_id'] for doc in saved] == ['collected']
     assert versions.create_version('S', 'v1', 'stage3', '') == 'v2'
     assert store.load_session('S')['collectionId'] == 'c1'
+
+
+@pytest.mark.parametrize('excluded', [['JOONG'], ' JOONG , unused '])
+def test_preprocess_excludes_cafe_name_and_slug(monkeypatch, excluded):
+    docs = [
+        {'doc_id': 'name', 'src_meta': {'cafe': 'Joong market'}},
+        {'doc_id': 'slug', 'src_meta': {'cafe': '중고나라', 'cafe_id': 'joonggonara'}},
+        {'doc_id': 'keep', 'src_meta': {'cafe': 'Other', 'cafe_id': 'other', 'note': 'joong'}},
+        {'doc_id': 'no_meta'},
+    ]
+    docs = [{**doc, 'body': 'joong in article content is retained', 'fetch_level': 'full'} for doc in docs]
+    saved = []
+    monkeypatch.setattr(preprocessing, '_crawl_docs', lambda sid: docs)
+    monkeypatch.setattr(preprocessing, 'save_jsonl', lambda path, items: saved.extend(items))
+    preprocessing.preprocess_data({'sid': 'S', 'excludeCafes': excluded})
+    assert [doc['doc_id'] for doc in saved] == ['keep', 'no_meta']
 
 
 @pytest.mark.parametrize('case', ['live', 'no_pause', 'list', 'version'])

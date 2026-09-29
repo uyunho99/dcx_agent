@@ -48,3 +48,12 @@ Status: complete. D-096/D-097 implemented; all requested verification commands p
 - Browser interaction was not manually exercised; button eligibility and confirmation content are covered by Vitest pure-function tests, consistent with D-071.
 - Existing typecheck failure above remains outside this narrow task.
 - No git writes or network commands were performed. Did not edit `scripts/capture_http_fixture.py`, `backend/tests/scripts`, or `backend/tests/fixtures/**`. Concurrent/pre-existing changes elsewhere were left untouched.
+
+## Cleanup
+
+- Preprocessing now matches `excludeCafes` against both the cafe display name and `src_meta.cafe_id`, with regression coverage for case-insensitive list/comma-separated filters and unrelated content retention.
+- Gate-stage forks remove `drafts.crawl.gate` from the new version while preserving other drafts and the source snapshot. Both behavior changes were tested failing first: 3 failures, rc=1; after fixes, all 12 targeted tests passed, rc=0.
+- Added POST resume rejection coverage after finish-partial for both pause reasons (409, `No unfinished phase to resume`); existing behavior already passed.
+- Fixed the null-config test's draft data without changing application types. Removed the unused Settings `connections` prop and caller state; connection fetching behavior is unchanged. This resolves the typecheck concern recorded above.
+- Verification: backend `.venv/bin/python -m pytest -q`: 815 passed, 2 warnings, rc=0; frontend `npx vitest run`: 26 files / 139 tests passed, rc=0; `npm run lint`: rc=0; `npx tsc --noEmit`: rc=0 (previously rc=2).
+- No git writes, network access, or changes to `backend/tests/fixtures/**`.

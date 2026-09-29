@@ -85,7 +85,8 @@ def preprocess_data(config: dict) -> None:
             if any(ad.lower() in (title + " " + desc).lower() for ad in ad_filter):
                 continue
             cafe = item.get("cafe", "").lower()
-            if exclude_cafes and any(ex.lower() in cafe for ex in exclude_cafes):
+            cafe_id = str((item.get("src_meta") or {}).get("cafe_id") or "").lower()
+            if exclude_cafes and any(ex.lower() in cafe or ex.lower() in cafe_id for ex in exclude_cafes):
                 continue
             identity = item.get("doc_id", link)
             if identity in seen:

@@ -27,7 +27,7 @@ it('loads the QA responses without an error and shows approved keywords with def
 });
 
 it('handles explicitly null config, absent context store, and null snapshot without a crawl draft', () => {
-  const loaded = deriveCrawlLoad({data: {...session.data, crawlConfig: null}}, {...status, snapshot_id: null}, null, true);
+  const loaded = deriveCrawlLoad({data: {...session.data, crawlConfig: null, drafts: {}}}, {...status, snapshot_id: null}, null, true);
   expect(loaded.keywords).toHaveLength(19);
   expect(loaded.config.channels).toEqual(['fixture']);
   expect(loaded.config.adWords).toEqual(status.defaults.adWords);

@@ -40,7 +40,7 @@ def test_shipped_fake_rounds_and_corpus(fake_session, tmp_path):
     assert len(words) == len(set(words))
     assert fake_session.post('/keywords/w1/suggest-words', json={'axis': 'physical', 'sub': 'space'}).status_code == 200
     path = tmp_path / 'corpus.csv'
-    runpy.run_path('tests/fixtures/make_corpus.py')['write_corpus'](path)
+    runpy.run_path(str(Path(__file__).resolve().parents[1] / 'fixtures' / 'make_corpus.py'))['write_corpus'](path)
     rows = path.read_text().splitlines()[1:]
     assert all(sum(word in row for row in rows) >= 3 for word in words)
     assert all(word in path.read_text() for word in ['소음', '냄새', '실외기', '리모컨', '결로', '필터', '전기세'])

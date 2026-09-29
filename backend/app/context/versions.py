@@ -102,6 +102,9 @@ def create_version(sid, from_v, restart_from, note, version=None) -> str:
             shutil.copytree(version_dir(sid, from_v), target)
             if crawl_phase == 'gate':
                 data['collectionId'] = None
+                crawl_draft = (data.get('drafts') or {}).get('crawl')
+                if isinstance(crawl_draft, dict):
+                    crawl_draft.pop('gate', None)
             data.update(version=v, parentVersion=from_v, restartFrom=restart_from, updatedAt=now())
             stale = data.setdefault('stale', {})
             last_stage = max([6, int(restart_from[5:])] + [int(key[5:]) for key in stale.keys() | data.get('stageResults', {}).keys() if re.fullmatch(r'stage[0-9]+', key)])

@@ -39,12 +39,13 @@ REGISTRY['fixture'] = lambda: Counted(os.environ['FIXTURE_CORPUS_PATH'])
     # CLI loads filter settings from the collection manifest.
     (tmp_path / 'manifest.json').write_text(json.dumps({'config': {'filters': {'date_from': None, 'date_to': None}}}))
     log = tmp_path / 'fetch.log'
+    backend_dir = Path(__file__).resolve().parents[2]
     env = dict(os.environ, DCX_TEST_ADAPTER_MODULE='count_adapter', FETCH_LOG=str(log),
                FIXTURE_CORPUS_PATH=str(corpus), ENABLE_FIXTURE_CHANNEL='true',
-               PYTHONPATH=str(tmp_path) + os.pathsep + str(Path.cwd()))
+               PYTHONPATH=str(tmp_path) + os.pathsep + str(backend_dir))
     cmd = [sys.executable, '-m', 'app.crawl.worker', 'detail', '--sid', 'S',
            '--snapshot', snap, '--collection', str(tmp_path)]
-    proc = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.Popen(cmd, cwd=backend_dir, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
         deadline = time.monotonic() + 8
         committed = set()
@@ -63,7 +64,7 @@ REGISTRY['fixture'] = lambda: Counted(os.environ['FIXTURE_CORPUS_PATH'])
         if proc.poll() is None:
             proc.kill()
             proc.wait()
-    result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=10)
+    result = subprocess.run(cmd, cwd=backend_dir, env=env, capture_output=True, text=True, timeout=10)
     assert result.returncode == 0, result.stderr
     counts = collections.Counter(log.read_text().splitlines())
     assert committed
