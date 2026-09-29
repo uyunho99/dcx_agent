@@ -114,7 +114,7 @@ class _Run:
         self.completed_docs = self.q.counts()['doc_count'] if kind == 'detail' else 0
         self.limiters = {}
         for s in sources:
-            defaults = (2, 0) if s == 'youtube' else ((1, 1) if s in ('clien', 'ppomppu') else (4, 0))
+            defaults = (2, 0) if s == 'youtube' else ((1, 1) if s in ('clien', 'ppomppu', 'naver_blog', 'naver_cafe') else (4, 0))
             opts = config.get('perChannel', config.get('channel_limits', {})).get(s, {})
             self.limiters[s] = (limiters or {}).get(s) or ChannelLimiter(
                 opts.get('concurrency', defaults[0]), opts.get('min_interval_s', defaults[1]))
@@ -169,7 +169,7 @@ class _Run:
         c = self.channels[source]
         c['attempts'] += 1
         c['blocked'] = c['blocked'] + 1 if isinstance(error, AdapterBlocked) else 0
-        c['parse_errors'] += isinstance(error, (ValueError, TypeError))
+        c['parse_errors'] += isinstance(error, (ValueError, TypeError, KeyError, AttributeError, IndexError))
         if c['blocked'] >= 20:
             c['status'] = 'paused_blocked'
         elif c['attempts'] >= 10 and c['parse_errors'] / c['attempts'] > 0.3:
@@ -187,7 +187,16 @@ class _Run:
             with self.limiters[source]:
                 adapter = adapters[source]
                 if method == 'list':
-                    page = adapter.list_page(job.kw, job.cursor)
+                    options = {}
+                    limit = self.config.get('youtube', {}).get('videos_per_keyword', 20)
+                    if source == 'youtube' and limit > 0:
+                        try:
+                            inspect.signature(adapter.list_page).bind(job.kw, job.cursor, videos_per_keyword=limit)
+                        except (TypeError, ValueError):
+                            pass  # Preserve injected legacy adapter contracts.
+                        else:
+                            options['videos_per_keyword'] = limit
+                    page = adapter.list_page(job.kw, job.cursor, **options)
                     if not isinstance(page, ListPage) or any(not isinstance(i, ListItem) for i in page.items):
                         raise AdapterParseError('Expected ListPage containing ListItem records')
                     return page

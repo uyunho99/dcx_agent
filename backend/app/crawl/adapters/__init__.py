@@ -20,12 +20,12 @@ from app.crawl.adapters.naver_cafe import NaverCafeAdapter
 
 
 REGISTRY: dict[str, Callable[[], ChannelAdapter]] = {
-    "naver_blog": lambda: NaverBlogAdapter(),
-    "naver_cafe": lambda: NaverCafeAdapter(),
+    "naver_blog": NaverBlogAdapter,
+    "naver_cafe": NaverCafeAdapter,
     "fixture": lambda: FixtureAdapter(settings.fixture_corpus_path),
-    "youtube": lambda: YoutubeAdapter(),
-    "clien": lambda: ClienAdapter(),
-    "ppomppu": lambda: PpomppuAdapter(),
+    "youtube": YoutubeAdapter,
+    "clien": ClienAdapter,
+    "ppomppu": PpomppuAdapter,
 }
 
 
@@ -43,6 +43,12 @@ def managed_adapter(factory):
 def available_sources() -> list[str]:
     sources = []
     for source, factory in REGISTRY.items():
+        # Built-in real adapters expose a class method: no HTTP client allocation.
+        check = getattr(factory, 'is_available', None)
+        if isinstance(getattr(check, '__self__', None), type):
+            if check():
+                sources.append(source)
+            continue
         with managed_adapter(factory) as adapter:
             if adapter.is_available():
                 sources.append(source)

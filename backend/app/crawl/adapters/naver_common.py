@@ -109,8 +109,12 @@ class NaverAdapter(CommunityAdapter):
             date = None
             for node in row.css('.sds-comps-profile-info-subtext, .user_info .sub, .date'):
                 date = self.normalize_date(text(node)) or date
-            items.append(ListItem(url, title, snippet, date,
-                                  {'article_id': article_id, f'{self.kind}_id': owner}))
+            meta = {'article_id': article_id, f'{self.kind}_id': owner}
+            if self.kind == 'cafe':
+                name = selected(row, '.user_info .name, .sds-comps-profile-info-title-text')
+                if name:
+                    meta['cafe'] = name
+            items.append(ListItem(url, title, snippet, date, meta))
         if not items:
             notice = selected(tree, '.not_found, .api_noresult_wrap, .no_result')
             if rows or not re.search(r'검색\s*결과가?\s*없|검색된.*없', notice):

@@ -1,5 +1,6 @@
 """Public cafe JSON and restricted snippets, without authentication."""
 from urllib.parse import urlsplit
+from dataclasses import replace
 
 from app.crawl.adapters.base import AdapterBlocked, FetchedDoc
 from app.crawl.adapters.community import html_text
@@ -30,6 +31,12 @@ class NaverCafeAdapter(NaverAdapter):
                 raise AdapterBlocked(f'{self.source}: HTTP 403') from None
             raise
         result = payload.get('result') if isinstance(payload, dict) else None
+        if isinstance(result, dict):
+            cafe = result.get('cafe') or {}
+            more = result.get('more') or {}
+            name = cafe.get('name') or cafe.get('cafeName') or more.get('cafeName')
+            if name:
+                item = replace(item, src_meta={**item.src_meta, 'cafe': name})
         if response.status_code == 401:
             return self.restricted_doc(item, result.get('errorCode') if isinstance(result, dict) else None)
         if response.status_code == 403:

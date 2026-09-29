@@ -20,7 +20,7 @@ export function settingsSources(known: string[], selected: string[], available: 
   return [...new Set([...known.filter(source => source !== 'fixture' || available.includes(source)), ...available, ...selected])];
 }
 
-export const limits = (source:string):Limits => ({concurrency:source === 'youtube' ? 2 : ['ppomppu','clien'].includes(source) ? 1 : 4,min_interval_s:['ppomppu','clien'].includes(source) ? 1 : 0,max_per_keyword:1000});
+export const limits = (source:string):Limits => ({concurrency:source === 'youtube' ? 2 : ['ppomppu','clien','naver_blog','naver_cafe'].includes(source) ? 1 : 4,min_interval_s:['ppomppu','clien','naver_blog','naver_cafe'].includes(source) ? 1 : 0,max_per_keyword:1000});
 
 export function deriveCrawlLoad(result: {data: CrawlSession}, initial: Pick<CrawlStatus, 'defaults' | 'available_sources' | 'snapshot_id' | 'collectionId'> & {gate: {kw: string}[] | null}, context: {channels: string[]} | null, internal: boolean, now = new Date()) {
   const data = result.data;

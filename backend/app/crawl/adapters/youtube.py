@@ -6,7 +6,9 @@ its replies (depth 1). max_comments counts roots and replies, not descriptions.
 Search is one bounded batch; there is no continuation cursor.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from app.config import settings
 import importlib
 
 from app.crawl.adapters.base import AdapterBlocked, FetchedDoc, ListItem, ListPage
@@ -16,7 +18,7 @@ from app.crawl.schema import Comment
 
 def _date(info: dict) -> str | None:
     if info.get('timestamp') is not None:
-        return datetime.fromtimestamp(info['timestamp'], timezone.utc).date().isoformat()
+        return datetime.fromtimestamp(info['timestamp'], ZoneInfo('Asia/Seoul')).date().isoformat()
     if info.get('upload_date'):
         return datetime.strptime(info['upload_date'], '%Y%m%d').date().isoformat()
     return None
@@ -63,7 +65,10 @@ class YoutubeAdapter:
         self.videos_per_keyword = videos_per_keyword
         self.max_comments = max_comments
 
-    def is_available(self) -> bool:
+    @classmethod
+    def is_available(cls) -> bool:
+        if not settings.real_channels_enabled:
+            return False
         try:
             importlib.import_module('yt_dlp')
         except ImportError:
@@ -85,12 +90,15 @@ class YoutubeAdapter:
             raise ValueError('Expected a yt-dlp information dictionary')
         return result
 
-    def list_page(self, kw: str, cursor: str | None) -> ListPage:
+    def list_page(self, kw: str, cursor: str | None, *, videos_per_keyword: int | None = None) -> ListPage:
         if cursor is not None:
             raise ValueError('YouTube search has no continuation cursor')
-        info = self._extract(f'ytsearch{self.videos_per_keyword}:{kw}', extract_flat=True)
+        limit = self.videos_per_keyword if videos_per_keyword is None else videos_per_keyword
+        if limit <= 0:
+            raise ValueError('videos_per_keyword must be positive')
+        info = self._extract(f'ytsearch{limit}:{kw}', extract_flat=True)
         items = []
-        for entry in (info.get('entries') or [])[:self.videos_per_keyword]:
+        for entry in (info.get('entries') or [])[:limit]:
             if entry is None:
                 continue
             items.append(ListItem(

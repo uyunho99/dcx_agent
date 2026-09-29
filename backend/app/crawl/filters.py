@@ -50,6 +50,7 @@ def _contains(text, words):
 
 def _check(item, cfg, detail):
     d, start, end = _date(_get(item, 'date')), _date(cfg.date_from), _date(cfg.date_to)
+    # Unknown dates are retained, including members-only cafe snippets.
     if d and ((start and d < start) or (end and d > end)):
         return '①'
     text = f"{_get(item, 'title', '') or ''} {_get(item, 'body' if detail else 'snippet', '') or ''}".casefold()

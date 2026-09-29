@@ -15,10 +15,8 @@ class IntegrationStatus(BaseModel):
 
 
 INTEGRATIONS = {
-    'naver_shopping': (['NAVER_CLIENT_ID', 'NAVER_CLIENT_SECRET'], ['category_suggest']),
-    'naver_search': (['NAVER_CLIENT_ID', 'NAVER_CLIENT_SECRET'], ['crawl']),
+    'naver_shopping': ([], ['category_suggest']),
     'naver_searchad': (['SEARCHAD_API_KEY', 'SEARCHAD_SECRET', 'SEARCHAD_CUSTOMER_ID'], ['coverage']),
-    'youtube': (['YOUTUBE_API_KEY'], ['crawl']),
     'openai': (['OPENAI_API_KEY', 'OPENAI_MODEL'], ['llm']),
     'claude': (['CLAUDE_API_KEY'], ['llm']),
 }
@@ -30,6 +28,6 @@ def configured(name):
 
 
 def integration_status() -> list[IntegrationStatus]:
-    return [IntegrationStatus(name=name, connected=all(configured(e) for e in env),
-                              env_vars=env, affects=features, last_error=LAST_ERRORS.get(name))
+    return [IntegrationStatus(name=name, connected=name != 'naver_shopping' and all(configured(e) for e in env),
+                              env_vars=env, affects=features, last_error='서비스 종료 · 네이버 쇼핑 검색 API는 영구적으로 사용할 수 없습니다.' if name == 'naver_shopping' else LAST_ERRORS.get(name))
             for name, (env, features) in INTEGRATIONS.items()]

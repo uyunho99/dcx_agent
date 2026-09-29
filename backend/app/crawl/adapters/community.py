@@ -6,6 +6,7 @@ from urllib.parse import urljoin, urlsplit
 import httpx
 from selectolax.parser import HTMLParser
 
+from app.config import settings
 from app.crawl.adapters.base import AdapterBlocked, ListItem, ListPage, FetchedDoc
 from app.crawl.hashing import author_hash
 from app.crawl.ratelimit import ChannelLimiter
@@ -56,8 +57,9 @@ class CommunityAdapter:
         if self._owns_client:
             self.client.close()
 
-    def is_available(self) -> bool:
-        return True
+    @classmethod
+    def is_available(cls) -> bool:
+        return settings.real_channels_enabled
 
     def headers(self) -> dict[str, str]:
         return {

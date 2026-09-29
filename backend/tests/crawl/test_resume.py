@@ -131,7 +131,8 @@ def test_channels_and_keywords_run_concurrently(tmp_path, monkeypatch):
     for src in ['fixture', 'naver_blog']:
         monkeypatch.setitem(REGISTRY, src, lambda src=src: Slow(src))
     start = time.monotonic()
-    worker.run_list('S', collection=tmp_path, keywords=['a', 'b', 'c'], sources=['fixture', 'naver_blog'])
+    worker.run_list('S', collection=tmp_path, keywords=['a', 'b', 'c'], sources=['fixture', 'naver_blog'],
+                    limiters={s: ChannelLimiter(4, 0) for s in ('fixture', 'naver_blog')})
     assert time.monotonic() - start < 0.6
     assert max(both) == 2 and all(1 < n <= 4 for n in peak.values())
 

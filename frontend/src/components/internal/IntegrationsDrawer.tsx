@@ -8,8 +8,8 @@ import type { useIntegrations } from "@/lib/api/integrations";
 import { nextTrapIndex } from "@/lib/logic/nextTrapIndex";
 
 const names: Record<string, string> = {
-  naver_shopping: "네이버 쇼핑", naver_search: "네이버 검색", naver_searchad: "네이버 검색광고",
-  youtube: "YouTube", openai: "OpenAI", claude: "Claude",
+  naver_shopping: "네이버 쇼핑", naver_searchad: "네이버 검색광고",
+  openai: "OpenAI", claude: "Claude",
 };
 const features: Record<string, string> = {
   category_suggest: "제품군 제안", crawl: "크롤링", coverage: "검색량 · 커버리지", llm: "언어 모델 분석",
@@ -63,14 +63,14 @@ function DrawerContent({ entries, loading, error, recheck, returnFocusId }: Prop
       {entries?.map(entry => <li key={entry.name} className="border border-line rounded-card p-4 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="ds-t-label text-ink-strong">{names[entry.name] ?? entry.name}</h3>
-          <Badge tone={entry.connected ? "success" : "neutral"}>{entry.connected ? "연결됨" : "미연결"}</Badge>
+          <Badge tone={entry.connected ? "success" : "neutral"}>{entry.name === "naver_shopping" ? "서비스 종료" : entry.connected ? "연결됨" : "미연결"}</Badge>
         </div>
         <dl className="space-y-2">
           <div><dt className="ds-t-label">영향 받는 기능</dt><dd>{entry.affects.map(feature => features[feature] ?? feature).join(" · ") || "없음"}</dd></div>
           <div><dt className="ds-t-label">환경변수 이름</dt><dd style={{color:"var(--ink)"}} className="ds-t-caption text-sub break-all">{entry.env_vars.join(" · ") || "없음"}</dd></div>
           {entry.last_error && <div className="text-danger"><dt className="ds-t-label">마지막 오류</dt><dd className="break-words">{entry.last_error}</dd></div>}
         </dl>
-        <div className="flex justify-end">{retry}</div>
+        <div className="flex justify-end">{entry.name !== "naver_shopping" && retry}</div>
       </li>)}
     </ul>
     <style jsx>{`.integrations-drawer::backdrop { background: var(--ink); opacity: 0.3; }`}</style>

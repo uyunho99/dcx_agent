@@ -2,26 +2,11 @@
   {
     "name": "naver_shopping",
     "connected": false,
-    "env_vars": [
-      "NAVER_CLIENT_ID",
-      "NAVER_CLIENT_SECRET"
-    ],
+    "env_vars": [],
     "affects": [
       "category_suggest"
     ],
-    "last_error": null
-  },
-  {
-    "name": "naver_search",
-    "connected": false,
-    "env_vars": [
-      "NAVER_CLIENT_ID",
-      "NAVER_CLIENT_SECRET"
-    ],
-    "affects": [
-      "crawl"
-    ],
-    "last_error": null
+    "last_error": "서비스 종료 · 네이버 쇼핑 검색 API는 영구적으로 사용할 수 없습니다."
   },
   {
     "name": "naver_searchad",
@@ -33,17 +18,6 @@
     ],
     "affects": [
       "coverage"
-    ],
-    "last_error": null
-  },
-  {
-    "name": "youtube",
-    "connected": false,
-    "env_vars": [
-      "YOUTUBE_API_KEY"
-    ],
-    "affects": [
-      "crawl"
     ],
     "last_error": null
   },

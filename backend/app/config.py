@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     youtube_api_key: str = ""
     fixture_corpus_path: str = ""
     enable_fixture_channel: bool = False
+    real_channels_enabled: bool = True
     low_volume_threshold: int = 10
     gate_low_count: int = 10
     gate_low_unique: float = 0.2
