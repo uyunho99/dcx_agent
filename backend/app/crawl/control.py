@@ -1,6 +1,6 @@
 """Collection lifecycle and detached worker control.
 
-Session mutations use update_session's locked merge callback, like keyword jobs.
+Session mutations validate and write under the session store lock.
 The collection lock serializes queue inspection and process launch. A 'starting'
 run reserves the child PID without conflicting with the worker's register_run.
 """
@@ -59,24 +59,24 @@ def collection_lock(root):
             fcntl.flock(stream, fcntl.LOCK_UN)
 
 
-class _CheckedPatch(dict):
-    def __init__(self, callback):
-        self.callback = callback
-
-    def items(self):
-        self.update(self.callback())
-        return super().items()
-
-
 def _mutate(sid, callback, version=None):
-    result = {}
-    def checked():
+    with store.locked(sid):
         session = store.assert_writable(sid, version)
-        patch, value = callback(session)
-        result.update(value)
-        return patch
-    store.update_session(sid, _CheckedPatch(checked))
-    return result
+        patch, result = callback(session)
+        if patch:
+            store._update_locked(sid, patch)
+        return result
+
+
+def _run_state(run):
+    if not run:
+        return 'idle'
+    if run['status'] == 'done':
+        return 'done'
+    if (run['status'] in ('running', 'starting')
+            and run['heartbeat_at'] >= time.time() - 60 and pid_alive(run['pid'])):
+        return 'running'
+    return 'interrupted'
 
 
 def latest_run(queue):
@@ -213,7 +213,7 @@ def start_detail(sid, snapshot_id, version=None):
                     raise store.StoreError('Finished collections are immutable')
                 if run['kind'] == 'detail':
                     raise store.StoreError('Resume the unfinished detail phase')
-                _gate_table(root, queue)
+                _gate_table(root, queue, session.get('crawlConfig', {}))
                 queue.exclude_keywords(snapshot_id, session.get('crawlConfig', {}).get('gateExclusions', []))
                 meta = store.read_json(root / 'manifest.json')
                 store.write_json(root / 'manifest.json', dict(meta, snapshotId=snapshot_id, status='detail'))
@@ -251,14 +251,21 @@ def stop(sid, version=None):
     return _mutate(sid, perform, version)
 
 
-def _gate_table(root, queue):
-    """Caller holds collection lock. Freeze P1 aggregates before P3 changes URLs."""
+def _gate_table(root, queue, cfg):
+    """Caller holds collection lock; only P1 done/P3 not started may freeze."""
     path = root / 'gate.json'
-    if path.exists():
-        return store.read_json(path)
-    rows = [asdict(r) for r in gate.compute_gate(queue)]
-    store.write_json(path, rows)
-    return rows
+    cached = store.read_json(path)
+    # Preserve tables frozen by earlier versions, which stored a bare list.
+    rows = cached if isinstance(cached, list) else cached.get('rows') if cached else None
+    estimate_config = {k: cfg.get(k, default) for k, default in
+                       [('gateExclusions', []), ('perChannel', {})]}
+    if isinstance(cached, dict) and cached.get('estimateConfig') == estimate_config:
+        return cached
+    if rows is None:
+        rows = [asdict(r) for r in gate.compute_gate(queue)]
+    cached = dict(rows=rows, estimate=gate.estimate(queue, cfg), estimateConfig=estimate_config)
+    store.write_json(path, cached)
+    return cached
 
 
 def status(sid):
@@ -270,14 +277,7 @@ def status(sid):
     root = collection_dir(sid)
     queue = ReadQueue(root / 'queue.sqlite')
     run = latest_run(queue)
-    state = 'idle'
-    if run:
-        if run['status'] == 'done':
-            state = 'done'
-        elif pid_alive(run['pid']) and run['status'] in ('running', 'starting'):
-            state = 'running' if run['heartbeat_at'] >= time.time() - 60 else 'interrupted'
-        else:
-            state = 'interrupted'
+    state = _run_state(run)
     p = report.progress(queue)
     with closing(CrawlQueue.open_readonly(queue.path)) as db:
         snapshot = db.execute('SELECT snapshot_id FROM snapshots ORDER BY created_at DESC LIMIT 1').fetchone()
@@ -286,15 +286,15 @@ def status(sid):
         with collection_lock(root):
             result = report._write_report_locked(root)
     table = store.read_json(root / 'gate.json')
-    if table is None and snapshot and run and run['kind'] == 'list' and run['status'] == 'done':
+    if snapshot and run and run['kind'] == 'list' and run['status'] == 'done':
         with collection_lock(root):
-            table = _gate_table(root, queue)
+            table = _gate_table(root, queue, session.get('crawlConfig', {}))
     if run and run['status'] == 'done':
         step = 'crawl-done' if run['kind'] == 'detail' else 'crawl-gate'
         def sync_step(current):
-            patch = {'step': step} if current.get('collectionId') == root.name and current.get('step') in ('crawl-list', 'crawl-detail', 'crawl-gate') else {}
+            patch = {'step': step} if current.get('collectionId') == root.name and current.get('step') in ('crawl-list', 'crawl-detail', 'crawl-gate') and current.get('step') != step else {}
             return patch, {}
-        if session.get('step') != step:
+        if session.get('step') in ('crawl-list', 'crawl-detail', 'crawl-gate') and session.get('step') != step:
             try:
                 _mutate(sid, sync_step, session.get('version'))
             except store.StoreError as exc:
@@ -302,25 +302,34 @@ def status(sid):
                     raise
     return dict(status=state, kind=run['kind'] if run else None, collectionId=root.name,
                 progress=p, channels=p['channels'], snapshot_id=snapshot[0] if snapshot else None,
-                gate=table,
-                estimate=gate.estimate(queue, session.get('crawlConfig', {})) if snapshot else None,
+                gate=table.get('rows') if isinstance(table, dict) else table,
+                estimate=table.get('estimate') if isinstance(table, dict) else None,
                 report=result, updatedAt=datetime.fromtimestamp(run['heartbeat_at'], timezone.utc).isoformat() if run else session.get('updatedAt'))
 
 
 def activity(sid):
-    session = store.load_session(sid)
-    if not session or not session.get('collectionId'):
-        return None
-    root = collection_dir(sid)
-    queue = ReadQueue(root / 'queue.sqlite')
-    if not queue.path.exists():
-        return None
-    run = latest_run(queue)
-    if not run:
-        return None
-    state = 'done' if run['status'] == 'done' else 'running' if run['status'] in ('running', 'starting') and pid_alive(run['pid']) else 'interrupted'
-    return dict(kind='crawl_' + run['kind'], status=state, progress=report.progress(queue),
-                updatedAt=datetime.fromtimestamp(run['heartbeat_at'], timezone.utc).isoformat())
+    kind = 'crawl_list'
+    try:
+        session = store.load_session(sid)
+        if not session or not session.get('collectionId'):
+            return None
+        if session.get('step') in ('crawl-detail', 'crawl-done'):
+            kind = 'crawl_detail'
+        root = collection_dir(sid)
+        queue = ReadQueue(root / 'queue.sqlite')
+        if not queue.path.exists():
+            return None
+        run = latest_run(queue)
+        state = _run_state(run)
+        if state in ('idle', 'done'):
+            return None
+        kind = 'crawl_' + run['kind']
+        return dict(kind=kind, status=state, progress=report.progress(queue),
+                    updatedAt=datetime.fromtimestamp(run['heartbeat_at'], timezone.utc).isoformat())
+    except Exception:
+        # Activity is optional row metadata: damaged crawl files must not hide
+        # unrelated sessions or prevent their version operations.
+        return dict(kind=kind, status='unreadable', progress=None, updatedAt=None)
 
 
 def save_gate(sid, exclusions, version=None):

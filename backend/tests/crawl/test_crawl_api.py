@@ -267,7 +267,7 @@ def test_end_to_end_fixture(env, monkeypatch):
     assert result['status'] == 'done'
     assert result['report']['totals']['doc_count'] == 2
     assert result['report']['matrix']['beta']['fixture']['full'] == 1
-    assert control.activity('S')['status'] == 'done'
+    assert control.activity('S') is None
 
 
 def test_real_subprocess_registration(env, monkeypatch):
@@ -340,3 +340,80 @@ def test_collection_freezes_config_and_gate(env):
     with closing(CrawlQueue(root / 'queue.sqlite')) as q:
         q.connection.execute("UPDATE urls SET status='filtered'")
     assert control.status('S')['gate'] == before
+
+
+def test_status_after_crawl_leaves_session_unchanged(env):
+    root, snap = prepared(env)
+    control.start_detail('S', snap)
+    with closing(CrawlQueue(root / 'queue.sqlite')) as q:
+        q.connection.execute("UPDATE runs SET status='done'")
+    store.update_session('S', {'step': 'preprocess-setup'})
+    path = store.session_dir('S') / 'session.json'
+    before = path.read_bytes()
+    updated = store.load_session('S')['updatedAt']
+    for _ in range(5):
+        assert env.client.get('/crawl/S/status').status_code == 200
+    assert path.read_bytes() == before
+    assert store.load_session('S')['updatedAt'] == updated
+
+
+def test_empty_mutation_does_not_write(env, monkeypatch):
+    def unexpected_write(*args):
+        pytest.fail('empty patch wrote session')
+    monkeypatch.setattr(store, 'write_json', unexpected_write)
+    assert control._mutate('S', lambda session: ({}, {'status': 'idle'})) == {'status': 'idle'}
+
+
+def test_stale_activity_does_not_block_version(env):
+    from app.context import versions
+    control.start_list('S')
+    with closing(CrawlQueue(control.collection_dir('S') / 'queue.sqlite')) as q:
+        q.connection.execute('UPDATE runs SET heartbeat_at=0')
+    assert control.status('S')['status'] == 'interrupted'
+    assert control.activity('S')['status'] == 'interrupted'
+    assert versions.create_version('S', 'v1', 'stage2', '') == 'v2'
+
+
+def test_corrupt_queue_only_marks_its_session_unreadable(env):
+    control.start_list('S')
+    (control.collection_dir('S') / 'queue.sqlite').write_bytes(b'corrupt database')
+    store.update_session('healthy', {'schemaVersion': 2, 'sid': 'healthy'})
+    result = env.client.get('/sessions').json()
+    assert result['status'] == 'ok'
+    rows = {row['sid']: row for row in result['sessions']}
+    assert set(rows) == {'S', 'healthy'}
+    assert rows['S']['activity']['status'] == 'unreadable'
+    assert rows['healthy']['activity'] is None
+
+
+@pytest.mark.parametrize('phase', ['list', 'detail'])
+def test_done_crawl_has_no_activity_badge(env, phase):
+    root, snap = prepared(env)
+    if phase == 'detail':
+        control.start_detail('S', snap)
+        with closing(CrawlQueue(root / 'queue.sqlite')) as q:
+            q.connection.execute("UPDATE runs SET status='done'")
+    assert control.activity('S') is None
+    assert env.client.get('/sessions').json()['sessions'][0]['activity'] is None
+
+
+def test_estimate_cached_at_gate_and_never_computed_during_detail(env, monkeypatch):
+    root, snap = prepared(env)
+    original = gate.estimate
+    calls = []
+    def counted(*args):
+        calls.append(True)
+        return original(*args)
+    monkeypatch.setattr(gate, 'estimate', counted)
+    first = control.status('S')['estimate']
+    assert first['urls'] == 2
+    assert store.read_json(root / 'gate.json')['estimate'] == first
+    assert control.status('S')['estimate'] == first
+    assert len(calls) == 1
+    control.save_gate('S', ['alpha'])
+    assert control.status('S')['estimate']['urls'] == 1
+    control.start_detail('S', snap)
+    calls.clear()
+    for _ in range(5):
+        assert control.status('S')['progress']['target'] == 1
+    assert not calls
