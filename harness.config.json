@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "mode": "claude-only",
+  "verificationCommands": [
+    [
+      "backend/.venv/bin/python",
+      "-m",
+      "pytest",
+      "backend/tests",
+      "-q"
+    ],
+    [
+      "npm",
+      "--prefix",
+      "frontend",
+      "run",
+      "lint"
+    ],
+    [
+      "npm",
+      "--prefix",
+      "frontend",
+      "run",
+      "build"
+    ],
+    [
+      "npm",
+      "--prefix",
+      "frontend",
+      "test"
+    ]
+  ]
+}
