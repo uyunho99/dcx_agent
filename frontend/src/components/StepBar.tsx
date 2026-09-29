@@ -2,6 +2,8 @@
 import Link from "next/link";
 import { Check } from "lucide-react";
 
+import { useDirty } from "./DirtyProvider";
+
 const STEPS = [
   { name: "시작", path: "/pipeline/start" },
   { name: "키워드", path: "/pipeline/keywords" },
@@ -26,6 +28,7 @@ export const STEP_MAP: Record<string, number> = {
 };
 
 export default function StepBar({ currentStep }: { currentStep: string }) {
+  const {confirmNavigation} = useDirty();
   const index = STEP_MAP[currentStep] ?? 0;
-  return <div><div className="pipeline-group">파이프라인</div><nav className="pipeline-nav" aria-label="파이프라인 단계">{STEPS.map((step, i) => <Link key={step.path} href={step.path} className={i === index ? "on" : i < index ? "done" : ""} aria-current={i === index ? "step" : undefined} aria-label={`${i + 1}. ${step.name}${i < index ? " 완료" : ""}`}><i className="n" aria-hidden="true">{i < index ? <Check size={14} /> : i + 1}</i><span>{step.name}</span>{i === index && <small>진행 중</small>}</Link>)}</nav></div>;
+  return <div><div className="pipeline-group">파이프라인</div><nav className="pipeline-nav" aria-label="파이프라인 단계">{STEPS.map((step, i) => <Link key={step.path} href={step.path} onClick={e => {if(!confirmNavigation()) e.preventDefault();}} className={i === index ? "on" : i < index ? "done" : ""} aria-current={i === index ? "step" : undefined} aria-label={`${i + 1}. ${step.name}${i < index ? " 완료" : ""}`}><i className="n" aria-hidden="true">{i < index ? <Check size={14} /> : i + 1}</i><span>{step.name}</span>{i === index && <small>진행 중</small>}</Link>)}</nav></div>;
 }

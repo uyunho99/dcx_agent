@@ -3,7 +3,7 @@ export function roundUi(state: { round: number; status?: 'running' | 'done' | 'f
   const canEdit = !running && state.status !== 'failed' && state.gen === state.jobGen;
   const committed = state.status === 'done' && !!state.committed;
   return { canStart: !running && (state.status === undefined || state.status === 'failed' || (state.round === 4 && committed)),
-    canRegenerate: state.status === 'done' && !state.committed && !state.dirty,
+    canRegenerate: state.status === 'done' && !state.dirty,
     canCommit: canEdit && state.status === 'done' && !state.committed, canNext: committed,
     canEdit, final: state.round === 4 && committed };
 }

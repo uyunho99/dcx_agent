@@ -1,6 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useState } from "react";
 import { Badge, Banner, Button, Card, Skeleton } from "@/components/ds";
 import { contextSessions } from "@/lib/api/context";
 import { usePolling } from "@/lib/usePolling";
@@ -8,10 +7,10 @@ import { INTERNAL_TOOLS } from "@/lib/internalTools";
 import { useSessionStore } from "@/stores/useSessionStore";
 import type { SessionInfo } from "@/lib/types";
 
-function activityLabel(activity: SessionInfo["activity"]) {
+export function activityLabel(activity: SessionInfo["activity"]) {
   if (!activity) return "검토 대기";
   const {status, kind, progress} = activity;
-  if (status === "interrupted") return "중단됨 · 이어서 진행";
+  if (status === "interrupted" || status === "paused") return "중단됨 · 이어서 진행";
   if ((status === "paused_blocked" || status === "blocked")) return "차단으로 멈춤";
   if (status === "failed" || status === "error") return "실패 · 다시 진행";
   if (status === "done" || status === "completed") return "완료";
@@ -21,18 +20,13 @@ function activityLabel(activity: SessionInfo["activity"]) {
 }
 export default function SessionList({ onSelect }: {onSelect: (sid: string, session?: SessionInfo) => void}) {
   const [error, setError] = useState(false);
-  const [slot, setSlot] = useState<Element | null>(null);
-  const sid = useSessionStore(state => state.sid);
   const fetcher = useCallback(async () => {
     try { const result = await contextSessions(); setError(false); return result.sessions; }
     catch (error) { setError(true); throw error; }
   }, []);
   const {data, refresh} = usePolling({ fetcher, interval: 10000, enabled: true });
-  useEffect(() => { const timer = setTimeout(() => setSlot(document.querySelector('[data-slot="activity-badge"]')), 0); return () => clearTimeout(timer); }, []);
-  const current = data?.find(session => session.sid === sid);
   return <Card>
     <h2 className="ds-t-card">최근 세션</h2>
-    {slot && current && createPortal(<Badge>{activityLabel(current.activity)}</Badge>, slot)}
     {error && <Banner tone="danger" actions={<Button onClick={refresh}>새로고침하기</Button>}>세션 목록을 불러오지 못했습니다. 새로고침하세요.</Banner>}
     {!data && !error && <div role="status" className="space-y-3"><span>처리 중…</span>{[0,1,2].map(i => <Skeleton key={i} />)}</div>}
     {data?.length === 0 && <p className="ds-t-body">아직 프로젝트가 없습니다. 아래에서 새 프로젝트를 설정하세요.</p>}
@@ -44,4 +38,12 @@ export default function SessionList({ onSelect }: {onSelect: (sid: string, sessi
     </div>)}
     <p className="ds-t-caption mt-3">주의가 필요한 세션이 위에 옵니다. 구버전 세션은 0~2단계를 편집할 수 없습니다.</p>
   </Card>;
+}
+
+export function SidebarActivity() {
+ const sid = useSessionStore(s => s.sid);
+ const fetcher = useCallback(async () => (await contextSessions()).sessions, []);
+ const {data} = usePolling({fetcher, interval:10000, enabled:!!sid});
+ const current = data?.find(session => session.sid === sid);
+ return sid ? <Badge>{activityLabel(current?.activity)}</Badge> : null;
 }

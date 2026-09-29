@@ -1,9 +1,12 @@
 "use client";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useId, type ReactNode } from "react";
 import { Button } from "@/components/ds";
+import { useDirty } from "./DirtyProvider";
 export function SaveBar({ dirty, valid, saving, onDraft, onSave, primary }: {
   dirty: boolean; valid: boolean; saving?: boolean; onDraft: () => void; onSave: () => void; primary: ReactNode;
 }) {
+  const {register} = useDirty(); const id = useId();
+  useEffect(() => {register(id, dirty); return () => register(id, false);}, [register,id,dirty]);
   useEffect(() => {
     if (!dirty) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };

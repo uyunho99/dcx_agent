@@ -16,12 +16,13 @@ import { emptyStartForm as empty, mergeStartForm, nextStepOnStart } from "@/lib/
 import { isDirty } from "@/lib/logic/isDirty";
 import type { ProjectContext, SessionInfo } from "@/lib/types";
 
+import { popoverKeyAction } from "@/lib/logic/keywordKeys";
 const options = (group: Record<string, string>) => Object.entries(group).map(([value,label]) => ({value,label}));
 const localDraft = "dcx_start_draft";
 function ListInput({label, value, onChange, required}: {label: string; value: string[]; onChange: (v: string[]) => void; required?: boolean}) {
   const [text, setText] = useState("");
   const add = () => { if (text.trim()) { onChange([...value, text.trim()]); setText(""); } };
-  return <div className="space-y-2"><Input label={label} required={required} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if(e.key === "Enter") {e.preventDefault(); add();} }} error={required && !value.length ? "한 줄 이상 추가하세요." : undefined} hint="한 줄씩 추가하세요." />
+  return <div className="space-y-2"><Input label={label} required={required} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if(popoverKeyAction("input", e.key, e.nativeEvent.isComposing, e.nativeEvent.keyCode) === "submit") {e.preventDefault(); add();} }} error={required && !value.length ? "한 줄 이상 추가하세요." : undefined} hint="한 줄씩 추가하세요." />
     <Button size="sm" onClick={add}>{label} 추가하기</Button>
     {value.map((item, i) => <div className="flex items-center justify-between gap-2" key={i}><span className="ds-t-body">{item}</span><Button size="sm" variant="quiet" onClick={() => onChange(value.filter((_, index) => index !== i))}>삭제하기</Button></div>)}
   </div>;
@@ -81,7 +82,7 @@ function StartScreen() {
     try {
       let sid = store.sid || createdSid.current;
       if (draft) {
-        if (sid) await patchSession(sid, {drafts: {start: snapshot}});
+        if (sid) await patchSession(sid, {drafts: {start: snapshot}}, version);
         else {
           try { localStorage.setItem(localDraft, JSON.stringify(snapshot)); }
           catch { setMessage("이 브라우저에 임시 저장하지 못했습니다. 입력값은 그대로 있습니다."); return; }
@@ -90,8 +91,8 @@ function StartScreen() {
       } else {
         const step = navigate ? nextStepOnStart(sid ? store.step : undefined) : undefined;
         if (!sid) { sid = (await createContext(snapshot)).sid; createdSid.current = sid; }
-        else { await putContext(sid, snapshot); }
-        await patchSession(sid, {drafts: {start: null}, ...(step ? {step} : {})});
+        else { await putContext(sid, snapshot, version); }
+        await patchSession(sid, {drafts: {start: null}, ...(step ? {step} : {})}, version);
         await restoreSessionToStore(sid, useSessionStore.getState());
         setSaved(snapshot); setReturned(mergeStartForm(useSessionStore.getState().projectContext));
         try { localStorage.removeItem(localDraft); } catch { /* A storage failure must not block a successful server save. */ }
@@ -133,7 +134,7 @@ function StartScreen() {
     {message && <Banner tone={message.includes("못") || message.includes("실패") ? "danger" : "info"}>{message}</Banner>}
     {store.persistError && <Banner tone="danger">{store.persistError}</Banner>}
     {legacy ? <Banner tone="warning" actions={<><Button onClick={() => router.push("/pipeline/preprocess")}>전처리 화면으로</Button><Button onClick={() => store.reset()}>새 프로젝트 만들기</Button></>}>구버전 세션은 0~2단계를 편집할 수 없습니다. 3단계 이후 화면에서 결과를 확인하세요.</Banner> : <VersionStage stage="stage0">
-      <header><StageVersionAction stage="stage0" /><p className="ds-t-eyebrow">0단계 · 입력</p><h1 className="ds-t-screen">새 프로젝트를 설정합니다</h1><p className="ds-t-body">0-A는 이후 모든 단계가 참고하는 프로젝트 개요입니다. 0-B는 분석 결과와 대조할 초기 기준선이며 전부 선택 입력입니다.</p></header>
+      <header><StageVersionAction stage="stage0" /><p className="ds-eyebrow">0단계 · 입력</p><h1 className="ds-t-screen">새 프로젝트를 설정합니다</h1><p className="ds-t-body">0-A는 이후 모든 단계가 참고하는 프로젝트 개요입니다. 0-B는 분석 결과와 대조할 초기 기준선이며 전부 선택 입력입니다.</p></header>
       {loadError ? <Button onClick={() => setReload(value => value + 1)}>입력값 다시 불러오기</Button> : loading ? <div role="status">처리 중…<Skeleton /><Skeleton /><Skeleton /></div> : <div className={INTERNAL_TOOLS ? "grid gap-6 lg:grid-cols-3" : "grid gap-6"}>
         <div className={INTERNAL_TOOLS ? "lg:col-span-2 space-y-6" : "space-y-6"} ref={formRef}>
           <fieldset disabled={busy} className="space-y-6">
@@ -157,7 +158,7 @@ function StartScreen() {
           </fieldset>
           <SaveBar dirty={isDirty(saved,form)} valid={valid} saving={busy} onDraft={() => void persist(true)} onSave={() => void persist(false)} primary={<Button variant="primary" loading={busy} onClick={() => void persist(false,true)}>키워드 생성 시작하기</Button>} />
         </div>
-        {INTERNAL_TOOLS && <aside><Card className="lg:sticky lg:top-6"><details open><summary className="ds-t-label">project_context.md 미리보기</summary><p className="ds-t-caption">서버 저장 맥락을 바탕으로 만든 미리보기입니다.</p><pre className="ds-t-caption whitespace-pre-wrap break-words">{preview(returned || form)}</pre></details></Card></aside>}
+        {INTERNAL_TOOLS && <aside><Card className="lg:sticky lg:top-6"><details open><summary className="ds-t-label">project_context.md 미리보기</summary><p className="ds-t-caption">서버 저장 맥락을 바탕으로 만든 미리보기입니다.</p><pre style={{color:"var(--ink)"}} className="ds-t-caption whitespace-pre-wrap break-words">{preview(returned || form)}</pre></details></Card></aside>}
       </div>}
     </VersionStage>}
   </div>;

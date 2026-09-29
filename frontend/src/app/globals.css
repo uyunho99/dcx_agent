@@ -37,12 +37,17 @@ button:not(:disabled) { cursor:pointer; }
 .pipeline-grid { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:24px; align-items:start; }
 .pipeline-s4 { grid-column:span 4; }.pipeline-s8 { grid-column:span 8; }.pipeline-s12 { grid-column:span 12; }
 .pipeline-loading { display:grid; place-items:center; height:100%; }
-.pipeline-chat-open { position:absolute; top:16px; right:16px; }
+.pipeline-chat-open { position:absolute; bottom:16px; right:16px; z-index:10; }
 .pipeline-chat { width:var(--chat-width); max-width:100%; flex:none; background:var(--paper); display:flex; flex-direction:column; border-left:1px solid var(--line); }
 .pipeline-chat-header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; }
 @media(max-width:1100px) {
  .pipeline-side { width:var(--sidebar-collapsed); padding:20px 10px; }
- .pipeline-logo,.pipeline-group,.pipeline-nav span,.pipeline-nav small,.pipeline-foot { display:none; }
+ .pipeline-logo,.pipeline-group,.pipeline-nav span,.pipeline-nav small { display:none; }
+ .pipeline-foot > .ds-t-label,.pipeline-foot-label,.pipeline-tools > .ds-badge { display:none; }
+ .pipeline-foot .ds-btn { min-width:36px; min-height:36px; padding:6px; }
+ .pipeline-activity { font-size:11px; }
+ .pipeline-activity .ds-badge { white-space:normal; height:auto; padding:3px; }
+ .pipeline-foot > p { font-size:11px; }
  .pipeline-s4,.pipeline-s8 { grid-column:span 12; }
  .pipeline-chat { position:absolute; inset:0 0 0 auto; z-index:20; }
 }

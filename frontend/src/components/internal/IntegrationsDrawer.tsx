@@ -67,7 +67,7 @@ function DrawerContent({ entries, loading, error, recheck, returnFocusId }: Prop
         </div>
         <dl className="space-y-2">
           <div><dt className="ds-t-label">영향 받는 기능</dt><dd>{entry.affects.map(feature => features[feature] ?? feature).join(" · ") || "없음"}</dd></div>
-          <div><dt className="ds-t-label">환경변수 이름</dt><dd className="ds-t-caption text-sub break-all">{entry.env_vars.join(" · ") || "없음"}</dd></div>
+          <div><dt className="ds-t-label">환경변수 이름</dt><dd style={{color:"var(--ink)"}} className="ds-t-caption text-sub break-all">{entry.env_vars.join(" · ") || "없음"}</dd></div>
           {entry.last_error && <div className="text-danger"><dt className="ds-t-label">마지막 오류</dt><dd className="break-words">{entry.last_error}</dd></div>}
         </dl>
         <div className="flex justify-end">{retry}</div>

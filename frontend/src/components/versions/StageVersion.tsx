@@ -9,14 +9,16 @@ import { contextLabels } from '@/lib/contextLabels';
 import { INTERNAL_TOOLS } from '@/lib/internalTools';
 import { prepareRestartVersion } from '@/lib/logic/restartVersion';
 import { useVersion } from './VersionProvider';
+import { useDirty } from "../DirtyProvider";
 const routes = ['start','keywords','crawling','preprocess','labeling','training','clustering','personas'];
 export function RestartVersion({stage, from, label = '이 단계부터 다시', disabled = false}: {stage?: Stage; from?: string; label?: string; disabled?: boolean}) {
+  const {confirmNavigation} = useDirty();
   const view = useVersion(); const router = useRouter(); const [open, setOpen] = useState(false); const [note, setNote] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const lock = useRef(false);
   const [chosenStage, setChosenStage] = useState<Stage | ''>('');
   const restartStage = stage ?? chosenStage;
   if (!view.sid || !view.meta) return null;
   async function restart() {
-    if (lock.current || !restartStage) return; lock.current = true; setBusy(true); setError('');
+    if (lock.current || !restartStage || !confirmNavigation()) return; lock.current = true; setBusy(true); setError('');
     try {
       const {version, data} = await prepareRestartVersion(
         () => createVersion(view.sid!, from ?? view.meta!.activeVersion, restartStage, note),
@@ -24,7 +26,7 @@ export function RestartVersion({stage, from, label = '이 단계부터 다시', 
       );
       useSessionStore.getState().setSession({sd: data, step: data.step, projectContext: data.projectContext ?? null});
       router.push(`/pipeline/${routes[Number(restartStage.slice(5))] ?? 'start'}`); setOpen(false);
-      view.select(version);
+      view.select(version, true);
     } catch (e) { setError(e instanceof Error && e.message.includes('진행 중인 작업') ? '진행 중인 작업이 끝난 뒤 다시 시도하세요' : '새 버전을 만들지 못했습니다. 버전 목록을 확인하고 다시 시도하세요.'); }
     finally {lock.current = false; setBusy(false);}
   }
@@ -49,7 +51,7 @@ function HistoricalCrawl() {
   const {session} = useVersion();
   const config = session?.crawlConfig as Partial<CrawlConfig> | undefined;
   const channelName = (channel: string) => contextLabels.channels[channel as keyof typeof contextLabels.channels] ?? channel;
-  return <div className="space-y-6"><header><StageVersionAction stage="stage2" /><p className="ds-eyebrow">2단계 · 크롤링</p><h1 className="ds-t-screen">저장된 수집 설정을 확인합니다</h1></header><Card><h2 className="ds-t-card">크롤링 수집본</h2><p>{session?.collectionId ? '기존 수집본 사용 중' : '연결된 수집본이 없습니다.'}</p>{INTERNAL_TOOLS && session?.collectionId && <p>{session.collectionId}</p>}<p className="ds-t-caption">과거 버전의 실시간 수집 상태는 제공되지 않습니다. 버전 비교에서 수집본 차이를 확인하세요.</p></Card>{config ? <Card className="space-y-4"><h2 className="ds-t-card">수집 설정</h2><Input label="수집 채널" value={config.channels?.filter(c => INTERNAL_TOOLS || c !== 'fixture').map(channelName).join(' · ') ?? ''} readOnly /><div className="grid gap-4 md:grid-cols-2"><Input label="시작일" value={config.dateFrom ?? ''} readOnly /><Input label="종료일" value={config.dateTo ?? ''} readOnly /></div><Input label="목표 건수" value={config.target_total ?? '제한 없음'} readOnly /><Input label="광고 제외어" value={config.adWords?.join(' · ') ?? ''} readOnly /><Input label="제외 출처" value={config.excludeSources?.join(' · ') ?? ''} readOnly /><Input label="제품명 필터" value={config.product_name_filter ? '사용' : '사용하지 않음'} readOnly />{Object.entries(config.perChannel ?? {}).filter(([channel])=>INTERNAL_TOOLS || channel !== 'fixture').map(([channel,limits])=><div key={channel}><h3 className="ds-t-label">{channelName(channel)}</h3><Input label="동시 수집 수" value={limits.concurrency} readOnly /><Input label="수집 간격(초)" value={limits.min_interval_s} readOnly /><Input label="키워드별 최대 수집 수" value={limits.max_per_keyword} readOnly /></div>)}</Card> : <Banner>저장된 수집 설정이 없습니다.</Banner>}</div>;
+  return <div className="space-y-6"><header><StageVersionAction stage="stage2" /><p className="ds-eyebrow">2단계 · 크롤링</p><h1 className="ds-t-screen">저장된 수집 설정을 확인합니다</h1></header><Card><h2 className="ds-t-card">크롤링 수집본</h2><p>{session?.collectionId ? '기존 수집본 사용 중' : '연결된 수집본이 없습니다.'}</p>{INTERNAL_TOOLS && session?.collectionId && <p>{session.collectionId}</p>}<p className="ds-t-caption">과거 버전의 실시간 수집 상태는 제공되지 않습니다. 버전 비교에서 수집본 차이를 확인하세요.</p></Card>{config ? <Card className="space-y-4"><h2 className="ds-t-card">수집 설정</h2><Input label="수집 채널" value={config.channels?.filter(c => INTERNAL_TOOLS || c !== 'fixture').map(channelName).join(' · ') ?? ''} readOnly /><div className="grid gap-4 md:grid-cols-2"><Input label="시작일" value={config.dateFrom ? new Date(`${config.dateFrom}T00:00:00`).toLocaleDateString('ko-KR') : ''} readOnly /><Input label="종료일" value={config.dateTo ? new Date(`${config.dateTo}T00:00:00`).toLocaleDateString('ko-KR') : ''} readOnly /></div><Input label="목표 건수" value={config.target_total ?? '제한 없음'} readOnly /><Input label="광고 제외어" value={config.adWords?.join(' · ') ?? ''} readOnly /><Input label="제외 출처" value={config.excludeSources?.join(' · ') ?? ''} readOnly /><Input label="제품명 필터" value={config.product_name_filter ? '사용' : '사용하지 않음'} readOnly />{Object.entries(config.perChannel ?? {}).filter(([channel])=>INTERNAL_TOOLS || channel !== 'fixture').map(([channel,limits])=><div key={channel}><h3 className="ds-t-label">{channelName(channel)}</h3><Input label="동시 수집 수" value={limits.concurrency} readOnly /><Input label="수집 간격(초)" value={limits.min_interval_s} readOnly /><Input label="키워드별 최대 수집 수" value={limits.max_per_keyword} readOnly /></div>)}</Card> : <Banner>저장된 수집 설정이 없습니다.</Banner>}</div>;
 }
 
 // Later-stage endpoints only read active data. Never mount their live editors in history mode.

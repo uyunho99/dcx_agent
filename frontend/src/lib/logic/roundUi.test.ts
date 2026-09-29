@@ -15,10 +15,10 @@ it('allows failed retries and only R4 additional generation after commit', () =>
   expect(roundUi({ round: 3, status: 'done', committed: true }).canStart).toBe(false);
   expect(roundUi({ round: 4, status: 'done', committed: true }).canStart).toBe(true);
 });
-it('regenerates only done, uncommitted rounds including R4', () => {
+it('lets the server decide regeneration for completed rounds including copied commits', () => {
   for (const round of [1, 2, 3, 4]) {
     expect(roundUi({ round, status: 'done', committed: false }).canRegenerate).toBe(true);
-    expect(roundUi({ round, status: 'done', committed: true }).canRegenerate).toBe(false);
+    expect(roundUi({ round, status: 'done', committed: true }).canRegenerate).toBe(true);
     for (const status of [undefined, 'running', 'failed'] as const) {
       expect(roundUi({ round, status }).canRegenerate).toBe(false);
     }

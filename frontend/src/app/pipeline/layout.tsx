@@ -10,6 +10,8 @@ import { useIntegrations } from "@/lib/api/integrations";
 import { VersionProvider, VersionContent } from "@/components/versions/VersionProvider";
 import { VersionRouteBoundary } from "@/components/versions/StageVersion";
 import { VersionPicker } from "@/components/versions/VersionPicker";
+import { DirtyProvider } from "@/components/DirtyProvider";
+import { SidebarActivity } from "@/components/SessionList";
 import StepBar from "@/components/StepBar";
 import ChatPanel from "@/components/ChatPanel";
 import { useSessionStore } from "@/stores/useSessionStore";
@@ -55,7 +57,7 @@ export default function PipelineLayout({ children }: { children: React.ReactNode
   );
 
   return (
-    <VersionProvider><InternalToolsProvider value={{ drawerOpen, setDrawerOpen }}>
+    <DirtyProvider><VersionProvider><InternalToolsProvider value={{ drawerOpen, setDrawerOpen }}>
       <div className="pipeline-shell">
         <aside className="pipeline-side" aria-label="파이프라인">
           <Image className="pipeline-logo" src="/person-a-logo.png" alt="Person A" width={104} height={32} priority />
@@ -63,8 +65,8 @@ export default function PipelineLayout({ children }: { children: React.ReactNode
           <div className="pipeline-foot">
             <div className="ds-t-label text-ink-strong">{bk || "세션 없음"}</div>
             <VersionPicker />
-            <div className="pipeline-activity" data-slot="activity-badge" aria-live="polite" />
-            {INTERNAL_TOOLS && <div className="pipeline-tools"><Button id="integrations-trigger" style={{ whiteSpace: "normal", height: "auto", minHeight: 28, textAlign: "left" }} variant="quiet" size="sm" aria-haspopup="dialog" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(open => !open)}><Icon icon={Plug} />외부 API · {integrations.error ? "—" : connectedCount ?? "—"}/6 연결 열기</Button><Badge>내부용</Badge></div>}
+            <div className="pipeline-activity" data-slot="activity-badge" aria-live="polite"><SidebarActivity /></div>
+            {INTERNAL_TOOLS && <div className="pipeline-tools"><Button id="integrations-trigger" aria-label="외부 API 연결 상태 열기" style={{ whiteSpace: "normal", height: "auto", minHeight: 28, textAlign: "left" }} variant="quiet" size="sm" aria-haspopup="dialog" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(open => !open)}><Icon icon={Plug} /><span className="pipeline-foot-label">외부 API · {integrations.error ? "—" : connectedCount ?? "—"}/6 연결 열기</span></Button><Badge>내부용</Badge></div>}
           </div>
         </aside>
         <div className="pipeline-content">
@@ -82,6 +84,6 @@ export default function PipelineLayout({ children }: { children: React.ReactNode
         </aside>}
       </div>
       {INTERNAL_TOOLS && drawerOpen && <IntegrationsDrawer {...integrations} returnFocusId="integrations-trigger" />}
-    </InternalToolsProvider></VersionProvider>
+    </InternalToolsProvider></VersionProvider></DirtyProvider>
   );
 }

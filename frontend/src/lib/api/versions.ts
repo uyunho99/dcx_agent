@@ -4,7 +4,7 @@ import type { KeywordState, Round } from './keywords';
 export type Stage = `stage${number}`;
 export type VersionEntry = { id: string; parent: string | null; restartFrom: Stage; createdAt: string; note: string; readonly: boolean; collectionId: string | null };
 export type VersionList = { activeVersion: string; versions: VersionEntry[] };
-export type VersionSession = SessionData & { stale?: Record<string, string>; parentVersion?: string; version?: string; collectionId?: string };
+export type VersionSession = SessionData & { keywords?: KeywordState['keywords']; stale?: Record<string, string>; parentVersion?: string; version?: string; collectionId?: string };
 const base = (sid: string) => `/sessions/${encodeURIComponent(sid)}`;
 export const versionPath = (path: string, version?: string) => version ? `${path}${path.includes('?') ? '&' : '?'}version=${encodeURIComponent(version)}` : path;
 export const listVersions = (sid: string) => contextRequest<VersionList>(`${base(sid)}/versions`);

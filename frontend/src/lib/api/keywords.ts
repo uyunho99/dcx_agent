@@ -1,3 +1,4 @@
+import { responseError, versionQuery } from "./errors";
 export type Axis = 'physical' | 'psychological' | 'behavioral';
 export type Destination = { axis: Axis; sub: string };
 export type Rejection = { tags: string[]; note: string; to?: Destination };
@@ -7,24 +8,24 @@ export type Job = { status: 'running' | 'done' | 'failed'; round: number; gen: n
 export type Round = { round: number; gen: number; job: Job; committed: boolean; keywords: Keyword[]; below_min?: { got: number; min: number } | null };
 export type Coverage = { status?: string; m1?: number | null; m2?: (number | null)[]; m6?: number | null; m7?: number | null; missing_top?: [string, number][]; humanQueries?: unknown[] };
 export type KeywordState = { keywords: Keyword[]; keywordRounds: Record<string, Round>; coverage: Coverage; feedback_md: string };
-export type Draft = { round: number; gen: number; decisions: Decision[]; groups?: Destination[] };
+export type Draft = { round: number; gen: number; decisions: Decision[]; groups?: Destination[]; direction?: string };
 export class KeywordApiError extends Error {
   constructor(message: string, public kind?: string, public duplicateOf?: string, public status?: number) { super(message); }
 }
 const API = process.env.NEXT_PUBLIC_API_URL || '';
-async function request<T>(sid: string, path = '', method = 'GET', body?: unknown): Promise<T> {
-  const response = await fetch(`${API}/keywords/${encodeURIComponent(sid)}${path}`, { method, headers: { 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+async function request<T>(sid: string, path = '', method = 'GET', body?: unknown, version?: string): Promise<T> {
+  const response = await fetch(`${API}/keywords/${encodeURIComponent(sid)}${versionQuery(path, version)}`, { method, headers: { 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
   const data = await response.json();
-  if (!response.ok || data.status === 'error') throw new KeywordApiError(data.error?.message || '요청에 실패했습니다. 다시 시도하세요.', data.error?.kind, data.duplicateOf, response.status);
+  if (!response.ok || data.status === 'error') throw new KeywordApiError(responseError(data, response.status), data.error?.kind, data.duplicateOf, response.status);
   return data;
 }
 export const getKeywords = (sid: string) => request<KeywordState>(sid);
-export const startRound = (sid: string, n: number) => request<Job>(sid, `/rounds/${n}`, 'POST');
-export const regenerateRound = (sid: string, n: number) => request<Job>(sid, `/rounds/${n}?regenerate=true`, 'POST');
+export const startRound = (sid: string, n: number, version?: string) => request<Job>(sid, `/rounds/${n}`, 'POST', undefined, version);
+export const regenerateRound = (sid: string, n: number, version?: string) => request<Job>(sid, `/rounds/${n}?regenerate=true`, 'POST', undefined, version);
 export const getRound = (sid: string, n: number) => request<Job & Omit<Round, 'job'>>(sid, `/rounds/${n}`);
-export const commitRound = (sid: string, n: number, gen: number, decisions: Decision[]) => request(sid, `/rounds/${n}/commit`, 'POST', { gen, decisions });
+export const commitRound = (sid: string, n: number, gen: number, decisions: Decision[], version?: string) => request(sid, `/rounds/${n}/commit`, 'POST', { gen, decisions }, version);
 export type ReviewEvent = { round: number; type: 'direction' | 'approve' | 'reject' | 'move' | 'unreject'; kwId?: string; tags?: string[]; note?: string; text?: string; to?: Destination };
-export const postEvent = (sid: string, event: ReviewEvent) => request<{ feedback_md: string }>(sid, '/events', 'POST', event);
-export const addKeyword = (sid: string, kw: string, to: Destination, origin: 'manual' | 'suggested') => request<Keyword>(sid, '/manual', 'POST', { kw, ...to, origin });
-export const suggestWords = (sid: string, to: Destination) => request<{ words: { word: string; type: string }[] }>(sid, '/suggest-words', 'POST', to);
-export const getCoverage = (sid: string) => request<Coverage>(sid, '/coverage', 'POST');
+export const postEvent = (sid: string, event: ReviewEvent, version?: string) => request<{ feedback_md: string }>(sid, '/events', 'POST', event, version);
+export const addKeyword = (sid: string, kw: string, to: Destination, origin: 'manual' | 'suggested', version?: string) => request<Keyword>(sid, '/manual', 'POST', { kw, ...to, origin }, version);
+export const suggestWords = (sid: string, to: Destination, version?: string) => request<{ words: { word: string; type: string }[] }>(sid, '/suggest-words', 'POST', to, version);
+export const getCoverage = (sid: string, version?: string) => request<Coverage>(sid, '/coverage', 'POST', undefined, version);
