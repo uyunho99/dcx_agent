@@ -19,7 +19,14 @@ def test_claude_transport_and_legacy_wrapper(task, monkeypatch):
     response.json.return_value = {'content': [{'text': 'free text'}]}
     assert call_claude('hello', 42, 'legacy-model', 7) == 'free text'
     kwargs = post.call_args.kwargs
+    assert post.call_args.args == ('https://api.anthropic.com/v1/messages',)
+    assert kwargs['headers'] == {
+        'x-api-key': 'x', 'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json',
+    }
     assert kwargs['timeout'] == 7
+    assert 'system' not in kwargs['json']
+    assert set(kwargs['json']) == {'model', 'max_tokens', 'messages'}
     assert kwargs['json']['model'] == 'legacy-model'
     assert kwargs['json']['max_tokens'] == 42
     assert kwargs['json']['messages'] == [{'role': 'user', 'content': 'hello'}]

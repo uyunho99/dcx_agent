@@ -29,6 +29,8 @@ def test_default_backend_is_openai(task, monkeypatch):
     monkeypatch.setattr(settings, "openai_model", "test-model")
     assert OpenAIApiBackend(client=client).run(task).ok
     kwargs = client.chat.completions.create.call_args.kwargs
+    assert kwargs["max_completion_tokens"] == task.max_tokens
+    assert "max_tokens" not in kwargs
     assert kwargs["response_format"]["type"] == "json_schema"
     assert kwargs["response_format"]["json_schema"]["schema"] == task.output_schema.model_json_schema()
     assert kwargs["messages"][0]["content"].startswith(CONTEXT_HEADER)

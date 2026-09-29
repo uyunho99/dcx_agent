@@ -17,7 +17,7 @@ class OpenAIApiBackend:
                 self.client = OpenAI(api_key=settings.openai_api_key, max_retries=0)
             response = self.client.chat.completions.create(
                 model=settings.openai_model,
-                max_tokens=task.max_tokens,
+                max_completion_tokens=task.max_tokens,
                 messages=[{'role': 'system', 'content': system}, {'role': 'user', 'content': user}],
                 response_format={'type': 'json_schema', 'json_schema': {
                     'name': task.output_schema.__name__,
