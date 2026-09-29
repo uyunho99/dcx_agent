@@ -15,13 +15,18 @@ def test_fork_uses_source_collection(env, source_done):
     with closing(CrawlQueue(root / 'queue.sqlite')) as q:
         q.connection.execute("UPDATE runs SET kind='detail',status=?", ('done' if source_done else 'stopped',))
         q.connection.execute("UPDATE urls SET status='done'")
+    if not source_done:
+        with pytest.raises(store.StoreError, match='크롤링 수집을 끝낸 뒤 새 버전을 만드세요.'):
+            versions.create_version('S', 'v1', 'stage3', '')
+        assert not versions.version_dir('S', 'v2').exists()
+        return
     versions.create_version('S', 'v1', 'stage3', '')
     if source_done:
         control.start_list('S')
         with closing(CrawlQueue(control.collection_dir('S') / 'queue.sqlite')) as q:
             q.connection.execute("UPDATE runs SET status='stopped'")
     versions.create_version('S', 'v1', 'stage3', '')
-    assert store.load_session('S')['collectionId'] == ('c1' if source_done else None)
+    assert store.load_session('S')['collectionId'] == 'c1'
     assert versions._data('S', 'v1')['collectionId'] == 'c1'
 
 

@@ -21,15 +21,15 @@ def test_fork_collection_phase(client, monkeypatch, phase):
     sid = create(client)
     store.update_session(sid, {'collectionId': 'c1'})
     monkeypatch.setattr(control, 'phase_state', lambda sid, collection_id=None: phase, raising=False)
-    if phase == 'running':
-        with pytest.raises(store.StoreError):
+    if phase in ('running', 'unfinished'):
+        with pytest.raises(store.StoreError, match='크롤링 수집을 끝낸 뒤 새 버전을 만드세요.') as error:
             versions.create_version(sid, 'v1', 'stage3', '')
+        assert error.value.status == 409
+        assert not versions.version_dir(sid, 'v2').exists()
         return
     versions.create_version(sid, 'v1', 'stage3', '')
     assert versions._data(sid, 'v1')['collectionId'] == 'c1'
-    assert store.load_session(sid)['collectionId'] == (None if phase == 'unfinished' else 'c1')
-    if phase == 'unfinished':
-        assert 'stage2' in store.load_session(sid)['stale']
+    assert store.load_session(sid)['collectionId'] == 'c1'
 
 def test_unreadable_session_isolated(client):
     sid = create(client)
@@ -75,3 +75,31 @@ def test_session_mutations_guard_displayed_version(client, action):
         response = client.delete(f'/delete-session/{sid}?version=v1')
     assert response.status_code == 409
     assert store.load_session(sid) == before
+
+@pytest.mark.parametrize('source_collection,phase,allowed', [
+    ('c1', 'unfinished', False), ('c1', 'running', False),
+    ('c1', 'done', True), (None, 'unfinished', True),
+])
+def test_fork_checks_history_source_not_active_collection(client, monkeypatch, source_collection, phase, allowed):
+    from app.crawl import control
+    sid = create(client)
+    versions.create_version(sid, 'v1', 'stage3', '')
+    source = versions._data(sid, 'v1')
+    source['collectionId'] = source_collection
+    store.write_json(versions.version_dir(sid, 'v1') / 'session.json', source)
+    store.update_session(sid, {'collectionId': 'c2'})
+    checked = []
+    def source_phase(session_id, collection_id=None):
+        checked.append((session_id, collection_id))
+        return phase if collection_id == 'c1' else 'done'
+    monkeypatch.setattr(control, 'phase_state', source_phase)
+    monkeypatch.setattr(control, 'activity', lambda _: None)
+    response = client.post(f'/sessions/{sid}/versions', json={'from': 'v1', 'restartFrom': 'stage3'})
+    assert response.status_code == (201 if allowed else 409)
+    assert checked == ([(sid, 'c1')] if source_collection else [])
+    if allowed:
+        assert store.load_session(sid).get('collectionId') == source_collection
+    else:
+        assert response.json()['error']['code'] == 'crawl_unfinished'
+        assert store.load_session(sid)['version'] == 'v2'
+        assert not versions.version_dir(sid, 'v3').exists()

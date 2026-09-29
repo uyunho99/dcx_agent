@@ -1,4 +1,5 @@
 """Offline stage 0–2 and legacy downstream compatibility contracts."""
+from contextlib import closing
 import importlib.util
 import json
 from pathlib import Path
@@ -14,6 +15,7 @@ from app.config import settings
 from app.context import store
 from app.crawl import control, worker
 from app.crawl.writer import DocWriter
+from app.crawl.queue import CrawlQueue
 from app.external import naver_searchad, naver_shopping
 from app.external.base import integration_status
 from app.jobs.manager import job_manager
@@ -200,6 +202,9 @@ def test_legacy_session_preprocess_still_reads_old_crawl(data_dir):
 def put_collection(data_dir, sid, cid, parent, docs):
     root = data_dir / 'crawl' / sid / 'collections' / cid
     store.write_json(root / 'manifest.json', {'id': cid, 'parent': parent})
+    # These fixtures represent completed, immutable collection documents.
+    with closing(CrawlQueue(root / 'queue.sqlite')) as queue:
+        queue.finish_run(queue.register_run('detail'), 'done')
     writer = DocWriter(root / 'docs')
     try:
         for doc in docs:

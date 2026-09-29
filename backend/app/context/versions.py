@@ -70,9 +70,14 @@ def _idle(sid, data):
         raise StoreError('진행 중인 작업이 끝난 뒤 다시 시도하세요')
 
 
+CRAWL_UNFINISHED_MESSAGE = '크롤링 수집을 끝낸 뒤 새 버전을 만드세요.'
+
+
 def _crawl_phase(sid, collection_id):
+    if not collection_id:
+        return 'none'
     from app.crawl.control import phase_state
-    return phase_state(sid, collection_id) if collection_id else 'none'
+    return phase_state(sid, collection_id)
 
 
 def create_version(sid, from_v, restart_from, note, version=None) -> str:
@@ -83,11 +88,11 @@ def create_version(sid, from_v, restart_from, note, version=None) -> str:
             assert_writable(sid, version)
         meta = _meta(sid)
         data = _data(sid, from_v)
+        # D-091: inspect the source collection before any copy or activation.
+        if _crawl_phase(sid, data.get('collectionId')) in ('running', 'unfinished'):
+            raise StoreError(CRAWL_UNFINISHED_MESSAGE)
         _idle(sid, _data(sid, meta['activeVersion']))
         _idle(sid, data)
-        phase = _crawl_phase(sid, data.get('collectionId'))
-        if phase == 'running':
-            raise StoreError('진행 중인 작업이 끝난 뒤 다시 시도하세요')
         v = f"v{max(int(e['id'][1:]) for e in meta['versions']) + 1}"
         target = version_dir(sid, v)
         previous_active = meta['activeVersion']
@@ -99,9 +104,6 @@ def create_version(sid, from_v, restart_from, note, version=None) -> str:
             last_stage = max([6, int(restart_from[5:])] + [int(key[5:]) for key in stale.keys() | data.get('stageResults', {}).keys() if re.fullmatch(r'stage[0-9]+', key)])
             for stage in range(int(restart_from[5:]), last_stage + 1):
                 stale[f'stage{stage}'] = f'{restart_from} changed in {v}'
-            if phase == 'unfinished':
-                data['collectionId'] = None
-                stale['stage2'] = f'unfinished collection detached in {v}'
             if int(restart_from[5:]) <= 1:
                 for round_data in data.get('keywordRounds', {}).values():
                     round_data['needsRegeneration'] = True

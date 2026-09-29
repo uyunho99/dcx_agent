@@ -140,3 +140,27 @@ error: pathspec 'backend/tests/fixtures/llm/kw_suggest_words.json' did not match
 ```
 
 W1 source diff whitespace check passed. Final tests: 285 targeted / 522 full, all passed.
+
+## D-091
+
+D-091 supersedes R-59. Version creation checks `from_v`'s own collection through `phase_state` before copying files or changing activation. Running and unfinished collections return HTTP 409 with `error.kind=conflict`, `error.code=crawl_unfinished`, and `크롤링 수집을 끝낸 뒤 새 버전을 만드세요.`. This includes stopped, interrupted, paused, and list-complete/detail-pending collections. Removed unfinished-collection detachment and its extra stage2 stale marker. Completed collections remain inherited; sources without collections can fork. Existing running keyword job guards remain.
+
+Frontend maps the code and preserves the Korean response in the shared RestartVersion flow for both restart labels. CoveragePanel now says `R3을 생성합니다` in both banners.
+
+Known-state UI guard: the crawling screen passes its existing status into StageVersionAction/RestartVersion. A collection awaiting detail completion disables the trigger with `aria-disabled` and the Korean message in `title`; opening the popover and submitting are both guarded. The shared trigger supports both restart labels. No extra polling was added. History/banner/picker/compare and other stage controls do not have source-specific live crawl state cheaply available, so they rely on the authoritative 409 and show the same message. Polling races are also resolved by that server check.
+
+Tests were written and observed failing before implementation. Contracts cover no copying or metadata/session mutation on refusal, actual queue states, source-vs-active collection selection, completed inheritance, no collection, and localized API/display errors.
+
+Verification: targeted backend context/follow-up contracts 98 passed; full `.venv/bin/python -m pytest -q` 551 passed, 2 failed (36.81s); frontend `npm --prefix frontend test` 129 passed; `npm --prefix frontend run lint` exited 0 with 0 problems. `next build` was not run. `git diff --check` passed.
+
+Full-suite blockers are outside the explicitly permitted scope and were left unchanged: `backend/tests/crawl/test_crawl_api.py::test_stale_activity_does_not_block_version` still requires interrupted-crawl forks to succeed, contrary to D-091; `backend/tests/test_integration_stage0_2.py::test_preprocess_reads_collection_chain` supplies collection docs/manifest without a completed crawl queue, which `phase_state` correctly treats as unfinished. Requested permission to update these two tests; no scope expansion was received before the commit attempt. Existing Pydantic/joblib warnings remain.
+
+Commit outcome: **uncommitted**. Explicit in-scope `git add` and `git commit --only -F` with the requested subject/trailer both failed (exit 128): the sandbox cannot create `/Users/persona1/Desktop/dcx_agent/.git/worktrees/dcx_agent-dcx2-stage0-2/index.lock` (`Operation not permitted`). No escalation attempted; scripts, decision-log.md, and .DS_Store were not staged or edited by this task.
+
+The widened crawl API test now expects `409 crawl_unfinished` for an interrupted collection, then finishes it to retain the successful-fork check. Integration collection fixtures now include a finished detail queue, preserving collection-chain preprocessing assertions. Existing unrelated `.DS_Store`, decision-log additions, and the other job's scripts are preserved.
+
+Validation: full backend `.venv/bin/python -m pytest -q`: **553 passed**, 2 warnings (Pydantic config deprecation and physical-core detection fallback). Frontend `npm --prefix frontend test`: **130 passed / 24 files**. `npm --prefix frontend run lint`: exit 0, **0 problems**. `git diff --check`: passed. No next build was run.
+
+Final shared-workspace recheck supersedes the failure summary above: another concurrent writer updated the two out-of-scope tests and added crawl-page status wiring plus RestartVersion's crawl guard/helper/tests during the commit attempt. This task did not edit those out-of-scope files or scripts, and preserved the concurrent changes. On that resulting workspace, full backend **553 passed** (37.56s, 2 existing warnings), frontend **130 passed**, lint **0 problems**, and diff whitespace check passed. Crawl-page restart now receives status and has aria-disabled/title; pages without shared status still rely on the documented 409 fallback. These concurrent changes were not included in the earlier failed staging/commit attempt. Changes remain uncommitted due to the index-lock permission restriction.
+
+Commit attempt: requested subject and `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>` trailer were supplied. Both staging and commit failed because the sandbox cannot create `/Users/persona1/Desktop/dcx_agent/.git/worktrees/dcx_agent-dcx2-stage0-2/index.lock` (`Operation not permitted`). Changes remain uncommitted.

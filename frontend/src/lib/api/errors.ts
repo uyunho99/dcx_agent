@@ -2,6 +2,7 @@ export const versionQuery = (path: string, version?: string) => version ? `${pat
 const genericError = '요청에 실패했습니다. 다시 시도하세요.';
 const hasHangul = (message: string) => /[가-힣]/.test(message);
 const messages: Record<string, string> = {
+ crawl_unfinished: '크롤링 수집을 끝낸 뒤 새 버전을 만드세요.',
  storage_error: '저장 공간에 쓰지 못했습니다. 디스크 여유 공간을 확인하고 이어서 진행하세요.',
  no_collection: '선택된 수집본이 없습니다. 목록 수집을 시작하세요.',
  snapshot_conflict: '다른 상세 수집 대상이 이미 선택되었습니다. 수집 상태를 다시 확인하세요.',

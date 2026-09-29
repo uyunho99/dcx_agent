@@ -18,7 +18,7 @@ class ContextRoute(APIRoute):
             try:
                 return await handler(request)
             except StoreError as exc:
-                return JSONResponse(status_code=exc.status, content={'status': 'error', 'error': {'kind': exc.kind, 'message': str(exc)}})
+                return JSONResponse(status_code=exc.status, content={'status': 'error', 'error': {'kind': exc.kind, 'code': 'crawl_unfinished' if str(exc) == versions.CRAWL_UNFINISHED_MESSAGE else 'invalid_request' if exc.kind == 'validation' else 'context_error', 'message': str(exc)}})
             except RequestValidationError:
                 return JSONResponse(status_code=422, content={'status': 'error', 'error': {'kind': 'validation', 'message': '입력값을 확인하세요'}})
             except OSError:

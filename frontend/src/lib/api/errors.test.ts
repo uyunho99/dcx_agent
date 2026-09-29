@@ -40,3 +40,9 @@ it('keeps the version-conflict event for coded and code-less 409 responses only'
  responseError({error:{message:'작업이 진행 중입니다'}},409);
  expect(dispatchEvent).toHaveBeenCalledTimes(2);
 });
+
+it('explains unfinished crawl conflicts through the display helper',()=>{
+ const message=responseError({error:{code:'crawl_unfinished',message:'Unfinished crawl'}},409);
+ expect(message).toBe('크롤링 수집을 끝낸 뒤 새 버전을 만드세요.');
+ expect(displayError(new Error(message), '새 버전을 만들지 못했습니다.')).toBe(message);
+});

@@ -379,14 +379,23 @@ def test_empty_mutation_does_not_write(env, monkeypatch):
     assert control._mutate('S', lambda session: ({}, {'status': 'idle'})) == {'status': 'idle'}
 
 
-def test_stale_activity_does_not_block_version(env):
+def test_interrupted_collection_blocks_version_until_finished(env):
     from app.context import versions
     control.start_list('S')
     with closing(CrawlQueue(control.collection_dir('S') / 'queue.sqlite')) as q:
         q.connection.execute('UPDATE runs SET heartbeat_at=0')
     assert control.status('S')['status'] == 'interrupted'
     assert control.activity('S')['status'] == 'interrupted'
+    response = env.client.post('/sessions/S/versions', json={'from': 'v1', 'restartFrom': 'stage2'})
+    assert response.status_code == 409
+    assert response.json()['error']['code'] == 'crawl_unfinished'
+    assert not versions.version_dir('S', 'v2').exists()
+    with closing(CrawlQueue(control.collection_dir('S') / 'queue.sqlite')) as q:
+        q.connection.execute("UPDATE runs SET kind='detail', status='done'")
+        q.connection.execute("UPDATE list_tasks SET status='done'")
+    assert control.phase_state('S') == 'done'
     assert versions.create_version('S', 'v1', 'stage2', '') == 'v2'
+    assert store.load_session('S')['collectionId'] == 'c1'
 
 
 def test_corrupt_queue_only_marks_its_session_unreadable(env):

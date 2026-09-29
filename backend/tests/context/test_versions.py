@@ -148,7 +148,9 @@ def test_crawl_running_blocks_even_with_failed_round(client, monkeypatch):
     assert client.post(f'/sessions/{sid}/versions', json={'from': 'v1', 'restartFrom': 'stage2'}).status_code == 409
 
 
-def test_compare_stage2_counts(client, data_dir):
+def test_compare_stage2_counts(client, data_dir, monkeypatch):
+    from app.crawl import control
+    monkeypatch.setattr(control, 'phase_state', lambda sid, collection_id=None: 'done')
     import json
     sid = create(client)
     update_session(sid, {'collectionId': 'c1'})
