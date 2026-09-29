@@ -26,13 +26,14 @@ HEADERS = {
 TRIM_KEYS = {'formats', 'thumbnails', 'automatic_captions', 'requested_formats', 'http_headers'}
 NAME_KEYS = {'author', 'authorname', 'nickname', 'nick', 'membernickname', 'writer',
              'writername', 'bloggername', 'uploader', 'channel', 'displayname'}
-ID_KEYS = {'authorid', 'memberid', 'memberkey', 'userid', 'blogid', 'writerid', 'uploaderid', 'channelid', 'naverid'}
-PROFILE_KEYS = {'author_thumbnail', 'profileimage', 'profileimageurl', 'profileurl', 'avatar', 'avatarurl'}
+ID_KEYS = {'authorid', 'memberid', 'memberkey', 'userid', 'blogid', 'writerid', 'uploaderid', 'channelid', 'naverid', 'nickid'}
+PROFILE_KEYS = {'author_thumbnail', 'profileimage', 'profileimageurl', 'profileurl', 'avatar', 'avatarurl',
+                'authorurl', 'uploaderurl', 'channelurl'}
 SELECTORS = {
     'naver_blog': '.nick, .nickname, .blog_author, .blogger, .writer, .user_name',
     'naver_cafe': '.nick, .nickname, .nick_name, .comment_nickname, .ArticleWriter .nickname',
     'clien': '.nickname, .nick, .member, .comment_view .nickname',
-    'ppomppu': '.list_name, .list_name2, .view_name, .comment_name, .nickname',
+    'ppomppu': '.list_name, .list_name2, .view_name, .comment_name, .nickname, .topTitle-name .baseList-name, .baseList-name, .content .desc > span:nth-child(2)',
     'youtube': '[itemprop="author"]',
 }
 EMAIL = re.compile(r'[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}')
@@ -81,6 +82,7 @@ class Masker:
             'name': '사용자' + label.upper(), 'id': 'user_' + label,
             'email': 'user_' + label + '@example.invalid',
             'profile': 'https://example.invalid/profile_' + label + '.png',
+            'ip': 'user_' + label,
         }[kind]
 
     def discover_url(self, value):
@@ -88,7 +90,7 @@ class Masker:
         parts = urlsplit(value)
         host = (parts.hostname or '').lower()
         for key, val in parse_qsl(parts.query):
-            if normalized(key) in ID_KEYS:
+            if normalized(key) in ID_KEYS or (parts.path.endswith('/view_info.php') and key == 'id'):
                 self.remember(val, 'id')
         if host in {'blog.naver.com', 'm.blog.naver.com'}:
             first = unquote(parts.path.strip('/').split('/')[0])
@@ -142,7 +144,17 @@ class Masker:
     def discover_html(self, source, text):
         from selectolax.parser import HTMLParser
         self.discover_text(text)
-        tree = HTMLParser(text.encode('utf-8', errors='replace'))
+        if source == 'ppomppu':
+            for match in re.finditer(r'\bvar\s+initialCommentData\s*=\s*', text):
+                data, _ = json.JSONDecoder().raw_decode(text[match.end():])
+                self.discover_ppomppu_comments(data.get('comments', []))
+            for match in re.finditer(r'''\bview_info\(\s*['"]([^'"]+)['"]''', html.unescape(text)):
+                self.remember(match[1], 'id')
+        # Responses are already decoded using the recorded transport charset.
+        # Do not let a legacy meta charset reinterpret these UTF-8 parser bytes:
+        # that corrupts discovered identities (and audit placeholders) so they
+        # no longer match the original text during substitution.
+        tree = HTMLParser(text.encode('utf-8', errors='replace'), detect_encoding=False)
         for node in tree.css(SELECTORS[source]):
             for value in (node.text(strip=True), node.attributes.get('title'), node.attributes.get('alt')):
                 self.remember(value, 'name')
@@ -151,6 +163,8 @@ class Masker:
                 self.remember(child.attributes.get('src'), 'profile')
         for node in tree.css('*'):
             attrs = node.attributes
+            if attrs.get('href'):
+                self.discover_url(attrs['href'])
             for key, value in attrs.items():
                 self.discover_field(key.removeprefix('data-'), value)
             marker = ' '.join((attrs.get('class') or '', attrs.get('id') or '')).lower()
@@ -158,6 +172,23 @@ class Masker:
                 for key in ('src', 'data-src', 'srcset'):
                     self.remember(attrs.get(key), 'profile')
                 self.remember(attrs.get('alt'), 'name')
+
+    def discover_ppomppu_comments(self, comments):
+        from selectolax.parser import HTMLParser
+        for comment in comments:
+            if not isinstance(comment, dict):
+                continue
+            name = comment.get('name', '')
+            tree = HTMLParser(name)
+            self.remember(tree.text(strip=True), 'name')
+            self.discover_html('ppomppu', name)
+            for markup in (name, comment.get('image', '')):
+                for node in HTMLParser(markup).css('img'):
+                    for key in ('src', 'data-src', 'srcset'):
+                        self.remember(node.attributes.get(key), 'profile')
+                    self.remember(node.attributes.get('alt'), 'name')
+            self.remember((comment.get('meta') or {}).get('ip_display'), 'ip')
+            self.discover_ppomppu_comments(comment.get('sub_cmt') or [])
 
     def text(self, text):
         text = URL.sub(lambda m: strip_query_secrets(m[0]), text)
@@ -350,6 +381,7 @@ def mobile_url(source, url):
 def article_urls(source, text, base):
     from selectolax.parser import HTMLParser
     result = []
+    seen = set()
     for node in HTMLParser(text).css('a[href]'):
         url = urljoin(base, html.unescape(node.attributes['href']))
         parts = urlsplit(url)
@@ -358,7 +390,9 @@ def article_urls(source, text, base):
         query = dict(parse_qsl(parts.query))
         good = (re.match(r'^/service/board/[^/]+/\d+', parts.path) if source == 'clien'
                 else parts.path.endswith('/view.php') and query.get('id') and query.get('no'))
-        if good and url not in result:
+        canonical = (parts.scheme, parts.netloc, parts.path) if source == 'clien' else url
+        if good and canonical not in seen:
+            seen.add(canonical)
             result.append(url)
     return result
 
@@ -479,16 +513,81 @@ def capture_http(recorder, args):
                 asyncio.run(render_cafe(recorder, url, f'detail-{index}.rendered.html'))
 
 
+def audit_fixture(directory):
+    """Return counts of distinct unmasked known values by kind; never expose values.
+
+    Reads only local files. Counts are deduplicated within each kind across files.
+    Parse/read failures fail closed through an error count.
+    """
+    directory = Path(directory)
+
+    class Auditor(Masker):
+        def __init__(self):
+            super().__init__()
+            self.seen = set()
+
+        def remember(self, value, kind):
+            if not isinstance(value, str) or not value.strip():
+                return
+            value = html.unescape(value.strip())
+            if re.fullmatch(r'(?:사용자[A-Z]+|@?user_[a-z]+)', value):
+                return
+            if kind == 'email' and re.fullmatch(r'user_[a-z]+@example\.invalid', value):
+                return
+            if kind == 'profile':
+                parts = urlsplit(value)
+                if parts.hostname == 'example.invalid':
+                    return
+                if parts.hostname in {'www.youtube.com', 'youtube.com'} and re.fullmatch(
+                        r'/(?:channel/|user/|@)?(?:user_[a-z]+|사용자[A-Z]+)',
+                        unquote(parts.path)) and not parts.query and not parts.fragment:
+                    return
+            if (kind, value) not in self.seen:
+                self.seen.add((kind, value))
+                self.counts[kind] += 1
+
+    auditor = Auditor()
+    try:
+        manifest_path = directory / 'manifest.json'
+        manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
+        source = manifest.get('source', directory.name)
+        if source not in SOURCES or not directory.is_dir():
+            return {'error': 1}
+        encodings = {r.get('file'): r.get('encoding') for r in manifest.get('requests', [])}
+        files = sorted(p for p in directory.iterdir() if p.suffix in {'.html', '.json'})
+        if not files:
+            return {'error': 1}
+        for path in files:
+            try:
+                if path.suffix == '.json':
+                    auditor.discover_json(json.loads(path.read_text(encoding='utf-8')))
+                else:
+                    encoding = encodings.get(path.name) or ('euc-kr' if source == 'ppomppu' else 'utf-8')
+                    auditor.discover_html(source, path.read_bytes().decode(encoding, errors='surrogateescape'))
+            except Exception:
+                auditor.counts['error'] += 1
+    except Exception:
+        auditor.counts['error'] += 1
+    return dict(auditor.counts)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('source', choices=SOURCES)
-    parser.add_argument('keyword')
+    parser.add_argument('source', choices=SOURCES, nargs='?')
+    parser.add_argument('keyword', nargs='?')
+    parser.add_argument('--audit', type=Path, metavar='DIRECTORY', help='Audit saved fixtures offline; print counts only')
     parser.add_argument('--details', type=int, default=3)
     parser.add_argument('--out', type=Path, default=Path('backend/tests/fixtures/http'))
     parser.add_argument('--url', action='append', default=[], help='Repeat for explicit detail URLs; limited by --details')
     parser.add_argument('--render', action='store_true', help='Also render Naver cafe details using crawl4ai')
     parser.add_argument('--force', action='store_true')
     args = parser.parse_args(argv)
+    if args.audit is not None:
+        counts = audit_fixture(args.audit)
+        print(json.dumps({'audit_counts': counts, 'total': sum(counts.values())}))
+        return int(bool(counts))
+    if args.source is None or args.keyword is None:
+        parser.error('source and keyword are required for capture')
     if args.details < 0 or (args.render and args.source != 'naver_cafe'):
         parser.error('--details must be nonnegative; --render is only for naver_cafe')
     secrets = [os.getenv(key, '') for key in ('NAVER_CLIENT_ID', 'NAVER_CLIENT_SECRET', 'YOUTUBE_API_KEY')]

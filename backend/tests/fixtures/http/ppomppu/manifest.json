@@ -1,0 +1,38 @@
+{
+  "source": "ppomppu",
+  "keyword": "에어컨 소음",
+  "captured_at": "2026-09-29T05:40:23.374875+00:00",
+  "requests": [
+    {
+      "url": "https://www.ppomppu.co.kr/search_bbs.php?keyword=%BF%A1%BE%EE%C4%C1%20%BC%D2%C0%BD",
+      "status_code": 200,
+      "encoding": "euc-kr",
+      "file": "list.html"
+    },
+    {
+      "url": "https://www.ppomppu.co.kr/zboard/view.php?id=house&no=258276&keyword=%BF%A1%BE%EE%C4%C1+%BC%D2%C0%BD",
+      "status_code": 200,
+      "encoding": "euc-kr",
+      "file": "detail-1.html"
+    },
+    {
+      "url": "https://www.ppomppu.co.kr/zboard/view.php?id=freeboard&no=10112787&keyword=%BF%A1%BE%EE%C4%C1+%BC%D2%C0%BD",
+      "status_code": 200,
+      "encoding": "euc-kr",
+      "file": "detail-2.html"
+    },
+    {
+      "url": "https://www.ppomppu.co.kr/zboard/view.php?id=daily_life&no=17927&keyword=%BF%A1%BE%EE%C4%C1+%BC%D2%C0%BD",
+      "status_code": 200,
+      "encoding": "euc-kr",
+      "file": "detail-3.html"
+    }
+  ],
+  "notes": [],
+  "masking_stats": {
+    "email": 1,
+    "id": 1,
+    "name": 20,
+    "profile": 1
+  }
+}

@@ -1,0 +1,1900 @@
+
+
+
+
+ 
+
+<!DOCTYPE HTML>
+<html lang="ko">
+<head>
+	<title>클리앙 : 검색</title>
+	<meta name="robots" content="noindex">
+	<meta charset="utf-8">
+<meta http-equiv="Content-Script-Type" content="text/javascript">
+<meta http-equiv="Content-Style-Type" content="text/css">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="referrer" content="unsafe-url">
+<meta name="viewport" content="width=1280" />
+<meta name="author" content="클리앙" />
+<meta name="apple-mobile-web-app-title" content="클리앙">
+
+<link rel="canonical" href="https://www.clien.net/service/search">
+
+<link rel="stylesheet" href="/service/css/font-awesome-lite.min.css?260918v3">
+<link rel="stylesheet" href="/service/css/fontello.css?260918v3">
+
+		<link rel="stylesheet" href="/service/css/clien.css?260918v3"> 
+	<link rel="stylesheet" href="/service/css/font-appleSD.css?260918v3"> 
+
+
+<link rel="shortcut icon" href="/service/image/favicon.ico">
+
+<link rel=apple-touch-icon href="/service/image/icon180x180.png"/>
+
+<script type="application/ld+json">
+	{
+		"@context": "https://schema.org",
+		"@type": "Organization",
+		"url": "https://www.clien.net/",
+		"logo": "https://www.clien.net/service/image/logo.png"
+	}
+</script>
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-F2FH9F05GB"></script>
+<script>
+	window.dataLayer = window.dataLayer || [];
+	function gtag(){dataLayer.push(arguments);}
+	gtag('js', new Date());
+
+	gtag('config', 'G-F2FH9F05GB');
+</script>
+
+ 
+	
+<script async='async' src='https://securepubads.g.doubleclick.net/tag/js/gpt.js'></script>
+<script>
+	var googletag = googletag || {};
+	googletag.cmd = googletag.cmd || [];
+
+    
+	googletag.cmd.push(function() {
+		googletag.defineSlot('/44950606/cs4-pc-list-below', [728, 90], 'div-pc-list-below').addService(googletag.pubads());
+		googletag.defineSlot('/44950606/cs4-pc-side1', [300, 250], 'div-pc-side-1').addService(googletag.pubads());
+		googletag.defineSlot('/44950606/cs4-pc-side2', [300, 250], 'div-pc-side-2').addService(googletag.pubads());
+
+		googletag.setConfig({ targeting: { board: ["etc"] } });
+		googletag.enableServices();
+	});
+
+    document.addEventListener('DOMContentLoaded', function() {
+        googletag.cmd.push(function() {
+            googletag.display('div-pc-list-below');
+            googletag.display('div-pc-side-1');
+            googletag.display('div-pc-side-2');
+        });
+    });
+</script> 
+
+</head>
+
+<body>
+
+
+<div class="back-to-top" id="top"></div>
+<nav class="header_wrap">
+	<div class="nav_header" data-role="account-open">
+        <div class="nav_header_logo">
+                        <h1 class="header_logo">
+                <a href="/service/" title="클리앙홈 바로가기"><i class="icon-clien"></i><span class="blind">CLIEN</span></a>
+                <span id="eventImgLogo"></span>
+            </h1>
+            <a href="#div_content" class="skip_to">본문 바로가기</a>
+            <a href="#menuTop" class="skip_to">메뉴 바로가기</a>
+            <a href="javascript:;" class="skip_to text-large">보기설정</a>
+            <a href="javascript:;" class="skip_to button-dark">테마설정</a>
+            <div class="header_menu_center">
+	            <div class="header_menu">
+	                <a href="/service/group/clien_all" class="all_view" title="톺아보기 바로가기"><span class="txt">톺아보기</span></a>
+	                <a href="/service/group/clien_all?&od=T33" class="all_symph" title="톺아보기의 공감글"><span class="txt">공감글</span></a>
+	            </div>
+	            <div class="search ad_banner" data-role="total-search">
+	                <button type="button" class="search_button" data-role="total-submit" title="검색하기"><span class="fa fa-search"></span></button>
+	                <input type="search" name="search" class="search_input" data-role="total-input-keyword" title="통합검색" placeholder="검색어를 입력하세요." />
+	            </div>
+            </div>
+		</div>
+		
+        <div class="header_setting_area ">
+<div class="board_option">
+    <div class="option_group">
+        <a href="javascript:;" class="text-large">
+                <i class="fa fa-text-width" title="화면크게보기"></i>
+        </a>
+        <a href="javascript:;" class="button-dark">
+                <i class="fa fa-adjust" title="다크모드"></i>
+        </a>
+    </div>
+
+</div>            <div class="btn_top_setting" id="set-more">
+                <i class="fa fa-television btn_set"></i>
+                <i class="fa fa-times btn_close"></i>
+            </div>
+		</div>	
+	</div>
+</nav>
+
+<Script>
+
+	var setEventDay = [{month:3, day:1, class:'kr', url:'/service/image/kflag.png', size:26}
+	, {month:4, day:16, class:'ribbon', url:'/service/image/ribbon.png', size:21} 	, {month:6, day:6, class:'kr', url:'/service/image/kflag.png', size:26} 
+	, {month:8, day:15, class:'kr', url:'/service/image/kflag.png', size:26} 	, {month:10, day:3, class:'kr', url:'/service/image/kflag.png', size:26} 
+	, {month:10, day:9, class:'han', url:'/service/image/han_clien_m.png', size:108}  
+	, {month:10, day:29, class:'ribbon', url:'/service/image/ribbon_b.png', size:21}]; 
+	
+	var eventNowDay = new Date(); 
+	var eventNowMonth = eventNowDay.getMonth() + 1; 
+	var eventNowDay = eventNowDay.getDate(); 
+	var eventIsVaild = false;
+	var eventLogoHtml = '';
+
+	setEventDay.forEach(function(value){
+
+		if(eventNowMonth == value.month && eventNowDay == value.day) {
+			if(value.class == 'han') {
+				eventLogoHtml = '<a href="/service" class="image_logo han" title="클리앙홈 바로가기"><img src="'+value.url+'" width="'+value.size+'px"></a>';
+			} else {
+				eventLogoHtml = '<span class="image_logo '+value.class+'"><img src="'+value.url+'" width="'+value.size+'px"></span>';
+			}
+			eventIsVaild = true;
+		};
+	});
+	
+
+	if(eventIsVaild) {
+		console.log(eventLogoHtml);
+		document.getElementById("eventImgLogo").innerHTML = eventLogoHtml;
+	};
+
+</script> 
+<div class="nav_container">
+	<div class="snb" id="menuTop">
+    <div class="snb_menu">
+        <div class="side_nav" id="menu-scroll">
+            <div class="side_menu_area">
+	                        
+	            <div class="navmenu open">
+    <a class="menu-title " id="com-more">
+        <span class="menu_over">커뮤니티</span>
+        <span class="fa fa-angle-down"></span>
+	</a>
+
+
+        <a class="menu-group all" href="/service/group/board_all">
+
+            <span class="fa fa-angle-down"></span>
+        <span class="menu_over" title="커뮤니티전체">커뮤니티전체</span>
+        
+        </a>
+
+
+        <a class="menu-group" href="/service/group/community">
+
+            <span class="icon-board" alt="C">C</span>
+        <span class="menu_over" title="모두의광장">모두의광장</span>
+        
+        </a>
+
+
+        <a class="menu-list" href="/service/board/park">
+
+            <span class="icon-board" alt="F">F</span>
+        <span class="menu_over" title="모두의공원">모두의공원</span>
+        
+        </a>
+
+
+        <a class="menu-list" href="/service/board/image">
+
+            <span class="icon-board" alt="I">I</span>
+        <span class="menu_over" title="사진게시판">사진게시판</span>
+        
+        </a>
+
+
+        <a class="menu-list" href="/service/board/kin">
+
+            <span class="icon-board" alt="Q">Q</span>
+        <span class="menu_over" title="아무거나질문">아무거나질문</span>
+        
+        </a>
+
+
+        <a class="menu-group" href="/service/group/allinfo">
+
+            <span class="icon-board" alt="D">D</span>
+        <span class="menu_over" title="정보와자료">정보와자료</span>
+        
+        </a>
+
+
+        <a class="menu-list" href="/service/board/news">
+
+            <span class="icon-board" alt="N">N</span>
+        <span class="menu_over" title="새로운소식">새로운소식</span>
+        
+        </a>
+
+
+        <a class="menu-list" href="/service/board/useful">
+
+            <span class="icon-board" alt="T">T</span>
+        <span class="menu_over" title="유용한사이트">유용한사이트</span>
+        
+        </a>
+
+
+        <a class="menu-list" href="/service/board/pds">
+
+            <span class="icon-board" alt="P">P</span>
+        <span class="menu_over" title="자료실">자료실</span>
+        
+        </a>
+
+
+        <a class="menu-group" href="/service/group/allreview">
+
+            <span class="icon-board" alt="E">E</span>
+        <span class="menu_over" title="강좌/사용기">강좌/사용기</span>
+        
+        </a>
+
+
+        <a class="menu-list" href="/service/board/lecture">
+
+            <span class="icon-board" alt="L">L</span>
+        <span class="menu_over" title="팁과강좌">팁과강좌</span>
+        
+        </a>
+
+
+        <a class="menu-list" href="/service/board/use">
+
+            <span class="icon-board" alt="U">U</span>
+        <span class="menu_over" title="사용기">사용기</span>
+        
+        </a>
+
+
+        <a class="menu-list" href="/service/board/chehum">
+
+            <span class="icon-board" alt="·">·</span>
+        <span class="menu_over" title="체험단사용기">체험단사용기</span>
+        
+        </a>
+
+
+        <a class="menu-group" href="/service/group/allsell">
+
+            <span class="icon-board" alt="W">W</span>
+        <span class="menu_over" title="사고팔고">사고팔고</span>
+        
+        </a>
+
+
+        <a class="menu-list" href="/service/board/jirum">
+
+            <span class="icon-board" alt="J">J</span>
+        <span class="menu_over" title="알뜰구매">알뜰구매</span>
+        
+        </a>
+
+
+        <a class="menu-list" href="/service/board/sold">
+
+            <span class="icon-board" alt="S">S</span>
+        <span class="menu_over" title="회원중고장터">회원중고장터</span>
+        
+        </a>
+
+
+        <a class="menu-list" href="/service/board/hongbo">
+
+            <span class="icon-board" alt="B">B</span>
+        <span class="menu_over" title="직접홍보">직접홍보</span>
+        
+        </a>
+
+
+        <a class="menu-insurance" href="/service/group/insure">
+
+            <span class="icon-board" alt="·">·</span>
+        <span class="menu_over" title="보험상담실">보험상담실</span>
+        
+        </a>
+
+
+        <a class="menu-promo invisible" href="/service/">
+
+            <span class="icon-board" alt="H">H</span>
+        <span class="menu_over" title="클리앙홈">클리앙홈</span>
+        
+        </a>
+</div>
+<div class="menu_line"></div>    
+	            <div class="menu_somoim">
+    <a class="menu-title" id="more">
+		<span class="menu_over">소모임</span>
+        <span class="fa fa-angle-down"></span>
+	</a>
+	<a class="menu-group somoim" href="/service/group/cm_all">
+		<span class="menu_over">소모임전체</span>
+	</a>
+	
+			<a class="menu-list somoim" href="/service/board/cm_car"><span class="icon-board">·</span><span class="menu_over">굴러간당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_iphonien"><span class="icon-board">·</span><span class="menu_over">아이포니앙</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_mac"><span class="icon-board">·</span><span class="menu_over">MaClien</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_stock"><span class="icon-board">·</span><span class="menu_over">주식한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_japanlive"><span class="icon-board">·</span><span class="menu_over">일본산당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_app"><span class="icon-board">·</span><span class="menu_over">개발한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_bike"><span class="icon-board">·</span><span class="menu_over">자전거당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_baseball"><span class="icon-board">·</span><span class="menu_over">야구당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_girl"><span class="icon-board">·</span><span class="menu_over">소시당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_rowing"><span class="icon-board">·</span><span class="menu_over">노젓는당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_mbike"><span class="icon-board">·</span><span class="menu_over">이륜차당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_test"><span class="icon-board">·</span><span class="menu_over">테스트당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_vcoin"><span class="icon-board">·</span><span class="menu_over">가상화폐당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_bts"><span class="icon-board">·</span><span class="menu_over">방탄소년당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_nas"><span class="icon-board">·</span><span class="menu_over">나스당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_ai"><span class="icon-board">·</span><span class="menu_over">AI당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_andro"><span class="icon-board">·</span><span class="menu_over">안드로메당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_oversea"><span class="icon-board">·</span><span class="menu_over">바다건너당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_dia"><span class="icon-board">·</span><span class="menu_over">디아블로당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_vr"><span class="icon-board">·</span><span class="menu_over">VR당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_applewatch"><span class="icon-board">·</span><span class="menu_over">사과시계당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_camp"><span class="icon-board">·</span><span class="menu_over">캠핑간당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_ebicycle"><span class="icon-board">·</span><span class="menu_over">전기자전거당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_golf"><span class="icon-board">·</span><span class="menu_over">골프당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_lego"><span class="icon-board">·</span><span class="menu_over">레고당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_kordle"><span class="icon-board">·</span><span class="menu_over">꼬들한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_linux"><span class="icon-board">·</span><span class="menu_over">리눅서당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_watch"><span class="icon-board">·</span><span class="menu_over">시계찬당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_whiskey"><span class="icon-board">·</span><span class="menu_over">위스키당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_console"><span class="icon-board">·</span><span class="menu_over">콘솔한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_baby"><span class="icon-board">·</span><span class="menu_over">육아당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_music"><span class="icon-board">·</span><span class="menu_over">소리당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_book"><span class="icon-board">·</span><span class="menu_over">활자중독당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_coffee"><span class="icon-board">·</span><span class="menu_over">클다방</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_3dmaking"><span class="icon-board">·</span><span class="menu_over">3D메이킹</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_70"><span class="icon-board">·</span><span class="menu_over">X세대당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_adhd"><span class="icon-board">·</span><span class="menu_over">ADHD당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_aigurim"><span class="icon-board">·</span><span class="menu_over">AI그림당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_airplane"><span class="icon-board">·</span><span class="menu_over">날아간당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_badmin"><span class="icon-board">·</span><span class="menu_over">배드민턴당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_basket"><span class="icon-board">·</span><span class="menu_over">농구당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_bb"><span class="icon-board">·</span><span class="menu_over">블랙베리당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_bear"><span class="icon-board">·</span><span class="menu_over">곰돌이당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_beer"><span class="icon-board">·</span><span class="menu_over">비어있당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_billiards"><span class="icon-board">·</span><span class="menu_over">FM당구당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_blockchain"><span class="icon-board">·</span><span class="menu_over">블록체인당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_board"><span class="icon-board">·</span><span class="menu_over">보드게임당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_bowling"><span class="icon-board">·</span><span class="menu_over">볼링친당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_cat"><span class="icon-board">·</span><span class="menu_over">냐옹이당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_civilize"><span class="icon-board">·</span><span class="menu_over">문명하셨당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_classic"><span class="icon-board">·</span><span class="menu_over">클래시앙</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_cook"><span class="icon-board">·</span><span class="menu_over">요리한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_cookierun"><span class="icon-board">·</span><span class="menu_over">쿠키런당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_daegu"><span class="icon-board">·</span><span class="menu_over">대구당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_danger"><span class="icon-board">·</span><span class="menu_over">DANGER당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_dduk"><span class="icon-board">·</span><span class="menu_over">뚝딱뚝당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_dog"><span class="icon-board">·</span><span class="menu_over">개판이당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_dongsup"><span class="icon-board">·</span><span class="menu_over">동숲한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_drone"><span class="icon-board">·</span><span class="menu_over">날아올랑</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_ebook"><span class="icon-board">·</span><span class="menu_over">e북본당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_edc"><span class="icon-board">·</span><span class="menu_over">갖고다닌당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_eve"><span class="icon-board">·</span><span class="menu_over">이브한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_fashion"><span class="icon-board">·</span><span class="menu_over">패셔니앙</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_fish"><span class="icon-board">·</span><span class="menu_over">물고기당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_fisher"><span class="icon-board">·</span><span class="menu_over">도시어부당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_fm"><span class="icon-board">·</span><span class="menu_over">FM한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_food"><span class="icon-board">·</span><span class="menu_over">맛있겠당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_formula1"><span class="icon-board">·</span><span class="menu_over">포뮬러당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_gemwar"><span class="icon-board">·</span><span class="menu_over">젬워한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_girlgroup"><span class="icon-board">·</span><span class="menu_over">걸그룹당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_glasses"><span class="icon-board">·</span><span class="menu_over">안경쓴당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_gta"><span class="icon-board">·</span><span class="menu_over">차턴당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_gun"><span class="icon-board">·</span><span class="menu_over">총쏜당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_gym"><span class="icon-board">·</span><span class="menu_over">땀흘린당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_hearth"><span class="icon-board">·</span><span class="menu_over">하스스톤한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_heroes"><span class="icon-board">·</span><span class="menu_over">히어로즈한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_instar"><span class="icon-board">·</span><span class="menu_over">인스타한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_iot"><span class="icon-board">·</span><span class="menu_over">IoT당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_kara"><span class="icon-board">·</span><span class="menu_over">KARA당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_keyboard"><span class="icon-board">·</span><span class="menu_over">키보드당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_ku"><span class="icon-board">·</span><span class="menu_over">덕질한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_lang"><span class="icon-board">·</span><span class="menu_over">어학당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_leather"><span class="icon-board">·</span><span class="menu_over">가죽당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_lol"><span class="icon-board">·</span><span class="menu_over">LOLien</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_mabi"><span class="icon-board">·</span><span class="menu_over">Mabinogien</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_main"><span class="icon-board">·</span><span class="menu_over">임시소모임</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_midra"><span class="icon-board">·</span><span class="menu_over">미드당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_military"><span class="icon-board">·</span><span class="menu_over">밀리터리당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_mine"><span class="icon-board">·</span><span class="menu_over">땅판당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_monhunt"><span class="icon-board">·</span><span class="menu_over">헌팅한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_mount"><span class="icon-board">·</span><span class="menu_over">오른당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_movie"><span class="icon-board">·</span><span class="menu_over">영화본당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_mtg"><span class="icon-board">·</span><span class="menu_over">MTG한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_nokien"><span class="icon-board">·</span><span class="menu_over">노키앙</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_note"><span class="icon-board">·</span><span class="menu_over">적는당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_onair"><span class="icon-board">·</span><span class="menu_over">방송한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_pctuning"><span class="icon-board">·</span><span class="menu_over">PC튜닝한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_photo"><span class="icon-board">·</span><span class="menu_over">찰칵찍당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_pic"><span class="icon-board">·</span><span class="menu_over">그림그린당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_picnic"><span class="icon-board">·</span><span class="menu_over">소풍간당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_plant"><span class="icon-board">·</span><span class="menu_over">심는당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_poe"><span class="icon-board">·</span><span class="menu_over">패스오브엑자일당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_rasp"><span class="icon-board">·</span><span class="menu_over">라즈베리파이당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_redeem"><span class="icon-board">·</span><span class="menu_over">품앱이당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_rhythm"><span class="icon-board">·</span><span class="menu_over">리듬탄당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_running"><span class="icon-board">·</span><span class="menu_over">달린당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_sea"><span class="icon-board">·</span><span class="menu_over">Sea마당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_sim"><span class="icon-board">·</span><span class="menu_over">SimSim하당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_simsik"><span class="icon-board">·</span><span class="menu_over">심야식당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_slate"><span class="icon-board">·</span><span class="menu_over">윈태블릿당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_snow"><span class="icon-board">·</span><span class="menu_over">미끄러진당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_soccer"><span class="icon-board">·</span><span class="menu_over">축구당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_solo"><span class="icon-board">·</span><span class="menu_over">나혼자산당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_star"><span class="icon-board">·</span><span class="menu_over">스타한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_steam"><span class="icon-board">·</span><span class="menu_over">스팀한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_surfing"><span class="icon-board">·</span><span class="menu_over">파도탄당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_swim"><span class="icon-board">·</span><span class="menu_over">퐁당퐁당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_tennis"><span class="icon-board">·</span><span class="menu_over">테니스친당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_thinkpad"><span class="icon-board">·</span><span class="menu_over">빨콩이당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_tiwatch"><span class="icon-board">·</span><span class="menu_over">공대시계당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_tour"><span class="icon-board">·</span><span class="menu_over">여행을떠난당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_tpad"><span class="icon-board">·</span><span class="menu_over">터치패드당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_twit"><span class="icon-board">·</span><span class="menu_over">트윗당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_venture"><span class="icon-board">·</span><span class="menu_over">창업한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_webos"><span class="icon-board">·</span><span class="menu_over">WebOs당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_werule"><span class="icon-board">·</span><span class="menu_over">소셜게임한당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_wine"><span class="icon-board">·</span><span class="menu_over">와인마신당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_wow"><span class="icon-board">·</span><span class="menu_over">WOW당</span></a>
+			<a class="menu-list somoim" href="/service/board/cm_wp"><span class="icon-board">·</span><span class="menu_over">윈폰이당</span></a>
+</div>
+<a class="menu-group somoim etc" href="/service/board/cm_main">
+    <span class="menu_over">임시소모임</span>
+</a>
+<div class="menu_line"></div>        
+            </div>
+        </div>
+        <div class="button_cs">
+            <a href="javascript:;" class="button_dropmenu" data-toggle="dropdown">고객지원</a>
+            <ul class="dropdown-menu">
+                <li><a href="/service/cs/singo/article">게시물 삭제 요청</a></li>
+                <li><a href="/service/cs/singo/article?type=illegal">불법촬영물등 신고</a></li>
+                <li><a href="/service/cs/singo/message">쪽지 신고</a></li>
+                <li><a href="/service/cs/singo/nickname">닉네임 신고</a></li>
+                <li><a href="mailto:user_a@example.invalid">제보 및 기타 제안</a></li>
+            </ul>
+        </div>
+	</div>
+	<div class="menu_area">
+        <a href="/service" class="link_home" title="클리앙홈">© CLIEN.NET</a>
+        <a href="#menuTop" class="link_top" title="메뉴맨위로"><i class="fa fa-bars"></i></a>
+    </div>
+</div> 
+	<div class="nav_body">
+		<div class="nav_content">
+			<div class="content_list">
+				<div class="board_head">
+					<div class="board_name">
+						<h2>
+                                <span class="search_title">통합검색결과</span>
+						</h2>
+					</div>
+					 
+						<div class="board_intro wide">
+							<span>※ 검색결과 목록의 게시판명을 클릭하면 해당 게시판의 상세검색을 할 수 있습니다.</span>
+						</div>
+				</div>
+		
+				<div class="board_nav search">
+					<div class="board_search top">
+						<div class="select_ui_box">
+							<span class="fa fa-angle-down list"></span>
+							<select class="select select_ui search_list" id="selectBoardCd" onchange="app.changeBoardCd();">
+								<option value="">통합검색</option>
+										<option value="park" >모두의공원</option>
+										<option value="image" >사진게시판</option>
+										<option value="kin" >아무거나질문</option>
+										<option value="news" >새로운소식</option>
+										<option value="useful" >유용한사이트</option>
+										<option value="pds" >자료실</option>
+										<option value="lecture" >팁과강좌</option>
+										<option value="use" >사용기</option>
+										<option value="chehum" >체험단사용기</option>
+										<option value="jirum" >알뜰구매</option>
+										<option value="sold" >회원중고장터</option>
+										<option value="hongbo" >직접홍보</option>
+									<option value="cm_car" >굴러간당</option>
+									<option value="cm_iphonien" >아이포니앙</option>
+									<option value="cm_mac" >MaClien</option>
+									<option value="cm_stock" >주식한당</option>
+									<option value="cm_japanlive" >일본산당</option>
+									<option value="cm_app" >개발한당</option>
+									<option value="cm_bike" >자전거당</option>
+									<option value="cm_baseball" >야구당</option>
+									<option value="cm_girl" >소시당</option>
+									<option value="cm_rowing" >노젓는당</option>
+									<option value="cm_mbike" >이륜차당</option>
+									<option value="cm_test" >테스트당</option>
+									<option value="cm_vcoin" >가상화폐당</option>
+									<option value="cm_bts" >방탄소년당</option>
+									<option value="cm_nas" >나스당</option>
+									<option value="cm_ai" >AI당</option>
+									<option value="cm_andro" >안드로메당</option>
+									<option value="cm_oversea" >바다건너당</option>
+									<option value="cm_dia" >디아블로당</option>
+									<option value="cm_vr" >VR당</option>
+									<option value="cm_applewatch" >사과시계당</option>
+									<option value="cm_camp" >캠핑간당</option>
+									<option value="cm_ebicycle" >전기자전거당</option>
+									<option value="cm_golf" >골프당</option>
+									<option value="cm_lego" >레고당</option>
+									<option value="cm_kordle" >꼬들한당</option>
+									<option value="cm_linux" >리눅서당</option>
+									<option value="cm_watch" >시계찬당</option>
+									<option value="cm_whiskey" >위스키당</option>
+									<option value="cm_console" >콘솔한당</option>
+									<option value="cm_baby" >육아당</option>
+									<option value="cm_music" >소리당</option>
+									<option value="cm_book" >활자중독당</option>
+									<option value="cm_coffee" >클다방</option>
+									<option value="cm_3dmaking" >3D메이킹</option>
+									<option value="cm_70" >X세대당</option>
+									<option value="cm_adhd" >ADHD당</option>
+									<option value="cm_aigurim" >AI그림당</option>
+									<option value="cm_airplane" >날아간당</option>
+									<option value="cm_badmin" >배드민턴당</option>
+									<option value="cm_basket" >농구당</option>
+									<option value="cm_bb" >블랙베리당</option>
+									<option value="cm_bear" >곰돌이당</option>
+									<option value="cm_beer" >비어있당</option>
+									<option value="cm_billiards" >FM당구당</option>
+									<option value="cm_blockchain" >블록체인당</option>
+									<option value="cm_board" >보드게임당</option>
+									<option value="cm_bowling" >볼링친당</option>
+									<option value="cm_cat" >냐옹이당</option>
+									<option value="cm_civilize" >문명하셨당</option>
+									<option value="cm_classic" >클래시앙</option>
+									<option value="cm_cook" >요리한당</option>
+									<option value="cm_cookierun" >쿠키런당</option>
+									<option value="cm_daegu" >대구당</option>
+									<option value="cm_danger" >DANGER당</option>
+									<option value="cm_dduk" >뚝딱뚝당</option>
+									<option value="cm_dog" >개판이당</option>
+									<option value="cm_dongsup" >동숲한당</option>
+									<option value="cm_drone" >날아올랑</option>
+									<option value="cm_ebook" >e북본당</option>
+									<option value="cm_edc" >갖고다닌당</option>
+									<option value="cm_eve" >이브한당</option>
+									<option value="cm_fashion" >패셔니앙</option>
+									<option value="cm_fish" >물고기당</option>
+									<option value="cm_fisher" >도시어부당</option>
+									<option value="cm_fm" >FM한당</option>
+									<option value="cm_food" >맛있겠당</option>
+									<option value="cm_formula1" >포뮬러당</option>
+									<option value="cm_gemwar" >젬워한당</option>
+									<option value="cm_girlgroup" >걸그룹당</option>
+									<option value="cm_glasses" >안경쓴당</option>
+									<option value="cm_gta" >차턴당</option>
+									<option value="cm_gun" >총쏜당</option>
+									<option value="cm_gym" >땀흘린당</option>
+									<option value="cm_hearth" >하스스톤한당</option>
+									<option value="cm_heroes" >히어로즈한당</option>
+									<option value="cm_instar" >인스타한당</option>
+									<option value="cm_iot" >IoT당</option>
+									<option value="cm_kara" >KARA당</option>
+									<option value="cm_keyboard" >키보드당</option>
+									<option value="cm_ku" >덕질한당</option>
+									<option value="cm_lang" >어학당</option>
+									<option value="cm_leather" >가죽당</option>
+									<option value="cm_lol" >LOLien</option>
+									<option value="cm_mabi" >Mabinogien</option>
+									<option value="cm_main" >임시소모임</option>
+									<option value="cm_midra" >미드당</option>
+									<option value="cm_military" >밀리터리당</option>
+									<option value="cm_mine" >땅판당</option>
+									<option value="cm_monhunt" >헌팅한당</option>
+									<option value="cm_mount" >오른당</option>
+									<option value="cm_movie" >영화본당</option>
+									<option value="cm_mtg" >MTG한당</option>
+									<option value="cm_nokien" >노키앙</option>
+									<option value="cm_note" >적는당</option>
+									<option value="cm_onair" >방송한당</option>
+									<option value="cm_pctuning" >PC튜닝한당</option>
+									<option value="cm_photo" >찰칵찍당</option>
+									<option value="cm_pic" >그림그린당</option>
+									<option value="cm_picnic" >소풍간당</option>
+									<option value="cm_plant" >심는당</option>
+									<option value="cm_poe" >패스오브엑자일당</option>
+									<option value="cm_rasp" >라즈베리파이당</option>
+									<option value="cm_redeem" >품앱이당</option>
+									<option value="cm_rhythm" >리듬탄당</option>
+									<option value="cm_running" >달린당</option>
+									<option value="cm_sea" >Sea마당</option>
+									<option value="cm_sim" >SimSim하당</option>
+									<option value="cm_simsik" >심야식당</option>
+									<option value="cm_slate" >윈태블릿당</option>
+									<option value="cm_snow" >미끄러진당</option>
+									<option value="cm_soccer" >축구당</option>
+									<option value="cm_solo" >나혼자산당</option>
+									<option value="cm_star" >스타한당</option>
+									<option value="cm_steam" >스팀한당</option>
+									<option value="cm_surfing" >파도탄당</option>
+									<option value="cm_swim" >퐁당퐁당</option>
+									<option value="cm_tennis" >테니스친당</option>
+									<option value="cm_thinkpad" >빨콩이당</option>
+									<option value="cm_tiwatch" >공대시계당</option>
+									<option value="cm_tour" >여행을떠난당</option>
+									<option value="cm_tpad" >터치패드당</option>
+									<option value="cm_twit" >트윗당</option>
+									<option value="cm_venture" >창업한당</option>
+									<option value="cm_webos" >WebOs당</option>
+									<option value="cm_werule" >소셜게임한당</option>
+									<option value="cm_wine" >와인마신당</option>
+									<option value="cm_wow" >WOW당</option>
+									<option value="cm_wp" >윈폰이당</option>
+							</select>
+						</div>
+						<div class="board_name search" data-role="total-search">
+							<input type="search" name="search" class="search_input" onkeydown="app.searchEnterKey()" title="검색" id="searchText" value="에어컨 소음" placeholder="검색어를 입력하세요." />
+							<button type="button" class="button_search" onclick="app.searchDetails()"><span class="fa fa-search"></span></button>
+						</div>
+					</div>
+					<div class="board_tap">
+							<a href="javascript:;" class="button_myArticle active" onclick="app.searchDetails('recency')">최신순</a>
+							<a href="javascript:;" class="button_myArticle" onclick="app.searchDetails('accuracy')">정확도순</a>
+					</div>
+				</div>
+		
+				<div class="naverAd" id="naverAdTop"></div>
+				
+		
+
+
+
+
+ 
+
+
+<div class="contents_jirum total_search">
+	
+				<div class="list_item symph_row jirum" data-role="list-row" data-author-id=user_a data-board-sn=19268762 data-comment-count=16>
+					<div class="list_symph view_symph" data-role="list-like-count"></div>
+	
+					<div class="list_title oneline" data-role="list-title" data-toggle-custom="dropdown">
+						<span class="list_subject" data-role="cut-string">
+							<button type="button" onclick="app.boardCdSearch('use', '사용기')" class="shortname fixed" title="게시판명 검색"><i class="fa fa-search-plus"></i>사용기</button>
+							<a href="/service/board/use/19268762?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false" class="subject_fixed" data-role="list-title-text" title="에어팟 5 무선충전 케이스 모델 후기">에어팟 5 무선충전 케이스 모델 후기</a>
+						</span>
+						 
+							<span class="icon_pic fa fa-picture-o"></span>
+						<a class="list_reply reply_symph" href="/service/board/use/19268762?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false#comment-point" data-role="ele-after" title="댓글16개">
+							<span class="rSymph05">16</span>
+						</a>
+						<div class="preview">
+							<span>지워줍니다. 사무실에 있으면 에어컨 소리나 선풍기 소리같은 저주파 잡음을 꽤 잘 지워줍니다. 그럼에도...먹는 경우요. 에어팟</span>
+						</div>
+					</div>
+					<div class="list_author line" data-role="list-author">
+						<div class="list_author_line">
+							
+	 
+		 
+		<span class="nickname">
+				<span title="사용자A">사용자A</span>
+		</span>
+ 
+							<span class="memo none" data-role="list_memo"></span>
+						</div>
+					</div>
+					<div class="list_hit">
+						<span class="hit">6941</span>
+					</div>
+					<div class="list_time">
+							<span class="time popover">09-23<span class="timestamp">2026-09-23 23:18:18</span></span>
+					</div>
+				</div>
+	
+				<div class="list_item symph_row jirum" data-role="list-row" data-author-id=user_b data-board-sn=19265237 data-comment-count=32>
+					<div class="list_symph view_symph" data-role="list-like-count"></div>
+	
+					<div class="list_title oneline" data-role="list-title" data-toggle-custom="dropdown">
+						<span class="list_subject" data-role="cut-string">
+							<button type="button" onclick="app.boardCdSearch('cm_car', '굴당')" class="shortname fixed" title="게시판명 검색"><i class="fa fa-search-plus"></i>굴당</button>
+							<a href="/service/board/cm_car/19265237?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false" class="subject_fixed" data-role="list-title-text" title="R-1234yf 와 R-134a 냉매, 그리고 에바 부식 이야기">R-1234yf 와 R-134a 냉매, 그리고 에바 부식 이야기</a>
+						</span>
+						 
+							<span class="icon_pic fa fa-picture-o"></span>
+						<a class="list_reply reply_symph" href="/service/board/cm_car/19265237?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false#comment-point" data-role="ele-after" title="댓글32개">
+							<span class="rSymph05">32</span>
+						</a>
+						<div class="preview">
+							<span>시원하거나, 소음이 난다거나, 문제가 있거나 하면 하드웨어 변경없이도 냉매량 수치가 업데이트 되는 차종들이 있습니다. 아주 </span>
+						</div>
+					</div>
+					<div class="list_author line" data-role="list-author">
+						<div class="list_author_line">
+							
+	 
+		 
+		<span class="nickname">
+				<span title="사용자B">사용자B</span>
+		</span>
+ 
+							<span class="memo none" data-role="list_memo"></span>
+						</div>
+					</div>
+					<div class="list_hit">
+						<span class="hit">3727</span>
+					</div>
+					<div class="list_time">
+							<span class="time popover">09-17<span class="timestamp">2026-09-17 22:27:29</span></span>
+					</div>
+				</div>
+	
+				<div class="list_item symph_row jirum" data-role="list-row" data-author-id=user_c data-board-sn=19265021 data-comment-count=21>
+					<div class="list_symph view_symph" data-role="list-like-count"></div>
+	
+					<div class="list_title oneline" data-role="list-title" data-toggle-custom="dropdown">
+						<span class="list_subject" data-role="cut-string">
+							<button type="button" onclick="app.boardCdSearch('cm_car', '굴당')" class="shortname fixed" title="게시판명 검색"><i class="fa fa-search-plus"></i>굴당</button>
+							<a href="/service/board/cm_car/19265021?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false" class="subject_fixed" data-role="list-title-text" title="아이오닉9, 560km 주행 후기">아이오닉9, 560km 주행 후기</a>
+						</span>
+												<a class="list_reply reply_symph" href="/service/board/cm_car/19265021?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false#comment-point" data-role="ele-after" title="댓글21개">
+							<span class="rSymph05">21</span>
+						</a>
+						<div class="preview">
+							<span>전기충전비와 30% 할인되는 고속도로 통행료. 에어컨필터 / 앞유리 세정제 타이어.. 이게 가장 많이 드는...싸게 먹히는게 짱입니</span>
+						</div>
+					</div>
+					<div class="list_author line" data-role="list-author">
+						<div class="list_author_line">
+							
+	 
+		 
+		<span class="nickname">
+				<span title="사용자C">사용자C</span>
+		</span>
+ 
+							<span class="memo none" data-role="list_memo"></span>
+						</div>
+					</div>
+					<div class="list_hit">
+						<span class="hit">4901</span>
+					</div>
+					<div class="list_time">
+							<span class="time popover">09-17<span class="timestamp">2026-09-17 14:45:45</span></span>
+					</div>
+				</div>
+	
+				<div class="list_item symph_row jirum" data-role="list-row" data-author-id=user_d data-board-sn=19264714 data-comment-count=18>
+					<div class="list_symph view_symph" data-role="list-like-count"></div>
+	
+					<div class="list_title oneline" data-role="list-title" data-toggle-custom="dropdown">
+						<span class="list_subject" data-role="cut-string">
+							<button type="button" onclick="app.boardCdSearch('cm_car', '굴당')" class="shortname fixed" title="게시판명 검색"><i class="fa fa-search-plus"></i>굴당</button>
+							<a href="/service/board/cm_car/19264714?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false" class="subject_fixed" data-role="list-title-text" title="테슬라 모델 Y L 출고했습니다~">테슬라 모델 Y L 출고했습니다~</a>
+						</span>
+						 
+							<span class="icon_pic fa fa-picture-o"></span>
+						<a class="list_reply reply_symph" href="/service/board/cm_car/19264714?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false#comment-point" data-role="ele-after" title="댓글18개">
+							<span class="rSymph05">18</span>
+						</a>
+						<div class="preview">
+							<span>노면 소음과 풍절음도 훨씬 적게 들려서 세단파였던 저로서는 생각외로 너무 만족스럽네요. 2. 거주성 뭐...말이 필요없을 정도로</span>
+						</div>
+					</div>
+					<div class="list_author line" data-role="list-author">
+						<div class="list_author_line">
+							
+	 
+		 
+		<span class="nickname">
+				<span title="사용자D">사용자D</span>
+		</span>
+ 
+							<span class="memo none" data-role="list_memo"></span>
+						</div>
+					</div>
+					<div class="list_hit">
+						<span class="hit">6576</span>
+					</div>
+					<div class="list_time">
+							<span class="time popover">09-16<span class="timestamp">2026-09-16 21:59:51</span></span>
+					</div>
+				</div>
+	
+				<div class="list_item symph_row jirum" data-role="list-row" data-author-id=user_e data-board-sn=19263390 data-comment-count=34>
+					<div class="list_symph view_symph" data-role="list-like-count"></div>
+	
+					<div class="list_title oneline" data-role="list-title" data-toggle-custom="dropdown">
+						<span class="list_subject" data-role="cut-string">
+							<button type="button" onclick="app.boardCdSearch('use', '사용기')" class="shortname fixed" title="게시판명 검색"><i class="fa fa-search-plus"></i>사용기</button>
+							<a href="/service/board/use/19263390?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false" class="subject_fixed" data-role="list-title-text" title="조텍 20주년 한정판 RTX 5080 오픈 개봉기">조텍 20주년 한정판 RTX 5080 오픈 개봉기</a>
+						</span>
+						 
+							<span class="icon_pic fa fa-picture-o"></span>
+						<a class="list_reply reply_symph" href="/service/board/use/19263390?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false#comment-point" data-role="ele-after" title="댓글34개">
+							<span class="rSymph05">34</span>
+						</a>
+						<div class="preview">
+							<span>어케든 다 내다팔면.... 저도 3080TI, 3080에서 정리하고 5080으로 변경했습니다. 제일 맘에 드는건 소음이 매우 적다는거! 추가</span>
+						</div>
+					</div>
+					<div class="list_author line" data-role="list-author">
+						<div class="list_author_line">
+							
+	 
+		 
+		<span class="nickname">
+				<span title="사용자E">사용자E</span>
+		</span>
+ 
+							<span class="memo none" data-role="list_memo"></span>
+						</div>
+					</div>
+					<div class="list_hit">
+						<span class="hit">10.4 k</span>
+					</div>
+					<div class="list_time">
+							<span class="time popover">09-14<span class="timestamp">2026-09-14 11:38:41</span></span>
+					</div>
+				</div>
+	
+				<div class="list_item symph_row jirum" data-role="list-row" data-author-id=사용자F data-board-sn=19262636 data-comment-count=17>
+					<div class="list_symph view_symph" data-role="list-like-count"></div>
+	
+					<div class="list_title oneline" data-role="list-title" data-toggle-custom="dropdown">
+						<span class="list_subject" data-role="cut-string">
+							<button type="button" onclick="app.boardCdSearch('kin', '아질게')" class="shortname fixed" title="게시판명 검색"><i class="fa fa-search-plus"></i>아질게</button>
+							<a href="/service/board/kin/19262636?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false" class="subject_fixed" data-role="list-title-text" title="시스템 에어컨 추가설치 말고, 해결방법이 없을까요?">시스템 에어컨 추가설치 말고, 해결방법이 없을까요?</a>
+						</span>
+												<a class="list_reply reply_symph" href="/service/board/kin/19262636?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false#comment-point" data-role="ele-after" title="댓글17개">
+							<span class="rSymph05">17</span>
+						</a>
+						<div class="preview">
+							<span>않고 무언가 하나 부족한 느낌입니다. 경험상 아무리 좋은 선풍기와 써큘레이터를 갖다놔도 에어컨 냉기에는 못미치더군요. 소음</span>
+						</div>
+					</div>
+					<div class="list_author line" data-role="list-author">
+						<div class="list_author_line">
+							
+	 
+		 
+		<span class="nickname">
+				<span title="사용자F">사용자F</span>
+		</span>
+ 
+							<span class="memo none" data-role="list_memo"></span>
+						</div>
+					</div>
+					<div class="list_hit">
+						<span class="hit">2219</span>
+					</div>
+					<div class="list_time">
+							<span class="time popover">09-12<span class="timestamp">2026-09-12 18:04:55</span></span>
+					</div>
+				</div>
+	
+				<div class="list_item symph_row jirum" data-role="list-row" data-author-id=user_f data-board-sn=19253547 data-comment-count=0>
+					<div class="list_symph view_symph" data-role="list-like-count"></div>
+	
+					<div class="list_title oneline" data-role="list-title" data-toggle-custom="dropdown">
+						<span class="list_subject" data-role="cut-string">
+							<button type="button" onclick="app.boardCdSearch('chehum', '체험')" class="shortname fixed" title="게시판명 검색"><i class="fa fa-search-plus"></i>체험</button>
+							<a href="/service/board/chehum/19253547?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false" class="subject_fixed" data-role="list-title-text" title="젠하이저 모멘텀5 와이어리스 실사용 후기와 노캔 테스트">젠하이저 모멘텀5 와이어리스 실사용 후기와 노캔 테스트</a>
+						</span>
+												<div class="preview">
+							<span>앞서 적은 대로 저역 소음에 강합니다. 카페에서 옆 테이블 대화가 웅성거림 수준으로 낮아지고, 사무실 에어컨 소음은 거의 사라</span>
+						</div>
+					</div>
+					<div class="list_author line" data-role="list-author">
+						<div class="list_author_line">
+							
+	 
+		 
+		<span class="nickname">
+				<span title="사용자G">사용자G</span>
+		</span>
+ 
+							<span class="memo none" data-role="list_memo"></span>
+						</div>
+					</div>
+					<div class="list_hit">
+						<span class="hit">1949</span>
+					</div>
+					<div class="list_time">
+							<span class="time popover">08-26<span class="timestamp">2026-08-26 01:03:29</span></span>
+					</div>
+				</div>
+	
+				<div class="list_item symph_row jirum" data-role="list-row" data-author-id=user_g data-board-sn=19251786 data-comment-count=12>
+					<div class="list_symph view_symph" data-role="list-like-count"></div>
+	
+					<div class="list_title oneline" data-role="list-title" data-toggle-custom="dropdown">
+						<span class="list_subject" data-role="cut-string">
+							<button type="button" onclick="app.boardCdSearch('use', '사용기')" class="shortname fixed" title="게시판명 검색"><i class="fa fa-search-plus"></i>사용기</button>
+							<a href="/service/board/use/19251786?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false" class="subject_fixed" data-role="list-title-text" title="여름 다 지나고 사버린 수냉조끼 eCoolbag">여름 다 지나고 사버린 수냉조끼 eCoolbag</a>
+						</span>
+						 
+							<span class="icon_pic fa fa-picture-o"></span>
+						<a class="list_reply reply_symph" href="/service/board/use/19251786?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false#comment-point" data-role="ele-after" title="댓글12개">
+							<span class="rSymph05">12</span>
+						</a>
+						<div class="preview">
+							<span>에어컨조끼라는 이름으로 출시된 배터리 구동식 컴프레서 수냉조끼입니다 eCoolbag 이라는 이상한 이름에 비싼 가격 + 촌시런 디</span>
+						</div>
+					</div>
+					<div class="list_author line" data-role="list-author">
+						<div class="list_author_line">
+							
+	 
+		 
+		<span class="nickname">
+				<span title="사용자H">사용자H</span>
+		</span>
+ 
+							<span class="memo none" data-role="list_memo"></span>
+						</div>
+					</div>
+					<div class="list_hit">
+						<span class="hit">7693</span>
+					</div>
+					<div class="list_time">
+							<span class="time popover">08-22<span class="timestamp">2026-08-22 10:05:25</span></span>
+					</div>
+				</div>
+	
+				<div class="list_item symph_row jirum" data-role="list-row" data-author-id=user_h data-board-sn=19250046 data-comment-count=14>
+					<div class="list_symph view_symph" data-role="list-like-count"></div>
+	
+					<div class="list_title oneline" data-role="list-title" data-toggle-custom="dropdown">
+						<span class="list_subject" data-role="cut-string">
+							<button type="button" onclick="app.boardCdSearch('park', '모공')" class="shortname fixed" title="게시판명 검색"><i class="fa fa-search-plus"></i>모공</button>
+							<a href="/service/board/park/19250046?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false" class="subject_fixed" data-role="list-title-text" title="삼성에어컨 3년만에 C422오류,잦은 작동오류">삼성에어컨 3년만에 C422오류,잦은 작동오류</a>
+						</span>
+												<a class="list_reply reply_symph" href="/service/board/park/19250046?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false#comment-point" data-role="ele-after" title="댓글14개">
+							<span class="rSymph05">14</span>
+						</a>
+						<div class="preview">
+							<span>기사님과 함께 정상범주이고 설치문제는 아님을 확인 했습니다.원래 이렇다(덜 시원하다)합니다.소음도 엘지에 비해 매우 시끄럽</span>
+						</div>
+					</div>
+					<div class="list_author line" data-role="list-author">
+						<div class="list_author_line">
+							
+	 
+		 
+		<span class="nickname">
+				<span title="사용자I">사용자I</span>
+		</span>
+ 
+							<span class="memo none" data-role="list_memo"></span>
+						</div>
+					</div>
+					<div class="list_hit">
+						<span class="hit">4133</span>
+					</div>
+					<div class="list_time">
+							<span class="time popover">08-18<span class="timestamp">2026-08-18 23:47:28</span></span>
+					</div>
+				</div>
+	
+				<div class="list_item symph_row jirum" data-role="list-row" data-author-id=user_i data-board-sn=19246652 data-comment-count=26>
+					<div class="list_symph view_symph" data-role="list-like-count"></div>
+	
+					<div class="list_title oneline" data-role="list-title" data-toggle-custom="dropdown">
+						<span class="list_subject" data-role="cut-string">
+							<button type="button" onclick="app.boardCdSearch('cm_car', '굴당')" class="shortname fixed" title="게시판명 검색"><i class="fa fa-search-plus"></i>굴당</button>
+							<a href="/service/board/cm_car/19246652?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false" class="subject_fixed" data-role="list-title-text" title="ix3 출고 2주차 후기 써 봅니다">ix3 출고 2주차 후기 써 봅니다</a>
+						</span>
+						 
+							<span class="icon_pic fa fa-picture-o"></span>
+						<a class="list_reply reply_symph" href="/service/board/cm_car/19246652?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false#comment-point" data-role="ele-after" title="댓글26개">
+							<span class="rSymph05">26</span>
+						</a>
+						<div class="preview">
+							<span>기준 에어컨 켜고 주행했을 때 고속도로 100-110 주행시 650km 정도 운행되고 시내, 국도, 일부 고속도로 이렇게 혼합하면 700-8</span>
+						</div>
+					</div>
+					<div class="list_author line" data-role="list-author">
+						<div class="list_author_line">
+							
+	 
+		 
+		<span class="nickname">
+				<span title="사용자J">사용자J</span>
+		</span>
+ 
+							<span class="memo none" data-role="list_memo"></span>
+						</div>
+					</div>
+					<div class="list_hit">
+						<span class="hit">6234</span>
+					</div>
+					<div class="list_time">
+							<span class="time popover">08-13<span class="timestamp">2026-08-13 21:22:48</span></span>
+					</div>
+				</div>
+	
+				<div class="list_item symph_row jirum" data-role="list-row" data-author-id=user_j data-board-sn=19245768 data-comment-count=9>
+					<div class="list_symph view_symph" data-role="list-like-count"></div>
+	
+					<div class="list_title oneline" data-role="list-title" data-toggle-custom="dropdown">
+						<span class="list_subject" data-role="cut-string">
+							<button type="button" onclick="app.boardCdSearch('cm_car', '굴당')" class="shortname fixed" title="게시판명 검색"><i class="fa fa-search-plus"></i>굴당</button>
+							<a href="/service/board/cm_car/19245768?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false" class="subject_fixed" data-role="list-title-text" title="주행 중 딱? 잡소리가 지속적으로 발생합니다 ㅠ">주행 중 딱? 잡소리가 지속적으로 발생합니다 ㅠ</a>
+						</span>
+												<a class="list_reply reply_symph" href="/service/board/cm_car/19245768?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false#comment-point" data-role="ele-after" title="댓글9개">
+							<span class="rSymph05">9</span>
+						</a>
+						<div class="preview">
+							<span>났었는데 에어컨 내부에 플랩 액추에이터 안에 톱니가 마모되서 나는 소리였답니다. 이거때매 하체 올갈이 했는데도 안나서 찾다</span>
+						</div>
+					</div>
+					<div class="list_author line" data-role="list-author">
+						<div class="list_author_line">
+							
+	 
+		 
+		<span class="nickname">
+				<span title="사용자K">사용자K</span>
+		</span>
+ 
+							<span class="memo none" data-role="list_memo"></span>
+						</div>
+					</div>
+					<div class="list_hit">
+						<span class="hit">1951</span>
+					</div>
+					<div class="list_time">
+							<span class="time popover">08-12<span class="timestamp">2026-08-12 12:11:16</span></span>
+					</div>
+				</div>
+	
+				<div class="list_item symph_row jirum" data-role="list-row" data-author-id=user_k data-board-sn=19245737 data-comment-count=18>
+					<div class="list_symph view_symph" data-role="list-like-count"></div>
+	
+					<div class="list_title oneline" data-role="list-title" data-toggle-custom="dropdown">
+						<span class="list_subject" data-role="cut-string">
+							<button type="button" onclick="app.boardCdSearch('park', '모공')" class="shortname fixed" title="게시판명 검색"><i class="fa fa-search-plus"></i>모공</button>
+							<a href="/service/board/park/19245737?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false" class="subject_fixed" data-role="list-title-text" title="새삼스럽게 오픈형 에어팟4 NC 좋네요.">새삼스럽게 오픈형 에어팟4 NC 좋네요.</a>
+						</span>
+												<a class="list_reply reply_symph" href="/service/board/park/19245737?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false#comment-point" data-role="ele-after" title="댓글18개">
+							<span class="rSymph05">18</span>
+						</a>
+						<div class="preview">
+							<span>시스템에어컨도 돌아가고 기본적으로 사람들 있는 공간이라 화이트노이즈가 깔려있지요... 일반적인 커널형 노캔이어폰을 끼면, </span>
+						</div>
+					</div>
+					<div class="list_author line" data-role="list-author">
+						<div class="list_author_line">
+							
+	 
+		 
+		<span class="nickname ingname">
+			<img src="https://example.invalid/profile_a.png" alt="사용자L" title="사용자L">
+		</span>
+		 
+							<span class="memo none" data-role="list_memo"></span>
+						</div>
+					</div>
+					<div class="list_hit">
+						<span class="hit">2271</span>
+					</div>
+					<div class="list_time">
+							<span class="time popover">08-12<span class="timestamp">2026-08-12 11:24:08</span></span>
+					</div>
+				</div>
+	
+				<div class="list_item symph_row jirum" data-role="list-row" data-author-id=user_l data-board-sn=19244032 data-comment-count=10>
+					<div class="list_symph view_symph" data-role="list-like-count"></div>
+	
+					<div class="list_title oneline" data-role="list-title" data-toggle-custom="dropdown">
+						<span class="list_subject" data-role="cut-string">
+							<button type="button" onclick="app.boardCdSearch('cm_car', '굴당')" class="shortname fixed" title="게시판명 검색"><i class="fa fa-search-plus"></i>굴당</button>
+							<a href="/service/board/cm_car/19244032?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false" class="subject_fixed" data-role="list-title-text" title="듀얼에어컨 좌우 온도차이 고치기(실패)">듀얼에어컨 좌우 온도차이 고치기(실패)</a>
+						</span>
+						 
+							<span class="icon_pic fa fa-picture-o"></span>
+						<a class="list_reply reply_symph" href="/service/board/cm_car/19244032?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false#comment-point" data-role="ele-after" title="댓글10개">
+							<span class="rSymph05">10</span>
+						</a>
+						<div class="preview">
+							<span>도저히 못찾겠구요 ㅜㅜ 제 차는 아주 간헐적으로 에어컨 풍량이 절반정도로 약해지는 증상이 생기는데요, 블로워팬 도는 소리는 똑</span>
+						</div>
+					</div>
+					<div class="list_author line" data-role="list-author">
+						<div class="list_author_line">
+							
+	 
+		 
+		<span class="nickname">
+				<span title="사용자M">사용자M</span>
+		</span>
+ 
+							<span class="memo none" data-role="list_memo"></span>
+						</div>
+					</div>
+					<div class="list_hit">
+						<span class="hit">2325</span>
+					</div>
+					<div class="list_time">
+							<span class="time popover">08-09<span class="timestamp">2026-08-09 12:53:20</span></span>
+					</div>
+				</div>
+	
+				<div class="list_item symph_row jirum" data-role="list-row" data-author-id=user_m data-board-sn=19243730 data-comment-count=25>
+					<div class="list_symph view_symph" data-role="list-like-count"></div>
+	
+					<div class="list_title oneline" data-role="list-title" data-toggle-custom="dropdown">
+						<span class="list_subject" data-role="cut-string">
+							<button type="button" onclick="app.boardCdSearch('cm_car', '굴당')" class="shortname fixed" title="게시판명 검색"><i class="fa fa-search-plus"></i>굴당</button>
+							<a href="/service/board/cm_car/19243730?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false" class="subject_fixed" data-role="list-title-text" title="2014년식 스포티지R 내구성 하나는 지존입니다.">2014년식 스포티지R 내구성 하나는 지존입니다.</a>
+						</span>
+						 
+							<span class="icon_pic fa fa-picture-o"></span>
+						<a class="list_reply reply_symph" href="/service/board/cm_car/19243730?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false#comment-point" data-role="ele-after" title="댓글25개">
+							<span class="rSymph05">25</span>
+						</a>
+						<div class="preview">
+							<span>오래 타라면서 ㅋㅋㅋㅋ 막 타기에는 지금도 좋고 진동 소음은 좀 안습이긴해도.. 2.0 R엔진이라 일단 잘...2만키로 구매해서 9만키로</span>
+						</div>
+					</div>
+					<div class="list_author line" data-role="list-author">
+						<div class="list_author_line">
+							
+	 
+		 
+		<span class="nickname ingname">
+			<img src="https://example.invalid/profile_b.png" alt="사용자N" title="사용자N">
+		</span>
+		 
+							<span class="memo none" data-role="list_memo"></span>
+						</div>
+					</div>
+					<div class="list_hit">
+						<span class="hit">4700</span>
+					</div>
+					<div class="list_time">
+							<span class="time popover">08-08<span class="timestamp">2026-08-08 19:27:48</span></span>
+					</div>
+				</div>
+	
+				<div class="list_item symph_row jirum" data-role="list-row" data-author-id=user_n data-board-sn=19243395 data-comment-count=24>
+					<div class="list_symph view_symph" data-role="list-like-count"></div>
+	
+					<div class="list_title oneline" data-role="list-title" data-toggle-custom="dropdown">
+						<span class="list_subject" data-role="cut-string">
+							<button type="button" onclick="app.boardCdSearch('cm_car', '굴당')" class="shortname fixed" title="게시판명 검색"><i class="fa fa-search-plus"></i>굴당</button>
+							<a href="/service/board/cm_car/19243395?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false" class="subject_fixed" data-role="list-title-text" title="테슬라 선쉐이드 왜 사는지 이제 알았습니다.">테슬라 선쉐이드 왜 사는지 이제 알았습니다.</a>
+						</span>
+												<a class="list_reply reply_symph" href="/service/board/cm_car/19243395?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false#comment-point" data-role="ele-after" title="댓글24개">
+							<span class="rSymph05">24</span>
+						</a>
+						<div class="preview">
+							<span>다른차도 같은데 루프덕인지 더 덥네요 2열은 25%라 와이프는 1열보단 괜찮다는데 루프는 뜨겁 3.에어컨 소음은 왜이리 큰가..!?</span>
+						</div>
+					</div>
+					<div class="list_author line" data-role="list-author">
+						<div class="list_author_line">
+							
+	 
+		 
+		<span class="nickname">
+				<span title="사용자O">사용자O</span>
+		</span>
+ 
+							<span class="memo none" data-role="list_memo"></span>
+						</div>
+					</div>
+					<div class="list_hit">
+						<span class="hit">5343</span>
+					</div>
+					<div class="list_time">
+							<span class="time popover">08-08<span class="timestamp">2026-08-08 05:08:47</span></span>
+					</div>
+				</div>
+	
+				<div class="list_item symph_row jirum" data-role="list-row" data-author-id=user_o data-board-sn=19240901 data-comment-count=35>
+					<div class="list_symph view_symph" data-role="list-like-count"></div>
+	
+					<div class="list_title oneline" data-role="list-title" data-toggle-custom="dropdown">
+						<span class="list_subject" data-role="cut-string">
+							<button type="button" onclick="app.boardCdSearch('park', '모공')" class="shortname fixed" title="게시판명 검색"><i class="fa fa-search-plus"></i>모공</button>
+							<a href="/service/board/park/19240901?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false" class="subject_fixed" data-role="list-title-text" title="이런 냉풍기 써 보신 분 계실까요?">이런 냉풍기 써 보신 분 계실까요?</a>
+						</span>
+						 
+							<span class="icon_pic fa fa-picture-o"></span>
+						<a class="list_reply reply_symph" href="/service/board/park/19240901?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false#comment-point" data-role="ele-after" title="댓글35개">
+							<span class="rSymph05">35</span>
+						</a>
+						<div class="preview">
+							<span>감사합니다^^ 습도 80~90퍼 찍을껍니다. 이동식 에어컨을 사세요. @님 온풍 가습기네요;;;감사합니다. 이게...나오기는 합니다 물</span>
+						</div>
+					</div>
+					<div class="list_author line" data-role="list-author">
+						<div class="list_author_line">
+							
+	 
+		 
+		<span class="nickname">
+				<span title="사용자P">사용자P</span>
+		</span>
+ 
+							<span class="memo none" data-role="list_memo"></span>
+						</div>
+					</div>
+					<div class="list_hit">
+						<span class="hit">3830</span>
+					</div>
+					<div class="list_time">
+							<span class="time popover">08-04<span class="timestamp">2026-08-04 10:29:30</span></span>
+					</div>
+				</div>
+	
+				<div class="list_item symph_row jirum" data-role="list-row" data-author-id=user_p data-board-sn=19239812 data-comment-count=25>
+					<div class="list_symph view_symph" data-role="list-like-count"></div>
+	
+					<div class="list_title oneline" data-role="list-title" data-toggle-custom="dropdown">
+						<span class="list_subject" data-role="cut-string">
+							<button type="button" onclick="app.boardCdSearch('cm_car', '굴당')" class="shortname fixed" title="게시판명 검색"><i class="fa fa-search-plus"></i>굴당</button>
+							<a href="/service/board/cm_car/19239812?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false" class="subject_fixed" data-role="list-title-text" title="전기차 하루 65킬로 타면 한달 전기료 얼마나 나올까요?">전기차 하루 65킬로 타면 한달 전기료 얼마나 나올까요?</a>
+						</span>
+												<a class="list_reply reply_symph" href="/service/board/cm_car/19239812?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false#comment-point" data-role="ele-after" title="댓글25개">
+							<span class="rSymph05">25</span>
+						</a>
+						<div class="preview">
+							<span>특히 공회전이라고 부르기도 애매한 시동 걸어두고 에어컨 히터 빵빵하게 틀고 대기할수 있는건 엄청난 메리트입니다. 그리고 시</span>
+						</div>
+					</div>
+					<div class="list_author line" data-role="list-author">
+						<div class="list_author_line">
+							
+	 
+		 
+		<span class="nickname">
+				<span title="사용자Q">사용자Q</span>
+		</span>
+ 
+							<span class="memo none" data-role="list_memo"></span>
+						</div>
+					</div>
+					<div class="list_hit">
+						<span class="hit">5443</span>
+					</div>
+					<div class="list_time">
+							<span class="time popover">08-02<span class="timestamp">2026-08-02 10:49:10</span></span>
+					</div>
+				</div>
+	
+				<div class="list_item symph_row jirum" data-role="list-row" data-author-id=user_q data-board-sn=19237511 data-comment-count=0>
+					<div class="list_symph view_symph" data-role="list-like-count"></div>
+	
+					<div class="list_title oneline" data-role="list-title" data-toggle-custom="dropdown">
+						<span class="list_subject" data-role="cut-string">
+							<button type="button" onclick="app.boardCdSearch('news', '새소식')" class="shortname fixed" title="게시판명 검색"><i class="fa fa-search-plus"></i>새소식</button>
+							<a href="/service/board/news/19237511?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false" class="subject_fixed" data-role="list-title-text" title="'P버튼 긴급제동' 현대차 첫 적용…'국민 첫 차' 아반떼의 진화">'P버튼 긴급제동' 현대차 첫 적용…'국민 첫 차' 아반떼의 진화</a>
+						</span>
+												<div class="preview">
+							<span>노면 소음과 구조 전달음의 실내 유입을 줄였다. 또한 윈드쉴드와 전석 도어에 이중접합 차음 글라스를 적용하고 A·B필러부와 아</span>
+						</div>
+					</div>
+					<div class="list_author line" data-role="list-author">
+						<div class="list_author_line">
+							
+	 
+		 
+		<span class="nickname">
+				<span title="사용자R">사용자R</span>
+		</span>
+ 
+							<span class="memo none" data-role="list_memo"></span>
+						</div>
+					</div>
+					<div class="list_hit">
+						<span class="hit">3047</span>
+					</div>
+					<div class="list_time">
+							<span class="time popover">07-29<span class="timestamp">2026-07-29 17:27:07</span></span>
+					</div>
+				</div>
+	
+				<div class="list_item symph_row jirum" data-role="list-row" data-author-id=user_r data-board-sn=19237457 data-comment-count=3>
+					<div class="list_symph view_symph" data-role="list-like-count"></div>
+	
+					<div class="list_title oneline" data-role="list-title" data-toggle-custom="dropdown">
+						<span class="list_subject" data-role="cut-string">
+							<button type="button" onclick="app.boardCdSearch('kin', '아질게')" class="shortname fixed" title="게시판명 검색"><i class="fa fa-search-plus"></i>아질게</button>
+							<a href="/service/board/kin/19237457?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false" class="subject_fixed" data-role="list-title-text" title="선풍기 추천 좀 해주세요">선풍기 추천 좀 해주세요</a>
+						</span>
+												<a class="list_reply reply_symph" href="/service/board/kin/19237457?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false#comment-point" data-role="ele-after" title="댓글3개">
+							<span class="rSymph05">3</span>
+						</a>
+						<div class="preview">
+							<span>처분하고 아직 새로 구비를 못했습니다? 벽걸이 에어컨이 좋긴한데 너무 춥다는 단점 아닌 단점이 있어서...최대? 3. 직접 가서 </span>
+						</div>
+					</div>
+					<div class="list_author line" data-role="list-author">
+						<div class="list_author_line">
+							
+	 
+		 
+		<span class="nickname">
+				<span title="사용자S">사용자S</span>
+		</span>
+ 
+							<span class="memo none" data-role="list_memo"></span>
+						</div>
+					</div>
+					<div class="list_hit">
+						<span class="hit">1424</span>
+					</div>
+					<div class="list_time">
+							<span class="time popover">07-29<span class="timestamp">2026-07-29 16:33:20</span></span>
+					</div>
+				</div>
+	
+				<div class="list_item symph_row jirum" data-role="list-row" data-author-id=user_s data-board-sn=19237300 data-comment-count=23>
+					<div class="list_symph view_symph" data-role="list-like-count"></div>
+	
+					<div class="list_title oneline" data-role="list-title" data-toggle-custom="dropdown">
+						<span class="list_subject" data-role="cut-string">
+							<button type="button" onclick="app.boardCdSearch('cm_car', '굴당')" class="shortname fixed" title="게시판명 검색"><i class="fa fa-search-plus"></i>굴당</button>
+							<a href="/service/board/cm_car/19237300?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false" class="subject_fixed" data-role="list-title-text" title="전기차가 너무 갖고 싶네요">전기차가 너무 갖고 싶네요</a>
+						</span>
+						 
+							<span class="icon_pic fa fa-picture-o"></span>
+						<a class="list_reply reply_symph" href="/service/board/cm_car/19237300?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false#comment-point" data-role="ele-after" title="댓글23개">
+							<span class="rSymph05">23</span>
+						</a>
+						<div class="preview">
+							<span>여름철에 도로가 정체되어 찔끔찔끔 움직이면 모터와 에어컨이 고전압 배터리를 다 잡아먹고 엔진이 계속...게 꽤 스트레스였는데</span>
+						</div>
+					</div>
+					<div class="list_author line" data-role="list-author">
+						<div class="list_author_line">
+							
+	 
+		 
+		<span class="nickname">
+				<span title="사용자T">사용자T</span>
+		</span>
+ 
+							<span class="memo none" data-role="list_memo"></span>
+						</div>
+					</div>
+					<div class="list_hit">
+						<span class="hit">4861</span>
+					</div>
+					<div class="list_time">
+							<span class="time popover">07-29<span class="timestamp">2026-07-29 14:17:23</span></span>
+					</div>
+				</div>
+</div>		
+				<div class="list_bottom_ad">
+<div id='div-pc-list-below' class="ad_banner"></div>				</div>
+		
+				 <div class='board-pagination'>		<div class='board-nav'>			<div class='board-nav-area'>			<a href='javascript:' onclick='app.searchDetails("", "0")' class='board-nav-page active'>1</a>			<a href='javascript:' onclick='app.searchDetails("", "1")' class='board-nav-page'>2</a>			<a href='javascript:' onclick='app.searchDetails("", "2")' class='board-nav-page'>3</a>			<a href='javascript:' onclick='app.searchDetails("", "3")' class='board-nav-page'>4</a>			<a href='javascript:' onclick='app.searchDetails("", "4")' class='board-nav-page'>5</a>			<a href='javascript:' onclick='app.searchDetails("", "5")' class='board-nav-page'>6</a>			<a href='javascript:' onclick='app.searchDetails("", "6")' class='board-nav-page'>7</a>			<a href='javascript:' onclick='app.searchDetails("", "7")' class='board-nav-page'>8</a>			<a href='javascript:' onclick='app.searchDetails("", "8")' class='board-nav-page'>9</a>			<a href='javascript:' onclick='app.searchDetails("", "9")' class='board-nav-page last'>10</a>			</div>			<a href='javascript:' onclick='app.searchDetails("", "1")' class='board-nav-next' ></a>				<a href='javascript:' onclick='app.searchDetails("", "10")' class='board-nav-next ten' >다음</a>			</div>	</div>
+		
+				
+				<div class="naverAd_list" id="naverAd"></div>
+			</div>
+		</div>
+		<div class="nav_action">
+	<div class="action_box">
+
+
+
+		<a href="#down" class="action_icon none" title="맨아래로 이동">
+			<i class="fa fa-caret-down"></i>
+		</a>
+
+		<div class="backtop" id="back-top">
+			<a href="#top" class="action_icon none" title="맨위로 이동">
+				<i class="fa fa-caret-up"></i>
+			</a>
+		</div>
+	</div>
+</div>
+ 
+		<div class="aside">
+	 <div class="account_section login">
+	<form id="loginForm">
+		<div class="side_account login">
+            <div class="side_account_area">
+                <button type="button" onclick="location.href='/service/auth/login'" name="로그인하기" class="button_submit"><i class="icon-clien"></i><span>로그인</span></button>
+            </div>
+            <div class="account_submit">
+                <div class="account_signup">
+                    <a href="/service/auth/findAccountCert" class="button_signup">아이디&nbsp; · &nbsp;비밀번호 찾기</a>
+					<em></em>
+					<a href="/service/auth/join" class="button_signup">회원가입</a>
+				</div>
+			</div>
+		</div>
+	</form>
+</div>
+
+
+
+
+ 
+
+    
+    <div class="side_kljfssajfl">
+        <div class="side_posjduenfj">
+
+<div id='div-pc-side-1' class="pc_side ad_banner" data-spy="affix" data-offset-top="202"></div>
+
+        </div>
+        <div class="side_line"></div>
+        <div class="side_posjduenfj">
+
+<div id='div-pc-side-2' class="pc_side ad_banner" data-spy="affix" data-offset-top="202"></div>
+
+        </div>
+	</div>
+</div> 
+	</div>
+</div>
+
+<div class="footer_wrap" id="down">
+		<div class="area_terms">
+		<a class="at_item" href="/service/board/rule">이용규칙</a>
+		<a class="at_item" href="/service/board/annonce">운영알림판</a>
+        <a class="at_item" href="/service/board/symposium">운영소통</a>
+		<a class="at_item" href="/service/board/claim">재검토요청</a>
+		<a class="at_item" href="/service/board/faq">도움말</a>
+		<a class="at_item noline" href="/service/board/bug">버그신고</a>
+	</div>
+	<div class="area_legal">
+		<a href="/service/cs/privacy" target="_blank"><strong>개인정보처리방침</strong></a>
+		<a href="/service/cs/conditions" target="_blank">이용약관</a>
+		<a href="/service/cs/policy" target="_blank">책임의 한계와 법적고지</a>
+		<a href="/service/cs/teenager" target="_blank">청소년 보호정책</a>
+	</div>
+	<div class="area_company">© <span id="nowYear"></span>&nbsp;&nbsp;•&nbsp;&nbsp;CLIEN.NET</div>
+
+</div>
+
+<script>
+(function(){
+	var retried = {};
+	var logged = {};
+	var reportDedupTtl = 5 * 60 * 1000;
+	var baseUrl = "/service";
+	var jsPathPrefix = baseUrl + "/js/";
+	var beaconUrl = baseUrl + "/api/client-error/script";
+	var botUaPattern = /(bot|crawler|spider|bingbot|googlebot|yeti|baiduspider|bytespider|duckduckbot|slurp)/i;
+
+	if(botUaPattern.test(navigator.userAgent || '')) {
+		return;
+	}
+
+	function isRetryTarget(src) {
+		var a = document.createElement('a');
+		a.href = src;
+		var origin = location.protocol + '//' + location.host;
+		return a.protocol + '//' + a.host === origin && a.pathname.indexOf(jsPathPrefix) === 0;
+	}
+
+	function isPrerendering() {
+		return document.prerendering === true;
+	}
+
+	function isRecentlyReported(key) {
+		try {
+			var now = Date.now();
+			var storageKey = 'script_load_beacon|' + key;
+			var last = parseInt(sessionStorage.getItem(storageKey) || '0', 10);
+			if(last && now - last < reportDedupTtl) return true;
+			sessionStorage.setItem(storageKey, String(now));
+		} catch(_){}
+		return false;
+	}
+
+	function sendScriptLoadBeacon(status, url, retryUrl) {
+		var key = status + '|' + url;
+		if(logged[key] || isRecentlyReported(key)) return;
+		logged[key] = true;
+		try {
+			if(!navigator.sendBeacon) return;
+			navigator.sendBeacon(beaconUrl,
+				new Blob([JSON.stringify({status: status, url: url, retryUrl: retryUrl || '', ua: navigator.userAgent, ref: location.href, at: Date.now()})],
+					{type: 'application/json'}));
+		} catch(_){}
+	}
+
+	function handleScriptLoadError(src) {
+		if(src.indexOf('_retry=') !== -1) return;
+		if(retried[src]) return;
+		retried[src] = true;
+		sendScriptLoadBeacon('retry_scheduled', src);
+		setTimeout(function(){
+			var r = document.createElement('script');
+			r.src = src + (src.indexOf('?')<0?'?':'&') + '_retry=' + Date.now();
+			r.async = false;
+			r.onload = function(){
+				sendScriptLoadBeacon('retry_success', src, r.src);
+			};
+			r.onerror = function(){
+				sendScriptLoadBeacon('retry_failed', src, r.src);
+			};
+			document.head.appendChild(r);
+		}, 300);
+	}
+
+	window.addEventListener('error', function(e){
+		var t = e.target;
+		if(!t || t.tagName !== 'SCRIPT' || !t.src) return;
+		var src = t.src;
+		if(!isRetryTarget(src)) return;
+		if(isPrerendering()) {
+			document.addEventListener('prerenderingchange', function(){
+				handleScriptLoadError(src);
+			}, {once: true});
+			return;
+		}
+		handleScriptLoadError(src);
+	}, true);
+})();
+</script>
+
+<script src="/service/js/lib/jquery-3.6.0.slim.min.js?260918v3"></script>
+<script src="/service/js/lib/cl.dropmenu.js?260918v3"></script>
+
+<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+<script async defer src="//www.instagram.com/embed.js"></script>
+
+<script>
+	let IS_DEBUG = false;
+	const BASE_URL = "/service";
+	const API_HOST = "/service/api";
+	const CDN_URL = "https://edgio.clien.net";
+
+	const COOKIE_DOMAIN = "clien.net";
+
+	let IS_LOGIN = false;
+	let sessionUserId = ''; 
+
+
+	let IsMobile = false;
+
+
+	let PAGE_SETTING_THEME = "";
+	let PAGE_SETTING_FONT_SIZE = "";
+	let PAGE_SETTING_KIND_OF_FONT = "";
+	let PAGE_SETTING_SHORT_CUT = "";
+	let PAGE_SETTING_LIST_SIZE = "";
+	
+		PAGE_SETTING_THEME = "white";
+		PAGE_SETTING_FONT_SIZE = "normal";
+		PAGE_SETTING_KIND_OF_FONT = "basic";
+		PAGE_SETTING_SHORT_CUT = "on";
+		PAGE_SETTING_LIST_SIZE = "normal";
+
+	const HONGBO_IMG_PARAMETER = "?scale=width:480";
+	const COMMENT_IMG_PARAMETER = "?scale=width:480";
+	const IMG_PARAMETER = "?scale=width:740";
+
+	let keyData = {};
+
+				keyData["c"] = "/service/group/community";
+				keyData["f"] = "/service/board/park";
+				keyData["i"] = "/service/board/image";
+				keyData["q"] = "/service/board/kin";
+				keyData["d"] = "/service/group/allinfo";
+				keyData["n"] = "/service/board/news";
+				keyData["t"] = "/service/board/useful";
+				keyData["p"] = "/service/board/pds";
+				keyData["e"] = "/service/group/allreview";
+				keyData["l"] = "/service/board/lecture";
+				keyData["u"] = "/service/board/use";
+				keyData["w"] = "/service/group/allsell";
+				keyData["j"] = "/service/board/jirum";
+				keyData["s"] = "/service/board/sold";
+				keyData["b"] = "/service/board/hongbo";
+				keyData["h"] = "/service/";
+
+	$.ajaxSetup({
+		beforeSend: function(xhr, settings) {
+			if (settings.type === 'POST' || settings.type === 'PUT' || settings.type === 'DELETE') {
+				if (!(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))) {
+					xhr.setRequestHeader("X-CSRF-TOKEN", "ef7600c7-5981-4c31-90e9-6a41ae912eb6");
+				}
+			}
+		}
+	});
+</script>
+
+<script src="/service/js/common/clien.cookie.js?260918v3"></script>
+
+<script src="/service/js/common/clien.storage.js?260918v3"></script>
+<script src="/service/js/common/clien.auth.js?260918v3"></script>
+<script src="/service/js/common/clien.paging.js?260918v3"></script>
+<script src="/service/js/common/clien.util.js?260918v3"></script>
+<script src="/service/js/common/clien.popup.js?260918v3"></script>
+<script src="/service/js/common/clien.setting.js?260918v3"></script>
+<script src="/service/js/common/clien.search.js?260918v3"></script>
+<script src="/service/js/common/clien.font.js?260918v3"></script>
+
+<script src="/service/js/app/clien.js?260918v3"></script>
+<script src="/service/js/app/clien.ui.js?260918v3"></script>
+
+<div class="modal_security" id="security_modal">
+    <div class="modal_security_content">
+        <div class="modal_title">
+            <strong><i class="fa fa-shield"></i> 보안 강화를 위한 이메일 인증</strong>
+            <button type="button" class="modal_close" onclick="securityModalClose();" aria-label="close">
+                <div class="modal_button_close"></div>
+            </button>
+        </div>
+
+        <div class="modal_help_msg">
+            <span class="help_subject"><strong>안전한 서비스 이용을 위해 이메일 인증을 완료해 주세요.</strong></span>
+
+            <span class="help_contents">
+         현재 회원님은 <strong>이메일 인증이 완료되지 않은 상태</strong>입니다.<br>
+         최근 급증하는 해킹 및 도용 시도로부터 계정을 보호하기 위해 인증 절차가 강화되었습니다.<br><br>
+
+         <ul class="password_help">
+            <li>이메일 미인증 시 <strong>글쓰기, 댓글 작성 등 게시판 활동이 제한됩니다.</strong></li>
+            <li>이후 <strong>새로운 기기에서 로그인할 때마다 반드시 이메일 인증을 거쳐야 합니다.</strong></li>
+            <li>2단계 인증 사용 회원도 최초 1회는 반드시 인증하여야 합니다.</strong></li>
+            <li><a href="/service/mypage/myInfo">개인정보</a>에서도 이메일 인증을 할 수 있습니다.</li>
+         </ul>
+      </span>
+
+            <a href="/service/auth/email/verify" class="button_2fa" style="margin-top: 15px;">
+                <strong class="button_2fa_title" style="color: #516B82;">지금 이메일 인증하기</strong>
+                <div class="button_2fa_msg">
+                    등록된 이메일 주소를 확인하고 인증번호를 입력하여<br>
+                    인증을 완료해 주세요.
+                </div>
+                <i class="fa fa-envelope-o"></i>
+            </a>
+        </div>
+
+        <div class="modal_footer">
+            <button type="button" class="modal_button_confirm" onclick="securityModalClose();">나중에 하기</button>
+        </div>
+    </div>
+    <div class="modal_bg" onclick="securityModalClose();"></div>
+</div>
+
+<script>
+
+    $(document).ready(function() {
+        if (sessionStorage.getItem('showEmailVerifyModal') === 'true') {
+            sessionStorage.removeItem('showEmailVerifyModal');
+            $("#security_modal").addClass('open');
+        }
+    });
+
+    function securityModalClose() {
+        // 닫기만 수행 (다시 보지 않기 설정 저장 안 함 -> 다음 로그인 시 다시 뜸)
+        $('#security_modal').removeClass('open');
+    }
+</script>
+
+ <input type="hidden" value="false" id="isBoard">
+<input type="hidden" value="" id="boardCdSearch">
+<input type="hidden" value="0" id="po">
+<input type="hidden" value="recency" id="sort">
+
+<script src="/service/js/lib/mark.min.js?260918v3"></script> 
+
+<script>
+	function App() {
+		var _this = this;
+
+		_this.search = function() {
+			var keyword = $('#searchText').val();
+
+			// 특수문자 제거 (한글, 알파벳, 숫자, 공백만 남김)
+			keyword = keyword.replace(/[^a-zA-Z0-9ㄱ-ㅎㅏ-ㅣ가-힣 ]/g, '');
+
+			var isEmpty = keyword.trim() == '' ? true : false;
+
+			if (isEmpty) {
+				alert('검색어를 입력하세요.');
+				scope.find('*[data-role=total-input-keyword]').focus();
+				return false;
+			}
+
+			var url = BASE_URL + "/search";
+				url = url+"?q="+encodeURI(keyword, "UTF-8");
+			location.href = url;
+		};
+
+		_this.boardCdSearch = function(boardCd) {
+			$('#boardCdSearch').val(boardCd);
+			$('#isBoard').val(true);
+			_this.searchDetails();
+		}
+
+		_this.searchDetails = function(sort, po) {
+			var keyword = $('#searchText').val();
+
+			// 특수문자 제거 (한글, 알파벳, 숫자, 공백만 남김)
+			keyword = keyword.replace(/[^a-zA-Z0-9ㄱ-ㅎㅏ-ㅣ가-힣 ]/g, '');
+
+			var isEmpty = keyword.trim() == '' ? true : false;
+
+			if (isEmpty) {
+				alert('검색어를 입력하세요.');
+				scope.find('*[data-role=total-input-keyword]').focus();
+				return false;
+			}
+
+			var url = BASE_URL + "/search";
+				url = url+"?q="+encodeURI(keyword, "UTF-8");
+
+			if(sort == null || sort == "" || sort == "undefined") {
+				var defaultSort = $('#sort').val();
+				url = url+"&sort="+defaultSort;
+			} else if(sort == "detailsSearch"){
+			
+			} else {
+				url = url+"&sort="+sort;
+			}
+
+			if(po != undefined){
+				url += "&p="+po;
+			}
+
+			var isBoard = $('#isBoard').val();
+
+			if(isBoard){
+				var boardCd = $('#boardCdSearch').val();
+				url += "&boardCd="+boardCd+"&isBoard="+isBoard;
+			}
+			location.href = url;
+		};
+
+		_this.changeBoardCd = function() {
+			var boardCd = $('#selectBoardCd option:selected').val();
+			
+			if(boardCd == "") {
+				$('#isBoard').val(false);
+			} else {
+				$('#isBoard').val(true);
+			}
+			$('#boardCdSearch').val(boardCd);
+		};
+
+		_this.searchEnterKey = function() {
+			if (window.event.keyCode == 13) {
+				_this.searchDetails();
+			}
+		}
+		
+		_this.setMarkJs = function() {
+			$(".list_item").mark($('#searchText').val());;
+		};
+
+		_this.initTotalSearchPage = function() {
+			var scope = $('*[data-role=combine-under-search]');
+			var url = "";
+	
+			scope.find('*[data-role=total-submit]').on('click', function() {
+				var searchCheck = scope.find('*[data-role=combine-select-filter]').val();
+				var boardCd = $('#boardCdSearch').val();
+				var parameter = '';
+				var combineCheck = true;
+	
+				if(boardCd != ''&& boardCd != undefined) {
+					url = BASE_URL + '/search/v2/board/' + boardCd;
+				} else {
+					url = BASE_URL + '/search/v2/group/clien_all';
+				}
+	
+				// 검색 파라미터 생성
+				if (searchCheck == "search_title"){
+					parameter = '?sk=title&sv=';
+				} else if (searchCheck == "search_content"){
+					parameter = '?sk=content&sv=';
+				} else if (searchCheck == "search_comment"){
+					parameter = '?sk=comment&sv=';
+					combineCheck = false;
+				} else if (searchCheck == "search_writer"){
+					parameter = '?sk=id&sv=';
+					combineCheck = false;
+				} else if (searchCheck == "search_commenter"){
+					parameter = '?sk=commenter&sv=';
+					combineCheck = false;
+				} else if(searchCheck == "search_board") {
+					url = BASE_URL + "/search?q=";
+				}
+	
+				url = url + parameter;
+	
+				var keyword = scope.find('*[data-role=combine-input-keyword]').val();
+
+				// 특수문자 제거 (한글, 알파벳, 숫자, 공백만 남김)
+				keyword = keyword.replace(/[^a-zA-Z0-9ㄱ-ㅎㅏ-ㅣ가-힣 ]/g, '');
+
+				var isEmpty = keyword.trim() == '' ? true : false;
+				if (isEmpty) {
+					alert('검색어를 입력하세요.');
+					scope.find('*[data-role=combine-input-keyword]').focus();
+					return false;
+				}
+	
+				if(combineCheck && (keyword.trim()).search(/\s/) != -1) {
+					if(boardCd != ''&& boardCd != undefined) {
+						url = BASE_URL + "/search?boardCd="+boardCd+"&isBoard=true&q=";
+					} else { 
+						url = BASE_URL + "/search?q=";
+					}
+				}
+	
+				location.href = url + encodeURI(keyword, "UTF-8");
+			});
+	
+			scope.find('*[data-role=combine-input-keyword]').on('keydown', function(e) {
+				if (e.keyCode == 13) {
+					scope.find('*[data-role=total-submit]').trigger('click');
+				}
+			});
+		};
+
+		_this.init = function() {
+			ui.initSmallShortCut();
+			_this.setMarkJs();
+			_this.initTotalSearchPage();
+			ui.initBlockArticle();
+		}();
+	}
+	var app = new App();
+</script>
+
+
+<script type="text/javascript" src="https://ssl.pstatic.net/adimg3.search/adpost/js/adpost_show_ads_v2.min.js"></script>
+<script src="/service/js/common/clien.naver.js?260918v3"></script>
+
+<script type="text/javascript">
+
+
+
+	NAVER_ADPOST_V2({ 
+		channel: "clien.ch2"
+		, pageSize: 6
+		, url: document.location.href
+		
+			, query: "에어컨 소음"
+		
+		, test: false
+		, mock: false
+		, callback: "pc_naver_ads_list"
+	});
+
+</script>
+
+<script>
+    function naver_mark_js() {
+        var keyword = "에어컨 소음";
+
+        // 특수문자 제거 (한글, 영문, 숫자, 공백만 허용)
+        keyword = keyword.replace(/[^ㄱ-ㅎㅏ-ㅣ가-힣a-zA-Z0-9\s]/g, '');
+
+        if (keyword) {
+            $(".naver_list").mark(keyword);
+        }
+    }
+</script>
+
+</body>
+</html>

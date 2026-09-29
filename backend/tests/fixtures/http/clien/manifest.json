@@ -1,0 +1,38 @@
+{
+  "source": "clien",
+  "keyword": "에어컨 소음",
+  "captured_at": "2026-09-29T05:36:25.051178+00:00",
+  "requests": [
+    {
+      "url": "https://www.clien.net/service/search?q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&sort=recency&boardCd=&isBoard=false",
+      "status_code": 200,
+      "encoding": "utf-8",
+      "file": "list.html"
+    },
+    {
+      "url": "https://www.clien.net/service/board/use/19268762?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false",
+      "status_code": 200,
+      "encoding": "utf-8",
+      "file": "detail-1.html"
+    },
+    {
+      "url": "https://www.clien.net/service/board/cm_car/19265237?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false",
+      "status_code": 200,
+      "encoding": "utf-8",
+      "file": "detail-2.html"
+    },
+    {
+      "url": "https://www.clien.net/service/board/cm_car/19265021?combine=true&q=%EC%97%90%EC%96%B4%EC%BB%A8+%EC%86%8C%EC%9D%8C&p=0&sort=recency&boardCd=&isBoard=false",
+      "status_code": 200,
+      "encoding": "utf-8",
+      "file": "detail-3.html"
+    }
+  ],
+  "notes": [],
+  "masking_stats": {
+    "email": 1,
+    "name": 55,
+    "profile": 2,
+    "id": 50
+  }
+}

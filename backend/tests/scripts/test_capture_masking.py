@@ -222,3 +222,122 @@ def test_private_values_never_appear_in_error_stdout_or_saved_files(tmp_path, mo
     assert capture.main(['naver_blog', '에어컨', '--out', str(tmp_path)]) == 1
     assert 'SUPER_PRIVATE_SECRET' not in str(capsys.readouterr())
     assert 'SUPER_PRIVATE_SECRET' not in (tmp_path / 'naver_blog/manifest.json').read_text()
+
+
+def test_ppomppu_scoped_comments_and_authors():
+    comment = {'name': '<b><a onclick="view_info(\'member77\')">별명</a></b>',
+               'image': '<img src="/profiles/member77.png">',
+               'meta': {'ip_display': '123.45.*.67'},
+               'sub_cmt': [{'name': '<b>답글별명</b>', 'meta': {'ip_display': '99.*.1.2'}}]}
+    raw = '<script>var initialCommentData = ' + json.dumps({'comments': [comment]}) + ';</script>'
+    result = capture.mask_html('ppomppu', raw)
+    obj = json.loads(result.split(' = ', 1)[1].split(';</script>')[0])
+    assert '<b><a onclick=' in obj['comments'][0]['name']
+    for private in ('별명', 'member77', '123.45.*.67', '99.*.1.2', '/profiles/'):
+        assert private not in json.dumps(obj, ensure_ascii=False)
+    assert capture.mask_html('ppomppu', '<script>{"name":"제품명"}</script>') == '<script>{"name":"제품명"}</script>'
+
+
+def test_ppomppu_post_and_search_writer():
+    raw = ('<span class="bname"><a>게시판</a></span>'
+           '<li class="topTitle-name"><strong>작성자</strong>'
+           '<a class="baseList-name" onclick="view_info(\'member77\')">별명</a><small>정보</small></li>'
+           '<div class="content"><p class="desc"><span>게시판</span><span>검색작성자</span>'
+           '<span>2026-01-01</span></p></div>'
+           '<a href="/zboard/view_info.php?id=member77">보기</a>')
+    result = capture.mask_html('ppomppu', raw)
+    assert '별명' not in result and '검색작성자' not in result and 'member77' not in result
+    assert '게시판' in result and '작성자</strong>' in result and '2026-01-01' in result
+
+
+def test_clien_canonical_article_deduplication():
+    raw = ''.join(f'<a href="/service/board/park/{path}">글</a>'
+                  for path in ('123?x=1', '123?x=2#reply', '456', '456#reply', '789'))
+    urls = capture.article_urls('clien', raw, 'https://www.clien.net/service/search')
+    assert len(urls) == 3
+    assert [capture.urlsplit(url).path for url in urls] == [
+        '/service/board/park/123', '/service/board/park/456', '/service/board/park/789']
+
+
+def test_audit_saved_synthetic_fixtures_and_cli(tmp_path, capsys):
+    directory = tmp_path / 'ppomppu'
+    directory.mkdir()
+    raw = '<a class="baseList-name">별명</a><script>var initialCommentData = {"comments":[{"name":"댓글별명","meta":{"ip_display":"123.*.4.5"}}]};</script>'
+    (directory / 'list.html').write_bytes(raw.encode('euc-kr'))
+    assert sum(capture.audit_fixture(directory).values()) > 0
+    assert capture.main(['--audit', str(directory)]) == 1
+    assert '별명' not in capsys.readouterr().out
+    (directory / 'list.html').write_bytes(capture.mask_html('ppomppu', raw).encode('euc-kr'))
+    assert not capture.audit_fixture(directory)
+    assert capture.main(['--audit', str(directory)]) == 0
+
+
+def test_audit_youtube_urls_and_clien_attributes(tmp_path):
+    for source, filename, raw in [
+        ('youtube', 'list.json', json.dumps({'uploader_url': 'https://www.youtube.com/@hidden',
+             'channel_url': 'https://www.youtube.com/channel/hidden', 'comments': [
+                 {'author_url': 'https://other.test/person', 'author_thumbnail': 'https://cdn.test/photo'}]})),
+        ('clien', 'list.html', '<span class="nickname" data-nick-id="hidden">별명</span>')]:
+        directory = tmp_path / source
+        directory.mkdir()
+        path = directory / filename
+        path.write_text(raw)
+        assert capture.audit_fixture(directory)
+        masked = (json.dumps(capture.mask_json(source, json.loads(raw))) if filename.endswith('.json')
+                  else capture.mask_html(source, raw))
+        path.write_text(masked)
+        assert not capture.audit_fixture(directory)
+
+
+def test_audit_placeholder_urls_and_fail_closed(tmp_path):
+    directory = tmp_path / 'youtube'
+    directory.mkdir()
+    path = directory / 'list.json'
+    path.write_text(json.dumps({'comments': [
+        {'author_url': 'https://www.youtube.com/사용자A'},
+        {'author_url': 'https://www.youtube.com/@%EC%82%AC%EC%9A%A9%EC%9E%90B'},
+        {'author_url': 'https://www.youtube.com/user_a'}]}))
+    assert capture.audit_fixture(directory) == {}
+    path.write_text('invalid JSON')
+    assert capture.audit_fixture(directory) == {'error': 1}
+    path.unlink()
+    assert capture.audit_fixture(directory) == {'error': 1}
+
+
+def test_ppomppu_distinct_query_articles_remain_distinct():
+    raw = ''.join(f'<a href="/zboard/view.php?id=freeboard&amp;no={n}">글</a>' for n in (17, 18))
+    assert len(capture.article_urls('ppomppu', raw, 'https://www.ppomppu.co.kr/')) == 2
+
+
+@pytest.mark.parametrize('declaration', [
+    '<meta charset="euc-kr">',
+    '<meta http-equiv="Content-Type" content="text/html; charset=EUC-KR">',
+])
+def test_ppomppu_declared_charset_masks_decoded_authors(tmp_path, declaration):
+    raw = (declaration + '<div class="content"><p class="desc">'
+           '<span>합성게시판</span><span>가상검색작성자</span><span>2026-01-01</span>'
+           '</p></div><li class="topTitle-name"><a class="baseList-name">'
+           '<i class="icon"></i>가상본문작성자</a></li>')
+    recorder = capture.Recorder('ppomppu', '검색', tmp_path)
+    recorder.pending = [('list.html', raw.encode('euc-kr').decode('euc-kr'), 'euc-kr')]
+    recorder.save()
+    saved = (tmp_path / 'ppomppu/list.html').read_bytes().decode('euc-kr')
+    assert '가상검색작성자' not in saved
+    assert '가상본문작성자' not in saved
+    assert declaration in saved
+    assert '합성게시판' in saved
+    assert not capture.audit_fixture(tmp_path / 'ppomppu')
+
+
+def test_ppomppu_declared_charset_audit_accepts_author_placeholders(tmp_path):
+    directory = tmp_path / 'ppomppu'
+    directory.mkdir()
+    raw = ('<meta charset="euc-kr"><div class="content"><p class="desc">'
+           '<span>합성게시판</span><span>사용자A</span></p></div>'
+           '<li class="topTitle-name"><a class="baseList-name">'
+           '<i class="icon"></i>사용자B</a></li>')
+    path = directory / 'list.html'
+    path.write_bytes(raw.encode('euc-kr'))
+    assert capture.audit_fixture(directory) == {}
+    path.write_bytes(raw.replace('사용자A', '가상검색작성자').encode('euc-kr'))
+    assert capture.audit_fixture(directory) == {'name': 1}

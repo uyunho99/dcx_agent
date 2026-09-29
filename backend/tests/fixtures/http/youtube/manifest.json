@@ -1,0 +1,185 @@
+{
+  "source": "youtube",
+  "keyword": "에어컨 소음",
+  "captured_at": "2026-09-29T05:29:39.025224+00:00",
+  "requests": [
+    {
+      "url": "https://www.youtube.com",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://www.youtube.com/youtubei/v1/search?prettyPrint=false",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "ytsearch10:에어컨 소음",
+      "status_code": null,
+      "encoding": "utf-8",
+      "file": "list.json",
+      "notes": "Extractor output; HTTP status codes are in individual request records."
+    },
+    {
+      "url": "https://www.youtube.com/watch?v=DQVzzqO6loc&bpctr=9999999999&has_verified=1",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_variant/expire/1790681384/ei/yEy7ao_uEPGM1d8PgqjcgAQ/ip/218.235.241.40/id/0d0573cea3ba9687/source/youtube/requiressl/yes/xpc/EgVo2aDSNQ%3D%3D/playback_host/rr3---sn-n3cgv5qc5oq-nno6.googlevideo.com/cps/172/met/1790659784%2C/mh/QS/mm/31%2C29/mn/sn-n3cgv5qc5oq-nno6%2Csn-n3cgv5qc5oq-bh267/ms/au%2Crdu/mv/m/mvi/3/pl/24/rms/au%2Cau/hfr/1/demuxed/1/tts_caps/1/maudio/1/initcwndbps/2114500/bui/AWzQHwqoKgemW0o7eUd-ZdX25Jw31GRsfPlUayLTh224cI5U-ooVG_J58Huwlq1u8I4tF-poQW8Y8MdQ/spc/I-rgIQxn4jl0-i5VT_uwM9x_-BdhhQ9r7PqNk9lUSJ24OnB5qqhacc-QUzhT/vprv/1/go/1/rqh/5/mt/1790659276/fvip/4/nvgoi/1/short_key/1/ncsapi/1/keepalive/yes/fexp/51565116%2C52178456/dover/13/itag/0/playlist_type/DVR/sparams/expire%2Cei%2Cip%2Cid%2Csource%2Crequiressl%2Cxpc%2Chfr%2Cdemuxed%2Ctts_caps%2Cmaudio%2Cbui%2Cspc%2Cvprv%2Cgo%2Crqh%2Citag%2Cplaylist_type/sig/AE0s2JYwRAIgMZiqnljsxiy_a_8uFufvt30wJRbafeRwB6Rw0g8DtHECICFfj_1I3Z7A5tlEASN_uPpEqF_J2wi80n6_NALKbpMm/lsparams/playback_host%2Ccps%2Cmet%2Cmh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Crms%2Cinitcwndbps/lsig/APaTxxMwRAIgI7QPXfEI_n_oWQsmn7PbJPKYEfd2R945YC5tLUkoLrYCIDl6H3hUmB99rVRUaTO-UXs4xBceBWhFu6S0RLneeSBm/file/index.m3u8",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://www.youtube.com/youtubei/v1/next?prettyPrint=false",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://www.youtube.com/youtubei/v1/next?prettyPrint=false",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://www.youtube.com/youtubei/v1/next?prettyPrint=false",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://www.youtube.com/youtubei/v1/next?prettyPrint=false",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://www.youtube.com/youtubei/v1/next?prettyPrint=false",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://www.youtube.com/youtubei/v1/next?prettyPrint=false",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://www.youtube.com/youtubei/v1/next?prettyPrint=false",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://www.youtube.com/watch?v=DQVzzqO6loc",
+      "status_code": null,
+      "encoding": "utf-8",
+      "file": "detail-1.json",
+      "notes": "Extractor output; HTTP status codes are in individual request records."
+    },
+    {
+      "url": "https://www.youtube.com/watch?v=QA4WiDfLry4&bpctr=9999999999&has_verified=1",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_variant/expire/1790681394/ei/0ky7avSZFs2x2roP2tvXiA4/ip/218.235.241.40/id/400e168837cbaf2e/source/youtube/requiressl/yes/xpc/EgVo2aDSNQ%3D%3D/playback_host/rr2---sn-n3cgv5qc5oq-nnoe.googlevideo.com/cps/144/met/1790659794%2C/mh/_b/mm/31%2C29/mn/sn-n3cgv5qc5oq-nnoe%2Csn-n3cgv5qc5oq-bh2sk/ms/au%2Crdu/mv/m/mvi/2/pl/24/rms/au%2Cau/hfr/1/demuxed/1/tts_caps/1/maudio/1/initcwndbps/2114500/bui/AWzQHwqAUJVPXvwwy9jwPLVrDaHuaL8zH2midKCATqBqVVWfbElYXvDMhxeL7RkAPnpbWPra934Bk0eI/spc/I-rgIdgu1UA7FyW9i_SDse_WMYf2amZHPKQCo_bm-6R5JvrihLTQ_FNTlA4OmoE/vprv/1/go/1/rqh/5/mt/1790659276/fvip/8/nvgoi/1/short_key/1/ncsapi/1/keepalive/yes/fexp/51565116%2C52112905%2C52178456%2C52184227/dover/13/itag/0/playlist_type/DVR/sparams/expire%2Cei%2Cip%2Cid%2Csource%2Crequiressl%2Cxpc%2Chfr%2Cdemuxed%2Ctts_caps%2Cmaudio%2Cbui%2Cspc%2Cvprv%2Cgo%2Crqh%2Citag%2Cplaylist_type/sig/AE0s2JYwRAIgIka9kea7KC7GmUNDXxZMgRztF-fwEe0l2ruOPQOTtxECIGbRl-wDnaBOngUI_6H4DO1qap46Odziw-zwBZBHaRqT/lsparams/playback_host%2Ccps%2Cmet%2Cmh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Crms%2Cinitcwndbps/lsig/APaTxxMwRAIgfKqgEP2USWbEKSQR-V4quJ80sFUyZqWxzuHvLKvJ8IACIGv0z5-pxfR5JQN8Cfb2gYbCo3i5wHWVCv-Hgi4qCCgl/file/index.m3u8",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://www.youtube.com/youtubei/v1/next?prettyPrint=false",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://www.youtube.com/youtubei/v1/next?prettyPrint=false",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://www.youtube.com/youtubei/v1/next?prettyPrint=false",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://www.youtube.com/youtubei/v1/next?prettyPrint=false",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://www.youtube.com/watch?v=QA4WiDfLry4",
+      "status_code": null,
+      "encoding": "utf-8",
+      "file": "detail-2.json",
+      "notes": "Extractor output; HTTP status codes are in individual request records."
+    },
+    {
+      "url": "https://www.youtube.com/watch?v=AAnIbiIm4A8&bpctr=9999999999&has_verified=1",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://manifest.googlevideo.com/api/manifest/hls_variant/expire/1790681401/ei/2Uy7aoTNG-uMpt8Ps_jG4Aw/ip/218.235.241.40/id/0009c86e2226e00f/source/youtube/requiressl/yes/xpc/EgVo2aDSNQ%3D%3D/playback_host/rr8---sn-n3cgv5qc5oq-nnoe.googlevideo.com/cps/119/met/1790659801%2C/mh/bs/mm/31%2C29/mn/sn-n3cgv5qc5oq-nnoe%2Csn-n3cgv5qc5oq-bh26y/ms/au%2Crdu/mv/m/mvi/8/pcm2cms/yes/pl/24/rms/au%2Cau/hfr/1/demuxed/1/tts_caps/1/maudio/1/initcwndbps/2114500/bui/AWzQHwqJGZ1KXNto1olPV8A6nTs1tNCtAGlfBWBlnqdpFGMRkD4EgxWP8P7li9jr7VkolBXYRwo8b1cP/spc/I-rgIXPd83cxGxJuOjwf0tU7UmnI_8HgWPetTTwSfWRZ_FlpT1rpHst5cP9ua4s/vprv/1/go/1/rqh/5/mt/1790659276/fvip/1/nvgoi/1/short_key/1/ncsapi/1/keepalive/yes/fexp/51565115%2C52112905%2C52178456/dover/13/itag/0/playlist_type/DVR/sparams/expire%2Cei%2Cip%2Cid%2Csource%2Crequiressl%2Cxpc%2Chfr%2Cdemuxed%2Ctts_caps%2Cmaudio%2Cbui%2Cspc%2Cvprv%2Cgo%2Crqh%2Citag%2Cplaylist_type/sig/AE0s2JYwRQIhAO3evuK9aJ4IpSXPenbBz9Qim4_Z7HdBlfYvnHYjOWE8AiAi_GTajSCbuvoRKreQ6BSwMYNTUXup8hpHTsAr7qdFoQ%3D%3D/lsparams/playback_host%2Ccps%2Cmet%2Cmh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpcm2cms%2Cpl%2Crms%2Cinitcwndbps/lsig/APaTxxMwRQIhANbhfvkA537_hVyi0XAlpX_JcFInbJJ9ZRYzRgQQZwBCAiA2rGSkxqVl1npPJ7PS7AqKZHa9V1UHuL50xSN80akcZA%3D%3D/file/index.m3u8",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://www.youtube.com/youtubei/v1/next?prettyPrint=false",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://www.youtube.com/youtubei/v1/next?prettyPrint=false",
+      "status_code": 200,
+      "encoding": null,
+      "file": null
+    },
+    {
+      "url": "https://www.youtube.com/watch?v=AAnIbiIm4A8",
+      "status_code": null,
+      "encoding": "utf-8",
+      "file": "detail-3.json",
+      "notes": "Extractor output; HTTP status codes are in individual request records."
+    }
+  ],
+  "notes": [],
+  "masking_stats": {
+    "id": 91,
+    "name": 42,
+    "profile": 32
+  }
+}
