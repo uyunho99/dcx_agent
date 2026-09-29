@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { Badge, Card, Input, Switch, Table } from '@/components/ds';
-import type { CrawlConfig, Integration, Limits } from '@/lib/api/crawl';
-import { parseList, settingsSources } from '@/lib/logic/crawlConfig';
+import type { CrawlConfig, Integration } from '@/lib/api/crawl';
+import { parseList, settingsSources, limits } from '@/lib/logic/crawlConfig';
 import { contextLabels } from '@/lib/contextLabels';
 import { INTERNAL_TOOLS } from '@/lib/internalTools';
 export const channelNames:Record<string,string> = {naver_cafe:'네이버 카페',naver_blog:'네이버 블로그',youtube:'유튜브 댓글',ppomppu:'뽐뿌',clien:'클리앙',fixture:contextLabels.channels.fixture};
-export const limits = (source:string):Limits => ({concurrency:source === 'youtube' ? 2 : ['ppomppu','clien'].includes(source) ? 1 : 4,min_interval_s:['ppomppu','clien'].includes(source) ? 1 : 0,max_per_keyword:1000});
 function ListInput({label,value,onChange}:{label:string;value:string[];onChange:(value:string[])=>void}) {
   // Keep an unfinished comma/space visible while emitting only normalized entries.
   const [text,setText]=useState<string|null>(null);

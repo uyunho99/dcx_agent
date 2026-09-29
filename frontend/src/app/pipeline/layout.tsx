@@ -26,15 +26,12 @@ export default function PipelineLayout({ children }: { children: React.ReactNode
   const store = useSessionStore();
   const { sid, bk, kw, step } = store;
 
-  const [restoring, setRestoring] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return !store.sid && !!getPersistedSid();
-  });
+  const [restoring, setRestoring] = useState(true);
 
   useEffect(() => {
-    if (sid) return;
+    if (sid) { setRestoring(false); return; }
     const persisted = getPersistedSid();
-    if (!persisted) return;
+    if (!persisted) { setRestoring(false); return; }
 
     setRestoring(true);
     restoreSessionToStore(persisted.sid, store)

@@ -1,4 +1,5 @@
 'use client';
+import { josa } from '@/lib/logic/josa';
 import { Layers } from "lucide-react";
 import { useDirty } from "../DirtyProvider";
 import { useEffect, useId, useRef, useState } from 'react';
@@ -15,7 +16,7 @@ export function VersionHistory({entries}: {entries: VersionEntry[]}) {
 export function VersionPicker() {
   const view = useVersion(); const [open, setOpen] = useState(false);
   if (!view.meta) return null;
-  return <><Button id="version-picker" aria-label={`${view.version} · ${view.readonly ? '읽기 전용' : '활성'} 버전 목록 열기`} title={`${view.version} · ${view.readonly ? '읽기 전용' : '활성'} 버전 목록 열기`} size="sm" style={{whiteSpace:"normal",height:"auto",textAlign:"left"}} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}><Layers size={18} aria-hidden="true" /><span className="pipeline-foot-label">{view.version} · {view.readonly ? '읽기 전용' : '활성'} 버전 목록 열기</span></Button>{view.newerVersion && <p className="ds-t-caption">새 활성 버전 {view.newerVersion}이 있습니다. <Button size="sm" onClick={() => view.select(view.newerVersion!)}>{view.newerVersion} 열기</Button></p>}{open && <VersionDrawer onClose={() => setOpen(false)} />}</>;
+  return <><Button id="version-picker" aria-label={`${view.version} · ${view.readonly ? '읽기 전용' : '활성'} 버전 목록 열기`} title={`${view.version} · ${view.readonly ? '읽기 전용' : '활성'} 버전 목록 열기`} size="sm" style={{whiteSpace:"normal",height:"auto",textAlign:"left"}} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}><Layers size={18} aria-hidden="true" /><span className="pipeline-foot-label">{view.version} · {view.readonly ? '읽기 전용' : '활성'} 버전 목록 열기</span></Button>{view.newerVersion && <p className="ds-t-caption">새 활성 버전 {view.newerVersion}{josa(view.newerVersion, '이/가')} 있습니다. <Button size="sm" onClick={() => view.select(view.newerVersion!)}>{view.newerVersion} 열기</Button></p>}{open && <VersionDrawer onClose={() => setOpen(false)} />}</>;
 }
 function VersionDrawer({onClose}: {onClose: () => void}) {
   const {confirmNavigation} = useDirty();

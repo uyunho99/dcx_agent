@@ -7,14 +7,14 @@ import { versionPath } from "@/lib/api/versions";
 import { useSessionStore } from '@/stores/useSessionStore';
 import { Badge, Banner, Button, Card, InsightCard, StatGrid } from '@/components/ds';
 import { SaveBar } from '@/components/SaveBar';
-import { Settings, limits, channelNames } from '@/components/crawl/Settings';
+import { Settings, channelNames } from '@/components/crawl/Settings';
 import { GateTable } from '@/components/crawl/GateTable';
 import { Progress } from '@/components/crawl/Progress';
 import { contextRequest, patchSession } from '@/lib/api/context';
 import { getCrawlConnections, getCrawlStatus, resumeCrawl, saveCrawlConfig, saveCrawlGate, startCrawlDetail, startCrawlList, stopCrawl, type CrawlConfig, type CrawlSession, type CrawlStatus, type Integration } from '@/lib/api/crawl';
 import { displayError } from '@/lib/api/errors';
-import { availableChannels, localDate, crawlNeedsSetup, crawlStartLabel, increasedResumeIntervals } from '@/lib/logic/finalFix';
-import { prefillFilters } from '@/lib/logic/crawlConfig';
+import { crawlNeedsSetup, crawlStartLabel, increasedResumeIntervals } from '@/lib/logic/finalFix';
+import { approvedCrawlKeywords, deriveCrawlLoad } from '@/lib/logic/crawlConfig';
 import { isDirty } from '@/lib/logic/isDirty';
 import { INTERNAL_TOOLS } from '@/lib/internalTools';
 import '@/components/crawl/crawl.css';
@@ -47,13 +47,8 @@ function CrawlScreen({sid}:{sid:string}) {
     let cancelled=false;
     Promise.all([contextRequest<{data:CrawlSession}>(versionPath(`/session/${encodeURIComponent(sid)}`, version)),getCrawlConnections(),refresh()]).then(([result,integrations,initial])=>{
       if(cancelled)return;
-      const data=result.data; const raw=data.crawlConfig;
-      const now=new Date();const from=new Date(now);from.setDate(from.getDate()-365);
-      const channels=availableChannels(raw?.channels??context?.channels??['naver_cafe','naver_blog'],initial.available_sources,INTERNAL_TOOLS);
-      const base:CrawlConfig={channels,dateFrom:raw?.dateFrom===undefined?localDate(from):raw.dateFrom,dateTo:raw?.dateTo===undefined?localDate(now):raw.dateTo,...prefillFilters(raw,initial.defaults),includeSources:raw?.includeSources??[],product_name_filter:raw?.product_name_filter??false,perChannel:raw?.perChannel??Object.fromEntries(channels.map(s=>[s,limits(s)])),youtube:raw?.youtube??{videos_per_keyword:20,max_comments:500},target_total:raw?.target_total===undefined?1000000:raw.target_total};
-      const draft=data.drafts?.crawl;const gate=raw?.gateExclusions??[];const selection=draft?.gate?.snapshot_id===initial.snapshot_id?draft.gate.exclusions:gate;
-      const draftValue=draft?.config ? {...draft.config,channels:availableChannels(draft.config.channels,initial.available_sources,INTERNAL_TOOLS)} : base;
-      setSession(data);setConfig(draftValue);setSavedConfig(raw?.channels?{...base,channels:raw.channels}:null);setDraftConfig(draftValue);setExcluded(selection);setSavedGate(gate);setDraftGate(selection);setConnections(integrations);
+      const loaded=deriveCrawlLoad(result,initial,context,INTERNAL_TOOLS);
+      setSession(loaded.data);setConfig(loaded.config);setSavedConfig(loaded.savedConfig);setDraftConfig(loaded.config);setExcluded(loaded.selection);setSavedGate(loaded.gate);setDraftGate(loaded.selection);setConnections(integrations);setError('');
     }).catch((e)=>{if(!cancelled)setError(displayError(e, '설정을 불러오지 못했습니다. 다시 확인하세요.'));});return()=>{cancelled=true;};
   },[sid,version,context,retry,refresh]);
   const running=status?.status==='running'||status?.status==='stopping';const disabled=busy||!!running||!healthy||!!session?.readonly;
@@ -62,7 +57,7 @@ function CrawlScreen({sid}:{sid:string}) {
   const setupView=freshSetup||settings||(!status?.kind&&!status?.report);
   const configChanged=isDirty(savedConfig,config);const gateChanged=isDirty([...savedGate].sort(),[...excluded].sort());
   const valid=!!config&&config.channels.length>0&&(!config.dateFrom||!config.dateTo||config.dateFrom<=config.dateTo)&&(config.target_total===null||Number.isInteger(config.target_total)&&config.target_total>0)&&Object.values(config.perChannel).every(v=>Number.isInteger(v.concurrency)&&v.concurrency>=1&&v.concurrency<=64&&v.min_interval_s>=0&&Number.isInteger(v.max_per_keyword)&&v.max_per_keyword>0)&&config.youtube.videos_per_keyword>=1&&Number.isInteger(config.youtube.videos_per_keyword)&&config.youtube.max_comments>=0&&Number.isInteger(config.youtube.max_comments);
-  const keywords=(session?.keywords??[]).filter(k=>k.status==='approved');const axes:Record<string,number>={};keywords.forEach(k=>{axes[k.axis]=(axes[k.axis]??0)+1;});
+  const keywords=approvedCrawlKeywords(session);const axes:Record<string,number>={};keywords.forEach(k=>{axes[k.axis]=(axes[k.axis]??0)+1;});
   const added=status?.added_keywords_count??0;
   async function action(fn:()=>Promise<void>,allowRunning=false){if(lock.current||(!allowRunning&&running)||session?.readonly)return;lock.current=true;generation.current++;setBusy(true);setHealthy(false);setError('');setNotice('');try{await fn();await refresh();}catch(e){setError(displayError(e, '요청에 실패했습니다. 입력값은 그대로 있습니다. 상태를 확인하고 다시 시도하세요.'));}finally{lock.current=false;setBusy(false);}}
   async function draft(){if(disabled)return;await action(async()=>{await patchSession(sid,{drafts:{crawl:gateView?{gate:{exclusions:excluded,snapshot_id:status!.snapshot_id}}:{config}}}, version);if(gateView)setDraftGate([...excluded]);else setDraftConfig(config);setNotice('임시 저장했습니다. 저장하면 수집 설정에 반영합니다.');});}

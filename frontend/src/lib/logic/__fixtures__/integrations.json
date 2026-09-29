@@ -1,0 +1,73 @@
+[
+  {
+    "name": "naver_shopping",
+    "connected": false,
+    "env_vars": [
+      "NAVER_CLIENT_ID",
+      "NAVER_CLIENT_SECRET"
+    ],
+    "affects": [
+      "category_suggest"
+    ],
+    "last_error": null
+  },
+  {
+    "name": "naver_search",
+    "connected": false,
+    "env_vars": [
+      "NAVER_CLIENT_ID",
+      "NAVER_CLIENT_SECRET"
+    ],
+    "affects": [
+      "crawl"
+    ],
+    "last_error": null
+  },
+  {
+    "name": "naver_searchad",
+    "connected": false,
+    "env_vars": [
+      "SEARCHAD_API_KEY",
+      "SEARCHAD_SECRET",
+      "SEARCHAD_CUSTOMER_ID"
+    ],
+    "affects": [
+      "coverage"
+    ],
+    "last_error": null
+  },
+  {
+    "name": "youtube",
+    "connected": false,
+    "env_vars": [
+      "YOUTUBE_API_KEY"
+    ],
+    "affects": [
+      "crawl"
+    ],
+    "last_error": null
+  },
+  {
+    "name": "openai",
+    "connected": false,
+    "env_vars": [
+      "OPENAI_API_KEY",
+      "OPENAI_MODEL"
+    ],
+    "affects": [
+      "llm"
+    ],
+    "last_error": null
+  },
+  {
+    "name": "claude",
+    "connected": false,
+    "env_vars": [
+      "CLAUDE_API_KEY"
+    ],
+    "affects": [
+      "llm"
+    ],
+    "last_error": null
+  }
+]

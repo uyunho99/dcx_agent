@@ -189,3 +189,35 @@ Compiled successfully; TypeScript 통과; static pages 14/14, exit 0
 기존 Node DEP0205 경고가 남는다. 브라우저 QA 세션에 접근하지 않았으며 실제 backend worker 왕복은 별도 QA 대상이다. 지정 파일만 staging하고 요청한 제목 및 co-author trailer로 commit을 시도한다.
 
 `git diff --check`는 통과했다. scoped `git add`와 지정 제목/trailer의 `git commit --only`는 모두 exit 128: `/Users/persona1/Desktop/dcx_agent/.git/worktrees/dcx_agent-dcx2-stage0-2/index.lock` 생성이 `Operation not permitted`로 거부되었다. 결과는 **uncommitted**이며 권한 우회 없이 변경을 남겼다.
+
+## QA fix QF-1
+
+- Q3 원인: QA status 응답에는 `snapshot_id`가 없고 session에는 `drafts.crawl`이 없다. 기존 `draft?.gate?.snapshot_id === initial.snapshot_id`가 `undefined === undefined`로 참이 되어 `draft.gate.exclusions`에서 TypeError가 발생했다. `setSession` 이전에 실패하여 승인 키워드도 0개로 보였다. `{status, data}` unwrap과 최상위 `data.keywords` 위치는 정상이었다. 제공 파일의 crawlConfig는 누락되어 있으며 명시적인 null도 별도 검증했다.
+- Q3 수정: 설정 파생을 순수 함수 `deriveCrawlLoad`로 추출하고 실제 gate와 snapshot이 있는 경우에만 초안을 복원한다. 조회한 버전의 projectContext 채널과 available_sources 교집합을 우선하고, 저장 설정 부재 시 status 필터 기본값을 적용한다. 화면과 테스트는 승인 키워드 helper를 공유한다. 성공한 재조회는 오류 표시를 지운다. 내부 도구 비활성 시 fixture 채널 제외 정책은 유지한다.
+- 회귀 fixture: `.superpowers/sdd/03-plan/qa-repro/`의 네 JSON을 읽기만 하고 frontend의 `lib/logic/__fixtures__/`에 복사했다. session 최상위 키워드는 실제 첫 20개(승인 19개), 각 round는 첫 5개로 줄였다. 네 API 응답을 mock fetch로 그대로 공급하여 version/session unwrap, integrations, 승인 수, 기본 채널·필터·날짜 및 오류 없는 파생을 검증한다. 추가로 null 설정/누락 store context/null snapshot, 일치·불일치 gate snapshot, 저장된 빈 필터와 null 목표를 검증한다.
+- Q1: layout의 restoring 초기값을 서버와 최초 클라이언트 렌더 모두 true로 통일했다. mount effect에서 기존 sid/저장된 sid 유무에 따라 로딩 종료 또는 복원을 수행한다.
+- Q4: `josa(word, pair)`를 추가했다. 한글 종성, 숫자의 한국어 발음, 영문자 이름의 종성(L/M/N/R), 알 수 없는 끝글자의 기본 모음형을 처리한다. 네 조사 쌍과 인용부호를 포함해 22개 테스트로 검증했다. 시작 질문 템플릿, 라운드 저장, 중복 키워드, 커버리지, 버전 비교/새 활성 버전 안내에 적용했다. 해당 화면과 컴포넌트의 변수 직후 조사 패턴을 검색해 확인했다.
+- Q5: R2 확정 후 R3/R4 기록이 아직 없을 때만 R3 생성 전 미연결/빈 검색어 안내를 표시한다. 기존 커버리지 결과 패널은 유지한다.
+
+RED (수정 전 로직을 순수 함수로 옮긴 뒤 실행):
+
+```text
+npm --prefix frontend test
+Test Files 1 failed | 21 passed; Tests 1 failed | 94 passed
+TypeError: Cannot read properties of undefined (reading 'gate')
+  deriveCrawlLoad — crawlLoad.test.ts
+exit 1
+```
+
+GREEN:
+
+```text
+npm --prefix frontend test
+Test Files 23 passed; Tests 119 passed; exit 0
+npm --prefix frontend run lint
+exit 0, 0 problems
+```
+
+dev server와 build는 실행하지 않았다. 실제 브라우저 재검증은 수행하지 않았으며 기존 Node DEP0205 경고가 남는다. frontend 및 이 보고서 외의 파일과 `.superpowers`는 수정하지 않았다. 기존 `.DS_Store` 변경은 staging 대상에서 제외했다.
+
+지정 범위 `git add`와 요청한 정확한 제목/co-author trailer의 `git commit --only`를 시도했으나 모두 exit 128로 실패했다. worktree의 `/Users/persona1/Desktop/dcx_agent/.git/worktrees/dcx_agent-dcx2-stage0-2/index.lock` 생성이 `Operation not permitted`로 거부되었다. 권한 우회 없이 **uncommitted** 상태로 남겼다.
