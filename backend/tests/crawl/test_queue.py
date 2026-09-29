@@ -551,3 +551,97 @@ def test_pending_recheck_uses_lease_snapshot(queue, recover):
         queue.mark_failed_attempt(row.url_norm, row.source, 'timeout', backoff_s=0)
     assert queue.counts()['pending'] == 1
     assert len(queue.lease_urls(snap, 1, 30)) == 1
+
+
+def exclusion_updates(statements):
+    return [sql for sql in statements if sql.lstrip().startswith((
+        "UPDATE urls SET status='excluded'", 'UPDATE urls SET (kw,kw_axis,kw_sub)'))]
+
+
+def test_unchanged_exclusions_do_not_write_during_leasing(queue):
+    add(queue, 'A', 0, [f'fixture://aircon/{i}' for i in range(5000)])
+    snap = queue.take_snapshot()
+    statements = []
+    queue.connection.set_trace_callback(statements.append)
+    try:
+        before = queue.connection.total_changes
+        for _ in range(10):
+            assert len(queue.lease_urls(snap, 200, 30)) == 200
+        assert queue.connection.total_changes - before == 2000  # Only lease writes.
+        assert exclusion_updates(statements) == []
+    finally:
+        queue.connection.set_trace_callback(None)
+
+
+def test_exclusion_sweep_once_per_changed_snapshot_across_connections(queue):
+    add(queue, 'A', 0, ['fixture://aircon/1'])
+    snap = queue.take_snapshot()
+    other_snap = queue.take_snapshot()
+    with_queue = CrawlQueue(queue.path)
+    try:
+        assert with_queue.exclude_keywords(snap, ['A']) == 1
+        # A legacy stranded pending row, including retry backoff, is repaired.
+        queue.connection.execute("UPDATE urls SET status='pending',retry_at=?", (time.time() + 3600,))
+        statements = []
+        queue.connection.set_trace_callback(statements.append)
+        assert queue.lease_urls(other_snap, 1, 30) == []
+        assert exclusion_updates(statements) == []
+        assert queue.lease_urls(snap, 1, 30) == []
+        updates = exclusion_updates(statements)
+        assert len(updates) == 1
+        assert "SET status='excluded'" in updates[0]
+        assert queue.counts()['excluded'] == 1
+        queue.connection.set_trace_callback(None)
+        assert with_queue.exclude_keywords(snap, ['A']) == 0  # No version bump.
+        with_queue.run_id = queue.run_id
+        statements.clear()
+        with_queue.connection.set_trace_callback(statements.append)
+        before = with_queue.connection.total_changes
+        for _ in range(10):
+            assert with_queue.lease_urls(snap, 1, 30) == []
+        assert exclusion_updates(statements) == []
+        assert with_queue.connection.total_changes == before
+    finally:
+        queue.connection.set_trace_callback(None)
+        with_queue.close()
+
+
+def test_reassignment_writes_only_changed_metadata(queue):
+    add(queue, 'A', 0, ['fixture://aircon/1', 'fixture://aircon/2'])
+    snap = queue.take_snapshot()
+    queue.connection.execute("UPDATE urls SET kw_axis='old',kw_sub='old' WHERE url_norm='fixture://aircon/1'")
+    before = queue.connection.total_changes
+    assert queue.exclude_keywords(snap, []) == 0
+    assert queue.connection.total_changes - before == 1
+    assert [tuple(r) for r in queue.connection.execute('SELECT kw,kw_axis,kw_sub FROM urls')] == [
+        ('A', 'axis', 'sub'), ('A', 'axis', 'sub')]
+    before = queue.connection.total_changes
+    assert queue.exclude_keywords(snap, []) == 0
+    assert queue.connection.total_changes == before
+
+
+def test_legacy_snapshot_gets_one_initial_sweep(queue):
+    add(queue, 'A', 0, ['fixture://aircon/1'])
+    snap = queue.take_snapshot()
+    queue.exclude_keywords(snap, ['A'])
+    queue.connection.execute("UPDATE urls SET status='pending'")
+    # Recreate the pre-version snapshot schema without touching membership.
+    queue.connection.executescript('''
+        ALTER TABLE snapshots RENAME TO old_snapshots;
+        CREATE TABLE snapshots (
+            snapshot_id TEXT PRIMARY KEY, created_at REAL NOT NULL,
+            url_count INTEGER NOT NULL, hash TEXT NOT NULL);
+        INSERT INTO snapshots SELECT snapshot_id,created_at,url_count,hash FROM old_snapshots;
+        DROP TABLE old_snapshots;
+    ''')
+    reopened = CrawlQueue(queue.path)
+    try:
+        reopened.run_id = queue.run_id
+        assert reopened.lease_urls(snap, 1, 30) == []
+        assert reopened.counts()['excluded'] == 1
+        statements = []
+        reopened.connection.set_trace_callback(statements.append)
+        assert reopened.lease_urls(snap, 1, 30) == []
+        assert exclusion_updates(statements) == []
+    finally:
+        reopened.close()

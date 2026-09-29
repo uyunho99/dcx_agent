@@ -59,7 +59,8 @@ CREATE TABLE IF NOT EXISTS url_hits (
  PRIMARY KEY(url_norm, source, kw)
 );
 CREATE TABLE IF NOT EXISTS snapshots (
- snapshot_id TEXT PRIMARY KEY, created_at REAL NOT NULL, url_count INTEGER NOT NULL, hash TEXT NOT NULL
+ snapshot_id TEXT PRIMARY KEY, created_at REAL NOT NULL, url_count INTEGER NOT NULL, hash TEXT NOT NULL,
+ exclusion_version INTEGER NOT NULL DEFAULT 0, swept_version INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS snapshot_urls (
  snapshot_id TEXT NOT NULL, url_norm TEXT NOT NULL, source TEXT NOT NULL,
@@ -187,6 +188,12 @@ class CrawlQueue:
                 db.execute('ALTER TABLE urls ADD COLUMN lease_snapshot_id TEXT')
             if 'max_attempts' not in {r['name'] for r in db.execute('PRAGMA table_info(urls)')}:
                 db.execute('ALTER TABLE urls ADD COLUMN max_attempts INTEGER NOT NULL DEFAULT 3')
+            columns = {r['name'] for r in db.execute('PRAGMA table_info(snapshots)')}
+            if 'exclusion_version' not in columns:
+                db.execute('ALTER TABLE snapshots ADD COLUMN exclusion_version INTEGER NOT NULL DEFAULT 0')
+            if 'swept_version' not in columns:
+                # Existing snapshots need one repair sweep for legacy pending rows.
+                db.execute('ALTER TABLE snapshots ADD COLUMN swept_version INTEGER NOT NULL DEFAULT -1')
 
     @staticmethod
     def _connect(path, readonly):
@@ -330,7 +337,9 @@ class CrawlQueue:
             rows = db.execute('SELECT url_norm,source FROM urls ORDER BY source,url_norm').fetchall()
             digest = hashlib.sha256(json.dumps([tuple(r) for r in rows], ensure_ascii=False,
                                                separators=(',', ':')).encode()).hexdigest()
-            db.execute('INSERT INTO snapshots VALUES (?,?,?,?)',
+            db.execute('''INSERT INTO snapshots
+                       (snapshot_id,created_at,url_count,hash,exclusion_version,swept_version)
+                       VALUES (?,?,?,?,0,0)''',
                        (snapshot_id, time.time(), len(rows), digest))
             db.execute('INSERT INTO snapshot_urls SELECT ?,url_norm,source FROM urls', (snapshot_id,))
         return snapshot_id
@@ -347,7 +356,13 @@ class CrawlQueue:
         with self._write() as db:
             self._require_run(db)
             self._snapshot(db, snapshot_id)
-            self._apply_exclusions(db, snapshot_id)
+            versions = db.execute('''SELECT exclusion_version,swept_version FROM snapshots
+                WHERE snapshot_id=?''', (snapshot_id,)).fetchone()
+            if versions['exclusion_version'] != versions['swept_version']:
+                # Selection below already chooses the lowest eligible keyword.
+                self._apply_exclusions(db, snapshot_id, reassign=False)
+                db.execute('''UPDATE snapshots SET swept_version=exclusion_version
+                    WHERE snapshot_id=?''', (snapshot_id,))
             rows = db.execute('''SELECT u.*, h.kw AS hit_kw, h.kw_axis AS hit_axis,
                     h.kw_sub AS hit_sub, h.kw_order AS hit_order
                 FROM urls u JOIN snapshot_urls s USING(url_norm,source)
@@ -436,12 +451,16 @@ class CrawlQueue:
     def exclude_keywords(self, snapshot_id: str, kws: Iterable[str]) -> int:
         with self._write() as db:
             self._snapshot(db, snapshot_id)
+            before = db.total_changes
             db.executemany('INSERT OR IGNORE INTO excluded_keywords VALUES (?,?)',
                            [(snapshot_id, kw) for kw in kws])
+            if db.total_changes != before:
+                db.execute('''UPDATE snapshots SET exclusion_version=exclusion_version+1
+                    WHERE snapshot_id=?''', (snapshot_id,))
             return self._apply_exclusions(db, snapshot_id, include_failed=True)
 
     @staticmethod
-    def _apply_exclusions(db, snapshot_id=None, *, keys=None, include_failed=False):
+    def _apply_exclusions(db, snapshot_id=None, *, keys=None, include_failed=False, reassign=True):
         """Apply D9 to selected rows inside the caller's write transaction.
 
         Without an explicit snapshot, use each row's persisted lease snapshot.
@@ -463,14 +482,17 @@ class CrawlQueue:
         count = db.executemany(f"""UPDATE urls SET status='excluded',lease_until=NULL,
             lease_run_id=NULL WHERE {target} AND NOT EXISTS ({eligible})""",
             [params + tuple(key) + params for key in selected]).rowcount
-        db.executemany(f"""UPDATE urls SET (kw,kw_axis,kw_sub)=(
-            SELECT h.kw,h.kw_axis,h.kw_sub FROM url_hits h
+        if not reassign:
+            return count
+        representative = f"""SELECT h.kw,h.kw_axis,h.kw_sub FROM url_hits h
             WHERE h.url_norm=urls.url_norm AND h.source=urls.source
             AND NOT EXISTS (SELECT 1 FROM excluded_keywords e
                 WHERE e.snapshot_id={snapshot} AND e.kw=h.kw)
-            ORDER BY h.kw_order,h.kw LIMIT 1)
-            WHERE {target} AND EXISTS ({eligible})""",
-            [params + params + tuple(key) + params for key in selected])
+            ORDER BY h.kw_order,h.kw LIMIT 1"""
+        db.executemany(f"""UPDATE urls SET (kw,kw_axis,kw_sub)=({representative})
+            WHERE {target} AND EXISTS ({eligible})
+            AND (kw,kw_axis,kw_sub) IS NOT ({representative})""",
+            [params + params + tuple(key) + params + params for key in selected])
         return count
 
     def reclaim_expired_leases(self) -> int:
