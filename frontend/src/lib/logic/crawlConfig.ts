@@ -1,3 +1,4 @@
+import { reconcileGateSelection } from './qaFix';
 import { availableChannels, localDate } from './finalFix';
 import type { CrawlConfig, CrawlSession, CrawlStatus, Limits } from '../api/crawl';
 
@@ -21,7 +22,7 @@ export function settingsSources(known: string[], selected: string[], available: 
 
 export const limits = (source:string):Limits => ({concurrency:source === 'youtube' ? 2 : ['ppomppu','clien'].includes(source) ? 1 : 4,min_interval_s:['ppomppu','clien'].includes(source) ? 1 : 0,max_per_keyword:1000});
 
-export function deriveCrawlLoad(result: {data: CrawlSession}, initial: Pick<CrawlStatus, 'defaults' | 'available_sources' | 'snapshot_id'>, context: {channels: string[]} | null, internal: boolean, now = new Date()) {
+export function deriveCrawlLoad(result: {data: CrawlSession}, initial: Pick<CrawlStatus, 'defaults' | 'available_sources' | 'snapshot_id' | 'collectionId'> & {gate: {kw: string}[] | null}, context: {channels: string[]} | null, internal: boolean, now = new Date()) {
   const data = result.data;
   const raw = data.crawlConfig;
   const from = new Date(now);
@@ -39,10 +40,7 @@ export function deriveCrawlLoad(result: {data: CrawlSession}, initial: Pick<Craw
     target_total: raw?.target_total === undefined ? 1000000 : raw.target_total,
   };
   const draft = data.drafts?.crawl;
-  const gate = raw?.gateExclusions ?? [];
-  // Two absent snapshot IDs must never count as a matching saved gate.
-  const selection = draft?.gate && initial.snapshot_id != null && draft.gate.snapshot_id === initial.snapshot_id
-    ? draft.gate.exclusions : gate;
+  const {saved: gate, excluded: selection} = reconcileGateSelection(null, initial, raw?.gateExclusions ?? [], draft?.gate);
   const config = draft?.config
     ? {...draft.config, channels: availableChannels(draft.config.channels, initial.available_sources, internal)} : base;
   return {

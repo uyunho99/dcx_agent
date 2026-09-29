@@ -15,6 +15,7 @@ import { getCrawlConnections, getCrawlStatus, resumeCrawl, saveCrawlConfig, save
 import { displayError } from '@/lib/api/errors';
 import { crawlNeedsSetup, crawlStartLabel, increasedResumeIntervals } from '@/lib/logic/finalFix';
 import { approvedCrawlKeywords, deriveCrawlLoad } from '@/lib/logic/crawlConfig';
+import { reconcileGateSelection, sameGateScope, type GateSelection } from '@/lib/logic/qaFix';
 import { isDirty } from '@/lib/logic/isDirty';
 import { INTERNAL_TOOLS } from '@/lib/internalTools';
 import '@/components/crawl/crawl.css';
@@ -31,10 +32,23 @@ function CrawlScreen({sid}:{sid:string}) {
   const [freshStarted,setFreshStarted]=useState(false);
   const [retry,setRetry]=useState(0);
   const [session,setSession]=useState<CrawlSession|null>(null);const [config,setConfig]=useState<CrawlConfig|null>(null);const [savedConfig,setSavedConfig]=useState<CrawlConfig|null>(null);const [draftConfig,setDraftConfig]=useState<CrawlConfig|null>(null);
-  const [excluded,setExcluded]=useState<string[]>([]);const [savedGate,setSavedGate]=useState<string[]>([]);const [draftGate,setDraftGate]=useState<string[]>([]);
+  const [gateSelection,setGateSelection]=useState<GateSelection|null>(null);
+  const excluded=gateSelection?.excluded??[];const savedGate=gateSelection?.saved??[];const draftGate=gateSelection?.draft??[];
+  const setExcluded=(value:string[])=>setGateSelection(old=>old?{...old,excluded:value}:old);
+  const setSavedGate=(value:string[])=>setGateSelection(old=>old?{...old,saved:value}:old);
+  const setDraftGate=(value:string[])=>setGateSelection(old=>old?{...old,draft:value}:old);
   const [status,setStatus]=useState<CrawlStatus|null>(null);const [connections,setConnections]=useState<Integration[]>([]);const [busy,setBusy]=useState(false);const lock=useRef(false);const [error,setError]=useState('');const [notice,setNotice]=useState('');const [healthy,setHealthy]=useState(false);const [settings,setSettings]=useState(false);
   const generation=useRef(0);const alive=useRef(true);const latestStatus=useRef<CrawlStatus|null>(null);const [pollError,setPollError]=useState('');const hydrated=!!session;
-  const refresh=useCallback(async()=>{const generationAtStart=generation.current;const next=await getCrawlStatus(sid);if(alive.current&&generationAtStart===generation.current){latestStatus.current=next;setStatus(next);setHealthy(true);setPollError('');}return next;},[sid]);
+  const refresh=useCallback(async()=>{
+    const generationAtStart=generation.current;const next=await getCrawlStatus(sid);
+    const changed=!latestStatus.current||!sameGateScope(latestStatus.current,next);
+    // A new collection's saved exclusions must come from its current server session.
+    const result=changed?await contextRequest<{data:CrawlSession}>(versionPath(`/session/${encodeURIComponent(sid)}`,version)):null;
+    if(alive.current&&generationAtStart===generation.current){
+      setGateSelection(old=>reconcileGateSelection(old,next,result?.data.crawlConfig?.gateExclusions??[],result?.data.drafts?.crawl?.gate));
+      latestStatus.current=next;setStatus(next);setHealthy(true);setPollError('');
+    }return next;
+  },[sid,version]);
   useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
   useEffect(()=>{
     if(!hydrated || readonly)return;
@@ -48,7 +62,7 @@ function CrawlScreen({sid}:{sid:string}) {
     Promise.all([contextRequest<{data:CrawlSession}>(versionPath(`/session/${encodeURIComponent(sid)}`, version)),getCrawlConnections(),refresh()]).then(([result,integrations,initial])=>{
       if(cancelled)return;
       const loaded=deriveCrawlLoad(result,initial,context,INTERNAL_TOOLS);
-      setSession(loaded.data);setConfig(loaded.config);setSavedConfig(loaded.savedConfig);setDraftConfig(loaded.config);setExcluded(loaded.selection);setSavedGate(loaded.gate);setDraftGate(loaded.selection);setConnections(integrations);setError('');
+      setSession(loaded.data);setConfig(loaded.config);setSavedConfig(loaded.savedConfig);setDraftConfig(loaded.config);setConnections(integrations);setError('');
     }).catch((e)=>{if(!cancelled)setError(displayError(e, '설정을 불러오지 못했습니다. 다시 확인하세요.'));});return()=>{cancelled=true;};
   },[sid,version,context,retry,refresh]);
   const running=status?.status==='running'||status?.status==='stopping';const disabled=busy||!!running||!healthy||!!session?.readonly;
@@ -60,7 +74,7 @@ function CrawlScreen({sid}:{sid:string}) {
   const keywords=approvedCrawlKeywords(session);const axes:Record<string,number>={};keywords.forEach(k=>{axes[k.axis]=(axes[k.axis]??0)+1;});
   const added=status?.added_keywords_count??0;
   async function action(fn:()=>Promise<void>,allowRunning=false){if(lock.current||(!allowRunning&&running)||session?.readonly)return;lock.current=true;generation.current++;setBusy(true);setHealthy(false);setError('');setNotice('');try{await fn();await refresh();}catch(e){setError(displayError(e, '요청에 실패했습니다. 입력값은 그대로 있습니다. 상태를 확인하고 다시 시도하세요.'));}finally{lock.current=false;setBusy(false);}}
-  async function draft(){if(disabled)return;await action(async()=>{await patchSession(sid,{drafts:{crawl:gateView?{gate:{exclusions:excluded,snapshot_id:status!.snapshot_id}}:{config}}}, version);if(gateView)setDraftGate([...excluded]);else setDraftConfig(config);setNotice('임시 저장했습니다. 저장하면 수집 설정에 반영합니다.');});}
+  async function draft(){if(disabled)return;await action(async()=>{await patchSession(sid,{drafts:{crawl:gateView?{gate:{exclusions:excluded,collectionId:status!.collectionId,snapshot_id:status!.snapshot_id}}:{config}}}, version);if(gateView)setDraftGate([...excluded]);else setDraftConfig(config);setNotice('임시 저장했습니다. 저장하면 수집 설정에 반영합니다.');});}
   async function save(){if(disabled)return;await action(async()=>{if(gateView){await saveCrawlGate(sid,excluded,version);setSavedGate([...excluded]);setDraftGate([...excluded]);await patchSession(sid,{drafts:{crawl:{gate:null}}}, version);}else if(config&&valid){await saveCrawlConfig(sid,config,version);setSavedConfig(config);setDraftConfig(config);await patchSession(sid,{drafts:{crawl:{config:null}}}, version);}setNotice('저장했습니다. 수집 시작 버튼을 누르면 수집합니다.');});}
   const pausedChannels=status?.paused_channels ?? Object.entries(status?.channels??{}).filter(([,c])=>c.status.startsWith('paused')).map(([source])=>source);
   const paused=pausedChannels.length>0 || status?.status==='paused';

@@ -7,6 +7,7 @@ import { useSessionStore } from '@/stores/useSessionStore';
 import type { CrawlConfig } from '@/lib/api/crawl';
 import { contextLabels } from '@/lib/contextLabels';
 import { INTERNAL_TOOLS } from '@/lib/internalTools';
+import { stalePageStage } from '@/lib/logic/qaFix';
 import { prepareRestartVersion } from '@/lib/logic/restartVersion';
 import { useVersion } from './VersionProvider';
 import { useDirty } from "../DirtyProvider";
@@ -34,9 +35,9 @@ export function RestartVersion({stage, from, label = '이 단계부터 다시', 
 }
 export function StageVersionAction({stage}: {stage: Stage}) { const view = useVersion(); return <div className="flex justify-end"><RestartVersion stage={stage} disabled={view.readonly} /></div>; }
 export function StaleBanner({stage, session}: {stage: Stage; session: VersionSession | null}) {
-  const view = useVersion(); const stale = session?.stale?.[stage]; const match = stale?.match(/stage(\d+) changed in (v\d+)/);
+  const view = useVersion(); const pageStage = stalePageStage(stage, session?.stale); const stale = pageStage ? session?.stale?.[pageStage] : undefined; const match = stale?.match(/stage(\d+) changed in (v\d+)/);
   const source = view.meta?.versions.find(v => v.id === match?.[2])?.parent ?? session?.parentVersion ?? session?.version;
-  return stale ? <Banner tone="warning">이 결과는 {source}의 {match?.[1] ?? stage.slice(5)}단계 기준입니다. 이 단계를 다시 하거나 그대로 쓰세요.</Banner> : null;
+  return stale ? <Banner tone="warning">이 결과는 {source}의 {pageStage?.slice(5)}단계 기준입니다. 이 단계를 다시 하거나 그대로 쓰세요.</Banner> : null;
 }
 export function VersionBanner({stage}: {stage: Stage}) {
   const view = useVersion();

@@ -221,3 +221,23 @@ exit 0, 0 problems
 dev server와 build는 실행하지 않았다. 실제 브라우저 재검증은 수행하지 않았으며 기존 Node DEP0205 경고가 남는다. frontend 및 이 보고서 외의 파일과 `.superpowers`는 수정하지 않았다. 기존 `.DS_Store` 변경은 staging 대상에서 제외했다.
 
 지정 범위 `git add`와 요청한 정확한 제목/co-author trailer의 `git commit --only`를 시도했으나 모두 exit 128로 실패했다. worktree의 `/Users/persona1/Desktop/dcx_agent/.git/worktrees/dcx_agent-dcx2-stage0-2/index.lock` 생성이 `Operation not permitted`로 거부되었다. 권한 우회 없이 **uncommitted** 상태로 남겼다.
+
+## QA fix QF-2
+
+- Q9: 게이트 선택·저장 기준·임시 저장 기준을 status의 collectionId와 snapshot_id에 묶었다. 둘 중 하나가 바뀌면 현재 버전의 session을 다시 읽고 crawlConfig.gateExclusions와 현재 gate 행의 교집합으로 초기화한다. 동일 범위의 로컬 선택은 유지하되 행에서 사라진 키워드는 제거한다. 새 초안에는 collectionId도 저장하며, 초안 복원은 두 ID가 모두 일치할 때만 허용한다. collectionId 없는 기존 초안은 서버 저장값으로 대체한다. 순수 함수 reconcileGateSelection을 초기 로드와 status 갱신에 공유한다.
+- Q8: StaleBanner는 현재 페이지 단계의 stale 여부만 확인하고 해당 단계 번호를 표시한다. restart 원인 단계는 원본 버전 추적에만 사용한다. crawling은 stage2, keywords는 stage1, start는 stage0이며 자기 단계가 stale이 아니면 배너를 숨긴다.
+- Q10: 갱신·백그라운드 수집 안내는 running/stopping 동안만 표시한다. 분당 처리량은 천 단위 구분과 소수 최대 한 자리로 표시한다. P3/P5의 채널 시도·오류 수, URL·문서 합계, 키워드별 표·상하위 막대, 남은 시간에도 숫자 포맷을 적용하고 tabular numerals를 사용한다.
+- 테스트 먼저 작성: qaFix.test.ts의 helper 미구현으로 RED를 확인했다. 초기 로드의 기존 테스트에도 collectionId와 현재 행 밖 초안을 추가하여 unknown 키워드가 남는 실패를 확인한 뒤 수정했다. 범위 변경, 동일 범위 유지, 초안 범위 불일치·행 교집합, 단계 선택, 숫자 포맷, 실행 상태를 검증한다.
+
+검증 결과:
+
+```text
+npm --prefix frontend test
+Test Files 24 passed; Tests 128 passed; exit 0
+npm --prefix frontend run lint
+exit 0, 0 problems
+```
+
+dev server 및 build는 실행하지 않았다. 실제 브라우저·worker 왕복 재검증은 수행하지 않았다. 기존 Node DEP0205 경고는 남는다. 지정 범위만 수정했으며 기존 .DS_Store 변경은 포함하지 않는다.
+
+커밋 결과: 지정 파일의 git add는 worktree index.lock 생성 권한 오류(Operation not permitted)로 실패했다. scoped commit은 새 파일이 미등록 상태라 실패했고, 요청한 메시지·trailer의 git commit도 동일한 index.lock 권한 오류로 실패했다. 변경은 **uncommitted**로 남겼다. 작업 도중 나타난 별도 qa/ 미추적 디렉터리도 수정하거나 staging하지 않았다.

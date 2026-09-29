@@ -35,11 +35,12 @@ it('handles explicitly null config, absent context store, and null snapshot with
 });
 
 it('restores gate drafts only for an existing matching snapshot and preserves saved filters', () => {
-  const data = {...session.data, crawlConfig: {gateExclusions: ['saved'], adWords: [], target_total: null}, drafts: {crawl: {gate: {snapshot_id: 'snapshot', exclusions: ['draft']}}}};
-  const initial = {...status, snapshot_id: 'snapshot'};
+  const data = {...session.data, crawlConfig: {gateExclusions: ['saved'], adWords: [], target_total: null}, drafts: {crawl: {gate: {collectionId: 'c1', snapshot_id: 'snapshot', exclusions: ['draft', 'unknown']}}}};
+  const initial = {...status, collectionId: 'c1', snapshot_id: 'snapshot', gate: ['saved','draft'].map(kw => ({kw}))};
   expect(deriveCrawlLoad({data}, initial, null, true).selection).toEqual(['draft']);
   const stale = deriveCrawlLoad({data}, {...initial, snapshot_id: 'new'}, null, true);
   expect(stale.selection).toEqual(['saved']);
+  expect(deriveCrawlLoad({data}, {...initial, collectionId: 'c2'}, null, true).selection).toEqual(['saved']);
   expect(stale.config.adWords).toEqual([]);
   expect(stale.config.target_total).toBeNull();
   expect(deriveCrawlLoad({data}, initial, null, false).config.channels).toEqual([]);
