@@ -12,9 +12,9 @@ from app.services.s3 import load_data, save_jsonl
 from app.jobs.manager import job_manager
 
 
-def _crawl_docs(sid: str) -> list[dict]:
+def _crawl_docs(sid: str, session: dict | None = None) -> list[dict]:
     """Snapshot the active pointer, then read child first so its doc_id wins."""
-    session = load_session(sid) or {}
+    session = (load_session(sid) or {}) if session is None else session
     cid = session.get("collectionId")
     if not cid:
         return load_data(f"crawl/{sid}/")
@@ -53,7 +53,7 @@ def _compat_fields(item: dict) -> dict:
 
 
 
-def _passes_quality(item: dict) -> bool:
+def _passes_quality(item: dict, min_body_chars: int = 10) -> bool:
     if "doc_id" not in item:
         # Preserve the legacy acceptance rule for old crawl files.
         return len(item.get("title", "")) >= 5 or len(item.get("desc", "")) >= 10
@@ -61,7 +61,55 @@ def _passes_quality(item: dict) -> bool:
         description = item.get("snippet", "") or item.get("body", "")
         return len(item.get("title", "")) >= 5 or len(description) >= 10
     # Full documents (including title-less YouTube threads) use body alone.
-    return len(item.get("body", "")) >= 10
+    return len(item.get("body", "")) >= min_body_chars
+
+
+def filter_documents(documents, ad_filter=(), excluded=(), min_body_chars=10, *, full_text=False):
+    """Shared D-084–086 rules; new prep uses uncapped body/comments for ads."""
+    seen = set()
+    filtered = []
+    removed = dict(ad=0, excluded_source=0, duplicate=0, too_short=0)
+    for idx, raw in enumerate(documents):
+        item = _compat_fields(raw)
+        text = item.get('title', '') + ' ' + item.get('desc', '')
+        if full_text:
+            text = item.get('body', '') + '\n' + '\n'.join(
+                c.get('text', '') for c in item.get('comments', []))
+        cafe = item.get('cafe', '').lower()
+        cafe_id = str((item.get('src_meta') or {}).get('cafe_id') or '').lower()
+        identity = item.get('doc_id', item.get('link', ''))
+        reason = None
+        if any(ad.lower() in text.lower() for ad in ad_filter):
+            reason = 'ad'
+        elif any(ex.lower() in cafe or ex.lower() in cafe_id or
+                 (full_text and ex.lower() == item.get('source', '').lower()) for ex in excluded):
+            reason = 'excluded_source'
+        elif identity in seen:
+            reason = 'duplicate'
+        else:
+            seen.add(identity)
+            if not _passes_quality(item, min_body_chars):
+                reason = 'too_short'
+        if reason:
+            removed[reason] += 1
+            continue
+        item['idx'] = idx
+        filtered.append(item)
+    return filtered, removed
+
+
+class _InlineContext:
+    def __init__(self, config):
+        self.args = {'config': config}
+
+    def heartbeat(self, progress, detail):
+        pass
+
+    def should_pause(self):
+        return False
+
+    def should_stop(self):
+        return False
 
 
 def preprocess_data(config: dict) -> None:
@@ -73,29 +121,22 @@ def preprocess_data(config: dict) -> None:
         exclude_cafes = [x.strip() for x in exclude_cafes.split(",") if x.strip()]
 
     try:
+        session = load_session(sid) or {}
+        if session.get('schemaVersion') == 2:
+            from app.prep.pipeline import run_prep
+            prep_config = {**session.get('prep', {}).get('config', {}),
+                           **{k: v for k, v in config.items() if k not in {'sid', 'version'}}}
+            if exclude_cafes:
+                prep_config['excludeSources'] = prep_config.get('excludeSources', []) + exclude_cafes
+            root = run_prep(_InlineContext(prep_config), sid, session.get('version', 'v1'))
+            report = json.loads((root / 'stage_3.json').read_text(encoding='utf-8'))
+            job_manager.set('preprocess', sid, {
+                'status': 'done', 'original': report['original'], 'filtered': report['after'],
+            })
+            return
         all_data = _crawl_docs(sid)
-        seen: set[str] = set()
         original = len(all_data)
-        filtered = []
-        for idx, raw in enumerate(all_data):
-            item = _compat_fields(raw)
-            title = item.get("title", "")
-            desc = item.get("desc", "")
-            link = item.get("link", "")
-            if any(ad.lower() in (title + " " + desc).lower() for ad in ad_filter):
-                continue
-            cafe = item.get("cafe", "").lower()
-            cafe_id = str((item.get("src_meta") or {}).get("cafe_id") or "").lower()
-            if exclude_cafes and any(ex.lower() in cafe or ex.lower() in cafe_id for ex in exclude_cafes):
-                continue
-            identity = item.get("doc_id", link)
-            if identity in seen:
-                continue
-            seen.add(identity)
-            item["idx"] = idx
-            if not _passes_quality(item):
-                continue
-            filtered.append(item)
+        filtered, _ = filter_documents(all_data, ad_filter, exclude_cafes)
 
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         save_jsonl(f"preprocessed/{sid}/{ts}.jsonl", filtered)
