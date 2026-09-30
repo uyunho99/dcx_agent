@@ -120,3 +120,7 @@ Task T15: re-review fix 1 Approved. Task T15: complete (4612d36, a240d62). Parke
 Final review 1: With fixes (5 Important). Rulings R-106..R-110 logged in decision-log. One fix dispatch (split backend/frontend in parallel): final-fix1.md, final-fix1-fe.md.
 Final fix 1 committed e7dcf4f,35bc291 (backend 1216, vitest 213, lint, build ok). Scoped re-review dispatched.
 Final fix re-review: Approved (15/15 addressed). Residual minors → backlog B-108. Final review clean.
+Review phase: gstack 6 + Codex 7 findings → harness retry (phase build). Ruling R-111. Fix dispatch: review-fix1.md (backend), review-fix1-fe.md (frontend).
+Review-phase fix committed d094401,eaf81a6 (backend 1244, vitest 221, lint, build ok). Scoped re-review dispatched.
+Review-phase fix 1 re-review Approved; 1 Important (trainable count full scan per poll) → fix 2 dispatched with 2 minors. Parked: prep folder wipe for pre-fix manifests (dev data only); stage5 report read order; /preprocess error envelope change.
+Review fix 2 re-review Approved. Review phase clean.
