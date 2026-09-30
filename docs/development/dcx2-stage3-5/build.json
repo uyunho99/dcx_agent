@@ -1,0 +1,186 @@
+{
+  "verdict": "PASS",
+  "head": "deff37b8083c1570b3403731884e5484e3fd610d",
+  "fingerprint": "27dcae944fc7f1f251b1f4d31136ea598801d4b119152944e60cd6e4c7f951b2",
+  "commands": [
+    {
+      "command": "backend/.venv/bin/python -m pytest backend/tests -q  (1216 passed)",
+      "exitCode": 0
+    },
+    {
+      "command": "npm --prefix frontend test -- --run  (213 passed)",
+      "exitCode": 0
+    },
+    {
+      "command": "npm --prefix frontend run lint",
+      "exitCode": 0
+    },
+    {
+      "command": "npm --prefix frontend run build",
+      "exitCode": 0
+    }
+  ],
+  "findings": [],
+  "tasks": [
+    {
+      "id": "T01",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue → codex-companion task --background --fresh --write (brief .superpowers/sdd/03-plan/task-T01-brief.md); ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md",
+      "red": "docs/development/dcx2-stage3-5/reports/task-T01-report.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage3-5/reports/task-T01-report.md (GREEN section) + controller full-suite re-run before commit (ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md)",
+      "review": ".superpowers/sdd/03-plan/review-d5d8a66..2b49789.diff; final whole-branch review docs/development/dcx2-stage3-5/reports/final-review1.md + re-review"
+    },
+    {
+      "id": "T02",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue → codex-companion task --background --fresh --write (brief .superpowers/sdd/03-plan/task-T02-brief.md); ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md",
+      "red": "docs/development/dcx2-stage3-5/reports/task-T02-report.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage3-5/reports/task-T02-report.md (GREEN section) + controller full-suite re-run before commit (ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md)",
+      "review": ".superpowers/sdd/03-plan/review-77cd329..e88acd0.diff; final whole-branch review docs/development/dcx2-stage3-5/reports/final-review1.md + re-review"
+    },
+    {
+      "id": "T03",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue → codex-companion task --background --fresh --write (brief .superpowers/sdd/03-plan/task-T03-brief.md); ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md",
+      "red": "docs/development/dcx2-stage3-5/reports/task-T03-report.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage3-5/reports/task-T03-report.md (GREEN section) + controller full-suite re-run before commit (ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md)",
+      "review": ".superpowers/sdd/03-plan/review-2b49789..77cd329.diff; final whole-branch review docs/development/dcx2-stage3-5/reports/final-review1.md + re-review"
+    },
+    {
+      "id": "T04",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue → codex-companion task --background --fresh --write (brief .superpowers/sdd/03-plan/task-T04-brief.md); ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md",
+      "red": "docs/development/dcx2-stage3-5/reports/task-T04-report.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage3-5/reports/task-T04-report.md (GREEN section) + controller full-suite re-run before commit (ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md)",
+      "review": ".superpowers/sdd/03-plan/review-80d75b4..bf87c13.diff; .superpowers/sdd/03-plan/review-4f8da50..5bfa2ef.diff; final whole-branch review docs/development/dcx2-stage3-5/reports/final-review1.md + re-review"
+    },
+    {
+      "id": "T05",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue → codex-companion task --background --fresh --write (brief .superpowers/sdd/03-plan/task-T05-brief.md); ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md",
+      "red": "docs/development/dcx2-stage3-5/reports/task-T05-report.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage3-5/reports/task-T05-report.md (GREEN section) + controller full-suite re-run before commit (ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md)",
+      "review": ".superpowers/sdd/03-plan/review-bf87c13..ae514eb.diff; final whole-branch review docs/development/dcx2-stage3-5/reports/final-review1.md + re-review"
+    },
+    {
+      "id": "T06",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue → codex-companion task --background --fresh --write (brief .superpowers/sdd/03-plan/task-T06-brief.md); ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md",
+      "red": "docs/development/dcx2-stage3-5/reports/task-T06-report.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage3-5/reports/task-T06-report.md (GREEN section) + controller full-suite re-run before commit (ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md)",
+      "review": ".superpowers/sdd/03-plan/review-e88acd0..3d86f1f.diff; .superpowers/sdd/03-plan/review-3d86f1f..690e3f7.diff; final whole-branch review docs/development/dcx2-stage3-5/reports/final-review1.md + re-review"
+    },
+    {
+      "id": "T07",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue → codex-companion task --background --fresh --write (brief .superpowers/sdd/03-plan/task-T07-brief.md); ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md",
+      "red": "docs/development/dcx2-stage3-5/reports/task-T07-report.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage3-5/reports/task-T07-report.md (GREEN section) + controller full-suite re-run before commit (ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md)",
+      "review": ".superpowers/sdd/03-plan/review-690e3f7..80d75b4.diff; final whole-branch review docs/development/dcx2-stage3-5/reports/final-review1.md + re-review"
+    },
+    {
+      "id": "T08",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue → codex-companion task --background --fresh --write (brief .superpowers/sdd/03-plan/task-T08-brief.md); ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md",
+      "red": "docs/development/dcx2-stage3-5/reports/task-T08-report.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage3-5/reports/task-T08-report.md (GREEN section) + controller full-suite re-run before commit (ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md)",
+      "review": ".superpowers/sdd/03-plan/review-ae514eb..4f8da50.diff; .superpowers/sdd/03-plan/review-T08-fixes.diff; .superpowers/sdd/03-plan/review-4f8da50..0e478cf.diff; final whole-branch review docs/development/dcx2-stage3-5/reports/final-review1.md + re-review"
+    },
+    {
+      "id": "T09",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue → codex-companion task --background --fresh --write (brief .superpowers/sdd/03-plan/task-T09-brief.md); ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md",
+      "red": "docs/development/dcx2-stage3-5/reports/task-T09-report.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage3-5/reports/task-T09-report.md (GREEN section) + controller full-suite re-run before commit (ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md)",
+      "review": ".superpowers/sdd/03-plan/review-12569e7..283efcf.diff; final whole-branch review docs/development/dcx2-stage3-5/reports/final-review1.md + re-review"
+    },
+    {
+      "id": "T10",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue → codex-companion task --background --fresh --write (brief .superpowers/sdd/03-plan/task-T10-brief.md); ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md",
+      "red": "docs/development/dcx2-stage3-5/reports/task-T10-report.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage3-5/reports/task-T10-report.md (GREEN section) + controller full-suite re-run before commit (ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md)",
+      "review": ".superpowers/sdd/03-plan/review-0e478cf..2b72a61.diff; final whole-branch review docs/development/dcx2-stage3-5/reports/final-review1.md + re-review"
+    },
+    {
+      "id": "T11",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue → codex-companion task --background --fresh --write (brief .superpowers/sdd/03-plan/task-T11-brief.md); ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md",
+      "red": "docs/development/dcx2-stage3-5/reports/task-T11-report.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage3-5/reports/task-T11-report.md (GREEN section) + controller full-suite re-run before commit (ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md)",
+      "review": ".superpowers/sdd/03-plan/review-857e880..9fe6a1b.diff; .superpowers/sdd/03-plan/review-175e479..136d178.diff; final whole-branch review docs/development/dcx2-stage3-5/reports/final-review1.md + re-review"
+    },
+    {
+      "id": "T12",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue → codex-companion task --background --fresh --write (brief .superpowers/sdd/03-plan/task-T12-brief.md); ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md",
+      "red": "docs/development/dcx2-stage3-5/reports/task-T12-report.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage3-5/reports/task-T12-report.md (GREEN section) + controller full-suite re-run before commit (ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md)",
+      "review": ".superpowers/sdd/03-plan/review-2b72a61..857e880.diff; final whole-branch review docs/development/dcx2-stage3-5/reports/final-review1.md + re-review"
+    },
+    {
+      "id": "T13",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue → codex-companion task --background --fresh --write (brief .superpowers/sdd/03-plan/task-T13-brief.md); ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md",
+      "red": "docs/development/dcx2-stage3-5/reports/task-T13-report.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage3-5/reports/task-T13-report.md (GREEN section) + controller full-suite re-run before commit (ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md)",
+      "review": ".superpowers/sdd/03-plan/review-b3f8e12..175e479.diff; .superpowers/sdd/03-plan/review-136d178..e6010b3.diff; final whole-branch review docs/development/dcx2-stage3-5/reports/final-review1.md + re-review"
+    },
+    {
+      "id": "T14",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue → codex-companion task --background --fresh --write (brief .superpowers/sdd/03-plan/task-T14-brief.md); ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md",
+      "red": "docs/development/dcx2-stage3-5/reports/task-T14-report.md (RED section: failing tests before implementation); docs/development/dcx2-stage3-5/reports/task-T14-fix1-report.md (RED)",
+      "green": "docs/development/dcx2-stage3-5/reports/task-T14-report.md (GREEN section) + controller full-suite re-run before commit (ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md)",
+      "review": ".superpowers/sdd/03-plan/review-e6010b3..8023e0d.diff; .superpowers/sdd/03-plan/review-07f8895..30e277d.diff; final whole-branch review docs/development/dcx2-stage3-5/reports/final-review1.md + re-review"
+    },
+    {
+      "id": "T15",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue → codex-companion task --background --fresh --write (brief .superpowers/sdd/03-plan/task-T15-brief.md); ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md",
+      "red": "docs/development/dcx2-stage3-5/reports/task-T15-report.md (RED section: failing tests before implementation); docs/development/dcx2-stage3-5/reports/task-T15-fix1-report.md (RED)",
+      "green": "docs/development/dcx2-stage3-5/reports/task-T15-report.md (GREEN section) + controller full-suite re-run before commit (ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md)",
+      "review": ".superpowers/sdd/03-plan/review-30e277d..4612d36.diff; .superpowers/sdd/03-plan/review-168f19f..a240d62.diff; final whole-branch review docs/development/dcx2-stage3-5/reports/final-review1.md + re-review"
+    },
+    {
+      "id": "T16",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue → codex-companion task --background --fresh --write (brief .superpowers/sdd/03-plan/task-T16-brief.md); ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md",
+      "red": "docs/development/dcx2-stage3-5/reports/task-T16-report.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage3-5/reports/task-T16-report.md (GREEN section) + controller full-suite re-run before commit (ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md)",
+      "review": ".superpowers/sdd/03-plan/review-8023e0d..07f8895.diff; final whole-branch review docs/development/dcx2-stage3-5/reports/final-review1.md + re-review"
+    },
+    {
+      "id": "T17",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue → codex-companion task --background --fresh --write (brief .superpowers/sdd/03-plan/task-T17-brief.md); ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md",
+      "red": "docs/development/dcx2-stage3-5/reports/task-T17-report.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage3-5/reports/task-T17-report.md (GREEN section) + controller full-suite re-run before commit (ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md)",
+      "review": ".superpowers/sdd/03-plan/review-4612d36..e1d923d.diff; .superpowers/sdd/03-plan/review-a240d62..b846840.diff; final whole-branch review docs/development/dcx2-stage3-5/reports/final-review1.md + re-review"
+    },
+    {
+      "id": "T18",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue → codex-companion task --background --fresh --write (brief .superpowers/sdd/03-plan/task-T18-brief.md); ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md",
+      "red": "docs/development/dcx2-stage3-5/reports/task-T18-report.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage3-5/reports/task-T18-report.md (GREEN section) + controller full-suite re-run before commit (ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md)",
+      "review": ".superpowers/sdd/03-plan/review-e1d923d..b1e9df2.diff; .superpowers/sdd/03-plan/review-a240d62..b846840.diff; final whole-branch review docs/development/dcx2-stage3-5/reports/final-review1.md + re-review"
+    },
+    {
+      "id": "T19",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue → codex-companion task --background --fresh --write (brief .superpowers/sdd/03-plan/task-T19-brief.md); ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md",
+      "red": "docs/development/dcx2-stage3-5/reports/task-T19-report.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage3-5/reports/task-T19-report.md (GREEN section) + controller full-suite re-run before commit (ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md)",
+      "review": ".superpowers/sdd/03-plan/review-b1e9df2..8b2ed68.diff; .superpowers/sdd/03-plan/review-a240d62..b846840.diff; final whole-branch review docs/development/dcx2-stage3-5/reports/final-review1.md + re-review"
+    },
+    {
+      "id": "T20",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue → codex-companion task --background --fresh --write (brief .superpowers/sdd/03-plan/task-T20-brief.md); ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md",
+      "red": "docs/development/dcx2-stage3-5/reports/task-T20-report.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage3-5/reports/task-T20-report.md (GREEN section) + controller full-suite re-run before commit (ledger docs/development/dcx2-stage3-5/reports/sdd-ledger.md)",
+      "review": ".superpowers/sdd/03-plan/review-8b2ed68..168f19f.diff; .superpowers/sdd/03-plan/review-a240d62..b846840.diff; final whole-branch review docs/development/dcx2-stage3-5/reports/final-review1.md + re-review"
+    }
+  ]
+}
