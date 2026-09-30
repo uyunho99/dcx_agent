@@ -31,3 +31,18 @@ export async function exportAndAdvance(write: () => Promise<unknown>, patch: () 
   await patch();
   navigate();
 }
+
+export function trainingLabels(overview: {accepted: number; merged?: number} | null) {
+  return {count: overview?.accepted, empty: overview?.accepted === 0};
+}
+export function modelDate(value: unknown): string {
+  const date = typeof value === 'string' ? new Date(value) : null;
+  return date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString('ko-KR') : '—';
+}
+export function driftMessage(hasModel: boolean, divergence: number | undefined): string | null {
+  return hasModel && divergence !== undefined && divergence > .15
+    ? `무작위 1% 재판정에서 등급이 ${percent(divergence)} 엇갈렸습니다. 이 도메인은 LLM 라벨로 다시 하거나 추가 학습하세요.` : null;
+}
+export function shouldPollTraining(status: TrainingStatus): boolean {
+  return trainingState(status).busy;
+}

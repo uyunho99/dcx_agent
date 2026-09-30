@@ -61,7 +61,7 @@ export default function ChatPanel({ initialMessage, onSend, sid, version, readon
       const answer: Message = {role: "bot", text: reply.answer, sources: reply.sources, reason: reply.reason, query: msg, novel: filter};
       setMessages(m => retryIndex === undefined ? [...m, answer] : m.map((row, i) => i === retryIndex ? answer : row));
     } catch {
-      const error: Message = {role: "bot", text: "검색에 실패했습니다. 다시 시도하세요.", query: msg, novel: filter, failed: true};
+      const error: Message = {role: "bot", text: sid ? "검색에 실패했습니다. 다시 시도하세요." : "오류가 발생했습니다.", query: msg, novel: filter, failed: true};
       setMessages(m => retryIndex === undefined ? [...m, error] : m.map((row, i) => i === retryIndex ? error : row));
     } finally { lock.current = false; setLoading(false); }
   };
@@ -80,9 +80,9 @@ export default function ChatPanel({ initialMessage, onSend, sid, version, readon
             onAdded={item => {setMessages(rows => rows.map((row, index) => index === i ? {...row, added: true} : row));onKnownAdded?.(item);}} />)}
           {m.added && <><p className="ds-t-caption">다음 검색부터 비슷한 원문이 빠집니다</p><Button disabled={loading} onClick={() => {setNovel(true);void send(m.query, true, i);}}>추가한 이야기 빼고 다시 찾기</Button></>}
         </section>}
-        {m.failed && <Button disabled={loading} onClick={() => void send(m.query, m.novel, i)}>다시 찾기</Button>}
+        {m.failed && sid && <Button disabled={loading} onClick={() => void send(m.query, m.novel, i)}>다시 찾기</Button>}
       </div>)}
-      {loading && <div role="status" className="space-y-3"><p>근거 원문을 찾고 있습니다…</p><Skeleton /><Skeleton /></div>}
+      {loading && <div role="status" className="space-y-3"><p>{sid ? "근거 원문을 찾고 있습니다…" : "응답을 기다리고 있습니다…"}</p><Skeleton /><Skeleton /></div>}
       <div ref={bottomRef} />
     </div>
     <form className="border-t border-line p-3 space-y-3" onSubmit={e => {e.preventDefault();void send();}}>
