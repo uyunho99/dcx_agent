@@ -1,4 +1,5 @@
-"""Synchronous Jev HTTP client. Reuse one client per worker/key pool."""
+"""Synchronous Jev HTTP client with process-wide per-key rate limiting."""
+import hashlib
 import json
 import math
 import threading
@@ -13,6 +14,23 @@ from app.label.schema import JevVote
 
 URL = 'https://jevmodel.org/v1/systemone'
 MAX_RETRIES = 5
+
+_limiter_pool: dict[str, ChannelLimiter] = {}
+_limiter_pool_lock = threading.Lock()
+
+
+def reset_limiter_pool():
+    """Clear process-wide rate state for tests; call only with no active clients."""
+    with _limiter_pool_lock:
+        _limiter_pool.clear()
+
+
+def _limiter_for(key: str, rate: float) -> ChannelLimiter:
+    fingerprint = hashlib.sha256(key.encode('utf-8')).hexdigest()
+    with _limiter_pool_lock:
+        if fingerprint not in _limiter_pool:
+            _limiter_pool[fingerprint] = ChannelLimiter(concurrency=1, min_interval_s=60 / rate)
+        return _limiter_pool[fingerprint]
 
 
 class JevError(RuntimeError):
@@ -124,7 +142,7 @@ class JevClient:
         rate = settings.jev_rate_per_min
         if not 0 < rate <= 120:
             raise ValueError('jev_rate_per_min must be between 1 and 120')
-        self._limiters = [ChannelLimiter(concurrency=1, min_interval_s=60 / rate) for _ in self._keys]
+        self._limiters = [_limiter_for(key, rate) for key in self._keys]
         self._lock = threading.Lock()
         self._next_key = 0
         self._http = httpx.Client(transport=transport, timeout=60)
@@ -138,14 +156,17 @@ class JevClient:
     def __exit__(self, *exc):
         self.close()
 
-    def judge(self, doc: dict, one_liner: str) -> JevVote:
+    def judge(self, doc: dict, one_liner: str, *, idempotency_key: str | None = None) -> JevVote:
         if not self._keys:
             raise JevError('unconnected', 'Jev 연결 키가 없습니다')
         doc_id = doc.get('doc_id')
         if not isinstance(doc_id, str) or not doc_id:
             raise _bad()
-        idempotency_key = f'{doc_id}:{QVER}'
-        if len(idempotency_key) > 100 or any(not 33 <= ord(char) <= 126 for char in idempotency_key):
+        if idempotency_key is None:
+            idempotency_key = f'{doc_id}:{QVER}'
+        if (not isinstance(idempotency_key, str) or not idempotency_key
+                or len(idempotency_key) > 100
+                or any(not 33 <= ord(char) <= 126 for char in idempotency_key)):
             raise _bad()
         state, truncated = build_state(doc, one_liner)
         questions = jev_questions(one_liner)

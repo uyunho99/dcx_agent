@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 
@@ -5,6 +6,8 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
+from app.label import jev
+from app.crawl.ratelimit import ChannelLimiter
 from app.label.jev import JevClient, JevError, build_state
 from app.label.questions import QVER, jev_questions, load_questions
 from app.label.schema import Label, Tags
@@ -13,6 +16,7 @@ from tests.fakes.fake_jev import FakeJev
 
 FIXTURE = Path(__file__).parents[1] / 'fixtures/jev/success.json'
 DOC = {'doc_id': 'nc_1', 'title': '제목', 'body': '본문', 'comments': ['댓글']}
+REAL_WAIT_START = ChannelLimiter.wait_start
 NAMES = {'anchor', 'sense', 'feel', 'think', 'act', 'situation', 'relate_outcome', 'reason_code'}
 
 
@@ -23,8 +27,11 @@ def answer():
 
 @pytest.fixture(autouse=True)
 def no_wait(monkeypatch):
+    jev.reset_limiter_pool()
     monkeypatch.setattr('app.label.jev.time.sleep', lambda _: None)
     monkeypatch.setattr('app.label.jev.ChannelLimiter.wait_start', lambda _: None)
+    yield
+    jev.reset_limiter_pool()
 
 
 def client_for(answer):
@@ -268,3 +275,48 @@ def test_configured_rate(answer, monkeypatch):
     with client_for(answer) as client:
         client.judge(DOC, '맥락')
     assert intervals == [1.0]
+
+
+@pytest.mark.parametrize('status', [429, 502])
+@pytest.mark.parametrize('key', ['nc_1:q1-context123', 'x' * 100])
+def test_caller_idempotency_key_on_every_retry(answer, status, key):
+    sent = []
+    def handle(request):
+        sent.append(request.headers['Idempotency-Key'])
+        return httpx.Response(status if len(sent) <= 5 else 200, json=answer)
+    with JevClient(['secret'], 'jev-latest', transport=httpx.MockTransport(handle)) as client:
+        client.judge(DOC, '맥락', idempotency_key=key)
+    assert sent == [key] * 6
+
+
+@pytest.mark.parametrize('key', ['x' * 101, '한글', 'x\ny', 'x y', 'x\x7fy', '', 123])
+def test_invalid_caller_idempotency_key_is_bad(key):
+    sent = []
+    with JevClient(['secret'], 'jev-latest', transport=httpx.MockTransport(sent.append)) as client:
+        with pytest.raises(JevError) as error:
+            client.judge(DOC, '맥락', idempotency_key=key)
+    assert error.value.code == 'bad'
+    assert sent == []
+
+
+@pytest.mark.parametrize('rate', [60, 120])
+def test_clients_share_per_key_rate_with_fake_clock(answer, monkeypatch, rate):
+    now = [1000.0]
+    starts = []
+    def sleep(delay):
+        now[0] += delay
+    def limiter(concurrency, min_interval_s):
+        return ChannelLimiter(concurrency, min_interval_s, clock=lambda: now[0], sleep=sleep)
+    monkeypatch.setattr(ChannelLimiter, 'wait_start', REAL_WAIT_START)
+    monkeypatch.setattr(jev, 'ChannelLimiter', limiter)
+    monkeypatch.setattr(jev.settings, 'jev_rate_per_min', rate)
+    def handle(request):
+        starts.append(now[0])
+        return httpx.Response(200, json=answer)
+    with JevClient(['shared-secret'], 'jev-latest', transport=httpx.MockTransport(handle)) as first:
+        with JevClient(['shared-secret'], 'jev-latest', transport=httpx.MockTransport(handle)) as second:
+            for i in range(rate + 2):
+                (first if i % 2 == 0 else second).judge(DOC, '맥락')
+    assert all(b - a >= 60 / rate for a, b in zip(starts, starts[1:]))
+    assert all(sum(start <= other < start + 60 for other in starts) <= rate for start in starts)
+    assert set(jev._limiter_pool) == {hashlib.sha256(b'shared-secret').hexdigest()}
