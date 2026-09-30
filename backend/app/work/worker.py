@@ -60,7 +60,12 @@ def _prep(context: Context):
     run_worker(context)
 
 
-KINDS: dict[str, Callable[[Context], None]] = {'prep': _prep}
+def _judge(context: Context):
+    from app.label.judge import run_worker
+    run_worker(context)
+
+
+KINDS: dict[str, Callable[[Context], None]] = {'prep': _prep, 'judge': _judge}
 
 
 def execute(context: Context):
