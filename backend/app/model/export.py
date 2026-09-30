@@ -38,8 +38,10 @@ def write(sid, version=None, *, without_model=False):
         rows = []
         for doc_id, doc in docs.items():
             label = final.get(doc_id)
-            if label and (label['source'] == 'human' or not model_id):
-                if label['source'] != 'human' and label['route'] != 'accepted':
+            prediction = predictions.get(doc_id)
+            unavailable = bool(model_id) and (prediction is None or prediction['invalid_vector'])
+            if label and (label['source'] == 'human' or not model_id or unavailable):
+                if label['source'] != 'human' and label['route'] not in ('accepted', 'audited'):
                     raise store.StoreError('사람 검수를 먼저 완료하세요.')
                 tags = json.loads(label['tags_json'])
                 probs = dict(anchor=float(tags['anchor']), situation=float(tags['situation']),
@@ -47,10 +49,11 @@ def write(sid, version=None, *, without_model=False):
                 values = dict(evidence_level_pred=label['level'], confidence=label['confidence'],
                     pred_entropy=0., relevance_score=float(label['level'] != 'non'), tagProbs=probs,
                     signal=label['signal'], source=label['source'])
-            elif model_id and doc_id in predictions:
-                if predictions[doc_id]['invalid_vector']:
-                    raise store.StoreError('임베딩 실패 또는 미학습 헤드가 있는 문서를 먼저 검수하세요.')
-                pred = json.loads(predictions[doc_id]['payload'])
+                if unavailable:
+                    values.update(prediction='unavailable', pred_entropy=None,
+                                  relevance_score=None, tagProbs=None)
+            elif model_id and not unavailable:
+                pred = json.loads(prediction['payload'])
                 values = dict(evidence_level_pred=pred['level'], confidence=pred['confidence'],
                     pred_entropy=pred['predEntropy'], relevance_score=pred['relevanceScore'],
                     tagProbs=pred['tagProbs'], signal=pred['signal'] if pred['level'] != 'non' else None,
@@ -60,7 +63,7 @@ def write(sid, version=None, *, without_model=False):
             rows.append({**doc, 'title': doc.get('title') or '',
                 'desc': doc.get('desc') or doc.get('body') or doc.get('text') or '',
                 'cafe': doc.get('cafe') or '', 'kw': doc.get('kw') or '', **values,
-                'rule_version': rule.RULE_VERSION, 'modelId': model_id})
+                'rule_version': rule.RULE_VERSION, 'modelId': None if unavailable else model_id})
         base = f"classified/{sid}/{data['version']}"
         relevant = [r for r in rows if r['evidence_level_pred'] in ('core', 'supporting')]
         s3.save_jsonl(base + '/all.jsonl', rows)

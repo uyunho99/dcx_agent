@@ -124,8 +124,12 @@ def sync(store, jev_cache=None, gpt_cache=None):
 def rebuild_queue(store, jev_cache=None, gpt_cache=None):
     """Reconcile committed vote deltas while preserving completed review rows."""
     schema(store)
-    from app.model.infer import refresh_predictions
-    model_mode = refresh_predictions(store)
+    with store._db() as db:
+        has_inference = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='inference_context'").fetchone()
+    model_mode = False
+    if has_inference:
+        from app.model.infer import refresh_predictions
+        model_mode = refresh_predictions(store)
     if not model_mode and jev_cache is not None and gpt_cache is not None:
         rebuild_final(store, jev_cache, gpt_cache)
     with store._db() as db:
@@ -248,11 +252,11 @@ def submit_item(store, doc_id, labeler, mode, tags, round=None, elapsed=None, ca
         db.execute('INSERT OR REPLACE INTO review_done VALUES (?,?,?,?)', (mode, round or 0, doc_id, elapsed))
     if mode == 'audit':
         audit.apply_audit_overrides(store)
-        # Even an unchanged confirmation is a human training example (weight 3).
+        # Only model confirmations become human training examples (weight 3).
         with store._db() as db:
             latest = db.execute('SELECT mode FROM human WHERE doc_id=? ORDER BY rowid DESC LIMIT 1', (doc_id,)).fetchone()
-            projected = db.execute('SELECT tags_json FROM final WHERE doc_id=?', (doc_id,)).fetchone()
-            if latest and latest[0] == 'audit' and projected and json.loads(projected[0]) == tags.model_dump():
+            projected = db.execute('SELECT tags_json, source FROM final WHERE doc_id=?', (doc_id,)).fetchone()
+            if latest and latest[0] == 'audit' and projected and projected['source'] == 'model' and json.loads(projected[0]) == tags.model_dump():
                 db.execute("UPDATE final SET source='human',route='audited' WHERE doc_id=?", (doc_id,))
     final = store.get(doc_id)
     return dict(doc_id=doc_id, level=level, votes=final.votes if final else {})

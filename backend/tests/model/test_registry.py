@@ -42,3 +42,15 @@ def test_registry_embedder_mismatch_not_selectable(data_dir):
 def test_registry_rejects_path_escape(data_dir):
     with pytest.raises(Exception):
         registry.load('../outside')
+
+
+def test_registry_missing_embedder_not_selectable(data_dir):
+    from app.context import store
+    mid = save_model()
+    path = data_dir / 'models' / mid / 'meta.json'
+    meta = store.read_json(path)
+    del meta['embedder']
+    store.write_json(path, meta)
+    row = registry.list_models(EMBEDDER)[0]
+    assert row['selectable'] is False
+    assert row['reason'] == registry.MISMATCH

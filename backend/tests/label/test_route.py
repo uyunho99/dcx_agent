@@ -110,3 +110,37 @@ def test_schema_backfill_once_and_queue_unchanged(tmp_path):
         db.execute("CREATE TRIGGER reject_update BEFORE UPDATE ON queue BEGIN SELECT RAISE(ABORT, 'unchanged queue update'); END")
     api.rebuild_queue(LabelStore(tmp_path / 'v1'), jc, gc)
     assert api.next_item(labels)['doc_id'] == 'd'
+
+
+def test_unchanged_llm_audit_preserves_accepted_and_rebuild(tmp_path, monkeypatch):
+    from app.label import audit
+    from tests.label.test_merge import votes, put
+    api = importlib.import_module('app.label.route')
+    labels = LabelStore(tmp_path / 'v1')
+    jc, gc = [VoteCache(tmp_path / name) for name in ('jev', 'gpt')]
+    for cache, vote in zip((jc, gc), votes()):
+        put(cache, 'd', vote)
+    api.rebuild_queue(labels, jc, gc)
+    audit.maybe_new_round(labels, 1000)
+    item = api.next_item(labels, 'audit')
+    with labels._db() as db:
+        original = db.execute("SELECT tags_json FROM final WHERE doc_id='d'").fetchone()[0]
+    api.submit_item(labels, 'd', 'alice', 'audit', Tags.model_validate_json(original), round=item['round'])
+    assert labels.get('d').source == 'agreed'
+    assert labels.get('d').route == 'accepted'
+    with labels._db() as db:
+        assert db.execute("SELECT count(*) FROM final WHERE route='accepted'").fetchone()[0] == 1
+    monkeypatch.setattr(rule, 'RULE_VERSION', 'future-rule')
+    api.rebuild_queue(labels, jc, gc)
+    assert labels.get('d').rule_version == 'future-rule'
+
+
+def test_rebuild_without_inference_context_does_not_import_model(tmp_path, monkeypatch):
+    import builtins
+    api = importlib.import_module('app.label.route')
+    original = builtins.__import__
+    def guarded(name, *args, **kwargs):
+        assert name != 'app.model.infer'
+        return original(name, *args, **kwargs)
+    monkeypatch.setattr(builtins, '__import__', guarded)
+    api.rebuild_queue(LabelStore(tmp_path))

@@ -66,7 +66,7 @@ def list_models(embedder) -> list[dict]:
     rows = []
     for path in sorted(_root().glob('m_*/meta.json')):
         meta = json.loads(path.read_text(encoding='utf-8'))
-        selectable = meta['embedder'] == embedder
+        selectable = meta.get('embedder') == embedder
         rows.append(dict(meta, selectable=selectable, reason=None if selectable else MISMATCH))
     return rows
 
