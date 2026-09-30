@@ -23,7 +23,7 @@ def test_save_session_keeps_stage3_5_keys(client):
 @pytest.mark.parametrize('kind', ['prep', 'judge', 'train', 'infer'])
 def test_running_worker_blocks_version(client, monkeypatch, kind):
     sid = create(client)
-    monkeypatch.setattr(runner, 'status', lambda _: [dict(kind=kind, state='running', progress=.62, runId='r')])
+    monkeypatch.setattr(runner, 'status', lambda _: [dict(version='v1', labeler=None, kind=kind, state='running', progress=.62, runId='r')])
     response = client.post(f'/sessions/{sid}/versions', json={'from': 'v1', 'restartFrom': 'stage4'})
     assert response.status_code == 409
     assert not versions.version_dir(sid, 'v2').exists()
@@ -31,7 +31,7 @@ def test_running_worker_blocks_version(client, monkeypatch, kind):
 
 def test_paused_judge_allows_version(client, monkeypatch):
     sid = create(client)
-    monkeypatch.setattr(runner, 'status', lambda _: [dict(kind='judge', state='paused', progress=.62, runId='r')])
+    monkeypatch.setattr(runner, 'status', lambda _: [dict(version='v1', labeler='jev', kind='judge', state='paused', progress=.62, runId='r')])
     assert versions.create_version(sid, 'v1', 'stage4', '') == 'v2'
 
 
@@ -39,7 +39,7 @@ def test_paused_judge_allows_version(client, monkeypatch):
     ('train', 'running', '학습 중'), ('judge', 'interrupted', '중단됨 · 이어서 진행')])
 def test_worker_activity_badge(client, monkeypatch, kind, state, label):
     sid = create(client)
-    monkeypatch.setattr(runner, 'status', lambda _: [dict(kind=kind, state=state, progress=.62, runId='r')])
+    monkeypatch.setattr(runner, 'status', lambda _: [dict(version='v1', labeler=None, kind=kind, state=state, progress=.62, runId='r')])
     activity = store.session_activity(sid, store.load_session(sid))
     assert activity and activity['label'] == label
     assert activity['status'] == state
@@ -90,7 +90,8 @@ def test_compare_stage_metrics(client, stage):
         'after': {key: 20 if stage == 'stage3' else 18}}
 
 
-def test_version_copy_sqlite_consistent(client, monkeypatch):
+@pytest.mark.parametrize('write_during_backup', [False, True], ids=['after-backup', 'during-backup'])
+def test_version_copy_sqlite_consistent(client, monkeypatch, write_during_backup):
     sid = create(client)
     labels = LabelStore(store.session_dir(sid))
     source = sqlite3.connect(labels.path)
@@ -103,7 +104,18 @@ def test_version_copy_sqlite_consistent(client, monkeypatch):
 
     class Connection(sqlite3.Connection):
         def backup(self, target, **kwargs):
-            super().backup(target, **kwargs)
+            def progress(status, remaining, total):
+                if not copied.is_set():
+                    # Commit on a separate connection while page copying is
+                    # unfinished, not after backup() has already returned.
+                    assert remaining > 0
+                    copied.set()
+                    assert submitted.wait(5)
+
+            if write_during_backup:
+                super().backup(target, pages=1, progress=progress)
+            else:
+                super().backup(target, **kwargs)
             snapshots.append(target.execute('SELECT count(*) FROM human').fetchone()[0])
             copied.set()
             assert submitted.wait(5)
@@ -125,10 +137,17 @@ def test_version_copy_sqlite_consistent(client, monkeypatch):
     thread.start()
     try:
         versions.create_version(sid, 'v1', 'stage5', '')
-        assert snapshots == [1], 'SQLite backup API must define the snapshot'
+        assert len(snapshots) == 1
+        assert snapshots[0] in ((1, 2) if write_during_backup else (1,))
+        assert submitted.is_set(), 'The concurrent submit must actually commit'
         with real_connect(store.session_dir(sid) / 'labels.sqlite') as db:
             assert db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
             assert db.execute('SELECT count(*) FROM human').fetchone()[0] == snapshots[0]
+            ids = {row[0] for row in db.execute('SELECT doc_id FROM human')}
+            assert ids in ({'before'}, {'before', 'during'})
+            if 'during' in ids:
+                assert db.execute("SELECT * FROM human WHERE doc_id='during'").fetchone() == source.execute(
+                    "SELECT * FROM human WHERE doc_id='during'").fetchone()
         assert source.execute('SELECT count(*) FROM human').fetchone()[0] == 2
     finally:
         copied.set()

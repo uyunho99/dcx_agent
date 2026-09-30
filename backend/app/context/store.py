@@ -156,7 +156,15 @@ def session_activities(sid, data):
             candidates.append(crawl)
     from app.work import runner
     names = {'prep': '전처리 중', 'train': '학습 중', 'infer': '추론 중', 'monitor': '감시 중'}
+    meta = read_json(root_dir(sid) / 'meta.json') or {}
+    active_version = meta.get('activeVersion', data.get('version'))
+    latest = {}
+    # status() is ordered by start time. A completed replacement must suppress
+    # its predecessor before filtering for states that warrant a badge.
     for run in runner.status(sid):
+        if run.get('version') == active_version:
+            latest[(run['kind'], run.get('labeler'))] = run
+    for run in latest.values():
         state = run['state']
         if state not in {'running', 'paused', 'interrupted', 'failed'}:
             continue

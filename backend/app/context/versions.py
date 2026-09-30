@@ -113,6 +113,11 @@ def _restart_labels(target):
 
 
 def _restart(data, target, stage):
+    # Reports describe completed stages; copied reports cannot represent a
+    # restarted stage even when reusable inputs remain in the new version.
+    for number in (3, 5):
+        if stage <= number:
+            (target / f'stage_{number}.json').unlink(missing_ok=True)
     if stage <= 3 and 'prep' in data:
         data['prep']['status'] = 'stale'
     if stage <= 4:
@@ -241,10 +246,12 @@ def compare(sid, a, b, stage) -> dict:
                 local = read_json(version_dir(sid, v) / f'{name}.json')
                 if local is not None or name != 'stage_3':
                     return local
+                if data.get('prep', {}).get('status') == 'stale':
+                    return None
                 from app.known.store import prepared_root
                 root = prepared_root(sid, data)
                 return read_json(root / 'stage_3.json') if root else None
-            names = ('stage_3',) if stage == 'stage3' else ('stage_5',)
+            names = ('stage_3', 'stage_5') if stage == 'stage3' else ('stage_5',)
             result = {name: {'before': metrics(before, a, name), 'after': metrics(after, b, name)} for name in names}
             result['same'] = all(value['before'] == value['after'] for value in result.values())
             return result

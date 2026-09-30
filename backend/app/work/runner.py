@@ -51,9 +51,12 @@ def start(sid: str, version: str, kind: str, args: dict) -> dict:
 
 
 def status(sid: str) -> list[dict]:
+    if not database_path(sid).exists():
+        return []
     with transaction(sid) as db:
         refresh(db)
-        return [public(row) for row in db.execute('SELECT * FROM runs ORDER BY started_at')]
+        return [{**public(row), 'version': row['version'], 'labeler': row['labeler']}
+                for row in db.execute('SELECT * FROM runs ORDER BY started_at, rowid')]
 
 
 def request(sid: str, run_id: str, action: Literal['pause', 'resume', 'stop']) -> dict:
