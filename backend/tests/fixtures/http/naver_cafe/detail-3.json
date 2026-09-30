@@ -1,0 +1,431 @@
+{
+  "result": {
+    "cafeId": 24909029,
+    "articleId": 317927,
+    "pageId": "S4gtVoT1QAG5_bukrj4wkw",
+    "pageGroupId": "p9XtqUOPRwaA7eF9LkddJQ",
+    "heads": [],
+    "article": {
+      "id": 317927,
+      "refArticleId": 317927,
+      "menu": {
+        "id": 52,
+        "name": "포터2 게시판",
+        "menuType": "B",
+        "boardType": "L",
+        "badMenu": false,
+        "badMenuByRestrict": false,
+        "boardHidden": false
+      },
+      "subject": "에어컨 고장 및 소음?",
+      "writer": {
+        "memberKey": "user_b",
+        "baMemberKey": "user_c",
+        "nick": "사용자A",
+        "image": {
+          "url": "https://ssl.pstatic.net/static/cafe/cafe_pc/default/cafe_profile_77.png",
+          "service": "CAFE",
+          "type": "c77_77"
+        },
+        "memberLevel": 110,
+        "memberLevelName": "일반멤버",
+        "memberLevelIconUrl": "https://cafe.pstatic.net/levelicon/1/1_110.gif",
+        "currentPopularMember": false,
+        "allowMemberAlarm": true,
+        "isCafeMember": true
+      },
+      "subscribeWriter": {
+        "subscribe": false,
+        "push": false
+      },
+      "writeDate": 1790313158400,
+      "readCount": 156,
+      "commentCount": 8,
+      "repostCount": 0,
+      "decorator": {
+        "isShowSuicideSaver": false,
+        "isPlug": false
+      },
+      "existScrapAddContent": false,
+      "template": {
+        "isUse": false
+      },
+      "contentHtml": "<div class=\"se-viewer se-theme-default\" lang=\"ko-KR\">\n    <!-- SE_DOC_HEADER_START -->\n    <!--@CONTENTS_HEADER-->\n    <!-- SE_DOC_HEADER_END -->\n    <div class=\"se-main-container\">\n                <div class=\"se-component se-text se-l-default\" id=\"SE-b8120cba-b89e-11f1-9f66-59f7e6d8b568\">\n                    <div class=\"se-component-content\">\n                        <div class=\"se-section se-section-text se-l-default\">\n                            <div class=\"se-module se-module-text\">\n                                    <!-- SE-TEXT { --><p class=\"se-text-paragraph se-text-paragraph-align- \" style=\"\" id=\"SE-b8120cbb-b89e-11f1-9f66-c7dee3551598\"><span style=\"\" class=\"se-fs- se-ff-   \" id=\"SE-b97cca92-b89f-11f1-9f66-61f8e7641b97\">11년식 포터2</span></p>\n<!-- } SE-TEXT --><!-- SE-TEXT { --><p class=\"se-text-paragraph se-text-paragraph-align- \" style=\"\" id=\"SE-eb60cfda-b89e-11f1-9f66-a565ed47757e\"><span style=\"\" class=\"se-fs- se-ff-   \" id=\"SE-b97cca93-b89f-11f1-9f66-437194f22945\">에어컨 찬바람이 나오지 않습니다.</span></p>\n<!-- } SE-TEXT --><!-- SE-TEXT { --><p class=\"se-text-paragraph se-text-paragraph-align- \" style=\"\" id=\"SE-064964f6-b89f-11f1-9f66-9debc2bb97c5\"><span style=\"\" class=\"se-fs- se-ff-   \" id=\"SE-b97cca94-b89f-11f1-9f66-5d7e39570ef4\">소음도...</span></p>\n<!-- } SE-TEXT --><!-- SE-TEXT { --><p class=\"se-text-paragraph se-text-paragraph-align- \" style=\"\" id=\"SE-4b9da7a7-b89f-11f1-9f66-0904a270766f\"><span style=\"\" class=\"se-fs- se-ff-   \" id=\"SE-b97cca95-b89f-11f1-9f66-735b9b3e20f6\">하필 연휴라 아직 카에어컨 전문점이나 정비소엔 가보지 못했습니다.</span></p>\n<!-- } SE-TEXT --><!-- SE-TEXT { --><p class=\"se-text-paragraph se-text-paragraph-align- \" style=\"\" id=\"SE-0f424cfd-b89f-11f1-9f66-d9d849654252\"><span style=\"\" class=\"se-fs- se-ff-   \" id=\"SE-b97cca96-b89f-11f1-9f66-efb3bf8c6642\">소리만으로 판단하기 어려울수도 있겠지만 혹시 어디 고장인지 아시는 분 계실까요?</span></p>\n<!-- } SE-TEXT -->\n                            </div>\n                        </div>\n                    </div>\n                    <script type=\"text/data\" class=\"__se_module_data\" data-module-v2='{\"type\": \"v2_text\", \"id\": \"SE-b8120cba-b89e-11f1-9f66-59f7e6d8b568\", \"data\": {\"ctype\": \"text\"  }}'></script>\n                </div>                <div class=\"se-component se-video se-l-default\">\n                    <div class=\"se-component-content se-component-content-extend\">\n                        <div class=\"se-section se-section-video se-section-align- se-l-default\" >\n                            <div class=\"se-module se-module-video\" id=\"SE-367a9532-b89f-11f1-9f66-2d05234642e6\">\n                            </div>\n                        </div>\n                    </div>\n                    <script type=\"text/data\" class=\"__se_module_data\" data-module='{\"type\":\"v2_video\", \"id\" :\"SE-367a9532-b89f-11f1-9f66-2d05234642e6\", \"data\" : { \"videoType\" : \"player\", \"vid\" : \"B0EE80C3550CA9061A6949DAD6AAD51C66FF\", \"inkey\" : \"V128e30bd3870a54cf7cc378abaca2fccbdb77fbd938de14429171161bc1827f626cf378abaca2fccbdb7\", \"thumbnail\": \"https://phinf.pstatic.net/image.nmv/cafe_2026_09_25_1111/5BV4SziRvX_03.jpg\", \"originalWidth\": \"3840\", \"originalHeight\": \"2160\", \"width\": \"3840\", \"height\": \"2160\", \"contentMode\": \"extend\", \"format\": \"normal\", \"mediaMeta\": {\"@ctype\":\"mediaMeta\",\"title\":\"에어컨 고장 및 소음?\",\"tags\":[],\"description\":null}, \"useServiceData\": \"false\"}}' data-module-v2='{\"type\": \"v2_video\", \"id\": \"SE-367a9532-b89f-11f1-9f66-2d05234642e6\", \"data\": {\"ctype\": \"video\", \"ai\": \"false\", \"videoType\": \"player\", \"vid\": \"B0EE80C3550CA9061A6949DAD6AAD51C66FF\", \"inkey\": \"V128e30bd3870a54cf7cc378abaca2fccbdb77fbd938de14429171161bc1827f626cf378abaca2fccbdb7\", \"thumbnail\": \"https://phinf.pstatic.net/image.nmv/cafe_2026_09_25_1111/5BV4SziRvX_03.jpg\", \"originalWidth\": \"3840\", \"originalHeight\": \"2160\", \"width\": \"3840\", \"height\": \"2160\", \"contentMode\": \"extend\", \"format\": \"normal\", \"mediaMeta\": {\"@ctype\":\"mediaMeta\",\"title\":\"에어컨 고장 및 소음?\",\"tags\":[],\"description\":null}, \"useServiceData\": \"false\" }}'></script>\n                </div>                <div class=\"se-component se-text se-l-default\" id=\"SE-870839cc-b89f-11f1-9f66-03b8c1c68d96\">\n                    <div class=\"se-component-content\">\n                        <div class=\"se-section se-section-text se-l-default\">\n                            <div class=\"se-module se-module-text\">\n                                    <!-- SE-TEXT { --><p class=\"se-text-paragraph se-text-paragraph-align- \" style=\"\" id=\"SE-b92ad9eb-b89f-11f1-9f66-214ffcea7ec2\"><span style=\"\" class=\"se-fs- se-ff-   \" id=\"SE-b97cf1a7-b89f-11f1-9f66-212adf6ef137\">작년 5월초인가 처음으로 에어컨 이상있어서 컴프레서와 콘덴샤 교환했는데</span></p>\n<!-- } SE-TEXT --><!-- SE-TEXT { --><p class=\"se-text-paragraph se-text-paragraph-align- \" style=\"\" id=\"SE-9e92619b-b89f-11f1-9f66-17d4e3e58442\"><span style=\"\" class=\"se-fs- se-ff-   \" id=\"SE-b97cf1a8-b89f-11f1-9f66-e7c5b0561b7c\">또 이러니 난감하네요.</span></p>\n<!-- } SE-TEXT -->\n                            </div>\n                        </div>\n                    </div>\n                    <script type=\"text/data\" class=\"__se_module_data\" data-module-v2='{\"type\": \"v2_text\", \"id\": \"SE-870839cc-b89f-11f1-9f66-03b8c1c68d96\", \"data\": {\"ctype\": \"text\"  }}'></script>\n                </div>    </div>\n</div>\n",
+      "customElements": [],
+      "gdid": "90000004_017C14E50004D9E700000000",
+      "replyListOrder": "",
+      "self": false,
+      "isNotice": false,
+      "isNewComment": false,
+      "isDeleteParent": false,
+      "isMarket": false,
+      "isGroupPurchase": false,
+      "isPersonalTrade": false,
+      "isReadable": true,
+      "isBlind": false,
+      "isOpen": true,
+      "isSearchOpen": true,
+      "isEnableScrap": true,
+      "scrapCount": 0,
+      "isEnableExternal": true,
+      "isEnableSocialPlugin": true,
+      "isWriteComment": true,
+      "isAutoSourcing": true
+    },
+    "comments": {
+      "items": [
+        {
+          "id": 79781111,
+          "refId": 79781111,
+          "writer": {
+            "memberKey": "user_d",
+            "baMemberKey": "user_e",
+            "nick": "사용자B",
+            "image": {
+              "url": "https://cafeptthumb-phinf.pstatic.net/MjAyMTA0MTNfODkg/MDAxNjE4Mjk4MTQyNTI4.qzrI4v_p0Hssl__f9tUTdb7xspHotcMsmrzhdDjs8GIg.7wXsiCHXAMKjB5_3IQIrNlLC-u5IlE_Ik3UUZ5GY2hYg.JPEG/externalFile.jpg",
+              "service": "CAFE",
+              "type": "c77_77",
+              "isAnimated": false
+            },
+            "activityBadges": []
+          },
+          "content": "점검해봐야 어디가 고장인지 머때문에 에어컨작동이 안되는지 알수 있죠.\r\n소리로는 알수없습니다.",
+          "updateDate": 1790318632000,
+          "memberLevel": 140,
+          "memberLevelIconId": 1,
+          "memberLevelName": "우수멤버",
+          "cleanBotDetected": false,
+          "bestComment": false,
+          "self": false,
+          "isRef": false,
+          "isDeleted": false,
+          "isArticleWriter": false,
+          "isNew": false,
+          "isRemovable": false,
+          "standardReportPopup": {
+            "normalUrl": "https://srp2.naver.com/report?exit=close&svc=CAF&vsvc=CAF&rcountry=KR&rlang=ko&memtype=Y&ctype=AA12&cid=24909029;317927;79781111&ctitle=%EC%A0%90%EA%B2%80%ED%95%B4%EB%B4%90%EC%95%BC+%EC%96%B4%EB%94%94%EA%B0%80+%EA%B3%A0%EC%9E%A5%EC%9D%B8%EC%A7%80+%EB%A8%B8%EB%95%8C%EB%AC%B8%EC%97%90+%EC%97%90%EC%96%B4%EC%BB%A8%EC%9E%91%EB%8F%99%EC%9D%B4+%EC%95%88%EB%90%98%EB%8A%94%EC%A7%80+%EC%95%8C%EC%88%98+%EC%9E%88%EC%A3%A0.%0D%3Cbr+%2F%3E%EC%86%8C%EB%A6%AC%EB%A1%9C%EB%8A%94+%EC%95%8C%EC%88%98%EC%97%86%EC%8A%B5%EB%8B%88%EB%8B%A4.&cnickname=%EC%82%AC%EC%9A%A9%EC%9E%90B&dark=disable&env=mobile",
+            "darkUrl": "https://srp2.naver.com/report?exit=close&svc=CAF&vsvc=CAF&rcountry=KR&rlang=ko&memtype=Y&ctype=AA12&cid=24909029;317927;79781111&ctitle=%EC%A0%90%EA%B2%80%ED%95%B4%EB%B4%90%EC%95%BC+%EC%96%B4%EB%94%94%EA%B0%80+%EA%B3%A0%EC%9E%A5%EC%9D%B8%EC%A7%80+%EB%A8%B8%EB%95%8C%EB%AC%B8%EC%97%90+%EC%97%90%EC%96%B4%EC%BB%A8%EC%9E%91%EB%8F%99%EC%9D%B4+%EC%95%88%EB%90%98%EB%8A%94%EC%A7%80+%EC%95%8C%EC%88%98+%EC%9E%88%EC%A3%A0.%0D%3Cbr+%2F%3E%EC%86%8C%EB%A6%AC%EB%A1%9C%EB%8A%94+%EC%95%8C%EC%88%98%EC%97%86%EC%8A%B5%EB%8B%88%EB%8B%A4.&cnickname=%EC%82%AC%EC%9A%A9%EC%9E%90B&dark=enable&env=mobile",
+            "showRemoveAlert": false
+          }
+        },
+        {
+          "id": 79781158,
+          "refId": 79781111,
+          "writer": {
+            "memberKey": "user_b",
+            "baMemberKey": "user_c",
+            "nick": "사용자A",
+            "activityBadges": []
+          },
+          "content": "아무래도 그렇죠.\r\n외출하다 돌아오는중 아는 카에어컨 열었길래 점검받아보니 에바 문제였네요.\r\n내일 교환하기로 했습니다.",
+          "updateDate": 1790318891000,
+          "memberLevel": 110,
+          "memberLevelIconId": 1,
+          "memberLevelName": "일반멤버",
+          "cleanBotDetected": false,
+          "bestComment": false,
+          "self": false,
+          "isRef": true,
+          "isDeleted": false,
+          "isArticleWriter": true,
+          "isNew": false,
+          "isRemovable": false,
+          "standardReportPopup": {
+            "normalUrl": "https://srp2.naver.com/report?exit=close&svc=CAF&vsvc=CAF&rcountry=KR&rlang=ko&memtype=Y&ctype=AA12&cid=24909029;317927;79781158&ctitle=%EC%95%84%EB%AC%B4%EB%9E%98%EB%8F%84+%EA%B7%B8%EB%A0%87%EC%A3%A0.%0D%3Cbr+%2F%3E%EC%99%B8%EC%B6%9C%ED%95%98%EB%8B%A4+%EB%8F%8C%EC%95%84%EC%98%A4%EB%8A%94%EC%A4%91+%EC%95%84%EB%8A%94+%EC%B9%B4%EC%97%90%EC%96%B4%EC%BB%A8+%EC%97%B4%EC%97%88%EA%B8%B8%EB%9E%98+%EC%A0%90%EA%B2%80%EB%B0%9B%EC%95%84%EB%B3%B4%EB%8B%88+%EC%97%90%EB%B0%94+%EB%AC%B8%EC%A0%9C%EC%98%80%EB%84%A4%EC%9A%94.%0D%3Cbr+..&cnickname=%EC%82%AC%EC%9A%A9%EC%9E%90A&dark=disable&env=mobile",
+            "darkUrl": "https://srp2.naver.com/report?exit=close&svc=CAF&vsvc=CAF&rcountry=KR&rlang=ko&memtype=Y&ctype=AA12&cid=24909029;317927;79781158&ctitle=%EC%95%84%EB%AC%B4%EB%9E%98%EB%8F%84+%EA%B7%B8%EB%A0%87%EC%A3%A0.%0D%3Cbr+%2F%3E%EC%99%B8%EC%B6%9C%ED%95%98%EB%8B%A4+%EB%8F%8C%EC%95%84%EC%98%A4%EB%8A%94%EC%A4%91+%EC%95%84%EB%8A%94+%EC%B9%B4%EC%97%90%EC%96%B4%EC%BB%A8+%EC%97%B4%EC%97%88%EA%B8%B8%EB%9E%98+%EC%A0%90%EA%B2%80%EB%B0%9B%EC%95%84%EB%B3%B4%EB%8B%88+%EC%97%90%EB%B0%94+%EB%AC%B8%EC%A0%9C%EC%98%80%EB%84%A4%EC%9A%94.%0D%3Cbr+..&cnickname=%EC%82%AC%EC%9A%A9%EC%9E%90A&dark=enable&env=mobile",
+            "showRemoveAlert": false
+          }
+        },
+        {
+          "id": 79781431,
+          "refId": 79781431,
+          "writer": {
+            "memberKey": "user_f",
+            "baMemberKey": "user_g",
+            "nick": "사용자C",
+            "activityBadges": []
+          },
+          "content": "보아하니 가스가 새서 없는거 같네요.\r\n작년에 수리하셨다는걸로 봐선 에바쪽에서 저처럼 누유되서 다 사라진듯...ㅠㅠ \r\n\r\n만약 에바쪽 문제라면 대쉬보드 들어내야하고 비용도 꽤 나옵니다.",
+          "updateDate": 1790320937000,
+          "memberLevel": 120,
+          "memberLevelIconId": 1,
+          "memberLevelName": "성실멤버",
+          "cleanBotDetected": false,
+          "bestComment": false,
+          "self": false,
+          "isRef": false,
+          "isDeleted": false,
+          "isArticleWriter": false,
+          "isNew": false,
+          "isRemovable": false,
+          "standardReportPopup": {
+            "normalUrl": "https://srp2.naver.com/report?exit=close&svc=CAF&vsvc=CAF&rcountry=KR&rlang=ko&memtype=Y&ctype=AA12&cid=24909029;317927;79781431&ctitle=%EB%B3%B4%EC%95%84%ED%95%98%EB%8B%88+%EA%B0%80%EC%8A%A4%EA%B0%80+%EC%83%88%EC%84%9C+%EC%97%86%EB%8A%94%EA%B1%B0+%EA%B0%99%EB%84%A4%EC%9A%94.%0D%3Cbr+%2F%3E%EC%9E%91%EB%85%84%EC%97%90+%EC%88%98%EB%A6%AC%ED%95%98%EC%85%A8%EB%8B%A4%EB%8A%94%EA%B1%B8%EB%A1%9C+%EB%B4%90%EC%84%A0+%EC%97%90%EB%B0%94%EC%AA%BD%EC%97%90%EC%84%9C+%EC%A0%80%EC%B2%98%EB%9F%BC+%EB%88%84%EC%9C%A0%EB%90%98%EC%84%9C+%EB%8B%A4..&cnickname=%EC%82%AC%EC%9A%A9%EC%9E%90C&dark=disable&env=mobile",
+            "darkUrl": "https://srp2.naver.com/report?exit=close&svc=CAF&vsvc=CAF&rcountry=KR&rlang=ko&memtype=Y&ctype=AA12&cid=24909029;317927;79781431&ctitle=%EB%B3%B4%EC%95%84%ED%95%98%EB%8B%88+%EA%B0%80%EC%8A%A4%EA%B0%80+%EC%83%88%EC%84%9C+%EC%97%86%EB%8A%94%EA%B1%B0+%EA%B0%99%EB%84%A4%EC%9A%94.%0D%3Cbr+%2F%3E%EC%9E%91%EB%85%84%EC%97%90+%EC%88%98%EB%A6%AC%ED%95%98%EC%85%A8%EB%8B%A4%EB%8A%94%EA%B1%B8%EB%A1%9C+%EB%B4%90%EC%84%A0+%EC%97%90%EB%B0%94%EC%AA%BD%EC%97%90%EC%84%9C+%EC%A0%80%EC%B2%98%EB%9F%BC+%EB%88%84%EC%9C%A0%EB%90%98%EC%84%9C+%EB%8B%A4..&cnickname=%EC%82%AC%EC%9A%A9%EC%9E%90C&dark=enable&env=mobile",
+            "showRemoveAlert": false
+          }
+        },
+        {
+          "id": 79781489,
+          "refId": 79781431,
+          "writer": {
+            "memberKey": "user_b",
+            "baMemberKey": "user_c",
+            "nick": "사용자A",
+            "activityBadges": []
+          },
+          "content": "네 맞습니다.\r\n작년에 수리한 곳은 별문제 없고 에바쪽에서 누유 확인했습니다.\r\n코일매트 깔려있어서 몰랐는데 걷어내니 기름 흔적이 보이고\r\n대쉬보드 아래 뜯어보니 에바 배관 용접부위? 보글보글...\r\n추위는 어지간해선 참는데 더위엔 약해서 비용들더라도 고쳐야죠.",
+          "updateDate": 1790321490000,
+          "memberLevel": 110,
+          "memberLevelIconId": 1,
+          "memberLevelName": "일반멤버",
+          "cleanBotDetected": false,
+          "bestComment": false,
+          "self": false,
+          "isRef": true,
+          "isDeleted": false,
+          "isArticleWriter": true,
+          "isNew": false,
+          "isRemovable": false,
+          "standardReportPopup": {
+            "normalUrl": "https://srp2.naver.com/report?exit=close&svc=CAF&vsvc=CAF&rcountry=KR&rlang=ko&memtype=Y&ctype=AA12&cid=24909029;317927;79781489&ctitle=%EB%84%A4+%EB%A7%9E%EC%8A%B5%EB%8B%88%EB%8B%A4.%0D%3Cbr+%2F%3E%EC%9E%91%EB%85%84%EC%97%90+%EC%88%98%EB%A6%AC%ED%95%9C+%EA%B3%B3%EC%9D%80+%EB%B3%84%EB%AC%B8%EC%A0%9C+%EC%97%86%EA%B3%A0+%EC%97%90%EB%B0%94%EC%AA%BD%EC%97%90%EC%84%9C+%EB%88%84%EC%9C%A0+%ED%99%95%EC%9D%B8%ED%96%88%EC%8A%B5%EB%8B%88%EB%8B%A4.%0D%3Cbr+%2F%3E%EC%BD%94%EC%9D%BC%EB%A7%A4%ED%8A%B8+%EA%B9%94%EB%A0%A4..&cnickname=%EC%82%AC%EC%9A%A9%EC%9E%90A&dark=disable&env=mobile",
+            "darkUrl": "https://srp2.naver.com/report?exit=close&svc=CAF&vsvc=CAF&rcountry=KR&rlang=ko&memtype=Y&ctype=AA12&cid=24909029;317927;79781489&ctitle=%EB%84%A4+%EB%A7%9E%EC%8A%B5%EB%8B%88%EB%8B%A4.%0D%3Cbr+%2F%3E%EC%9E%91%EB%85%84%EC%97%90+%EC%88%98%EB%A6%AC%ED%95%9C+%EA%B3%B3%EC%9D%80+%EB%B3%84%EB%AC%B8%EC%A0%9C+%EC%97%86%EA%B3%A0+%EC%97%90%EB%B0%94%EC%AA%BD%EC%97%90%EC%84%9C+%EB%88%84%EC%9C%A0+%ED%99%95%EC%9D%B8%ED%96%88%EC%8A%B5%EB%8B%88%EB%8B%A4.%0D%3Cbr+%2F%3E%EC%BD%94%EC%9D%BC%EB%A7%A4%ED%8A%B8+%EA%B9%94%EB%A0%A4..&cnickname=%EC%82%AC%EC%9A%A9%EC%9E%90A&dark=enable&env=mobile",
+            "showRemoveAlert": false
+          }
+        },
+        {
+          "id": 79782756,
+          "refId": 79782756,
+          "writer": {
+            "memberKey": "user_h",
+            "baMemberKey": "user_i",
+            "nick": "사용자D",
+            "image": {
+              "url": "https://cafeptthumb-phinf.pstatic.net/MjAyMzEyMTZfMTcx/MDAxNzAyNjkxOTQxMjkz.XhJsbXsHJesNRsi7dnmIQzoSNKCn53Giv9EyL6TbARkg.rTiw-ThhouUE1y8aw_je1rYTodHVhEs5eHLh3nBDjS8g.JPEG/externalFile.jpg",
+              "service": "CAFE",
+              "type": "c77_77",
+              "isAnimated": false
+            },
+            "activityBadges": []
+          },
+          "content": "소음이 베어링쪽 문제 같기도\r\n하고 소리로만은 좀\r\n애매하네요\r\n수리 잘 되시길 바랍니다",
+          "updateDate": 1790332783000,
+          "memberLevel": 888,
+          "memberLevelIconId": 1,
+          "memberLevelName": "카페스탭",
+          "cleanBotDetected": false,
+          "bestComment": false,
+          "self": false,
+          "isRef": false,
+          "isDeleted": false,
+          "isArticleWriter": false,
+          "isNew": false,
+          "isRemovable": false,
+          "standardReportPopup": {
+            "normalUrl": "https://srp2.naver.com/report?exit=close&svc=CAF&vsvc=CAF&rcountry=KR&rlang=ko&memtype=Y&ctype=AA12&cid=24909029;317927;79782756&ctitle=%EC%86%8C%EC%9D%8C%EC%9D%B4+%EB%B2%A0%EC%96%B4%EB%A7%81%EC%AA%BD+%EB%AC%B8%EC%A0%9C+%EA%B0%99%EA%B8%B0%EB%8F%84%0D%3Cbr+%2F%3E%ED%95%98%EA%B3%A0+%EC%86%8C%EB%A6%AC%EB%A1%9C%EB%A7%8C%EC%9D%80+%EC%A2%80%0D%3Cbr+%2F%3E%EC%95%A0%EB%A7%A4%ED%95%98%EB%84%A4%EC%9A%94%0D%3Cbr+%2F%3E%EC%88%98%EB%A6%AC+%EC%9E%98+%EB%90%98%EC%8B%9C%EA%B8%B8+%EB%B0%94%EB%9E%8D%EB%8B%88%EB%8B%A4&cnickname=%EC%82%AC%EC%9A%A9%EC%9E%90D&dark=disable&env=mobile",
+            "darkUrl": "https://srp2.naver.com/report?exit=close&svc=CAF&vsvc=CAF&rcountry=KR&rlang=ko&memtype=Y&ctype=AA12&cid=24909029;317927;79782756&ctitle=%EC%86%8C%EC%9D%8C%EC%9D%B4+%EB%B2%A0%EC%96%B4%EB%A7%81%EC%AA%BD+%EB%AC%B8%EC%A0%9C+%EA%B0%99%EA%B8%B0%EB%8F%84%0D%3Cbr+%2F%3E%ED%95%98%EA%B3%A0+%EC%86%8C%EB%A6%AC%EB%A1%9C%EB%A7%8C%EC%9D%80+%EC%A2%80%0D%3Cbr+%2F%3E%EC%95%A0%EB%A7%A4%ED%95%98%EB%84%A4%EC%9A%94%0D%3Cbr+%2F%3E%EC%88%98%EB%A6%AC+%EC%9E%98+%EB%90%98%EC%8B%9C%EA%B8%B8+%EB%B0%94%EB%9E%8D%EB%8B%88%EB%8B%A4&cnickname=%EC%82%AC%EC%9A%A9%EC%9E%90D&dark=enable&env=mobile",
+            "showRemoveAlert": false
+          }
+        },
+        {
+          "id": 79782911,
+          "refId": 79782756,
+          "writer": {
+            "memberKey": "user_b",
+            "baMemberKey": "user_c",
+            "nick": "사용자A",
+            "activityBadges": []
+          },
+          "content": "그렇게 들릴수도 있겠네요.",
+          "updateDate": 1790333836000,
+          "memberLevel": 110,
+          "memberLevelIconId": 1,
+          "memberLevelName": "일반멤버",
+          "cleanBotDetected": false,
+          "bestComment": false,
+          "self": false,
+          "isRef": true,
+          "isDeleted": false,
+          "isArticleWriter": true,
+          "isNew": false,
+          "isRemovable": false,
+          "standardReportPopup": {
+            "normalUrl": "https://srp2.naver.com/report?exit=close&svc=CAF&vsvc=CAF&rcountry=KR&rlang=ko&memtype=Y&ctype=AA12&cid=24909029;317927;79782911&ctitle=%EA%B7%B8%EB%A0%87%EA%B2%8C+%EB%93%A4%EB%A6%B4%EC%88%98%EB%8F%84+%EC%9E%88%EA%B2%A0%EB%84%A4%EC%9A%94.&cnickname=%EC%82%AC%EC%9A%A9%EC%9E%90A&dark=disable&env=mobile",
+            "darkUrl": "https://srp2.naver.com/report?exit=close&svc=CAF&vsvc=CAF&rcountry=KR&rlang=ko&memtype=Y&ctype=AA12&cid=24909029;317927;79782911&ctitle=%EA%B7%B8%EB%A0%87%EA%B2%8C+%EB%93%A4%EB%A6%B4%EC%88%98%EB%8F%84+%EC%9E%88%EA%B2%A0%EB%84%A4%EC%9A%94.&cnickname=%EC%82%AC%EC%9A%A9%EC%9E%90A&dark=enable&env=mobile",
+            "showRemoveAlert": false
+          }
+        },
+        {
+          "id": 79788686,
+          "refId": 79788686,
+          "writer": {
+            "memberKey": "user_j",
+            "baMemberKey": "user_k",
+            "nick": "사용자E",
+            "image": {
+              "url": "https://cafeptthumb-phinf.pstatic.net/MjAxOTEyMDJfNjkg/MDAxNTc1Mjc3MTEyNzc0.UNqoM_eSKiAn7htTpp9rLxs49rJxSS4n5W5Dy0JYBjAg.92tLWXgTeaR5nvPOMG74lgLeB9HDlVp6FKIE_svVcrog.JPEG/BCAEBEE7-8763-chkl77.jpg",
+              "service": "CAFE",
+              "type": "c77_77",
+              "isAnimated": false
+            },
+            "activityBadges": []
+          },
+          "content": "찌르르르 하는 고주파음은 냉매부족시 납니다. 냉매누설입니다. 어딘가에서 누설되는듯.",
+          "updateDate": 1790373721000,
+          "memberLevel": 120,
+          "memberLevelIconId": 1,
+          "memberLevelName": "성실멤버",
+          "cleanBotDetected": false,
+          "bestComment": false,
+          "self": false,
+          "isRef": false,
+          "isDeleted": false,
+          "isArticleWriter": false,
+          "isNew": false,
+          "isRemovable": false,
+          "standardReportPopup": {
+            "normalUrl": "https://srp2.naver.com/report?exit=close&svc=CAF&vsvc=CAF&rcountry=KR&rlang=ko&memtype=Y&ctype=AA12&cid=24909029;317927;79788686&ctitle=%EC%B0%8C%EB%A5%B4%EB%A5%B4%EB%A5%B4+%ED%95%98%EB%8A%94+%EA%B3%A0%EC%A3%BC%ED%8C%8C%EC%9D%8C%EC%9D%80+%EB%83%89%EB%A7%A4%EB%B6%80%EC%A1%B1%EC%8B%9C+%EB%82%A9%EB%8B%88%EB%8B%A4.+%EB%83%89%EB%A7%A4%EB%88%84%EC%84%A4%EC%9E%85%EB%8B%88%EB%8B%A4.+%EC%96%B4%EB%94%98%EA%B0%80%EC%97%90%EC%84%9C+%EB%88%84%EC%84%A4%EB%90%98%EB%8A%94%EB%93%AF.&cnickname=%EC%82%AC%EC%9A%A9%EC%9E%90E&dark=disable&env=mobile",
+            "darkUrl": "https://srp2.naver.com/report?exit=close&svc=CAF&vsvc=CAF&rcountry=KR&rlang=ko&memtype=Y&ctype=AA12&cid=24909029;317927;79788686&ctitle=%EC%B0%8C%EB%A5%B4%EB%A5%B4%EB%A5%B4+%ED%95%98%EB%8A%94+%EA%B3%A0%EC%A3%BC%ED%8C%8C%EC%9D%8C%EC%9D%80+%EB%83%89%EB%A7%A4%EB%B6%80%EC%A1%B1%EC%8B%9C+%EB%82%A9%EB%8B%88%EB%8B%A4.+%EB%83%89%EB%A7%A4%EB%88%84%EC%84%A4%EC%9E%85%EB%8B%88%EB%8B%A4.+%EC%96%B4%EB%94%98%EA%B0%80%EC%97%90%EC%84%9C+%EB%88%84%EC%84%A4%EB%90%98%EB%8A%94%EB%93%AF.&cnickname=%EC%82%AC%EC%9A%A9%EC%9E%90E&dark=enable&env=mobile",
+            "showRemoveAlert": false
+          }
+        },
+        {
+          "id": 79788800,
+          "refId": 79788686,
+          "writer": {
+            "memberKey": "user_b",
+            "baMemberKey": "user_c",
+            "nick": "사용자A",
+            "activityBadges": []
+          },
+          "content": "네. 에바포레이터 당첨입니다.",
+          "updateDate": 1790374488000,
+          "memberLevel": 110,
+          "memberLevelIconId": 1,
+          "memberLevelName": "일반멤버",
+          "cleanBotDetected": false,
+          "bestComment": false,
+          "self": false,
+          "isRef": true,
+          "isDeleted": false,
+          "isArticleWriter": true,
+          "isNew": false,
+          "isRemovable": false,
+          "standardReportPopup": {
+            "normalUrl": "https://srp2.naver.com/report?exit=close&svc=CAF&vsvc=CAF&rcountry=KR&rlang=ko&memtype=Y&ctype=AA12&cid=24909029;317927;79788800&ctitle=%EB%84%A4.+%EC%97%90%EB%B0%94%ED%8F%AC%EB%A0%88%EC%9D%B4%ED%84%B0+%EB%8B%B9%EC%B2%A8%EC%9E%85%EB%8B%88%EB%8B%A4.&cnickname=%EC%82%AC%EC%9A%A9%EC%9E%90A&dark=disable&env=mobile",
+            "darkUrl": "https://srp2.naver.com/report?exit=close&svc=CAF&vsvc=CAF&rcountry=KR&rlang=ko&memtype=Y&ctype=AA12&cid=24909029;317927;79788800&ctitle=%EB%84%A4.+%EC%97%90%EB%B0%94%ED%8F%AC%EB%A0%88%EC%9D%B4%ED%84%B0+%EB%8B%B9%EC%B2%A8%EC%9E%85%EB%8B%88%EB%8B%A4.&cnickname=%EC%82%AC%EC%9A%A9%EC%9E%90A&dark=enable&env=mobile",
+            "showRemoveAlert": false
+          }
+        }
+      ],
+      "alarm": {
+        "isShow": false,
+        "isChecked": false
+      },
+      "disableWriteReason": ""
+    },
+    "advert": {
+      "type": "DA",
+      "daAdvertUnitId": "m_cafe",
+      "daAdvertDivId": "DaAdvert"
+    },
+    "cafe": {
+      "id": 24909029,
+      "name": "포터2 봉고3 클럽",
+      "pcCafeName": "포터2 봉고3 오너스 클럽",
+      "url": "bongo312",
+      "image": {
+        "url": "https://cafeptthumb-phinf.pstatic.net/MjAyMDAzMjFfMjEw/MDAxNTg0NzY1NDA0ODIy.yqU9WZQW9Ax0FIlt7y1O-up2qdBYhw86WrkFmSjBetQg.Ix4OoeGGIE7XtUrU_jOEWonwpGTyh8yUUeJQsExuKyQg.JPEG/image.jpg",
+        "service": "CAFE",
+        "type": "f100_100"
+      },
+      "introduction": "현대포터2 기아봉고3 동호회입니다 [1톤트럭,EV전기트럭,화물,택배,캠핑카]",
+      "memberCount": 80338,
+      "hasPopularArticle": true,
+      "usingMemberLevel": true,
+      "memberLevelIconId": 1,
+      "openType": "O",
+      "isDormant": false
+    },
+    "user": {
+      "memberKey": "user_l",
+      "baMemberKey": "",
+      "nick": "",
+      "image": {
+        "url": "https://ssl.pstatic.net/static/cafe/cafe_pc/default/cafe_profile_77.png",
+        "service": "CAFE",
+        "type": "c77_77"
+      },
+      "memberLevel": 0,
+      "blockMemberKeyList": [],
+      "memberLevelName": "",
+      "memberLevelIconUrl": "",
+      "appliedAlready": false,
+      "permission": {
+        "isBoardStaff": false,
+        "isOnlyOptionalBoardStaff": false,
+        "isActivityStopExecutable": false,
+        "isNoticeRegistrable": false,
+        "isViceManager": false,
+        "isCafeManager": false,
+        "isEntireBoardStaff": false,
+        "isMemberStaff": false
+      },
+      "isCafeMember": false,
+      "isLogin": false,
+      "isOwner": false,
+      "isGroupId": false,
+      "isBelowAge14": true
+    },
+    "attaches": [],
+    "tags": [],
+    "authority": {
+      "isRightClick": false,
+      "isShowReply": false,
+      "isWriteReply": false,
+      "isWrite": false,
+      "isModify": false,
+      "isRemove": false,
+      "isMove": false,
+      "isRepost": false,
+      "isReport": false,
+      "isShowStatistics": false,
+      "isWriteComment": true,
+      "isSharable": true,
+      "isHeadModifiable": false,
+      "isEnableAttachFileDownload": true
+    },
+    "editorVersion": "SE_ONE_V5",
+    "readOnlyModeInfo": {
+      "readOnlyModeStatus": false,
+      "timeToPreNotice": false,
+      "timeToNotice": false,
+      "emergency": false,
+      "readOnlyNoticeDuration": "",
+      "linkToNoticeURL": "https://notice.naver.com/notices/cafe/33826"
+    },
+    "articleRegion": {
+      "rcode": "",
+      "type": "DOMESTIC",
+      "name": "",
+      "regionCode1": "",
+      "regionName1": "",
+      "regionCode2": "",
+      "regionName2": "",
+      "regionCode3": "",
+      "regionName3": ""
+    },
+    "standardReportPopup": {
+      "normalUrl": "https://srp2.naver.com/report?exit=close&svc=CAF&vsvc=CAF&rcountry=KR&rlang=ko&memtype=Y&ctype=AA11&ctitle=%EC%97%90%EC%96%B4%EC%BB%A8+%EA%B3%A0%EC%9E%A5+%EB%B0%8F+%EC%86%8C%EC%9D%8C%3F&cnickname=%EC%82%AC%EC%9A%A9%EC%9E%90A&cid=24909029;317927&dark=disable&env=mobile",
+      "darkUrl": "https://srp2.naver.com/report?exit=close&svc=CAF&vsvc=CAF&rcountry=KR&rlang=ko&memtype=Y&ctype=AA11&ctitle=%EC%97%90%EC%96%B4%EC%BB%A8+%EA%B3%A0%EC%9E%A5+%EB%B0%8F+%EC%86%8C%EC%9D%8C%3F&cnickname=%EC%82%AC%EC%9A%A9%EC%9E%90A&cid=24909029;317927&dark=enable&env=mobile",
+      "showRemoveAlert": false
+    },
+    "commAdSupport": true,
+    "cafeStatList": [
+      "최근 일주일 동안 180명이 가입했어요",
+      "가입하면 25만개의 글을 볼 수 있어요",
+      "어제 1,923명이 방문했어요"
+    ],
+    "isReadOnlyMode": false,
+    "isW800": true
+  }
+}

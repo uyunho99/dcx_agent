@@ -1,0 +1,364 @@
+{
+  "keywords": [
+    {
+      "kw": "수면",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "수면문제",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "수면관리",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "수면설정",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "수면점검",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "수면변화",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "수면상태",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "수면조절",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "수면확인",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "수면불편",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "예약",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "예약문제",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "예약관리",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "예약설정",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "예약점검",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "예약변화",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "예약상태",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "예약조절",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "예약확인",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "예약불편",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "절전",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "절전문제",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "절전관리",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "절전설정",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "절전점검",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "절전변화",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "절전상태",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "절전조절",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "절전확인",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "절전불편",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "환기",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "환기문제",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "환기관리",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "환기설정",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "환기점검",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "환기변화",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "환기상태",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "환기조절",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "환기확인",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "환기불편",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "난방",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "난방문제",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "난방관리",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "난방설정",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "난방점검",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "난방변화",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "난방상태",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "난방조절",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "난방확인",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "난방불편",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "벽걸이",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "벽걸이문제",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "벽걸이관리",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "벽걸이설정",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "벽걸이점검",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "벽걸이변화",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "벽걸이상태",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "벽걸이조절",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "벽걸이확인",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "벽걸이불편",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 import threading
 from fastapi import APIRouter
+from app.context.compat import fill_bk_problem
 
 from app.services.training import train_models
 from app.jobs.manager import job_manager
@@ -12,6 +13,7 @@ router = APIRouter()
 def start_train(req: TrainRequest):
     sid = req.sid
     config = req.model_dump()
+    fill_bk_problem(config, sid)
     job_manager.set("train", sid, {"status": "running", "phase": "init", "progress": 0})
     threading.Thread(target=lambda: train_models(config), daemon=True).start()
     return {"sid": sid, "status": "started"}

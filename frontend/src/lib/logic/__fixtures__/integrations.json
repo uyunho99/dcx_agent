@@ -1,0 +1,47 @@
+[
+  {
+    "name": "naver_shopping",
+    "connected": false,
+    "env_vars": [],
+    "affects": [
+      "category_suggest"
+    ],
+    "last_error": "서비스 종료 · 네이버 쇼핑 검색 API는 영구적으로 사용할 수 없습니다."
+  },
+  {
+    "name": "naver_searchad",
+    "connected": false,
+    "env_vars": [
+      "SEARCHAD_API_KEY",
+      "SEARCHAD_SECRET",
+      "SEARCHAD_CUSTOMER_ID"
+    ],
+    "affects": [
+      "coverage"
+    ],
+    "last_error": null
+  },
+  {
+    "name": "openai",
+    "connected": false,
+    "env_vars": [
+      "OPENAI_API_KEY",
+      "OPENAI_MODEL"
+    ],
+    "affects": [
+      "llm"
+    ],
+    "last_error": null
+  },
+  {
+    "name": "claude",
+    "connected": false,
+    "env_vars": [
+      "CLAUDE_API_KEY"
+    ],
+    "affects": [
+      "llm"
+    ],
+    "last_error": null
+  }
+]

@@ -1,11 +1,16 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.routers import (
     sessions,
+    context,
+    integrations,
     keywords,
-    crawling,
+    keywords_v2,
+    crawl_v2,
     preprocessing,
     labeling,
     training,
@@ -16,7 +21,14 @@ from app.routers import (
     search,
 )
 
-app = FastAPI(title="DCX Pipeline API")
+@asynccontextmanager
+async def lifespan(app):
+    from app.keywords.rounds import recover_interrupted
+    recover_interrupted()
+    yield
+
+
+app = FastAPI(title="DCX Pipeline API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -27,8 +39,11 @@ app.add_middleware(
 )
 
 app.include_router(sessions.router)
+app.include_router(integrations.router)
+app.include_router(context.router)
 app.include_router(keywords.router)
-app.include_router(crawling.router)
+app.include_router(keywords_v2.router)
+app.include_router(crawl_v2.router)
 app.include_router(preprocessing.router)
 app.include_router(labeling.router)
 app.include_router(training.router)

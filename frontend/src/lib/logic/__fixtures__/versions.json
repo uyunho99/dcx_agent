@@ -1,0 +1,14 @@
+{
+  "activeVersion": "v1",
+  "versions": [
+    {
+      "id": "v1",
+      "parent": null,
+      "restartFrom": "stage0",
+      "createdAt": "2026-09-29T04:16:32.469686+00:00",
+      "note": "",
+      "readonly": false,
+      "collectionId": null
+    }
+  ]
+}

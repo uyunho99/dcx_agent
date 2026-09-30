@@ -67,7 +67,7 @@ dcx_agent/
 
 ## 사전 요구사항
 
-- **Python 3.12+**
+- **Python 3.12** (`python3.12`)
 - **Node.js 20+** / npm
 - **Git**
 
@@ -80,66 +80,60 @@ cd dcx_agent
 
 ## 2. 환경변수 설정
 
-### 방법 A: .env.enc 복호화 (팀원)
+레포지토리 루트에서 예제 파일을 복사하고 필요한 외부 API 설정을 입력합니다.
 
 ```bash
-./scripts/decrypt-env.sh
-# 패스워드 입력
+cp .env.example .env
 ```
 
-### 방법 B: .env 직접 생성 (신규)
-
-```bash
-cat > .env << 'EOF'
-S3_BUCKET=your-bucket-name
-S3_REGION=ap-southeast-2
-NAVER_CLIENT_ID=your-naver-client-id
-NAVER_CLIENT_SECRET=your-naver-client-secret
-CLAUDE_API_KEY=your-claude-api-key
-PINECONE_API_KEY=your-pinecone-api-key
-VOYAGE_API_KEY=your-voyage-api-key
-CORS_ORIGINS=*
-EOF
-```
-
-> `.env` 수정 후 팀에 공유하려면: `./scripts/encrypt-env.sh` → `.env.enc` 커밋
+저장소 기본값은 `STORAGE=local`입니다. AWS 키 없이 로컬 디스크를 사용하며,
+`LOCAL_DATA_DIR=data`가 데이터 경로입니다(백엔드에서 실행하면 `backend/data/`).
+API 키는 필요한 연동에만 설정하고 `.env`는 커밋하지 않습니다.
+OpenAI를 사용하려면 `OPENAI_API_KEY`와 `OPENAI_MODEL`을 지정합니다.
 
 ## 3. 백엔드 설치 및 실행
 
+레포지토리 루트에서 Python 3.12 가상환경 `backend/.venv`를 생성합니다.
+
 ```bash
+python3.12 -m venv backend/.venv
 cd backend
-
-# 가상환경 생성
-python3.12 -m venv venv
-source venv/bin/activate    # Windows: venv\Scripts\activate
-
-# 의존성 설치
-pip install -r requirements.txt
-
-# 개발 서버 실행
+source .venv/bin/activate
+pip install -r requirements.txt -r requirements-dev.txt
+crawl4ai-setup
 uvicorn app.main:app --reload --port 8000
 ```
 
-백엔드가 `http://localhost:8000`에서 실행됩니다.
-헬스체크: `http://localhost:8000/health`
+`crawl4ai-setup`은 크롤링에 필요한 Playwright Chromium을 설치합니다.
+백엔드: `http://localhost:8000`, 헬스체크: `http://localhost:8000/health`.
 
 ## 4. 프론트엔드 설치 및 실행
 
+별도 터미널에서 레포지토리 루트를 기준으로 실행합니다.
+
 ```bash
 cd frontend
-
-# 의존성 설치
-npm install
-
-# 개발 서버 실행
+npm ci
 npm run dev
 ```
 
-프론트엔드가 `http://localhost:3000`에서 실행됩니다.
+브라우저에서 `http://localhost:3000`에 접속하여 파이프라인 시작 페이지를 확인합니다.
 
-## 5. 접속 확인
+## 5. 테스트
 
-브라우저에서 `http://localhost:3000` 접속 → 파이프라인 시작 페이지 확인
+테스트는 실제 `.env`, API 키, 네트워크, codex 설치 없이 실행됩니다.
+레포지토리 루트에서:
+
+```bash
+backend/.venv/bin/python -m pytest backend/tests -q
+```
+
+또는 `backend/`에서:
+
+```bash
+cd backend
+.venv/bin/python -m pytest -q
+```
 
 ---
 

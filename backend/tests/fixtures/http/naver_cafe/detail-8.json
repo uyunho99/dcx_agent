@@ -1,0 +1,13 @@
+{
+  "result": {
+    "errorCode": "0004",
+    "reason": "로그인하지 않았습니다.",
+    "message": "errorCode: 0004, message: 로그인 하지 않음",
+    "more": {
+      "cafeUrl": "musiloccupant",
+      "cafeName": "원주무실 입주자카페",
+      "pcCafeName": "제일풍경채 원주 무실 입주자카페",
+      "cafeId": 31451074
+    }
+  }
+}

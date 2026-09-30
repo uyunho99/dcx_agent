@@ -1,0 +1,364 @@
+{
+  "keywords": [
+    {
+      "kw": "자동운전",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "자동운전문제",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "자동운전관리",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "자동운전설정",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "자동운전점검",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "자동운전변화",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "자동운전상태",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "자동운전조절",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "자동운전확인",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "자동운전불편",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "스마트폰",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "스마트폰문제",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "스마트폰관리",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "스마트폰설정",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "스마트폰점검",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "스마트폰변화",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "스마트폰상태",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "스마트폰조절",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "스마트폰확인",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "스마트폰불편",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "음성안내",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "음성안내문제",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "음성안내관리",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "음성안내설정",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "음성안내점검",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "음성안내변화",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "음성안내상태",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "음성안내조절",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "음성안내확인",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "음성안내불편",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "표시등",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "표시등문제",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "표시등관리",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "표시등설정",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "표시등점검",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "표시등변화",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "표시등상태",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "표시등조절",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "표시등확인",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "표시등불편",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "실내기",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "실내기문제",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "실내기관리",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "실내기설정",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "실내기점검",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "실내기변화",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "실내기상태",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "실내기조절",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "실내기확인",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "실내기불편",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "냉매",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "냉매문제",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "냉매관리",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "냉매설정",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "냉매점검",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "냉매변화",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "냉매상태",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "냉매조절",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "냉매확인",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    },
+    {
+      "kw": "냉매불편",
+      "axis": "physical",
+      "sub": "space",
+      "why": "에어컨 사용 중 관찰한 경험"
+    }
+  ]
+}

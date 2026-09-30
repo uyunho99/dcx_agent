@@ -1,0 +1,13 @@
+{
+  "result": {
+    "errorCode": "0004",
+    "reason": "로그인하지 않았습니다.",
+    "message": "errorCode: 0004, message: 로그인 하지 않음",
+    "more": {
+      "cafeUrl": "wnd1tkghl",
+      "cafeName": "쏘렌토 패밀리",
+      "pcCafeName": "★쏘렌토공식동호회[쏘렌토 패밀리]올뉴,더뉴,쏘렌토풀체인지MQ4",
+      "cafeId": 12006155
+    }
+  }
+}

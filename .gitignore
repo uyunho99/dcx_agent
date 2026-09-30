@@ -71,3 +71,8 @@ data/
 # 로그
 # ========================
 *.log
+.harness/
+!.env.example
+backend/.venv/
+.superpowers/
+backend/tests/fixtures/aircon_qa.csv

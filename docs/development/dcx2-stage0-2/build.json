@@ -1,0 +1,222 @@
+{
+  "verdict": "PASS",
+  "head": "d077f96e3c170ab5be48d2a3eb0daf8e12bf01c1",
+  "fingerprint": "0464edf3e72b7a6495f6ab0b13fd2dda00aeba410bc03209dc94e0d7fd20aacb",
+  "commands": [
+    {
+      "command": "backend/.venv/bin/python -m pytest backend/tests -q  (815 passed)",
+      "exitCode": 0
+    },
+    {
+      "command": "npm --prefix frontend run lint",
+      "exitCode": 0
+    },
+    {
+      "command": "npm --prefix frontend run build",
+      "exitCode": 0
+    },
+    {
+      "command": "npm --prefix frontend test  (139 passed)",
+      "exitCode": 0
+    },
+    {
+      "command": "cd frontend && npx tsc --noEmit",
+      "exitCode": 0
+    }
+  ],
+  "findings": [],
+  "tasks": [
+    {
+      "id": "T01",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent a9c1b3200bbb578e4; ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T01.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T01.md (GREEN section) + controller re-run before commit: (commits d3372e6..509354b, review clean)",
+      "review": ".superpowers/sdd/03-plan/review-d3372e6..509354b.diff"
+    },
+    {
+      "id": "T02",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent ab851e2920ba6bc50; ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T02.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T02.md (GREEN section) + controller re-run before commit: (commits 509354b..444674e, review clean after 1 fix round)",
+      "review": ".superpowers/sdd/03-plan/review-509354b..d3c21ad.diff"
+    },
+    {
+      "id": "T03",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T03.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T03.md (GREEN section) + controller re-run before commit: (commits 444674e..94b13ec, review clean)",
+      "review": "task review recorded in ledger: Task T03: complete (commits 444674e..94b13ec, review clean)"
+    },
+    {
+      "id": "T04",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T04.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T04.md (GREEN section) + controller re-run before commit: (commits 6674401..07484d6, review clean after 1 fix round; cross-task test regression routed to T07)",
+      "review": "task review recorded in ledger: Task T04: complete (commits 6674401..07484d6, review clean after 1 fix round; cross-task test regression routed to T07)"
+    },
+    {
+      "id": "T05",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T05.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T05.md (GREEN section) + controller re-run before commit: (commits d3c21ad..ebb406c, review clean)",
+      "review": "task review recorded in ledger: Task T05: complete (commits d3c21ad..ebb406c, review clean)"
+    },
+    {
+      "id": "T06",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T06.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T06.md (GREEN section) + controller re-run before commit: (commits 70f6613..68918f2, review clean after 1 fix round)",
+      "review": "task review recorded in ledger: Task T06: complete (commits 70f6613..68918f2, review clean after 1 fix round)"
+    },
+    {
+      "id": "T07",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T07.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T07.md (GREEN section) + controller re-run before commit: (commits 8f4337f..09ba14e, review clean after 1 fix round)",
+      "review": "task review recorded in ledger: Task T07: complete (commits 8f4337f..09ba14e, review clean after 1 fix round)"
+    },
+    {
+      "id": "T08",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T08.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T08.md (GREEN section) + controller re-run before commit: (commits 70b7db7..f02dd8b, review clean after 1 fix round)",
+      "review": "task review recorded in ledger: Task T08: complete (commits 70b7db7..f02dd8b, review clean after 1 fix round)"
+    },
+    {
+      "id": "T09",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T09.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T09.md (GREEN section) + controller re-run before commit: (commits 454d567..0584ee8, review clean after 1 fix round)",
+      "review": "task review recorded in ledger: Task T09: complete (commits 454d567..0584ee8, review clean after 1 fix round)"
+    },
+    {
+      "id": "T10",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T10.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T10.md (GREEN section) + controller re-run before commit: (commits ebb406c..352df97, review clean after 1 fix round)",
+      "review": "task review recorded in ledger: Task T10: complete (commits ebb406c..352df97, review clean after 1 fix round)"
+    },
+    {
+      "id": "T11",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T11.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T11.md (GREEN section) + controller re-run before commit: (commits 68918f2..454d567, review clean after 3 fix rounds)",
+      "review": "task review recorded in ledger: Task T11: complete (commits 68918f2..454d567, review clean after 3 fix rounds)"
+    },
+    {
+      "id": "T12",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T12.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T12.md (GREEN section) + controller re-run before commit: (commits 352df97..70f6613, review clean)",
+      "review": "task review recorded in ledger: Task T12: complete (commits 352df97..70f6613, review clean)"
+    },
+    {
+      "id": "T13",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T13.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T13.md (GREEN section) + controller re-run before commit: (commits 0584ee8..3d20fa4, review clean after 1 fix round)",
+      "review": "task review recorded in ledger: Task T13: complete (commits 0584ee8..3d20fa4, review clean after 1 fix round)"
+    },
+    {
+      "id": "T14",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T14.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T14.md (GREEN section) + controller re-run before commit: (commits 1ea70c7..58f924d, review clean after 1 fix round)",
+      "review": "task review recorded in ledger: Task T14: complete (commits 1ea70c7..58f924d, review clean after 1 fix round)"
+    },
+    {
+      "id": "T15",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T15.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T15.md (GREEN section) + controller re-run before commit: (0a99e2e..2325ecd, review clean after 2 fix rounds; live blog/cafe 30/30 3/3)",
+      "review": "task review recorded in ledger: Task T15: complete (0a99e2e..2325ecd, review clean after 2 fix rounds; live blog/cafe 30/30 3/3)"
+    },
+    {
+      "id": "T16",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T16.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T16.md (GREEN section) + controller re-run before commit: (613f0ab) — review approve, 0 Critical/Important.",
+      "review": "task review recorded in ledger: Task T16: complete (613f0ab) — review approve, 0 Critical/Important."
+    },
+    {
+      "id": "T17",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T17.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T17.md (GREEN section) + controller re-run before commit: (cda4423) — review approve w/ minor; Important #1 dates, #2 close(), T16 bot-check folded into wiring dispatch (T16-17-wiring).",
+      "review": "task review recorded in ledger: Task T17: complete (cda4423) — review approve w/ minor; Important #1 dates, #2 close(), T16 bot-check folded into wiring dispatch (T16-17-wiring)."
+    },
+    {
+      "id": "T18",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T18.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T18.md (GREEN section) + controller re-run before commit: (commits 86b133f..ead05cb, review clean after 2 fix rounds)",
+      "review": "task review recorded in ledger: Task T18: complete (commits 86b133f..ead05cb, review clean after 2 fix rounds)"
+    },
+    {
+      "id": "T19",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent ab451fafbbad63936; ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T19.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T19.md (GREEN section) + controller re-run before commit: (commits f1573e9..8f4337f, review clean after 1 fix round)",
+      "review": "task review recorded in ledger: Task T19: complete (commits f1573e9..8f4337f, review clean after 1 fix round)"
+    },
+    {
+      "id": "T20",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T20.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T20.md (GREEN section) + controller re-run before commit: (commits 414a0a7..c42637b, review clean after 1 fix round)",
+      "review": "task review recorded in ledger: Task T20: complete (commits 414a0a7..c42637b, review clean after 1 fix round)"
+    },
+    {
+      "id": "T21",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T21.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T21.md (GREEN section) + controller re-run before commit: (commits 765458b..1ea70c7, review clean after 2 fix rounds)",
+      "review": "task review recorded in ledger: Task T21: complete (commits 765458b..1ea70c7, review clean after 2 fix rounds)"
+    },
+    {
+      "id": "T22",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T22.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T22.md (GREEN section) + controller re-run before commit: (commits 1aa8466..48158d2, review clean after 2 fix rounds)",
+      "review": "task review recorded in ledger: Task T22: complete (commits 1aa8466..48158d2, review clean after 2 fix rounds)"
+    },
+    {
+      "id": "T23",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T23.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T23.md (GREEN section) + controller re-run before commit: (commits 0a7980b..833a0a5, review clean)",
+      "review": "task review recorded in ledger: Task T23: complete (commits 0a7980b..833a0a5, review clean)"
+    },
+    {
+      "id": "T24",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue (Agent tool, --wait --fresh --write); ledger .superpowers/sdd/03-plan/progress.md",
+      "red": "docs/development/dcx2-stage0-2/reports/T24.md (RED section: failing tests before implementation)",
+      "green": "docs/development/dcx2-stage0-2/reports/T24.md (GREEN section) + controller re-run before commit: (commits 48158d2..afb9b7d, review clean after 1 fix round)",
+      "review": "task review recorded in ledger: Task T24: complete (commits 48158d2..afb9b7d, review clean after 1 fix round)"
+    }
+  ]
+}

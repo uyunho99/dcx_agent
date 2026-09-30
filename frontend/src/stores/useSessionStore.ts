@@ -1,11 +1,14 @@
 "use client";
 import { create } from "zustand";
-import type { Keyword, SessionData } from "@/lib/types";
+import type { Keyword, SessionData, ProjectContext } from "@/lib/types";
 import { persistSid, clearPersistedSid } from "@/lib/sessionPersist";
+import { patchSession } from "@/lib/api/context";
 import { saveSession } from "@/lib/api";
 
 interface SessionState {
   sid: string | null;
+  projectContext: ProjectContext | null;
+  persistError: string | null;
   bk: string;
   pd: string;
   ages: string[];
@@ -34,6 +37,8 @@ interface SessionState {
 
 const initial = {
   sid: null,
+  projectContext: null as ProjectContext | null,
+  persistError: null as string | null,
   bk: "",
   pd: "",
   ages: [] as string[],
@@ -50,7 +55,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   ...initial,
 
   setSession: (data) => {
-    set((state) => ({ ...state, ...data }));
+    set((state) => {
+      const context = data.projectContext !== undefined ? data.projectContext : data.sd ? data.sd.projectContext ?? null : state.projectContext;
+      return { ...state, ...data, projectContext: context, ...(context ? {
+        bk: context.bk, pd: context.researchQuestion.text,
+        ages: context.targetScope?.households ?? [], ar: context.targetScope?.ageRanges ?? [], gens: context.targetScope?.genders ?? [],
+      } : {}) };
+    });
     const { sid, step } = get();
     if (sid) persistSid(sid, step);
   },
@@ -99,20 +110,28 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const { sid, sd } = get();
     if (sid && sd) {
       const updated = { ...sd, _pendingKw: kw, _lastRound: round };
-      saveSession(sid, updated);
+      if (sd.schemaVersion === 2) {
+        void patchSession(sid, { drafts: { keywords: { pendingKw: kw, lastRound: round } } }).catch(() => set({ persistError: "임시 저장에 실패했습니다. 다시 시도하세요." }));
+      } else { void saveSession(sid, updated); }
     }
   },
 
-  clearPendingKw: () =>
-    set({ pendingKw: [], lastRound: "" }),
+  clearPendingKw: () => {
+    set({ pendingKw: [], lastRound: "" });
+    const { sid, sd } = get();
+    if (sid && sd?.schemaVersion === 2) void patchSession(sid, { drafts: { keywords: { pendingKw: [], lastRound: "" } } }).catch(() => set({ persistError: "임시 저장에 실패했습니다. 다시 시도하세요." }));
+  },
 
   setStep: (step) => {
     set((state) => {
       const sd = state.sd ? { ...state.sd, step } : null;
       return { step, sd };
     });
-    const { sid } = get();
-    if (sid) persistSid(sid, step);
+    const { sid, sd } = get();
+    if (sid) {
+      persistSid(sid, step);
+      if (sd?.schemaVersion === 2) void patchSession(sid, { step }).catch(() => set({ persistError: "단계 저장에 실패했습니다. 다시 시도하세요." }));
+    }
   },
 
   reset: () => {

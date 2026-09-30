@@ -1,5 +1,5 @@
 import { getSession } from "@/lib/api";
-import type { Keyword, SessionData } from "@/lib/types";
+import type { Keyword, SessionData, ProjectContext } from "@/lib/types";
 
 const STORAGE_KEY = "dcx_active_session";
 
@@ -46,9 +46,13 @@ export async function restoreSessionToStore(
 ): Promise<string> {
   const resp = await getSession(sid);
   const d = (resp.data || resp) as Record<string, unknown>;
+  if (resp.status !== "ok" || !resp.data) throw new Error("세션을 불러오지 못했습니다");
+  const context = d.projectContext as ProjectContext | undefined;
+  const pending = (d.drafts as {keywords?: {pendingKw?: Keyword[]; lastRound?: string}} | undefined)?.keywords;
   const step = (d.step as string) || "start";
   store.setSession({
     sid,
+    projectContext: context ?? null,
     bk: (d.bk as string) || "",
     pd: (d.problemDef as string) || "",
     kw: (d.allKw as Keyword[]) || [],
@@ -57,8 +61,8 @@ export async function restoreSessionToStore(
     ar: (d.ageRange as string[]) || [],
     gens: (d.gens as string[]) || [],
     step,
-    pendingKw: (d._pendingKw as Keyword[]) || [],
-    lastRound: (d._lastRound as string) || "",
+    pendingKw: pending?.pendingKw || (d._pendingKw as Keyword[]) || [],
+    lastRound: pending?.lastRound || (d._lastRound as string) || "",
   });
   return step;
 }

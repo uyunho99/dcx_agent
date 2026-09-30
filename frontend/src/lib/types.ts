@@ -13,12 +13,19 @@ export interface SuggestedWord {
 }
 
 export interface SessionInfo {
+  schemaVersion?: number;
+  legacy?: boolean;
+  updatedAt?: string;
+  activity?: { kind: string; status: string; progress?: number; updatedAt?: string } | null;
   sid: string;
   bk: string;
   step: string;
 }
 
 export interface SessionData {
+  schemaVersion?: number;
+  projectContext?: ProjectContext;
+  drafts?: Record<string, unknown>;
   bk: string;
   problemDef: string;
   ages: string[];
@@ -100,4 +107,21 @@ export interface JobStatus {
   phase?: string;
   error?: string;
   [key: string]: unknown;
+}
+
+export interface ProjectContext {
+  schemaVersion: 1;
+  bk: string;
+  oneLiner: string;
+  researchQuestion: { text: string; template?: string | null };
+  projectType: { choice: string; note: string };
+  analysisGoal: { choice: string; note: string };
+  keyMetrics: string[];
+  constraints: string[];
+  positioning: { price: string; market: string };
+  channels: string[];
+  knownInsights: string[];
+  productCategory: { l1: string; l2?: string | null; l3?: string | null; source: "shopping" | "llm_estimate" | "user" };
+  targetScope?: { ageRanges: string[]; genders: string[]; households: string[]; lifeStages: string[]; note: string } | null;
+  futureCustomer?: { choices: string[]; note: string } | null;
 }

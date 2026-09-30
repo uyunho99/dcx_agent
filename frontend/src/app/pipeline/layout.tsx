@@ -1,6 +1,17 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import TopBar from "@/components/TopBar";
+import Image from "next/image";
+import { MessageCircle, Plug, X } from "lucide-react";
+import { Badge, Button, Icon } from "@/components/ds";
+import { INTERNAL_TOOLS } from "@/lib/internalTools";
+import { InternalToolsProvider } from "@/lib/internalToolsContext";
+import { IntegrationsDrawer } from "@/components/internal/IntegrationsDrawer";
+import { useIntegrations } from "@/lib/api/integrations";
+import { VersionProvider, VersionContent } from "@/components/versions/VersionProvider";
+import { VersionRouteBoundary } from "@/components/versions/StageVersion";
+import { VersionPicker } from "@/components/versions/VersionPicker";
+import { DirtyProvider } from "@/components/DirtyProvider";
+import { SidebarActivity } from "@/components/SessionList";
 import StepBar from "@/components/StepBar";
 import ChatPanel from "@/components/ChatPanel";
 import { useSessionStore } from "@/stores/useSessionStore";
@@ -9,18 +20,18 @@ import { getPersistedSid, clearPersistedSid, restoreSessionToStore } from "@/lib
 
 export default function PipelineLayout({ children }: { children: React.ReactNode }) {
   const [chatOpen, setChatOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const integrations = useIntegrations();
+  const connectedCount = integrations.entries?.filter(entry => entry.connected).length;
   const store = useSessionStore();
   const { sid, bk, kw, step } = store;
 
-  const [restoring, setRestoring] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return !store.sid && !!getPersistedSid();
-  });
+  const [restoring, setRestoring] = useState(true);
 
   useEffect(() => {
-    if (sid) return;
+    if (sid) { setRestoring(false); return; }
     const persisted = getPersistedSid();
-    if (!persisted) return;
+    if (!persisted) { setRestoring(false); return; }
 
     setRestoring(true);
     restoreSessionToStore(persisted.sid, store)
@@ -43,49 +54,33 @@ export default function PipelineLayout({ children }: { children: React.ReactNode
   );
 
   return (
-    <div className="flex flex-col h-screen">
-      <TopBar />
-      <div className="flex flex-1 min-h-0">
-        {/* Step sidebar */}
-        <StepBar currentStep={step} />
-        {/* Main content */}
-        <div className="flex-1 flex flex-col min-w-0 relative">
-          <div className="flex-1 overflow-y-auto p-6">
-            {restoring ? (
-              <div className="flex items-center justify-center h-full gap-3 text-stone-500">
-                <div className="w-5 h-5 border-2 border-stone-300 border-t-indigo-500 rounded-full animate-spin" />
-                <span className="text-sm">세션 복원 중...</span>
-              </div>
-            ) : (
-              children
-            )}
+    <DirtyProvider><VersionProvider><InternalToolsProvider value={{ drawerOpen, setDrawerOpen }}>
+      <div className="pipeline-shell">
+        <aside className="pipeline-side" aria-label="파이프라인">
+          <Image className="pipeline-logo" src="/person-a-logo.png" alt="Person A" width={104} height={32} priority />
+          <StepBar currentStep={step} />
+          <div className="pipeline-foot">
+            <div className="ds-t-label text-ink-strong">{bk || "세션 없음"}</div>
+            <VersionPicker />
+            <div className="pipeline-activity" data-slot="activity-badge" aria-live="polite"><SidebarActivity /></div>
+            {INTERNAL_TOOLS && <div className="pipeline-tools"><Button id="integrations-trigger" aria-label={`외부 API · ${integrations.error ? "—" : connectedCount ?? "—"}/${integrations.entries?.length ?? "—"} 연결 열기`} title={`외부 API · ${integrations.error ? "—" : connectedCount ?? "—"}/${integrations.entries?.length ?? "—"} 연결 열기`} style={{ whiteSpace: "normal", height: "auto", minHeight: 28, textAlign: "left" }} variant="quiet" size="sm" aria-haspopup="dialog" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(open => !open)}><Icon icon={Plug} /><span className="pipeline-foot-label">외부 API · {integrations.error ? "—" : connectedCount ?? "—"}/{integrations.entries?.length ?? "—"} 연결 열기</span></Button><Badge>내부용</Badge></div>}
           </div>
-          {!chatOpen && (
-            <button
-              onClick={() => setChatOpen(true)}
-              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-indigo-500 text-white shadow-lg hover:bg-indigo-600 active:scale-95 transition-all flex items-center justify-center text-lg"
-              title="챗봇 열기"
-            >
-              💬
-            </button>
-          )}
+        </aside>
+        <div className="pipeline-content">
+          <main className="pipeline-main">
+            {restoring ? <div className="pipeline-loading" role="status">처리 중…</div> : <div className="pipeline-wrap"><VersionContent><VersionRouteBoundary>{children}</VersionRouteBoundary></VersionContent></div>}
+          </main>
+          {!chatOpen && <Button variant="quiet" className="pipeline-chat-open ds-btn-icon" onClick={() => setChatOpen(true)} aria-label="챗봇 열기" title="챗봇 열기"><Icon icon={MessageCircle} /></Button>}
         </div>
-        {/* Right panel - chatbot */}
-        {chatOpen && (
-          <div className="w-[400px] shrink-0 bg-white/60 backdrop-blur-xl flex flex-col shadow-[-4px_0_20px_rgba(0,0,0,0.06)] border-l border-white/30">
-            <div className="px-5 py-3.5 border-b border-white/30 bg-white/40 backdrop-blur-sm font-semibold text-sm text-stone-700 flex items-center justify-between">
-              <span>💬 파이프라인 챗봇</span>
-              <button onClick={() => setChatOpen(false)} className="text-stone-400 hover:text-stone-600 transition-colors text-lg leading-none">✕</button>
-            </div>
-            <div className="flex-1 min-h-0">
-              <ChatPanel
-                initialMessage="안녕하세요! 파이프라인 진행이나 결과에 대해 물어보세요."
-                onSend={handleChat}
-              />
-            </div>
+        {chatOpen && <aside className="pipeline-chat" aria-label="파이프라인 챗봇">
+          <div className="pipeline-chat-header ds-t-label">
+            <span>파이프라인 챗봇</span>
+            <Button variant="quiet" size="sm" className="ds-btn-icon" onClick={() => setChatOpen(false)} aria-label="챗봇 닫기"><Icon icon={X} /></Button>
           </div>
-        )}
+          <div className="flex-1 min-h-0"><ChatPanel initialMessage="파이프라인 진행이나 결과에 대해 물어보세요." onSend={handleChat} /></div>
+        </aside>}
       </div>
-    </div>
+      {INTERNAL_TOOLS && drawerOpen && <IntegrationsDrawer {...integrations} returnFocusId="integrations-trigger" />}
+    </InternalToolsProvider></VersionProvider></DirtyProvider>
   );
 }

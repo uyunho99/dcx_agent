@@ -10,7 +10,9 @@ import Spinner from "@/components/Spinner";
 export default function TrainingPage() {
   const router = useRouter();
   const store = useSessionStore();
-  const { sid, bk, pd, sd } = store;
+  const { sid, sd, projectContext } = store;
+  const bk = sd?.schemaVersion === 2 ? projectContext?.bk ?? "" : store.bk;
+  const pd = sd?.schemaVersion === 2 ? projectContext?.researchQuestion.text ?? "" : store.pd;
 
   const [started, setStarted] = useState(sd?.step === "train-check");
 

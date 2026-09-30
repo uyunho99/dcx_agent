@@ -1,6 +1,7 @@
 import json
 import threading
 from fastapi import APIRouter
+from app.context.compat import fill_bk_problem
 
 from app.services.personas import run_persona
 from app.services.s3 import load_data, list_objects, load_json
@@ -15,6 +16,7 @@ router = APIRouter()
 def start_persona(req: PersonaRequest):
     sid = req.sid
     config = req.model_dump()
+    fill_bk_problem(config, sid)
     job_manager.set("persona", sid, {"status": "running", "progress": 0})
     threading.Thread(target=lambda: run_persona(config), daemon=True).start()
     return {"sid": sid, "status": "started"}
