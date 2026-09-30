@@ -1,14 +1,14 @@
 {
   "verdict": "PASS",
-  "head": "85259d9c7de34712d93b078e71b19d7ab43ba697",
-  "fingerprint": "e1411cc4518168a52d66c3887a4c75f6f7f60f82b594515faf075cb9c16f8f39",
+  "head": "49fc6f8a58c1e55eb5706ed10cc5900ae4701f9f",
+  "fingerprint": "5bf0ce7c3de8f72124b4601578ab8e8b9a95109e5ea5fd011a705afbc3ef10bc",
   "commands": [
     {
-      "command": "backend/.venv/bin/python -m pytest backend/tests -q  (1255 passed)",
+      "command": "backend/.venv/bin/python -m pytest backend/tests -q  (1279 passed)",
       "exitCode": 0
     },
     {
-      "command": "npm --prefix frontend test -- --run  (222 passed)",
+      "command": "npm --prefix frontend test -- --run  (230 passed)",
       "exitCode": 0
     },
     {
@@ -46,6 +46,11 @@
       "scope": "earlier whole-branch final review (opus) + fix",
       "result": "5 Important fixed, re-review Approved",
       "evidence": "docs/development/dcx2-stage3-5/reports/final-review1.md; docs/development/dcx2-stage3-5/reports/final-rereview1.md"
+    },
+    {
+      "scope": "browser-QA fix dispatch 83c5701..adbef78 (Q1-Q12)",
+      "result": "re-review Approved; Q8 backend unreproduced + regression tests, Q12 partial → recheck in QA round 2",
+      "evidence": "docs/development/dcx2-stage3-5/reports/qa-fix1-report.md; docs/development/dcx2-stage3-5/reports/qa-fix1-fe-report.md; docs/development/dcx2-stage3-5/reports/qa-fix1-rereview.md"
     }
   ],
   "resolvedFindings": [
@@ -103,6 +108,54 @@
     },
     {
       "id": "RR1",
+      "status": "fixed"
+    },
+    {
+      "id": "Q1",
+      "status": "fixed"
+    },
+    {
+      "id": "Q2",
+      "status": "fixed"
+    },
+    {
+      "id": "Q3",
+      "status": "fixed"
+    },
+    {
+      "id": "Q4",
+      "status": "fixed"
+    },
+    {
+      "id": "Q5",
+      "status": "fixed"
+    },
+    {
+      "id": "Q6",
+      "status": "fixed"
+    },
+    {
+      "id": "Q7",
+      "status": "fixed"
+    },
+    {
+      "id": "Q8",
+      "status": "fixed"
+    },
+    {
+      "id": "Q9",
+      "status": "fixed"
+    },
+    {
+      "id": "Q10",
+      "status": "fixed"
+    },
+    {
+      "id": "Q11",
+      "status": "fixed"
+    },
+    {
+      "id": "Q12",
       "status": "fixed"
     }
   ],
