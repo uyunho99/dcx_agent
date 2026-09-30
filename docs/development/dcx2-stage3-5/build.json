@@ -1,14 +1,14 @@
 {
   "verdict": "PASS",
-  "head": "d0d590658c72924ba039665900f6567233b3ccae",
-  "fingerprint": "e1411cc4518168a52d66c3887a4c75f6f7f60f82b594515faf075cb9c16f8f39",
+  "head": "9334c3445634b4949cac7c588e94bf47ea572ad9",
+  "fingerprint": "5bf0ce7c3de8f72124b4601578ab8e8b9a95109e5ea5fd011a705afbc3ef10bc",
   "commands": [
     {
-      "command": "backend/.venv/bin/python -m pytest backend/tests -q  (1255 passed)",
+      "command": "backend/.venv/bin/python -m pytest backend/tests -q  (1279 passed)",
       "exitCode": 0
     },
     {
-      "command": "npm --prefix frontend test -- --run  (222 passed)",
+      "command": "npm --prefix frontend test -- --run  (230 passed)",
       "exitCode": 0
     },
     {

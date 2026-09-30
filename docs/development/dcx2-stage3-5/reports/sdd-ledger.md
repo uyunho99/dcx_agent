@@ -124,3 +124,6 @@ Review phase: gstack 6 + Codex 7 findings → harness retry (phase build). Rulin
 Review-phase fix committed d094401,eaf81a6 (backend 1244, vitest 221, lint, build ok). Scoped re-review dispatched.
 Review-phase fix 1 re-review Approved; 1 Important (trainable count full scan per poll) → fix 2 dispatched with 2 minors. Parked: prep folder wipe for pre-fix manifests (dev data only); stage5 report read order; /preprocess error envelope change.
 Review fix 2 re-review Approved. Review phase clean.
+Browser QA 1: 4 Medium + 8 Low → harness retry. R-112. Fix dispatch qa-fix1.md / qa-fix1-fe.md.
+QA fix 1 committed (backend 1279, vitest 230, lint, build ok). Re-review dispatched.
+QA fix 1 re-review Approved (Q8 backend unreproduced, Q12 partial → verify in QA round 2).
