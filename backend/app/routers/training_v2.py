@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict
 
 from app.config import settings
 from app.context import store
-from app.label.overview import session, labels_for, caches_for
+from app.label.overview import session, labels_for
 from app.model import registry, infer, export
 from app.model.train import Targets, build_targets, train_ensemble
 from app.routers.labeling_v2 import LabelRoute
@@ -56,9 +56,18 @@ def status(sid: str, version: str | None = None):
     if store.is_legacy(data):
         return dict(readonly=True, training=data.get('training', {}))
     training = data.get('training', {})
-    run_ids = {training.get(key) for key in ('runId', 'inferRunId', 'monitorRunId')}
-    return dict(training=training, workers=[r for r in runner.status(sid)
-        if r['runId'] in run_ids and r['kind'] in ('train', 'infer', 'monitor')],
+    run_ids = {training.get(key) for key in ('runId', 'inferRunId')}
+    works = runner.status(sid)
+    monitor_run = next((r for r in works if r['runId'] == training.get('monitorRunId')
+                        and r['kind'] == 'monitor'), None)
+    monitor = training.get('monitor')
+    if monitor_run:
+        reason = monitor_run.get('detail', {}).get('reason') or monitor_run.get('error')
+        if not reason and monitor_run['state'] in ('failed', 'interrupted'):
+            reason = '감시를 완료하지 못했습니다.'
+        monitor = {**(monitor or {}), **monitor_run, 'reason': reason}
+    return dict(training=training, workers=[r for r in works
+        if r['runId'] in run_ids and r['kind'] in ('train', 'infer')], monitor=monitor,
         stage5=store.read_json(store.root_dir(sid) / 'versions' / data['version'] / 'stage_5.json'))
 
 
@@ -87,7 +96,7 @@ def training_data(sid, data, parent=None):
         if row['doc_id'] not in docs:
             raise store.StoreError('학습 문서를 찾을 수 없습니다.')
         row['channel'] = docs[row['doc_id']].get('channel', docs[row['doc_id']].get('source'))
-    targets = build_targets(rows, caches_for(sid, data)['jev'])
+    targets = build_targets(rows)
     X = infer.feature_rows(sid, data, [docs[i] for i in targets.doc_ids])
     if parent:
         registry.require_compatible(parent, infer.embedder_for(sid, data))

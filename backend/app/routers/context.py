@@ -3,10 +3,10 @@ from fastapi import APIRouter, Request
 from fastapi.routing import APIRoute
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from app.context.models import ProjectContext
 from app.context.store import (StoreError, locked, assert_writable, load_session,
-                               update_session, _update_locked)
+                               update_session, _update_locked, assert_labeling_not_started)
 from app.context.category import suggest_category
 from app.context import versions
 
@@ -44,11 +44,18 @@ class ActiveRequest(BaseModel):
     version: str
 
 
-def context_patch(ctx):
+def context_patch(ctx, sid=None, old=None):
     if not all(value.strip() for value in (ctx.bk, ctx.oneLiner, ctx.researchQuestion.text)):
         raise StoreError('필수값을 입력하세요', 422, 'validation')
-    return {'projectContext': ctx.model_dump(mode='json'),
-            'knownInsights': [{'id': f'ki_{i:02d}', 'type': 'statement', 'text': text, 'from': 'stage0'} for i, text in enumerate(ctx.knownInsights, 1)]}
+    if old is not None:
+        if old.get('projectContext', {}).get('oneLiner') != ctx.oneLiner:
+            assert_labeling_not_started(old)
+        from app.known.store import replace_stage0
+        items = replace_stage0(sid, old, ctx.knownInsights)
+    else:
+        items = [{'id': f'ki_{i:02d}', 'type': 'statement', 'text': text, 'from': 'stage0'}
+                 for i, text in enumerate(ctx.knownInsights, 1)]
+    return {'projectContext': ctx.model_dump(mode='json'), 'knownInsights': items}
 
 
 @router.post('/context', status_code=201)
@@ -76,16 +83,31 @@ def get_context(sid: str, version: str | None = None):
 
 @router.put('/context/{sid}')
 def put_context(sid: str, ctx: ProjectContext, version: str | None = None):
-    patch = context_patch(ctx)
     with locked(sid):
         old = assert_writable(sid, version)
-        warnings = []
-        if old.get('keywordRounds', {}).get('1'):
-            for field in ('oneLiner', 'researchQuestion'):
-                if old.get('projectContext', {}).get(field) != patch['projectContext'][field]:
-                    warnings.append(field + '_changed_after_r1')
-        data = _update_locked(sid, patch, confirm_stage='stage0')
-        return {'projectContext': data['projectContext'], 'warnings': warnings}
+        return _save_context(sid, ctx, old)
+
+
+def _save_context(sid, ctx, old):
+    patch = context_patch(ctx, sid, old)
+    warnings = []
+    if old.get('keywordRounds', {}).get('1'):
+        for field in ('oneLiner', 'researchQuestion'):
+            if old.get('projectContext', {}).get(field) != patch['projectContext'][field]:
+                warnings.append(field + '_changed_after_r1')
+    data = _update_locked(sid, patch, confirm_stage='stage0')
+    return {'projectContext': data['projectContext'], 'warnings': warnings}
+
+
+@router.patch('/context/{sid}')
+def patch_context(sid: str, patch: dict, version: str | None = None):
+    with locked(sid):
+        old = assert_writable(sid, version)
+        try:
+            ctx = ProjectContext.model_validate({**old.get('projectContext', {}), **patch})
+        except ValidationError:
+            raise StoreError('입력값을 확인하세요', 422, 'validation')
+        return _save_context(sid, ctx, old)
 
 
 @router.patch('/session/{sid}')

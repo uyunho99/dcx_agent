@@ -60,7 +60,7 @@ def _view(sid, data):
     work = next((row for row in runner.status(sid)
                  if row['kind'] == 'prep' and row['runId'] == prep.get('runId')), None)
     error = None
-    if work:
+    if work and state != 'stale':
         state = work['state']
         if state == 'failed':
             error = dict(kind='embedder_unconnected', message=UNCONNECTED) if work['error'] == 'EmbedderUnconnected' else dict(
@@ -78,6 +78,7 @@ def _view(sid, data):
 def config(sid: str, body: Config, version: str | None = None):
     with store.locked(sid):
         data = _session(sid, version, writable=True)
+        store.assert_labeling_not_started(data)
         if _view(sid, data)['status'] in ('running', 'paused'):
             raise store.StoreError('전처리 작업이 끝난 뒤 설정을 바꾸세요.')
         if (body.embedModel, body.embedDim) != (settings.embed_model, settings.embed_dim):

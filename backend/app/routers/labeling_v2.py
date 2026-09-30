@@ -106,18 +106,24 @@ def start(sid: str, version: str | None = None):
 
 
 @router.post('/{sid}/judge/{labeler}/{action}')
-def control(sid: str, labeler: Literal['jev', 'gpt'], action: Literal['pause', 'resume'], version: str | None = None):
+def control(sid: str, labeler: Literal['jev', 'gpt', 'infer'], action: Literal['pause', 'resume', 'stop'], version: str | None = None):
     with store.locked(sid):
         data = session(sid, version, writable=True)
-        if data.get('labeling', {}).get('mode') == 'model':
-            raise store.StoreError('분류 모델 구간에서는 추론 워커를 제어하세요.')
-        run_id = data.get('labeling', {}).get('judgeRuns', {}).get(labeler)
+        model_mode = data.get('labeling', {}).get('mode') == 'model'
+        if model_mode != (labeler == 'infer'):
+            raise store.StoreError('현재 라벨링 방식의 워커를 선택하세요.')
+        run_id = (data.get('labeling', {}).get('inferRunId') or data.get('training', {}).get('inferRunId')) if model_mode else data.get('labeling', {}).get('judgeRuns', {}).get(labeler)
         work = next((r for r in runner.status(sid) if r['runId'] == run_id), None)
         if work is None:
             raise store.StoreError('판정을 먼저 시작하세요.')
         if action == 'resume' and work['state'] in ('failed', 'interrupted'):
-            result = runner.start(sid, data['version'], 'judge', {'labeler': labeler})
-            store._update_locked(sid, {'labeling': {'judgeRuns': {labeler: result['runId']}}})
+            if model_mode:
+                result = runner.start(sid, data['version'], 'infer', {'modelId': data['labeling']['modelId']})
+                store._update_locked(sid, {'labeling': {'inferRunId': result['runId']},
+                    'training': {'inferRunId': result['runId'], 'inferStatus': result['state']}})
+            else:
+                result = runner.start(sid, data['version'], 'judge', {'labeler': labeler})
+                store._update_locked(sid, {'labeling': {'judgeRuns': {labeler: result['runId']}}})
             return result
         return runner.request(sid, run_id, action)
 

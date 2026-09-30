@@ -100,9 +100,11 @@ def execute(context: Context):
             KINDS[context.kind](context)
         if context.should_stop():
             state = 'interrupted'
-    except Exception as exc:
+    except BaseException as exc:
         # Exception messages may contain provider credentials or document text.
-        state, error = 'failed', type(exc).__name__
+        state, error = 'failed' if isinstance(exc, Exception) else 'interrupted', type(exc).__name__
+        if not isinstance(exc, Exception):
+            raise
     finally:
         finished.set()
         thread.join()

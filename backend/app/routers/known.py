@@ -28,8 +28,8 @@ def view(item):
 
 
 @router.get('/{sid}')
-def list_known(sid: str):
-    return {'items': [view(item) for item in store.list_known(sid)]}
+def list_known(sid: str, version: str | None = None):
+    return {'items': [view(item) for item in store.list_known(sid, version)]}
 
 
 @router.post('/{sid}', status_code=201)

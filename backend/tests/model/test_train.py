@@ -14,7 +14,7 @@ def row(i=0, source='human', anchor=True):
     tags = dict(anchor=anchor, sem={s: int(s == 'sense') for s in rule.SEM},
                 situation=False, signal='pain', reason_code='other')
     return dict(doc_id=str(i), source=source, route='accepted', tags_json=json.dumps(tags),
-                votes_json=json.dumps({'gpt': tags}), signal='pain', reason_code='other',
+                votes_json=json.dumps({'gpt': tags, 'jev': {'probs': dict.fromkeys(rule.GRADE_FIELDS, .8), 'reason_probs': {'other': 1}}}), signal='pain', reason_code='other',
                 channel='naver_cafe')
 
 

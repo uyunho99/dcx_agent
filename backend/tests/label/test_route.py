@@ -83,7 +83,7 @@ def test_incremental_pairs_restart_rule_change_and_human(tmp_path, monkeypatch):
 
 def test_initial_incremental_sync_invalidates_old_rule(tmp_path, monkeypatch):
     from tests.label.test_merge import votes, put
-    from app.label.merge import rebuild_final
+    from app.label.route import rebuild_final
     api = importlib.import_module('app.label.route')
     labels = LabelStore(tmp_path / 'v1')
     jc, gc = [VoteCache(tmp_path / name) for name in ('jev', 'gpt')]

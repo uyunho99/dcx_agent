@@ -233,6 +233,7 @@ def submit_item(store, doc_id, labeler, mode, tags, round=None, elapsed=None, ca
             db.execute('''INSERT INTO final VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(doc_id) DO UPDATE SET level=excluded.level,
                 source='human', route=excluded.route, tags_json=excluded.tags_json,
+                confidence=excluded.confidence, grade_mismatch=0,
                 reason_code=excluded.reason_code, signal=excluded.signal,
                 rule_version=excluded.rule_version''',
                 (doc_id, level, 1, 'human', 'escalated:human', tags.model_dump_json(),

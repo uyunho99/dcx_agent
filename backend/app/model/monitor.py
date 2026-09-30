@@ -6,14 +6,15 @@ import os
 import random
 import time
 
+import httpx
+
 from app.config import settings
 from app.context import store
 from app.label import gpt, judge, rule
-from app.label.jev import JevClient, JevVote
+from app.label.jev import JevClient, JevVote, JevError
 from app.label.questions import QVER
 from app.label.overview import caches_for, labels_for, session
 from app.model import infer
-from app.work.proc import pid_alive
 
 WARNING = '이 도메인에서는 LLM 라벨 구간으로 다시 하거나 추가 학습하세요'
 
@@ -31,10 +32,7 @@ def _claim(cache, doc_id, run_id):
     """Claim only the sampled row; never drain unrelated pending judge work."""
     cache.run_id = run_id
     with cache._db() as db:
-        for owner in db.execute('SELECT * FROM owners').fetchall():
-            if not pid_alive(owner['pid']):
-                db.execute("UPDATE votes SET run_id=NULL WHERE run_id=? AND status='pending'", (owner['run_id'],))
-                db.execute('DELETE FROM owners WHERE run_id=?', (owner['run_id'],))
+        cache.reclaim(db)
         db.execute('INSERT OR IGNORE INTO owners VALUES (?,?)', (run_id, os.getpid()))
         row = db.execute('SELECT * FROM votes WHERE doc_id=?', (doc_id,)).fetchone()
         if row['status'] == 'done':
@@ -67,6 +65,7 @@ def run_worker(ctx):
             'SELECT doc_id,payload FROM model_predictions WHERE model_id=?', (model_id,))}
     one_liner = data.get('projectContext', {}).get('oneLiner', '')
     predicted, judged = [], []
+    errors = []
     per_labeler = {'jev': [], 'gpt': []}
     client = None
     try:
@@ -75,29 +74,35 @@ def run_worker(ctx):
             if ctx.should_stop():
                 return
             votes = {}
-            for name, cache in caches.items():
-                for _ in range(3):
-                    payload = _claim(cache, doc_id, ctx.run_id)
-                    if payload is not None:
-                        if payload is not False:
+            try:
+                for name, cache in caches.items():
+                    for _ in range(3):
+                        payload = _claim(cache, doc_id, ctx.run_id)
+                        if payload is not None:
+                            if payload is not False:
+                                votes[name] = payload
+                            break
+                        if name == 'jev':
+                            if client is None:
+                                client = JevClient(settings.jev_api_keys, settings.jev_model)
+                            vote = client.judge(docs[doc_id], one_liner,
+                                idempotency_key=f'{doc_id}:{QVER}-{judge.context_key(one_liner, name)}')
+                        else:
+                            answers, missing = gpt.judge_batch([docs[doc_id]], one_liner, sid=ctx.sid,
+                                ctx_key=judge.context_key(one_liner, name), qver=QVER)
+                            vote = answers.get(doc_id)
+                        if vote is None:
+                            cache.fail(doc_id, 'invalid_or_missing_vote')
+                        else:
+                            payload = vote.model_dump()
+                            cache.put(doc_id, payload)
                             votes[name] = payload
-                        break
-                    if name == 'jev':
-                        if client is None:
-                            client = JevClient(settings.jev_api_keys, settings.jev_model)
-                        vote = client.judge(docs[doc_id], one_liner,
-                            idempotency_key=f'{doc_id}:{QVER}-{judge.context_key(one_liner, name)}')
-                    else:
-                        answers, missing = gpt.judge_batch([docs[doc_id]], one_liner, sid=ctx.sid,
-                            ctx_key=judge.context_key(one_liner, name), qver=QVER)
-                        vote = answers.get(doc_id)
-                    if vote is None:
-                        cache.fail(doc_id, 'invalid_or_missing_vote')
-                    else:
-                        payload = vote.model_dump()
-                        cache.put(doc_id, payload)
-                        votes[name] = payload
-                        break
+                            break
+            except (JevError, gpt.LabelerPaused, store.StoreError, httpx.HTTPError, OSError) as exc:
+                errors.append(dict(doc_id=doc_id, reason=type(exc).__name__))
+                for cache in caches.values():
+                    cache.release()
+                continue
             if doc_id in predictions and set(votes) == {'jev', 'gpt'}:
                 jev = JevVote.model_validate(votes['jev'])
                 gpt_vote = gpt.GptVote.model_validate(votes['gpt'])
@@ -108,8 +113,11 @@ def run_worker(ctx):
                 judged.append(predictions[doc_id] if all(v == predictions[doc_id] for v in levels.values()) else 'diverged')
                 for name in per_labeler:
                     per_labeler[name].append(levels[name])
+            else:
+                errors.append(dict(doc_id=doc_id, reason='missing_prediction_or_vote'))
         result = divergence(predicted, judged)
-        result.update(sampled=len(sampled), incomplete=len(sampled)-len(predicted),
+        result.update(sampled=len(sampled), incomplete=len(sampled)-len(predicted), errors=errors,
+            state='done', reason=f'감시 표본 {len(errors)}건을 완료하지 못했습니다.' if errors else None,
             perLabeler={name: divergence(predicted, levels)['monitorDivergence'] for name, levels in per_labeler.items()})
         with store.locked(ctx.sid):
             session(ctx.sid, ctx.version, writable=True)

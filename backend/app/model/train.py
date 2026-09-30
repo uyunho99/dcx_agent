@@ -1,11 +1,11 @@
 """Deterministic CPU ensemble training; no label, vector, or network writes."""
 from dataclasses import dataclass
 import json
-import sqlite3
 
 import numpy as np
 import torch
 
+from app.config import settings
 from app.label import rule
 from app.model.calibrate import ece, fit_temperature
 from app.model.features import CHANNELS
@@ -31,22 +31,16 @@ class Targets:
                        self.doc_ids[indices], self.grades[indices], self.channels[indices])
 
 
-def build_targets(final_rows, jev_cache) -> Targets:
+def build_targets(final_rows, jev_cache=None) -> Targets:
     """Use accepted automatic rows or human rows, retaining IDs for alignment.
 
-    jev_cache may be a VoteCache or an ID-to-JevVote/payload mapping. GPT votes
-    must come from votes_json, never from the merged tags. Missing categorical
-    labels are masked instead of silently inventing a class.
+    Both votes come from the final row's durable snapshot, independent of the
+    current cache identity. The optional cache argument is ignored for callers
+    using the previous API. Missing categorical labels are masked.
     """
     rows = [dict(r) for r in final_rows]
     rows = [r for r in rows if r['source'] == 'human' or
             (r['source'] == 'agreed' and r.get('route') == 'accepted')]
-    cache = jev_cache
-    if hasattr(cache, 'path'):
-        with sqlite3.connect(cache.path.resolve().as_uri() + '?mode=ro', uri=True) as db:
-            cache = {r['doc_id']: json.loads(found[0]) for r in rows if r['source'] == 'agreed'
-                     if (found := db.execute("SELECT payload_json FROM votes WHERE doc_id=? AND status='done'",
-                                             (r['doc_id'],)).fetchone())}
     values = {k: torch.zeros(len(rows), n) for k, n in HEADS.items()}
     hard = {k: v.clone() for k, v in values.items()}
     masks = {k: torch.zeros(len(rows), dtype=torch.bool) for k in HEADS}
@@ -58,7 +52,7 @@ def build_targets(final_rows, jev_cache) -> Targets:
         grades.append(level)
         human = row['source'] == 'human'
         weights.append(3. if human else 1.)
-        vote = {} if human else cache.get(row['doc_id'], {})
+        vote = {} if human else json.loads(row['votes_json'])['jev']
         if hasattr(vote, 'model_dump'):
             vote = vote.model_dump()
         gpt = tags if human else json.loads(row['votes_json'])['gpt']
@@ -130,7 +124,7 @@ def train_member(X, T, seed=42, bootstrap=False, linear=False, *,
     if not len(base) or not len(validation):
         raise ValueError('Training and validation splits must be nonempty')
     train_t = T.take(base)
-    enabled = {k: int(train_t.masks[k].sum()) >= 30 for k in HEADS} if enabled is None else enabled
+    enabled = {k: int(train_t.masks[k].sum()) >= settings.head_min_samples for k in HEADS} if enabled is None else enabled
     model = MultiHeadMLP(linear=linear)
     for k, active in enabled.items():
         if not active:
@@ -256,7 +250,7 @@ def train_ensemble(X, T, *, seed=42, max_epochs=30) -> EnsembleResult:
     t.channels = channels
     splits = stratified_split(t, seed)
     counts = {k: int(t.masks[k][splits['train']].sum()) for k in HEADS}
-    enabled = {k: n >= 30 for k, n in counts.items()}
+    enabled = {k: n >= settings.head_min_samples for k, n in counts.items()}
     members = [train_member(x, t, seed + i, i < 3, i == 3, max_epochs=max_epochs,
                             splits=splits, enabled=enabled) for i in range(4)]
     result = EnsembleResult(members, {}, {}, dict.fromkeys(HEADS, 1.), splits, t.doc_ids)

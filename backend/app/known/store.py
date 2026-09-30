@@ -41,8 +41,32 @@ def _data(sid):
     return data
 
 
-def list_known(sid):
-    return read_known(_data(sid))
+def list_known(sid, version=None):
+    from app.context import versions
+    return read_known(versions._data(sid, version) if version else _data(sid))
+
+
+def replace_stage0(sid, data, texts):
+    """Preserve non-stage0 records and reuse unchanged statement vectors.
+
+    Caller holds the session lock. Match by text so reordering or deletion does
+    not cause unnecessary provider calls or change surviving item identities.
+    """
+    previous = [i for i in read_known(data) if i.origin == 'stage0']
+    replacements, changed = [], []
+    for text in texts:
+        item = next((i for i in previous if i.type == 'statement' and i.text == text), None)
+        if item is not None:
+            previous.remove(item)
+        else:
+            item = KnownInsight(type='statement', text=text, origin='stage0')
+            changed.append(item)
+        replacements.append(item)
+    _embed_many(sid, changed)
+    # Keep other sources byte-for-byte at the JSON record level.
+    preserved = [i for i in data.get('knownInsights', [])
+                 if isinstance(i, dict) and i.get('from', 'drawer') != 'stage0']
+    return [i.model_dump(by_alias=True) for i in replacements] + preserved
 
 
 def _save(sid, items):

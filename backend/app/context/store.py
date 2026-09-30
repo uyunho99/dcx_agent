@@ -18,6 +18,14 @@ class StoreError(Exception):
         self.status, self.kind = status, kind
 
 
+LABELING_LOCK_MESSAGE = '라벨링을 시작한 뒤에는 이 버전에서 바꿀 수 없습니다. 새 버전에서 다시 하세요.'
+
+
+def assert_labeling_not_started(data):
+    if data.get('labeling', {}).get('started'):
+        raise StoreError(LABELING_LOCK_MESSAGE)
+
+
 def now():
     return datetime.now(timezone.utc).isoformat()
 

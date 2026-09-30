@@ -7,6 +7,10 @@ import sqlite3
 import time
 
 from app.work.proc import pid_alive
+from app.config import settings
+from app.work.status import ACTIVE, STALE_AFTER_S, database_path
+
+LEASE_MAX_AGE_S = 600
 
 
 class VoteCache:
@@ -14,6 +18,12 @@ class VoteCache:
         self.path = Path(root) / 'votes.sqlite'
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.run_id = None
+        try:
+            self.sid = self.path.resolve().relative_to(
+                (Path(settings.local_data_dir) / 'judge').resolve()).parts[0]
+        except ValueError:
+            # Standalone caches have no associated runs registry.
+            self.sid = None
         with self._db() as db:
             db.execute('''CREATE TABLE IF NOT EXISTS votes (
                 doc_id TEXT PRIMARY KEY, payload_json TEXT,
@@ -40,15 +50,34 @@ class VoteCache:
         with self._db() as db:
             db.executemany('INSERT OR IGNORE INTO votes(doc_id) VALUES (?)', ((i,) for i in doc_ids))
 
+    def reclaim(self, db):
+        """Fence dead, inactive, and expired owners inside the claim transaction."""
+        runs = None
+        if self.sid is not None:
+            runs = {}
+            path = database_path(self.sid)
+            if path.exists():
+                with sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True) as work:
+                    runs = {r[0]: r[1:] for r in work.execute(
+                        'SELECT run_id,pid,state,heartbeat_at FROM runs')}
+        now = time.time()
+        for owner in db.execute('SELECT * FROM owners').fetchall():
+            run = runs.get(owner['run_id']) if runs is not None else None
+            inactive = runs is not None and (not run or run[0] != owner['pid']
+                or run[1] not in ACTIVE or run[2] < now - STALE_AFTER_S)
+            if not pid_alive(owner['pid']) or inactive:
+                db.execute("UPDATE votes SET run_id=NULL WHERE run_id=? AND status='pending'", (owner['run_id'],))
+                db.execute('DELETE FROM owners WHERE run_id=?', (owner['run_id'],))
+        db.execute("""UPDATE votes SET run_id=NULL WHERE status='pending' AND run_id IS NOT NULL
+            AND (at IS NULL OR at < ? OR NOT EXISTS
+                 (SELECT 1 FROM owners WHERE owners.run_id=votes.run_id))""", (now - LEASE_MAX_AGE_S,))
+
     def lease(self, n, run_id):
         if n <= 0:
             raise ValueError('Lease size must be positive')
         self.run_id = run_id
         with self._db() as db:
-            for owner in db.execute('SELECT * FROM owners').fetchall():
-                if not pid_alive(owner['pid']):
-                    db.execute("UPDATE votes SET run_id=NULL WHERE run_id=? AND status='pending'", (owner['run_id'],))
-                    db.execute('DELETE FROM owners WHERE run_id=?', (owner['run_id'],))
+            self.reclaim(db)
             owner = db.execute('SELECT pid FROM owners WHERE run_id=?', (run_id,)).fetchone()
             if owner and owner['pid'] != os.getpid():
                 raise ValueError('Run already owned by another process')

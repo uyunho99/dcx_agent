@@ -152,7 +152,7 @@ def test_training_rows_alignment_and_truncation(data_dir):
     cache.put('d1', dict(probs=dict.fromkeys(rule.GRADE_FIELDS, .8), reason_probs={'other': 1.}, truncated=False))
     with labels._db() as db:
         tags = json.loads(db.execute("SELECT tags_json FROM final WHERE doc_id='d0'").fetchone()[0])
-        db.execute("UPDATE final SET source='agreed',route='accepted',votes_json=? WHERE doc_id='d0'", (json.dumps({'gpt': tags}),))
+        db.execute("UPDATE final SET source='agreed',route='accepted',votes_json=? WHERE doc_id='d0'", (json.dumps({'gpt': tags, 'jev': dict(probs=dict.fromkeys(rule.GRADE_FIELDS, .8), reason_probs={'other': 1.}, truncated=True)}),))
         db.execute("UPDATE final SET source='agreed',route='escalated:grade_mismatch' WHERE doc_id='d1'")
     X, targets = training_data(sid, data)
     assert targets.doc_ids.tolist() == ['d0', 'd2']

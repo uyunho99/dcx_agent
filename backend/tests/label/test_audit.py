@@ -243,7 +243,7 @@ def test_settings_control_schedule_and_sample(tmp_path, monkeypatch):
 def test_provider_payloads_from_vote_cache(tmp_path):
     from app.label.gpt import GptVote
     from app.label.jev import JevVote
-    from app.label.merge import rebuild_final
+    from app.label.route import rebuild_final
     from app.label.votes import VoteCache
 
     audit = api()

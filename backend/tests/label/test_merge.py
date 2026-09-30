@@ -4,7 +4,7 @@ import sqlite3
 
 import pytest
 
-from app.label import questions, rule
+from app.label import questions, rule, route
 from app.label.gpt import GptVote
 from app.label.jev import JevVote
 from app.label.schema import Label, Tags
@@ -14,6 +14,12 @@ from app.label.votes import VoteCache
 def api():
     return (importlib.import_module('app.label.merge'),
             importlib.import_module('app.label.store'))
+
+
+def rebuild_final(store, jc, gc):
+    count = route.rebuild_final(store, jc, gc)
+    route.rebuild_queue(store, jc, gc)
+    return count
 
 
 def votes():
@@ -95,10 +101,10 @@ def test_waits_until_both(tmp_path):
     jev, gpt = votes()
     put(jc, 'a', jev)
     put(gc, 'b', gpt)
-    assert merger.rebuild_final(store, jc, gc) == 0
+    assert rebuild_final(store, jc, gc) == 0
     assert rows(store, 'final') == []
     put(gc, 'a', gpt)
-    assert merger.rebuild_final(store, jc, gc) == 1
+    assert rebuild_final(store, jc, gc) == 1
     assert [row['doc_id'] for row in rows(store, 'final')] == ['a']
     label = store.get('a')
     assert isinstance(label, Label)
@@ -115,7 +121,7 @@ def test_rebuild_is_incremental_and_preserves_queue_status(tmp_path, monkeypatch
     gpt.anchor = False
     put(jc, 'a', jev)
     put(gc, 'a', gpt)
-    assert merger.rebuild_final(store, jc, gc) == 1
+    assert rebuild_final(store, jc, gc) == 1
     assert rows(store, 'final')[0]['route'] == 'escalated:grade_mismatch'
     assert rows(store, 'queue')[0]['reason'] == 'grade_mismatch'
     with sqlite3.connect(store.path) as db:
@@ -126,11 +132,11 @@ def test_rebuild_is_incremental_and_preserves_queue_status(tmp_path, monkeypatch
         calls.append(args)
         return original(*args)
     monkeypatch.setattr(merger, 'merge', counted)
-    assert merger.rebuild_final(storage.LabelStore(tmp_path / 'v1'), jc, gc) == 0
+    assert rebuild_final(storage.LabelStore(tmp_path / 'v1'), jc, gc) == 0
     assert calls == []
     put(jc, 'b', jev)
     put(gc, 'b', gpt)
-    assert merger.rebuild_final(store, jc, gc) == 1
+    assert rebuild_final(store, jc, gc) == 1
     assert len(calls) == 1
     assert rows(store, 'queue')[0]['status'] == 'done'
 
@@ -144,14 +150,14 @@ def test_version_change_recomputes_all(tmp_path, monkeypatch, version):
     for doc_id in ('a', 'b'):
         put(jc, doc_id, jev)
         put(gc, doc_id, gpt)
-    merger.rebuild_final(store, jc, gc)
+    rebuild_final(store, jc, gc)
     store.submit('a', 'person', 'audit', gpt)
     if version == 'rule':
         monkeypatch.setattr(rule, 'RULE_VERSION', 'r2')
         monkeypatch.setattr(rule, 'grade', lambda tags: 'supporting')
     else:
         monkeypatch.setattr(questions, 'QVER', 'q2')
-    assert merger.rebuild_final(store, jc, gc) == 2
+    assert rebuild_final(store, jc, gc) == 2
     for doc_id in ('a', 'b'):
         label = store.get(doc_id)
         assert label.rule_version == rule.RULE_VERSION
@@ -159,7 +165,7 @@ def test_version_change_recomputes_all(tmp_path, monkeypatch, version):
         if version == 'rule':
             assert label.evidence_level == 'supporting'
     assert len(rows(store, 'human')) == 1
-    assert merger.rebuild_final(store, jc, gc) == 0
+    assert rebuild_final(store, jc, gc) == 0
 
 
 def test_bad_vote_queues_without_final(tmp_path):
@@ -169,7 +175,7 @@ def test_bad_vote_queues_without_final(tmp_path):
     jc.seed(['a'])
     jc.mark_bad('a', 'invalid_or_missing_vote')
     put(gc, 'a', votes()[1])
-    assert merger.rebuild_final(store, jc, gc) == 0
+    assert rebuild_final(store, jc, gc) == 0
     assert rows(store, 'final') == []
     assert rows(store, 'queue')[0]['reason'] == 'labeler_failed'
     assert rows(store, 'queue')[0]['status'] == 'open'
@@ -202,17 +208,17 @@ def test_human_final_survives_rebuild_without_hiding_other_failures(tmp_path, mo
     for doc_id in ('human', 'auto'):
         put(jc, doc_id, votes()[0])
         put(gc, doc_id, votes()[1])
-    merger.rebuild_final(store, jc, gc)
+    rebuild_final(store, jc, gc)
     with sqlite3.connect(store.path) as db:
         db.execute("UPDATE final SET source='human', route='audited' WHERE doc_id='human'")
     human_before = store.get('human')
     jc.seed(['bad'])
     jc.mark_bad('bad', 'invalid_or_missing_vote')
     monkeypatch.setattr(rule, 'RULE_VERSION', 'r2')
-    assert merger.rebuild_final(store, jc, gc) == 1
+    assert rebuild_final(store, jc, gc) == 1
     assert store.get('human') == human_before
     assert [row['doc_id'] for row in rows(store, 'queue')] == ['bad']
-    assert merger.rebuild_final(store, jc, gc) == 0
+    assert rebuild_final(store, jc, gc) == 0
 
 
 def test_failed_recompute_rolls_back_and_never_writes_caches(tmp_path, monkeypatch):
@@ -222,7 +228,7 @@ def test_failed_recompute_rolls_back_and_never_writes_caches(tmp_path, monkeypat
     for doc_id in ('a', 'b'):
         put(jc, doc_id, votes()[0])
         put(gc, doc_id, votes()[1])
-    merger.rebuild_final(store, jc, gc)
+    rebuild_final(store, jc, gc)
     before = rows(store, 'final')
     cache_before = [cache.path.read_bytes() for cache in (jc, gc)]
     monkeypatch.setattr(questions, 'QVER', 'q2')
@@ -236,7 +242,7 @@ def test_failed_recompute_rolls_back_and_never_writes_caches(tmp_path, monkeypat
         return original(*args)
     monkeypatch.setattr(merger, 'merge', fail_second)
     with pytest.raises(RuntimeError, match='interrupted'):
-        merger.rebuild_final(store, jc, gc)
+        rebuild_final(store, jc, gc)
     assert rows(store, 'final') == before
     assert [cache.path.read_bytes() for cache in (jc, gc)] == cache_before
 
@@ -249,7 +255,7 @@ def test_same_grade_disagreement_is_accepted(tmp_path):
     jev.probs['think'] = .5
     put(jc, 'a', jev)
     put(gc, 'a', gpt)
-    merger.rebuild_final(store, jc, gc)
+    rebuild_final(store, jc, gc)
     assert store.get('a').route == 'accepted'
     assert rows(store, 'queue') == []
     row = rows(store, 'final')[0]

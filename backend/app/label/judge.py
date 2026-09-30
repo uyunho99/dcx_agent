@@ -17,6 +17,7 @@ from app.work.status import transaction
 
 JEV_TRANSIENT_LIMIT = 5
 JEV_BACKOFF_CAP_S = 30
+LEASE_WAIT_LIMIT = 6000  # At most ten minutes of 0.1-second lease polling.
 
 
 def context_key(one_liner, labeler):
@@ -110,6 +111,7 @@ def run_worker(ctx):
     total_estimate = estimate(list(docs.values()), one_liner, labeler)
     client = JevClient(settings.jev_api_keys, settings.jev_model) if labeler == 'jev' else None
     transient_failures = 0
+    lease_waits = 0
     try:
         while True:
             counts = cache.counts()
@@ -128,9 +130,19 @@ def run_worker(ctx):
             if not ids:
                 if counts['pending']:
                     # Another version may own live leases in this shared cache.
+                    lease_waits += 1
+                    if lease_waits >= LEASE_WAIT_LIMIT:
+                        # lease() has just attempted safe reclamation. Leave live
+                        # owners alone and make this run resumable, not complete.
+                        reason = '다른 판정 워커의 응답을 기다리는 시간이 초과되었습니다. 이어서 진행하세요.'
+                        ctx.heartbeat(progress, {**detail, 'reason': reason})
+                        with transaction(ctx.sid) as db:
+                            db.execute("UPDATE runs SET state='interrupted' WHERE run_id=? AND state IN ('running','paused')", (ctx.run_id,))
+                        return
                     time.sleep(.1)
                     continue
                 return
+            lease_waits = 0
             batch = [docs[i] for i in ids]
             if labeler == 'gpt':
                 try:
