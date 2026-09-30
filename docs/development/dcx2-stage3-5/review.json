@@ -1,0 +1,110 @@
+{
+  "verdict": "PASS",
+  "head": "85259d9c7de34712d93b078e71b19d7ab43ba697",
+  "fingerprint": "e1411cc4518168a52d66c3887a4c75f6f7f60f82b594515faf075cb9c16f8f39",
+  "commands": [
+    {
+      "command": "backend/.venv/bin/python -m pytest backend/tests -q  (1255 passed)",
+      "exitCode": 0
+    },
+    {
+      "command": "npm --prefix frontend test -- --run  (222 passed)",
+      "exitCode": 0
+    },
+    {
+      "command": "npm --prefix frontend run lint",
+      "exitCode": 0
+    },
+    {
+      "command": "npm --prefix frontend run build",
+      "exitCode": 0
+    }
+  ],
+  "findings": [],
+  "reviews": [
+    {
+      "scope": "gstack /review read-only (0e4501e..e16c5ce)",
+      "result": "6 findings (0 critical); all fixed",
+      "evidence": "docs/development/dcx2-stage3-5/reports/gstack-review1.md"
+    },
+    {
+      "scope": "Codex read-only branch review (0e4501e..e16c5ce)",
+      "result": "0 Critical, 6 Important, 1 Minor; all fixed",
+      "evidence": "docs/development/dcx2-stage3-5/reports/codex-branch-review1.md"
+    },
+    {
+      "scope": "fix dispatch (backend+frontend) e16c5ce..eaf81a6",
+      "result": "re-review Approved; 1 Important perf follow-up",
+      "evidence": "docs/development/dcx2-stage3-5/reports/review-fix1-report.md; docs/development/dcx2-stage3-5/reports/review-fix1-fe-report.md; docs/development/dcx2-stage3-5/reports/review-fix1-rereview.md"
+    },
+    {
+      "scope": "fix 2 eaf81a6..0c648c3",
+      "result": "re-review Approved",
+      "evidence": "docs/development/dcx2-stage3-5/reports/review-fix2-report.md"
+    },
+    {
+      "scope": "earlier whole-branch final review (opus) + fix",
+      "result": "5 Important fixed, re-review Approved",
+      "evidence": "docs/development/dcx2-stage3-5/reports/final-review1.md; docs/development/dcx2-stage3-5/reports/final-rereview1.md"
+    }
+  ],
+  "resolvedFindings": [
+    {
+      "id": "C1",
+      "status": "fixed"
+    },
+    {
+      "id": "C2",
+      "status": "fixed"
+    },
+    {
+      "id": "C3",
+      "status": "fixed"
+    },
+    {
+      "id": "C4",
+      "status": "fixed"
+    },
+    {
+      "id": "C5",
+      "status": "fixed"
+    },
+    {
+      "id": "C6",
+      "status": "fixed"
+    },
+    {
+      "id": "C7",
+      "status": "fixed"
+    },
+    {
+      "id": "G1",
+      "status": "fixed"
+    },
+    {
+      "id": "G2",
+      "status": "fixed"
+    },
+    {
+      "id": "G3",
+      "status": "fixed"
+    },
+    {
+      "id": "G4",
+      "status": "fixed"
+    },
+    {
+      "id": "G5",
+      "status": "fixed"
+    },
+    {
+      "id": "G6",
+      "status": "fixed"
+    },
+    {
+      "id": "RR1",
+      "status": "fixed"
+    }
+  ],
+  "deferred": "docs/development/dcx2-stage3-5/backlog.md B-108"
+}
