@@ -55,7 +55,12 @@ class Context:
             time.sleep(.1)
 
 
-KINDS: dict[str, Callable[[Context], None]] = {}
+def _prep(context: Context):
+    from app.routers.prep import run_worker
+    run_worker(context)
+
+
+KINDS: dict[str, Callable[[Context], None]] = {'prep': _prep}
 
 
 def execute(context: Context):

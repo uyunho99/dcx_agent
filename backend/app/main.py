@@ -12,6 +12,7 @@ from app.routers import (
     keywords_v2,
     crawl_v2,
     preprocessing,
+    prep,
     labeling,
     training,
     clustering,
@@ -45,6 +46,7 @@ app.include_router(keywords.router)
 app.include_router(keywords_v2.router)
 app.include_router(crawl_v2.router)
 app.include_router(preprocessing.router)
+app.include_router(prep.router)
 app.include_router(labeling.router)
 app.include_router(training.router)
 app.include_router(clustering.router)
