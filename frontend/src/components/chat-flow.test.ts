@@ -12,7 +12,7 @@ import ChatPanel from './ChatPanel';
 function nodes(node: any): any[] {return !node || typeof node !== 'object' ? [] : Array.isArray(node) ? node.flatMap(nodes) : [node,...nodes(node.props?.children)];}
 it('QA-K: question, add, search excluding known, then switch off', async () => {
  hooks.slots=[];
- const onSend=vi.fn().mockResolvedValueOnce({answer:'a',sources:[{doc_id:'d',text:'원문'}]})
+ const onSend=vi.fn().mockResolvedValueOnce({status:'ok',answer:'답변 모델이 연결되지 않아 근거 원문만 보여 줍니다.',sources:[{doc_id:'d',text:'원문'}]})
  .mockResolvedValueOnce({answer:'a',sources:[],reason:'all_known'})
  .mockResolvedValueOnce({answer:'a',sources:[{doc_id:'d',text:'원문'}]});
  const onKnownAdded=vi.fn();
@@ -21,7 +21,7 @@ it('QA-K: question, add, search excluding known, then switch off', async () => {
  let tree=render();tree.find(n=>n.type==='input').props.onChange({target:{value:'question'}});
  tree=render();tree.find(n=>n.type==='form').props.onSubmit({preventDefault(){}});await settle();
  expect(onSend).toHaveBeenLastCalledWith('question',true);
- tree=render();const card=tree.find(n=>n.type==='SourceCard');expect(card.props).toMatchObject({sid:'s',version:'v1',source:{doc_id:'d'}});
+ tree=render();expect(tree.some(n=>n.props?.children==='답변 모델이 연결되지 않아 근거 원문만 보여 줍니다.')).toBe(true);const card=tree.find(n=>n.type==='SourceCard');expect(card.props).toMatchObject({sid:'s',version:'v1',source:{doc_id:'d'}});
  card.props.onAdded({id:'k',type:'doc',doc_id:'d'});expect(onKnownAdded).toHaveBeenCalledOnce();
  tree=render();tree.find(n=>n.props?.children==='추가한 이야기 빼고 다시 찾기').props.onClick();await settle();
  expect(onSend).toHaveBeenLastCalledWith('question',true);

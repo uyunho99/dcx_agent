@@ -12,8 +12,9 @@ import { displayError } from '@/lib/api/errors';
 import { crawlBlocksVersion, prepareRestartVersion } from '@/lib/logic/restartVersion';
 import { useVersion } from './VersionProvider';
 import { useDirty } from "../DirtyProvider";
+import { restartLabelNotice } from '@/lib/logic/browserQa';
 const routes = ['start','keywords','crawling','preprocess','labeling','training','clustering','personas'];
-export function RestartVersion({stage, from, label = '이 단계부터 다시', disabled = false, crawlStatus}: {stage?: Stage; from?: string; label?: string; disabled?: boolean; crawlStatus?: CrawlStatus | null}) {
+export function RestartVersion({stage, from, label = '이 단계부터 다시', disabled = false, crawlStatus, contained = false}: {stage?: Stage; from?: string; label?: string; disabled?: boolean; crawlStatus?: CrawlStatus | null; contained?: boolean}) {
   const {confirmNavigation} = useDirty();
   const view = useVersion(); const router = useRouter(); const [open, setOpen] = useState(false); const [note, setNote] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const lock = useRef(false);
   const [chosenStage, setChosenStage] = useState<Stage | ''>('');
@@ -35,12 +36,14 @@ export function RestartVersion({stage, from, label = '이 단계부터 다시', 
     } catch (e) { setError(displayError(e, '새 버전을 만들지 못했습니다. 버전 목록을 확인하고 다시 시도하세요.')); }
     finally {lock.current = false; setBusy(false);}
   }
-  return <Popover label="새 버전 만들기" open={open} onOpenChange={value => {if (!value || !blocked) setOpen(value);}} renderTrigger={({ref, props}) => <button ref={ref} {...props} className="ds-btn ds-secondary" aria-disabled={blocked} title={blockedTitle}>{label}</button>}><div className="space-y-3">{!stage && <label className="ds-field">다시 시작할 단계<select className="ds-inp" value={chosenStage} disabled={busy} onChange={e => setChosenStage(e.target.value as Stage)}><option value="">단계 선택</option>{routes.map((route, i) => <option key={route} value={`stage${i}`}>{i}단계</option>)}</select></label>}<Input label="다시 시작하는 이유" hint="메모는 선택 입력입니다." value={note} disabled={busy} onChange={e => setNote(e.target.value)} />{error && <Banner tone="danger">{error}</Banner>}<Button variant="primary" loading={busy} disabled={blocked || !restartStage} onClick={() => void restart()}>새 버전 만들기</Button></div></Popover>;
+  return <Popover contained={contained} label="새 버전 만들기" open={open} onOpenChange={value => {if (!value || !blocked) setOpen(value);}} renderTrigger={({ref, props}) => <button ref={ref} {...props} className="ds-btn ds-secondary" aria-disabled={blocked} title={blockedTitle}>{label}</button>}><div className="space-y-3">{!stage && <label className="ds-field">다시 시작할 단계<select className="ds-inp" value={chosenStage} disabled={busy} onChange={e => setChosenStage(e.target.value as Stage)}><option value="">단계 선택</option>{routes.map((route, i) => <option key={route} value={`stage${i}`}>{i}단계</option>)}</select></label>}<Input label="다시 시작하는 이유" hint="메모는 선택 입력입니다." value={note} disabled={busy} onChange={e => setNote(e.target.value)} />{error && <Banner tone="danger">{error}</Banner>}<Button variant="primary" loading={busy} disabled={blocked || !restartStage} onClick={() => void restart()}>새 버전 만들기</Button></div></Popover>;
 }
 export function StageVersionAction({stage, crawlStatus}: {stage: Stage; crawlStatus?: CrawlStatus | null}) { const view = useVersion(); return <div className="flex justify-end"><RestartVersion stage={stage} crawlStatus={crawlStatus} disabled={view.readonly} /></div>; }
 export function StaleBanner({stage, session}: {stage: Stage; session: VersionSession | null}) {
   const view = useVersion(); const pageStage = stalePageStage(stage, session?.stale); const stale = pageStage ? session?.stale?.[pageStage] : undefined; const match = stale?.match(/stage(\d+) changed in (v\d+)/);
   const source = view.meta?.versions.find(v => v.id === match?.[2])?.parent ?? session?.parentVersion ?? session?.version;
+  const notice = stage === 'stage4' ? restartLabelNotice(session) : null;
+  if (notice) return <Banner>{notice}</Banner>;
   return stale ? <Banner tone="warning">이 결과는 {source}의 {pageStage?.slice(5)}단계 기준입니다. 이 단계를 다시 하거나 그대로 쓰세요.</Banner> : null;
 }
 export function VersionBanner({stage}: {stage: Stage}) {

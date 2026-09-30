@@ -32,6 +32,6 @@ export function PrepSettings({ config, disabled, onChange, replacements }: {
         <div className="prep-add"><Input label={`${label}에 지울 문구 추가`} placeholder="지울 문구를 붙여 넣으세요" value={phrases[key] ?? ''} onChange={event => setPhrases({ ...phrases, [key]: event.target.value })} /><Button disabled={!phrases[key]?.trim() || config.boilerplate[key]?.includes(phrases[key].trim())} onClick={() => { onChange({ ...config, boilerplate: { ...config.boilerplate, [key]: [...(config.boilerplate[key] ?? []), phrases[key].trim()] } }); setPhrases({ ...phrases, [key]: '' }); }}>추가</Button></div>
       </div> }))} />
     </Card>
-    {INTERNAL_TOOLS && <Card><label className="ds-field"><span className="ds-lab">내부용 · 임베더</span><select className="ds-inp" value={config.embedder} onChange={event => onChange({ ...config, embedder: event.target.value as PrepConfig['embedder'] })}><option value="voyage">Voyage</option><option value="fake">가짜 임베더 · 오프라인 시연</option></select></label></Card>}
+    {INTERNAL_TOOLS && <Card><label className="ds-field"><span className="ds-lab">내부용 · 임베더</span><select aria-label="내부용 · 임베더" className="ds-inp" value={config.embedder} onChange={event => onChange({ ...config, embedder: event.target.value as PrepConfig['embedder'] })}><option value="voyage">Voyage</option><option value="fake">가짜 임베더 · 오프라인 시연</option></select></label></Card>}
   </fieldset>;
 }

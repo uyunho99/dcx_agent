@@ -20,18 +20,18 @@ export type PrepReport = {
   original: number; after: number; removed: Record<string, number>;
   boilerplate_replaced: Record<string, number>; tokens_written: number;
   embedded: number; embed_failed_zero_vector: number;
-  at?: string; embedder?: string; analyzer?: string; prepKey?: string;
+  at?: string; embedder?: string; embedderName?: string; analyzer?: string; prepKey?: string;
 };
 export function prepEditLock(session: PrepSession): string | null {
   return session.labeling?.started ? '라벨링을 시작한 뒤에는 이 버전에서 바꿀 수 없습니다. 새 버전에서 다시 하세요.' : null;
 }
-export function prepConfig(session: PrepSession, includeDraft = true): PrepConfig {
+export function prepConfig(session: PrepSession, includeDraft = true, serverConfig?: Partial<PrepConfig>): PrepConfig {
   const saved = session.prep?.config;
   const draft = includeDraft && !prepEditLock(session) ? session.drafts?.prep?.config : undefined;
   return {
     adFilter: session.crawlConfig?.adWords ?? [], excludeSources: session.crawlConfig?.excludeSources ?? [],
     minBodyChars: 10, analyzer: 'kiwi', tokenPos: ['NNG', 'NNP', 'VV', 'VA', 'XR'],
-    embedder: 'voyage', embedModel: 'voyage-4', embedDim: 1024,
+    embedder: serverConfig?.embedder ?? 'voyage', embedModel: serverConfig?.embedModel ?? 'voyage-4', embedDim: serverConfig?.embedDim ?? 1024,
     ...saved, ...draft,
     boilerplate: structuredClone({ ...DEFAULT_BOILERPLATE, ...saved?.boilerplate, ...draft?.boilerplate }),
   };

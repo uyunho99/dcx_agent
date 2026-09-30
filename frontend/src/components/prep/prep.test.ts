@@ -52,3 +52,11 @@ it('locks prep rules after labeling starts and ignores stale draft rules', () =>
  expect(prepEditLock({labeling:{started:false}})).toBeNull();
  expect(prepEditLock({})).toBeNull();
 });
+
+it('uses server-resolved prep defaults while preserving saved settings and editable drafts', () => {
+ expect(prepConfig({}, true, {embedder:'fake'}).embedder).toBe('fake');
+ expect(prepConfig({prep:{config:{embedder:'voyage'}}}, true, {embedder:'fake'}).embedder).toBe('voyage');
+ const session = {prep:{config:{embedder:'fake' as const}}, drafts:{prep:{config:{embedder:'voyage' as const}}}};
+ expect(prepConfig(session, true, {embedder:'fake'}).embedder).toBe('voyage');
+ expect(prepConfig(session, false, {embedder:'fake'}).embedder).toBe('fake');
+});
