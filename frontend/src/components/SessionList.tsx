@@ -16,6 +16,9 @@ export function activityLabel(activity: SessionInfo["activity"]) {
   if (status === "done" || status === "completed") return "완료";
   if (status !== "running") return "검토 대기";
   if (kind.startsWith("keyword_round_")) return `R${kind.split("_").pop()} 생성 중`;
+  if ("label" in activity && typeof activity.label === "string" && activity.label) return activity.label;
+  const work = ({judge: "판정", prep: "전처리", preprocess: "전처리", label: "판정", labeling: "판정", jev: "판정", gpt: "판정", merge: "판정 병합", train: "학습", infer: "분류", classify: "분류", monitor: "감시"} as Record<string, string>)[kind];
+  if (work) return `${work}${typeof progress === "number" && Number.isFinite(progress) ? ` ${Math.round(progress <= 1 ? progress * 100 : progress)}%` : " 중"}`;
   return `${kind.includes("list") ? "목록" : "상세"} 수집${typeof progress === "number" ? ` ${Math.round(progress)}%` : " 중"}`;
 }
 export default function SessionList({ onSelect }: {onSelect: (sid: string, session?: SessionInfo) => void}) {
