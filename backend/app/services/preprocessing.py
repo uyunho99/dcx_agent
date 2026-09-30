@@ -124,11 +124,20 @@ def preprocess_data(config: dict) -> None:
         session = load_session(sid) or {}
         if session.get('schemaVersion') == 2:
             from app.prep.pipeline import run_prep
+            from app.vectors.embedder import EmbedderUnconnected
             prep_config = {**session.get('prep', {}).get('config', {}),
                            **{k: v for k, v in config.items() if k not in {'sid', 'version'}}}
             if exclude_cafes:
                 prep_config['excludeSources'] = prep_config.get('excludeSources', []) + exclude_cafes
-            root = run_prep(_InlineContext(prep_config), sid, session.get('version', 'v1'))
+            try:
+                root = run_prep(_InlineContext(prep_config), sid, session.get('version', 'v1'))
+            except EmbedderUnconnected as error:
+                counts = error.prep_counts
+                job_manager.set('preprocess', sid, {
+                    'status': 'done', 'original': counts['original'], 'filtered': counts['after'],
+                    'embedding': 'unconnected',
+                })
+                return
             report = json.loads((root / 'stage_3.json').read_text(encoding='utf-8'))
             job_manager.set('preprocess', sid, {
                 'status': 'done', 'original': report['original'], 'filtered': report['after'],

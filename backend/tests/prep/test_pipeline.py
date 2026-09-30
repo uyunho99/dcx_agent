@@ -235,16 +235,97 @@ def test_clean_defaults_and_key_changes():
     assert prep_key('c1', cfg, Embedder()) != prep_key('c1', PrepConfig(), Embedder())
 
 
-def test_unconnected_keeps_documents_with_explicit_failure(setup, monkeypatch):
-    from app.vectors.embedder import EmbedderUnconnected
+@pytest.mark.parametrize('failure_at', ['factory', 'embed'])
+def test_unconnected_stops_without_vectors_and_can_resume(setup, monkeypatch, data_dir, failure_at):
+    from app.vectors.embedder import EmbedderUnconnected, FakeEmbedder
     setup([doc()])
-    def unconnected():
+    monkeypatch.setattr(settings, 'embed_backend', 'voyage')
+    working = FakeEmbedder()
+    working.name = 'voyage'
+    cfg = PrepConfig(embedder='voyage')
+    root = data_dir / 'derived/s/c1' / prep_key('c1', cfg, working)
+
+    def unconnected(*args):
         raise EmbedderUnconnected('not configured')
-    monkeypatch.setattr(pipeline, 'get_embedder', unconnected)
-    root = pipeline.run_prep(Context(), 's', 'v1')
-    assert len(rows(root, 'docs')) == 1
-    report = json.loads((root / 'stage_3.json').read_text())
-    assert report['embedded'] == 0 and report['embed_failed_zero_vector'] == 1
+
+    if failure_at == 'factory':
+        monkeypatch.setattr(pipeline, 'get_embedder', unconnected)
+    else:
+        unavailable = Embedder()
+        unavailable.name = 'voyage'
+        unavailable.embed = unconnected
+        monkeypatch.setattr(pipeline, 'get_embedder', lambda: unavailable)
+    with pytest.raises(EmbedderUnconnected):
+        pipeline.run_prep(Context({'embedder': 'voyage'}), 's', 'v1')
+    manifest = store.read_json(root / 'manifest.json')
+    assert manifest is None or manifest['status'] != 'done'
+    assert VectorStore(root).count() == 0
+    assert not list((root / 'vectors').glob('*.f16'))
+
+    monkeypatch.setattr(pipeline, 'get_embedder', lambda: working)
+    assert pipeline.run_prep(Context({'embedder': 'voyage'}), 's', 'v1') == root
+    assert store.read_json(root / 'manifest.json')['status'] == 'done'
+    assert VectorStore(root).get(['d1'])[1].any()
+    assert store.read_json(root / 'stage_3.json')['embed_failed_zero_vector'] == 0
+
+
+@pytest.mark.parametrize('recover', [True, False])
+def test_resume_retries_failed_rows_in_completed_shard(setup, monkeypatch, recover):
+    monkeypatch.setattr(pipeline, 'BATCH_ROWS', 1)
+    embedder = setup([{**doc(i), 'title': i} for i in ['good', 'bad']])
+    original = embedder.embed
+
+    def fail_one(texts):
+        embedder.fail = 'bad' in texts[0]
+        return original(texts)
+
+    embedder.embed = fail_one
+    root = pipeline.run_prep(Context(stop_after=1), 's', 'v1')
+    assert store.read_json(root / 'manifest.json')['status'] == 'interrupted'
+    assert len(embedder.calls) == 4
+    assert sum(int(flags.sum()) for _, _, flags in VectorStore(root).iter_shards()) == 1
+    before = VectorStore(root).get(['good'])[1].copy()
+    embedder.embed = original
+    embedder.fail = not recover
+    embedder.calls.clear()
+    assert pipeline.run_prep(Context(), 's', 'v1') == root
+    assert len(embedder.calls) == (1 if recover else 3)
+    assert all('bad' in call[0] for call in embedder.calls)
+    assert VectorStore(root).count() == 2
+    np.testing.assert_array_equal(VectorStore(root).get(['good'])[1], before)
+    assert bool(VectorStore(root).get(['bad'])[1].any()) == recover
+    report = store.read_json(root / 'stage_3.json')
+    assert report['embed_failed_zero_vector'] == (0 if recover else 1)
+    assert report['embedded'] == (2 if recover else 1)
+    assert sum(int(flags.sum()) for _, _, flags in VectorStore(root).iter_shards()) == (0 if recover else 1)
+    calls = len(embedder.calls)
+    assert pipeline.run_prep(Context(), 's', 'v1') == root
+    assert len(embedder.calls) == calls
+
+
+def test_retry_interrupted_before_failure_flags_are_published(setup, monkeypatch):
+    embedder = setup([doc()])
+    embedder.fail = True
+    root = pipeline.run_prep(Context(stop_after=1), 's', 'v1')
+    embedder.fail = False
+    original = pipeline._jsonl
+
+    def interrupt(path, records):
+        if path.name == 'ids.jsonl':
+            raise RuntimeError('interrupted before index publication')
+        return original(path, records)
+
+    monkeypatch.setattr(pipeline, '_jsonl', interrupt)
+    with pytest.raises(RuntimeError, match='index publication'):
+        pipeline.run_prep(Context(), 's', 'v1')
+    assert store.read_json(root / 'manifest.json')['status'] == 'failed'
+    assert next(VectorStore(root).iter_shards())[2].tolist() == [True]
+    monkeypatch.setattr(pipeline, '_jsonl', original)
+    pipeline.run_prep(Context(), 's', 'v1')
+    assert VectorStore(root).count() == 1
+    assert VectorStore(root).get(['d1'])[1].any()
+    assert next(VectorStore(root).iter_shards())[2].tolist() == [False]
+    assert store.read_json(root / 'stage_3.json')['embed_failed_zero_vector'] == 0
 
 
 def test_doc_and_vector_shard_sizes(setup, monkeypatch):
@@ -256,3 +337,54 @@ def test_doc_and_vector_shard_sizes(setup, monkeypatch):
     assert [len(p.read_text().splitlines()) for p in sorted((root / 'docs').glob('*.jsonl'))] == [2, 2, 1]
     assert [len(ids) for ids, _, _ in VectorStore(root).iter_shards()] == [4, 1]
     assert (root / 'vectors/shard-00001.f16').stat().st_size == 4 * 1024 * 2
+
+
+@pytest.mark.parametrize('entry', ['pipeline', 'legacy_service'])
+@pytest.mark.parametrize('failure_at', ['factory', 'embed'])
+def test_unconnected_exports_before_embedding(setup, monkeypatch, data_dir, entry, failure_at):
+    from app.jobs.manager import job_manager
+    from app.services import preprocessing
+    from app.vectors.embedder import EmbedderUnconnected
+
+    setup([doc('one'), doc('two')], {'embedder': 'voyage'})
+    monkeypatch.setattr(settings, 'embed_backend', 'voyage')
+    monkeypatch.setattr(pipeline, 'SHARD_ROWS', 1)
+    identity = Embedder()
+    identity.name = 'voyage'
+    root = data_dir / 'derived/s/c1' / prep_key('c1', PrepConfig(embedder='voyage'), identity)
+    exported = []
+    original_save = preprocessing.save_jsonl
+
+    def save(path, documents):
+        assert len(rows(root, 'docs')) == len(rows(root, 'tokens')) == 2
+        assert VectorStore(root).count() == 0
+        exported.extend(documents)
+        original_save(path, documents)
+
+    def unconnected():
+        raise EmbedderUnconnected('not configured')
+
+    def embed(texts):
+        assert len(exported) == 2
+        raise EmbedderUnconnected('not configured')
+
+    identity.embed = embed
+    monkeypatch.setattr(preprocessing, 'save_jsonl', save)
+    monkeypatch.setattr(pipeline, 'get_embedder', unconnected if failure_at == 'factory' else lambda: identity)
+    if entry == 'pipeline':
+        with pytest.raises(EmbedderUnconnected):
+            pipeline.run_prep(Context(), 's', 'v1')
+    else:
+        preprocessing.preprocess_data({'sid': 's'})
+        status = job_manager.get('preprocess', 's')
+        assert status['status'] == 'done'
+        assert status['embedding'] == 'unconnected'
+        assert status['original'] == status['filtered'] == 2
+    assert [d['doc_id'] for d in exported] == ['one', 'two']
+    assert all({'desc', 'cafe', 'link'} <= d.keys() for d in exported)
+    manifest = store.read_json(root / 'manifest.json')
+    assert manifest['status'] == 'failed' and manifest['compatWritten']
+    assert (data_dir / manifest['compatRef']).exists()
+    assert not list((root / 'vectors').glob('*.f16'))
+    assert VectorStore(root).count() == 0
+    assert store.load_session('s')['prep'].get('status') != 'done'

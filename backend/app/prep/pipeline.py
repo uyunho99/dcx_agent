@@ -1,9 +1,12 @@
 """Durable preparation, with a single writer per immutable preparation key."""
 import fcntl
 import json
+import os
 from pathlib import Path
 import re
+import tempfile
 import time
+from types import SimpleNamespace
 
 import numpy as np
 
@@ -21,17 +24,6 @@ from app.vectors.store import VectorStore
 SHARD_ROWS = 10_000
 DOC_SHARD_ROWS = 5_000
 BATCH_ROWS = 128
-
-
-class _Unconnected:
-    """Preserve offline preprocessing, recording every vector as failed."""
-    name = 'voyage'
-
-    def __init__(self, cfg):
-        self.model, self.dim = cfg.embedModel, cfg.embedDim
-
-    def embed(self, texts):
-        raise EmbedderUnconnected('Voyage is not connected')
 
 
 def _jsonl(path, rows):
@@ -61,11 +53,52 @@ def _embed(embedder, texts):
                 if not len(indexes):
                     break
             except EmbedderUnconnected:
-                break
+                raise
             except Exception:
                 # Provider payloads may include credentials or document text.
                 continue
     return vectors, failed.tolist()
+
+
+def _retry_failed(vectors, embedder, documents, checkpoint):
+    """Retry stored failures once per run, preserving successful rows and shard shape.
+
+    Publish replacement bytes before clearing failure flags. A crash between the
+    two writes leaves rows marked failed and safely retryable on the next run.
+    """
+    if not vectors.index.exists():
+        return True
+    records = [json.loads(line) for line in vectors.index.read_text().splitlines() if line.strip()]
+    groups = {}
+    for record in records:
+        groups.setdefault(record['shard'], []).append(record)
+    by_id = {doc['doc_id']: doc for doc in documents}
+    for shard, group in groups.items():
+        retry = [record for record in group if record.get('failed') and record['doc_id'] in by_id]
+        if not retry:
+            continue
+        if not checkpoint():
+            return False
+        matrix, failed = _embed(embedder, [_text(by_id[record['doc_id']]) for record in retry])
+        _, replacement = vectors.get([record['doc_id'] for record in group])
+        for record, vector, flag in zip(retry, matrix, failed):
+            replacement[record['row']] = vector
+            record['failed'] = flag
+        # Keep the original row layout: VectorStore readers derive dimensions
+        # from the index's complete row count for each shard.
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(dir=vectors.directory, delete=False) as stream:
+                temporary = Path(stream.name)
+                stream.write(replacement.astype(np.float16).tobytes())
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, vectors.directory / f'shard-{shard:05d}.f16')
+            _jsonl(vectors.index, records)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
+    return True
 
 
 def _checkpoint(ctx, done, total):
@@ -77,7 +110,7 @@ def _checkpoint(ctx, done, total):
     return not ctx.should_stop()
 
 
-def _publish(sid, version, root, cfg, manifest):
+def _publish_compat(root, manifest):
     # Publish compatibility output once per result, including recovery after a crash.
     target = Path(settings.local_data_dir) / manifest['compatRef']
     if not manifest.get('compatWritten') or not target.exists():
@@ -88,6 +121,10 @@ def _publish(sid, version, root, cfg, manifest):
         # An interrupted export is overwritten on resume until this marker is durable.
         manifest['compatWritten'] = True
         store.write_json(root / 'manifest.json', manifest)
+
+
+def _publish(sid, version, root, cfg, manifest):
+    _publish_compat(root, manifest)
     with store.locked(sid):
         path = version_dir(sid, version) / 'session.json'
         session = store.read_json(path)
@@ -107,13 +144,18 @@ def run_prep(ctx, sid: str, version: str) -> Path:
         raise ValueError('Invalid crawl collection id')
     values = {**session.get('prep', {}).get('config', {}), **getattr(ctx, 'args', {}).get('config', {})}
     cfg = PrepConfig.model_validate(values)
+    unconnected = None
     try:
         if cfg.embedder == settings.embed_backend:
             embedder = get_embedder()
         else:
             embedder = FakeEmbedder() if cfg.embedder == 'fake' else VoyageEmbedder()
-    except EmbedderUnconnected:
-        embedder = _Unconnected(cfg)
+    except EmbedderUnconnected as error:
+        if cfg.embedder == 'fake':
+            raise
+        # Identity only: defer the error until the non-embedding outputs are durable.
+        unconnected = error
+        embedder = SimpleNamespace(name=cfg.embedder, model=settings.embed_model, dim=settings.embed_dim)
     if (embedder.model, embedder.dim) != (cfg.embedModel, cfg.embedDim):
         raise ValueError('Preparation embedding model/dimension must match configured embedder')
     key = prep_key(cid, cfg, embedder)
@@ -134,14 +176,16 @@ def run_prep(ctx, sid: str, version: str) -> Path:
         store.write_json(root / 'manifest.json', manifest)
         try:
             documents = _crawl_docs(sid, session=session)
-            return _run(ctx, sid, version, root, cfg, embedder, documents, manifest)
-        except Exception:
+            return _run(ctx, sid, version, root, cfg, embedder, documents, manifest, unconnected)
+        except Exception as error:
+            if isinstance(error, EmbedderUnconnected):
+                error.prep_counts = manifest['counts']
             manifest['status'] = 'failed'
             store.write_json(root / 'manifest.json', manifest)
             raise
 
 
-def _run(ctx, sid, version, root, cfg, embedder, documents, manifest):
+def _run(ctx, sid, version, root, cfg, embedder, documents, manifest, unconnected=None):
     cleaned, replacements = [], {}
     for raw in documents:
         doc = dict(raw)
@@ -161,18 +205,8 @@ def _run(ctx, sid, version, root, cfg, embedder, documents, manifest):
         cleaned.append(doc)
     filtered, removed = filter_documents(cleaned, cfg.adFilter, cfg.excludeSources,
                                          cfg.minBodyChars, full_text=True)
-    vectors = VectorStore(root)
-    existing = {doc_id: bool(failed[i]) for ids, _, failed in vectors.iter_shards()
-                for i, doc_id in enumerate(ids)}
-    total = (len(filtered) + SHARD_ROWS - 1) // SHARD_ROWS
-    done = manifest['progress'].get('done_shards', 0)
+    # Complete document/token preparation and the legacy export before any vectors.
     for shard, start in enumerate(range(0, len(filtered), SHARD_ROWS), 1):
-        if shard <= done:
-            continue
-        if not _checkpoint(ctx, done, total):
-            manifest['status'] = 'interrupted'
-            store.write_json(root / 'manifest.json', manifest)
-            return root
         batch = filtered[start:start + SHARD_ROWS]
         for offset in range(0, len(batch), DOC_SHARD_ROWS):
             part = (shard - 1) * ((SHARD_ROWS + DOC_SHARD_ROWS - 1) // DOC_SHARD_ROWS) + offset // DOC_SHARD_ROWS + 1
@@ -181,6 +215,27 @@ def _run(ctx, sid, version, root, cfg, embedder, documents, manifest):
             _jsonl(root / 'docs' / filename, docs)
             _jsonl(root / 'tokens' / filename,
                    [dict(doc_id=d['doc_id'], tokens=tokenize(token_text(_text(d)), cfg.tokenPos)) for d in docs])
+    manifest['counts'] = dict(original=len(documents), after=len(filtered))
+    _publish_compat(root, manifest)
+    if unconnected is not None:
+        raise unconnected
+    vectors = VectorStore(root)
+    total = (len(filtered) + SHARD_ROWS - 1) // SHARD_ROWS
+    done = manifest['progress'].get('done_shards', 0)
+    if not _retry_failed(vectors, embedder, filtered, lambda: _checkpoint(ctx, done, total)):
+        manifest['status'] = 'interrupted'
+        store.write_json(root / 'manifest.json', manifest)
+        return root
+    existing = {doc_id: bool(failed[i]) for ids, _, failed in vectors.iter_shards()
+                for i, doc_id in enumerate(ids)}
+    for shard, start in enumerate(range(0, len(filtered), SHARD_ROWS), 1):
+        if shard <= done:
+            continue
+        if not _checkpoint(ctx, done, total):
+            manifest['status'] = 'interrupted'
+            store.write_json(root / 'manifest.json', manifest)
+            return root
+        batch = filtered[start:start + SHARD_ROWS]
         pending = [d for d in batch if d['doc_id'] not in existing]
         if pending:
             matrix, failed = _embed(embedder, [_text(d) for d in pending])
