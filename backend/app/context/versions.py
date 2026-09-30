@@ -1,9 +1,12 @@
 """Version snapshots; immutable crawl collections remain outside this tree."""
 from collections import Counter
+from contextlib import closing
 import hashlib
 import os
 import re
 import shutil
+import sqlite3
+from pathlib import Path
 import uuid
 
 from app.context.store import (StoreError, root_dir, read_json, write_json, locked,
@@ -80,6 +83,49 @@ def _crawl_phase(sid, collection_id):
     return phase_state(sid, collection_id)
 
 
+def _copy_file(source, target):
+    """SQLite owns the snapshot boundary; never copy its live WAL sidecars."""
+    if Path(source).suffix != '.sqlite':
+        return shutil.copy2(source, target)
+    with closing(sqlite3.connect(Path(source).resolve().as_uri() + '?mode=ro', uri=True)) as src:
+        with closing(sqlite3.connect(target)) as dst:
+            src.backup(dst)
+    return target
+
+
+def _restart_labels(target):
+    path = target / 'labels.sqlite'
+    if not path.exists():
+        return
+    with closing(sqlite3.connect(path)) as db, db:
+        tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        # Preserve the stale projection for inspection, without letting old rows
+        # suppress cache reconciliation or completed reviews suppress new review.
+        for table in ('final', 'queue'):
+            if table in tables:
+                db.execute(f'DROP TABLE IF EXISTS stale_{table}')
+                db.execute(f'CREATE TABLE stale_{table} AS SELECT * FROM {table}')
+        for table in ('final', 'queue', 'route_sync', 'review_done', 'audit_set',
+                      'audit_snapshot', 'audit_reissue', 'label_events',
+                      'model_predictions', 'inference_context'):
+            if table in tables:
+                db.execute(f'DELETE FROM {table}')
+
+
+def _restart(data, target, stage):
+    if stage <= 3 and 'prep' in data:
+        data['prep']['status'] = 'stale'
+    if stage <= 4:
+        _restart_labels(target)
+        if 'labeling' in data:
+            previous = data['labeling']
+            data['labeling'] = {key: previous[key] for key in ('mode', 'modelId', 'judgeRefs') if key in previous}
+            data['labeling'].update(started=False, status='stale',
+                restartMessage=f"이 라벨은 {data['parentVersion']} 기준입니다. LLM 판정은 재사용하고 사람 검수만 다시 합니다.")
+    if stage <= 5 and 'training' in data:
+        data['training'] = {'status': 'stale'}
+
+
 def create_version(sid, from_v, restart_from, note, version=None) -> str:
     if not re.fullmatch(r'stage[0-9]+', restart_from):
         raise StoreError('Invalid restartFrom', 400, 'validation')
@@ -99,7 +145,8 @@ def create_version(sid, from_v, restart_from, note, version=None) -> str:
         previous_active = meta['activeVersion']
         activated = False
         try:
-            shutil.copytree(version_dir(sid, from_v), target)
+            shutil.copytree(version_dir(sid, from_v), target, copy_function=_copy_file,
+                            ignore=shutil.ignore_patterns('*.sqlite-wal', '*.sqlite-shm', '*.sqlite-journal'))
             if crawl_phase == 'gate':
                 data['collectionId'] = None
                 crawl_draft = (data.get('drafts') or {}).get('crawl')
@@ -113,6 +160,7 @@ def create_version(sid, from_v, restart_from, note, version=None) -> str:
             if int(restart_from[5:]) <= 1:
                 for round_data in data.get('keywordRounds', {}).values():
                     round_data['needsRegeneration'] = True
+            _restart(data, target, int(restart_from[5:]))
             write_json(target / 'session.json', data)
             for entry in meta['versions']:
                 entry['readonly'] = True
@@ -188,6 +236,18 @@ def compare(sid, a, b, stage) -> dict:
                           for channel in sorted(left.get(kw, {}).keys() | right.get(kw, {}).keys())}
                      for kw in sorted(left.keys() | right.keys())}
             return {'same': False, 'before': before.get('collectionId'), 'after': after.get('collectionId'), 'counts': delta}
+        if stage in ('stage3', 'stage4', 'stage5'):
+            def metrics(data, v, name):
+                local = read_json(version_dir(sid, v) / f'{name}.json')
+                if local is not None or name != 'stage_3':
+                    return local
+                from app.known.store import prepared_root
+                root = prepared_root(sid, data)
+                return read_json(root / 'stage_3.json') if root else None
+            names = ('stage_3',) if stage == 'stage3' else ('stage_5',)
+            result = {name: {'before': metrics(before, a, name), 'after': metrics(after, b, name)} for name in names}
+            result['same'] = all(value['before'] == value['after'] for value in result.values())
+            return result
         if not re.fullmatch(r'stage[0-9]+', stage):
             raise StoreError('Invalid stage', 400, 'validation')
         def files(v):

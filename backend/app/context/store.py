@@ -154,6 +154,19 @@ def session_activities(sid, data):
         crawl = activity(sid)
         if crawl:
             candidates.append(crawl)
+    from app.work import runner
+    names = {'prep': '전처리 중', 'train': '학습 중', 'infer': '추론 중', 'monitor': '감시 중'}
+    for run in runner.status(sid):
+        state = run['state']
+        if state not in {'running', 'paused', 'interrupted', 'failed'}:
+            continue
+        kind = run['kind']
+        progress = run.get('progress', 0)
+        label = ('중단됨 · 이어서 진행' if state in {'interrupted', 'failed'} else
+                 '일시 정지됨 · 이어서 진행' if state == 'paused' else
+                 f'판정 {round(progress * 100)}%' if kind == 'judge' else names.get(kind, kind))
+        candidates.append(dict(kind=kind, status=state, progress=progress,
+                               updatedAt=run.get('heartbeatAt'), runId=run['runId'], label=label))
     return candidates
 
 
