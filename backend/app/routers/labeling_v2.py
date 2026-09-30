@@ -67,6 +67,9 @@ def mode(sid: str, body: Mode, version: str | None = None):
             raise store.StoreError('새 버전에서 방식을 바꾸세요')
         if body.mode == 'model' and not body.modelId:
             raise store.StoreError('분류 모델을 선택하세요.', 422, 'validation')
+        if body.mode == 'model':
+            from app.model import registry, infer
+            registry.require_compatible(body.modelId, infer.embedder_for(sid, data))
         store._update_locked(sid, {'labeling': body.model_dump()})
         return body.model_dump()
 
@@ -80,6 +83,16 @@ def start(sid: str, version: str | None = None):
             raise store.StoreError('전처리를 먼저 완료하세요.')
         labels = labels_for(sid, data)
         index_documents(sid, data, labels)
+        if data.get('labeling', {}).get('mode') == 'model':
+            from app.model import registry, infer
+            model_id = data['labeling']['modelId']
+            registry.require_compatible(model_id, infer.embedder_for(sid, data))
+            infer.prediction_schema(labels, model_mode=True)
+            store._update_locked(sid, {'labeling': {'started': True}})
+            work = runner.start(sid, data['version'], 'infer', {'modelId': model_id})
+            store._update_locked(sid, {'labeling': {'inferRunId': work['runId']},
+                                     'training': {'inferRunId': work['runId'], 'inferStatus': 'running'}})
+            return dict(started=True, workers={'infer': work})
         caches = caches_for(sid, data)
         refs = {name: str(cache.path.parent.relative_to(settings.local_data_dir)) for name, cache in caches.items()}
         # Persist the start lock and each successful launch, including a partial launch.
@@ -96,6 +109,8 @@ def start(sid: str, version: str | None = None):
 def control(sid: str, labeler: Literal['jev', 'gpt'], action: Literal['pause', 'resume'], version: str | None = None):
     with store.locked(sid):
         data = session(sid, version, writable=True)
+        if data.get('labeling', {}).get('mode') == 'model':
+            raise store.StoreError('분류 모델 구간에서는 추론 워커를 제어하세요.')
         run_id = data.get('labeling', {}).get('judgeRuns', {}).get(labeler)
         work = next((r for r in runner.status(sid) if r['runId'] == run_id), None)
         if work is None:
@@ -112,7 +127,23 @@ def get_overview(sid: str, version: str | None = None):
     with store.locked(sid):
         data = session(sid, version)
         writable = not store.is_legacy(data) and (version is None or version == store.load_session(sid)['version'])
-        return overview(sid, version, mark_seen=writable, sync=writable)
+        result = overview(sid, version, mark_seen=writable, sync=writable)
+        if data.get('labeling', {}).get('mode') == 'model':
+            from app.label.overview import now_card
+            training = data.get('training', {})
+            runs = {r['runId']: r for r in runner.status(sid)}
+            progress = {}
+            for kind in ('infer', 'monitor'):
+                run_id = training.get(kind + 'RunId') or data['labeling'].get(kind + 'RunId')
+                if run_id in runs:
+                    run = runs[run_id]
+                    progress[kind] = dict(run, pending=0, reason=run.get('detail', {}).get('reason'))
+            result['progress'] = progress
+            labels = labels_for(sid, data)
+            pending = next_item(labels, 'audit') is not None or next_item(labels, 'reissue') is not None
+            result['now'] = now_card(result['started'], progress, result['definitionCheck'],
+                                      result['queue']['total'], pending)
+        return result
 
 
 @router.get('/{sid}/next')

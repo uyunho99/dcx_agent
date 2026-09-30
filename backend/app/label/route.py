@@ -43,19 +43,23 @@ def schema(store):
 def rebuild_queue(store, jev_cache=None, gpt_cache=None):
     """Refresh on overview/judge polling, never on the indexed next-item path."""
     schema(store)
-    if jev_cache is not None and gpt_cache is not None:
+    from app.model.infer import refresh_predictions
+    model_mode = refresh_predictions(store)
+    if not model_mode and jev_cache is not None and gpt_cache is not None:
         from app.label.merge import rebuild_final
         rebuild_final(store, jev_cache, gpt_cache)
     with store._db() as db:
         # T09 carry-over: a recovered failed vote must not leave a stale review.
         db.execute("""UPDATE queue SET status='closed' WHERE status='open'
             AND EXISTS (SELECT 1 FROM final f WHERE f.doc_id=queue.doc_id
-                        AND (f.source='human' OR f.grade_mismatch=0))""")
+                        AND (f.source='human' OR (f.source!='model' AND f.grade_mismatch=0)))""")
         db.execute("""INSERT INTO queue(doc_id, reason, priority, status)
             SELECT doc_id, 'grade_mismatch', 1+confidence, 'open' FROM final
-            WHERE grade_mismatch=1 AND source!='human'
+            WHERE grade_mismatch=1 AND source='agreed'
             ON CONFLICT(doc_id) DO UPDATE SET reason=excluded.reason,
                 priority=excluded.priority WHERE queue.status='open'""")
+        if model_mode:
+            return
         for name, cache in (('jev', jev_cache), ('gpt', gpt_cache)):
             if cache is None:
                 continue
@@ -150,5 +154,11 @@ def submit_item(store, doc_id, labeler, mode, tags, round=None, elapsed=None, ca
         db.execute('INSERT OR REPLACE INTO review_done VALUES (?,?,?,?)', (mode, round or 0, doc_id, elapsed))
     if mode == 'audit':
         audit.apply_audit_overrides(store)
+        # Even an unchanged confirmation is a human training example (weight 3).
+        with store._db() as db:
+            latest = db.execute('SELECT mode FROM human WHERE doc_id=? ORDER BY rowid DESC LIMIT 1', (doc_id,)).fetchone()
+            projected = db.execute('SELECT tags_json FROM final WHERE doc_id=?', (doc_id,)).fetchone()
+            if latest and latest[0] == 'audit' and projected and json.loads(projected[0]) == tags.model_dump():
+                db.execute("UPDATE final SET source='human',route='audited' WHERE doc_id=?", (doc_id,))
     final = store.get(doc_id)
     return dict(doc_id=doc_id, level=level, votes=final.votes if final else {})

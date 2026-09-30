@@ -16,6 +16,7 @@ from app.routers import (
     labeling,
     labeling_v2,
     training,
+    training_v2,
     clustering,
     embedding,
     personas,
@@ -51,6 +52,7 @@ app.include_router(prep.router)
 app.include_router(labeling.router)
 app.include_router(labeling_v2.router)
 app.include_router(training.router)
+app.include_router(training_v2.router)
 app.include_router(clustering.router)
 app.include_router(embedding.router)
 app.include_router(personas.router)

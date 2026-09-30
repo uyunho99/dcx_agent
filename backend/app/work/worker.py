@@ -65,7 +65,23 @@ def _judge(context: Context):
     run_worker(context)
 
 
-KINDS: dict[str, Callable[[Context], None]] = {'prep': _prep, 'judge': _judge}
+def _train(context: Context):
+    from app.routers.training_v2 import run_worker
+    run_worker(context)
+
+
+def _infer(context: Context):
+    from app.model.infer import run_worker
+    run_worker(context)
+
+
+def _monitor(context: Context):
+    from app.model.monitor import run_worker
+    run_worker(context)
+
+
+KINDS: dict[str, Callable[[Context], None]] = {
+    'prep': _prep, 'judge': _judge, 'train': _train, 'infer': _infer, 'monitor': _monitor}
 
 
 def execute(context: Context):
