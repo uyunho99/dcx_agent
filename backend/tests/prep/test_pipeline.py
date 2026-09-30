@@ -1,4 +1,6 @@
 import json
+from contextlib import closing
+from app.crawl.queue import CrawlQueue
 
 import numpy as np
 import pytest
@@ -54,10 +56,13 @@ def rows(root, kind):
 @pytest.fixture
 def setup(data_dir, monkeypatch):
     embedder = Embedder()
+    monkeypatch.setattr(settings, 'embed_backend', 'fake')
     monkeypatch.setattr(pipeline, 'get_embedder', lambda: embedder)
     def prepare(docs, config=None):
         root = data_dir / 'crawl/s/collections/c1'
         store.write_json(root / 'manifest.json', {'parent': None})
+        with closing(CrawlQueue(root / 'queue.sqlite')) as queue:
+            queue.finish_run(queue.register_run('detail'), 'done')
         store.atomic_write(root / 'docs/shard-0001.jsonl', ''.join(json.dumps(d) + '\n' for d in docs))
         store.update_session('s', {'schemaVersion': 2, 'collectionId': 'c1',
                                    'prep': {'config': config or {}}})
@@ -196,6 +201,8 @@ def test_version_snapshot_and_compat_output(setup, data_dir):
     # Leave active pointer on v1: an explicit v2 worker must not read v1 documents.
     source = data_dir / 'crawl/s/collections/c2'
     store.write_json(source / 'manifest.json', {'parent': None})
+    with closing(CrawlQueue(source / 'queue.sqlite')) as queue:
+        queue.finish_run(queue.register_run('detail'), 'done')
     store.atomic_write(source / 'docs/shard-0001.jsonl', json.dumps(doc('v2doc')) + '\n')
     root = pipeline.run_prep(Context(), 's', 'v2')
     assert rows(root, 'docs')[0]['doc_id'] == 'v2doc'
@@ -388,3 +395,18 @@ def test_unconnected_exports_before_embedding(setup, monkeypatch, data_dir, entr
     assert not list((root / 'vectors').glob('*.f16'))
     assert VectorStore(root).count() == 0
     assert store.load_session('s')['prep'].get('status') != 'done'
+
+
+def test_old_unfinalized_snapshot_rebuilt_with_current_documents(setup, data_dir):
+    setup([doc('old')])
+    root = pipeline.run_prep(Context(), 's', 'v1')
+    manifest = store.read_json(root / 'manifest.json')
+    manifest.pop('collectionFinalized')
+    store.write_json(root / 'manifest.json', manifest)
+    source = data_dir / 'crawl/s/collections/c1/docs/shard-0001.jsonl'
+    source.write_text(json.dumps(doc('new')) + '\n')
+    assert pipeline.run_prep(Context(), 's', 'v1') == root
+    assert [d['doc_id'] for d in rows(root, 'docs')] == ['new']
+    assert VectorStore(root).get(['old'])[0] == []
+    assert VectorStore(root).get(['new'])[0] == ['new']
+    assert store.read_json(root / 'manifest.json')['collectionFinalized'] is True

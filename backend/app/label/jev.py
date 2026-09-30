@@ -200,3 +200,46 @@ class JevClient:
                 raise _bad() from None
             return _parse_vote(payload, questions, truncated)
         raise _bad()
+
+
+class FakeJevClient:
+    """Deterministic offline adapter; constructs no HTTP client and needs no key."""
+    def __init__(self, model):
+        self.model = 'fake-' + model
+
+    def judge(self, doc, one_liner, *, idempotency_key=None):
+        import hashlib
+        import random
+        if not isinstance(doc.get('doc_id'), str) or not doc['doc_id']:
+            raise _bad()
+        state, truncated = build_state(doc, one_liner)
+        rng = random.Random(hashlib.sha256(state.encode()).digest())
+        answers = {}
+        questions = jev_questions(one_liner)
+        for name, question in questions.items():
+            if question['type'] == 'noul':
+                answers[name] = {'type': 'noul', 'noul': rng.random()}
+            else:
+                weights = {key: rng.random() for key in question['criteria']}
+                total = sum(weights.values())
+                probabilities = {key: value / total for key, value in weights.items()}
+                choice = max(probabilities, key=probabilities.get)
+                answers[name] = dict(type='choice', choice=choice,
+                    probabilities=probabilities, confidence=probabilities[choice])
+        return _parse_vote(dict(model=self.model, answers=answers), questions, truncated)
+
+    def close(self):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
+
+def get_jev_client(keys=None, model=None, transport=None):
+    model = model or settings.jev_model
+    if settings.jev_backend == 'fake':
+        return FakeJevClient(model)
+    return JevClient(settings.jev_api_keys if keys is None else keys, model, transport=transport)

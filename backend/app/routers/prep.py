@@ -1,14 +1,14 @@
 """Stage-three API and the detached preparation worker entry point."""
 from pathlib import Path
 import re
-from types import SimpleNamespace
 
 from fastapi import APIRouter
 from pydantic import ConfigDict
 
 from app.config import settings
 from app.context import store, versions
-from app.prep.config import PrepConfig, prep_key
+from app.prep.config import PrepConfig
+from app.prep.guards import assert_ready
 from app.routers.context import ContextRoute
 from app.vectors.embedder import FakeEmbedder, VoyageEmbedder
 from app.work import runner
@@ -91,18 +91,15 @@ def config(sid: str, body: Config, version: str | None = None):
 def run(sid: str, version: str | None = None):
     with store.locked(sid):
         data = _session(sid, version, writable=True)
+        cfg = PrepConfig.model_validate(data.get('prep', {}).get('config', {}))
+        ref = assert_ready(sid, data, cfg)
         current = _view(sid, data)
         if current['status'] in ('running', 'paused'):
             return current
-        cfg = PrepConfig.model_validate(data.get('prep', {}).get('config', {}))
-        identity = SimpleNamespace(name=cfg.embedder, model=cfg.embedModel, dim=cfg.embedDim)
-        cid = data.get('collectionId')
-        key = prep_key(cid, cfg, identity)
-        root = _root(sid, cid, key)
-        ref = dict(collectionId=cid, prepKey=key)
+        root = _root(sid, ref['collectionId'], ref['prepKey'])
         manifest = store.read_json(root / 'manifest.json')
         # Only fully published results can bypass the worker (and provider setup).
-        if (manifest and manifest.get('status') == 'done' and manifest.get('compatWritten')
+        if (manifest and manifest.get('collectionFinalized') is True and manifest.get('status') == 'done' and manifest.get('compatWritten')
                 and (root / 'stage_3.json').exists()
                 and (Path(settings.local_data_dir) / manifest['compatRef']).exists()):
             _save(sid, config=cfg.model_dump(), derivedRef=ref, status='done', runId=None)

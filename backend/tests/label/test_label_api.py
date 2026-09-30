@@ -137,6 +137,8 @@ def test_overview_and_report(client, session):
     assert view['changes']['accepted'] == 1
     assert client.get(f'/label/{sid}/overview').json()['changes']['accepted'] == 1
     assert client.post(f'/label/{sid}/seen').status_code == 200
+    assert client.get(f'/label/{sid}/overview').json()['changes']['accepted'] == 1
+    assert client.post(f'/label/{sid}/seen').status_code == 200
     assert client.get(f'/label/{sid}/overview').json()['changes']['accepted'] == 0
     report = importlib.import_module('app.label.report').label_part(sid)
     assert report['accepted'] == 1
@@ -296,6 +298,8 @@ def test_overview_reads_preserve_seen_and_estimates(client, session, monkeypatch
     assert first['changes'] == second['changes']
     assert store.load_session(sid)['labeling']['lastSeenAt'] == first['lastSeenAt']
     assert calls == ['jev', 'gpt']
+    assert client.post(f'/label/{sid}/seen').status_code == 200
+    assert client.get(f'/label/{sid}/overview').json()['changes']['accepted'] == 1
     assert client.post(f'/label/{sid}/seen').status_code == 200
     assert client.get(f'/label/{sid}/overview').json()['changes']['accepted'] == 0
     assert client.post(f'/label/{sid}/seen?version=v99').status_code == 409

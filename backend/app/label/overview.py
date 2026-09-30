@@ -136,7 +136,7 @@ def overview(sid, version=None, *, sync=True) -> dict:
         reasons = dict.fromkeys(('labeler_failed', 'grade_mismatch'), 0)
         reasons.update(dict(db.execute("SELECT reason, count(*) FROM queue WHERE status='open' GROUP BY reason")))
         average = db.execute("SELECT avg(elapsed) FROM review_done WHERE mode='escalate' AND elapsed IS NOT NULL").fetchone()[0] or 10
-        since = labeling.get('lastSeenAt')
+        since = labeling.get('prevSeenAt', labeling.get('lastSeenAt'))
         timestamp = datetime.fromisoformat(since).timestamp() if since else 0
         changes = dict.fromkeys(('merged', 'accepted', 'queued'), 0)
         changes.update(dict(db.execute('SELECT kind, count(*) FROM label_events WHERE at>? GROUP BY kind', (timestamp,))))
@@ -163,12 +163,14 @@ def overview(sid, version=None, *, sync=True) -> dict:
                               estimate=estimate, reason=detail.get('reason'), runId=run.get('runId'))
     queue_count = sum(reasons.values())
     pending = next_item(labels, 'audit') is not None or next_item(labels, 'reissue') is not None
-    result = dict(mode=labeling.get('mode', 'llm'), modelId=labeling.get('modelId'), started=labeling.get('started', False),
+    from app.model.dataset import trainable_count
+    result = dict(trainable=trainable_count(sid, data, labels), mode=labeling.get('mode', 'llm'), modelId=labeling.get('modelId'), started=labeling.get('started', False),
                   merged=merged, total=total, accepted=accepted, escalated=queue_count,
                   mismatchRate=queue_count / merged if merged else 0,
                   levelDistribution=distribution, queue=dict(total=queue_count, byReason=reasons, estimatedSeconds=queue_count * average),
                   labelerAccuracy=accuracy, selfConsistency=consistency, definitionCheck=definition,
-                  progress=progress, audit=history, changes=changes, lastSeenAt=since)
+                  progress=progress, audit=history, changes=changes,
+                  lastSeenAt=labeling.get('lastSeenAt'), prevSeenAt=since)
     result['now'] = now_card(result['started'], progress, definition, queue_count, pending)
     if result['now']['state'] == 'review':
         result['now']['estimatedSeconds'] = queue_count * average

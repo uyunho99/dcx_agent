@@ -125,10 +125,10 @@ def preprocess_data(config: dict) -> None:
         if session.get('schemaVersion') == 2:
             from app.prep.pipeline import run_prep
             from app.vectors.embedder import EmbedderUnconnected
-            prep_config = {**session.get('prep', {}).get('config', {}),
-                           **{k: v for k, v in config.items() if k not in {'sid', 'version'}}}
-            if exclude_cafes:
-                prep_config['excludeSources'] = prep_config.get('excludeSources', []) + exclude_cafes
+            from app.prep.guards import assert_ready, legacy_config
+            cfg = legacy_config(session, config)
+            assert_ready(sid, session, cfg)
+            prep_config = cfg.model_dump()
             try:
                 root = run_prep(_InlineContext(prep_config), sid, session.get('version', 'v1'))
             except EmbedderUnconnected as error:

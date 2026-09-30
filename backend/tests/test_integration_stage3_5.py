@@ -1,5 +1,7 @@
 """Offline collection → preparation → human review → training → clustering."""
 import json
+from contextlib import closing
+from app.crawl.queue import CrawlQueue
 from pathlib import Path
 import socket
 from types import SimpleNamespace
@@ -79,6 +81,8 @@ def flow(client, data_dir, monkeypatch):
     sid = 'integration'
     source = data_dir / 'crawl' / sid / 'collections/c1'
     store.write_json(source / 'manifest.json', {'parent': None})
+    with closing(CrawlQueue(source / 'queue.sqlite')) as queue:
+        queue.finish_run(queue.register_run('detail'), 'done')
     docs = [dict(doc_id=f'd{i:03}', title=f'경험 {i}', body=f'충분히 긴 사용 경험 본문입니다 {i}',
                  source='naver_cafe', channel='naver_cafe', comments=[]) for i in range(40)]
     store.atomic_write(source / 'docs/shard-0001.jsonl', ''.join(json.dumps(d) + '\n' for d in docs))

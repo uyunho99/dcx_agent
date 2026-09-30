@@ -125,7 +125,10 @@ def judge_batch(docs: list[dict], one_liner: str, *, sid: str, ctx_key: str,
         return {}, []
     task = build_task(docs, one_liner).model_copy(update={'sid': sid})
     ids = [doc['doc_id'] for doc in docs]
-    run_id = _run_id(ids, sid, qver, ctx_key)
+    # The canonical prompt includes prepared text (sorted by ID), definitions,
+    # and the one-liner. A stage-three restart must never reuse a changed manifest.
+    context = hashlib.sha256((ctx_key + '\n' + task.instructions).encode()).hexdigest()[:24]
+    run_id = _run_id(ids, sid, qver, context)
     backend = settings.label_gpt_backend
     if backend == 'codex_exec':
         result = run_many([task], run_id=run_id, concurrency=settings.label_concurrency)[0]

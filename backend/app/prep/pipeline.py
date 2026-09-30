@@ -129,6 +129,10 @@ def _publish(sid, version, root, cfg, manifest):
         path = version_dir(sid, version) / 'session.json'
         session = store.read_json(path)
         if session is not None:
+            from app.prep.guards import assert_ready
+            ref = assert_ready(sid, session, cfg)
+            if ref != dict(collectionId=manifest['collectionId'], prepKey=root.name):
+                raise store.StoreError('전처리 대상 수집본이 바뀌었습니다. 다시 실행하세요.')
             session['prep'] = dict(config=cfg.model_dump(),
                                    derivedRef=dict(collectionId=manifest['collectionId'], prepKey=root.name),
                                    status='done', savedAt=store.now())
@@ -144,6 +148,8 @@ def run_prep(ctx, sid: str, version: str) -> Path:
         raise ValueError('Invalid crawl collection id')
     values = {**session.get('prep', {}).get('config', {}), **getattr(ctx, 'args', {}).get('config', {})}
     cfg = PrepConfig.model_validate(values)
+    from app.prep.guards import assert_ready
+    assert_ready(sid, session, cfg)
     unconnected = None
     try:
         if cfg.embedder == settings.embed_backend:
@@ -164,11 +170,19 @@ def run_prep(ctx, sid: str, version: str) -> Path:
     with (root / '.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         manifest = store.read_json(root / 'manifest.json')
+        if manifest and manifest.get('collectionFinalized') is not True:
+            # Old results may have snapshotted an unfinished crawl. Rebuild all
+            # shards, including vectors, rather than resume/reuse that snapshot.
+            import shutil
+            for artifact in root.iterdir():
+                if artifact.name != '.lock':
+                    shutil.rmtree(artifact) if artifact.is_dir() else artifact.unlink()
+            manifest = None
         if manifest and manifest['status'] == 'done':
             _publish(sid, version, root, cfg, manifest)
             return root
         if manifest is None:
-            manifest = dict(collectionId=cid, prepKey=key, config=cfg.model_dump(),
+            manifest = dict(collectionId=cid, prepKey=key, config=cfg.model_dump(), collectionFinalized=True,
                             embedder=dict(name=embedder.name, model=embedder.model, dim=embedder.dim),
                             analyzer=analyzer_version(), createdAt=store.now(), counts={}, progress={},
                             compatRef=f'preprocessed/{sid}/{time.time_ns()}.jsonl')

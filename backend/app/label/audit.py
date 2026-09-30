@@ -132,15 +132,16 @@ def _apply_overrides(db, truths):
         # Do not overwrite a later, explicit escalation judgment.
         later = db.execute("SELECT 1 FROM human WHERE doc_id=? AND mode='escalate' AND rowid>? LIMIT 1",
                            (doc_id, row['human_id'])).fetchone()
-        final = db.execute('SELECT tags_json FROM final WHERE doc_id=?', (doc_id,)).fetchone()
+        final = db.execute('SELECT tags_json, level FROM final WHERE doc_id=?', (doc_id,)).fetchone()
         if later or final is None:
             continue
         truth = Tags.model_validate_json(row['truth_json'])
-        if json.loads(final['tags_json']) == truth.model_dump():
+        level = rule.grade(_flat(truth.model_dump()))
+        if json.loads(final['tags_json']) == truth.model_dump() and final['level'] == level:
             continue
         db.execute('''UPDATE final SET tags_json=?, level=?, source='human',
             route='audited', reason_code=?, signal=?, rule_version=? WHERE doc_id=?''',
-                   (truth.model_dump_json(), rule.grade(_flat(truth.model_dump())),
+                   (truth.model_dump_json(), level,
                     truth.reason_code, truth.signal, rule.RULE_VERSION, doc_id))
         changed += 1
     return changed

@@ -258,6 +258,6 @@ def submit_item(store, doc_id, labeler, mode, tags, round=None, elapsed=None, ca
             latest = db.execute('SELECT mode FROM human WHERE doc_id=? ORDER BY rowid DESC LIMIT 1', (doc_id,)).fetchone()
             projected = db.execute('SELECT tags_json, source FROM final WHERE doc_id=?', (doc_id,)).fetchone()
             if latest and latest[0] == 'audit' and projected and projected['source'] == 'model' and json.loads(projected[0]) == tags.model_dump():
-                db.execute("UPDATE final SET source='human',route='audited' WHERE doc_id=?", (doc_id,))
+                db.execute("UPDATE final SET source='human',route='audited',level=? WHERE doc_id=?", (level, doc_id))
     final = store.get(doc_id)
     return dict(doc_id=doc_id, level=level, votes=final.votes if final else {})

@@ -391,7 +391,7 @@ def test_missing_manifest_status_hides_path(client, data_dir):
     preprocess_data({'sid': sid})
     response = client.get(f'/preprocess-status/{sid}')
     assert response.status_code == 200
-    assert response.json() == {'status': 'error', 'error': '수집본을 읽을 수 없습니다 (c2)'}
+    assert response.json() == {'status': 'error', 'error': '수집이 끝난 뒤에 전처리를 실행할 수 있습니다.'}
     assert str(data_dir) not in response.text
 
 

@@ -89,6 +89,7 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = _ENV_FILE
+        extra = 'ignore'
 
 
 settings = Settings()

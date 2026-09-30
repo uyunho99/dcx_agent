@@ -25,7 +25,7 @@ def test_export_relevant_contract(client, data_dir):
     response = client.post(f'/train/{sid}/export', json={'withoutModel': True})
     assert response.status_code == 200, response.text
     ref = store.load_session(sid)['training']['exportRef']
-    assert ref == f'classified/{sid}/v1/relevant.jsonl'
+    assert ref.startswith(f'classified/{sid}/v1/gen-') and ref.endswith('/relevant.jsonl')
     rows = [json.loads(line) for line in (data_dir / ref).read_text().splitlines()]
     assert [r['evidence_level_pred'] for r in rows] == ['core', 'supporting']
     assert len((data_dir / ref).with_name('all.jsonl').read_text().splitlines()) == 3

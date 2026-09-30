@@ -11,7 +11,7 @@ import httpx
 from app.config import settings
 from app.context import store
 from app.label import gpt, judge, rule
-from app.label.jev import JevClient, JevVote, JevError
+from app.label.jev import get_jev_client as JevClient, JevVote, JevError
 from app.label.questions import QVER
 from app.label.overview import caches_for, labels_for, session
 from app.model import infer

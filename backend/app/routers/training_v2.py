@@ -1,4 +1,6 @@
 """Version-aware training, saved ensembles, and stage-five exports."""
+from pathlib import Path
+
 import numpy as np
 import torch
 from fastapi import APIRouter
@@ -68,7 +70,8 @@ def status(sid: str, version: str | None = None):
         monitor = {**(monitor or {}), **monitor_run, 'reason': reason}
     return dict(training=training, workers=[r for r in works
         if r['runId'] in run_ids and r['kind'] in ('train', 'infer')], monitor=monitor,
-        stage5=store.read_json(store.root_dir(sid) / 'versions' / data['version'] / 'stage_5.json'))
+        stage5=store.read_json((Path(settings.local_data_dir) / training['stage5Ref'])
+            if training.get('stage5Ref') else store.root_dir(sid) / 'versions' / data['version'] / 'stage_5.json'))
 
 
 @router.post('/train/{sid}/export')
@@ -90,8 +93,8 @@ def _unpack(data):
 def training_data(sid, data, parent=None):
     docs = infer.documents(sid, data)
     labels = labels_for(sid, data)
-    with labels._db() as db:
-        rows = [dict(r) for r in db.execute("SELECT * FROM final WHERE source='human' OR (source='agreed' AND route='accepted') ORDER BY doc_id")]
+    from app.model.dataset import training_rows
+    rows = training_rows(labels)
     for row in rows:
         if row['doc_id'] not in docs:
             raise store.StoreError('학습 문서를 찾을 수 없습니다.')

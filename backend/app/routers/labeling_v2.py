@@ -168,12 +168,13 @@ def next_review(sid: str, mode: ReviewMode = 'escalate', version: str | None = N
 
 @router.post('/{sid}/seen')
 def seen(sid: str, version: str | None = None):
-    """Called once when opening the labeling screen, after reading its changes."""
+    """Pin the prior visit for all overview polls during this visit."""
     with store.locked(sid):
-        session(sid, version, writable=True)
+        data = session(sid, version, writable=True)
         at = store.now()
-        store._update_locked(sid, {'labeling': {'lastSeenAt': at}})
-        return {'lastSeenAt': at}
+        previous = data.get('labeling', {}).get('lastSeenAt')
+        store._update_locked(sid, {'labeling': {'prevSeenAt': previous, 'lastSeenAt': at}})
+        return {'lastSeenAt': at, 'prevSeenAt': previous}
 
 
 @router.post('/{sid}/submit')

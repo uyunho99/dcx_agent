@@ -1,21 +1,28 @@
 """Stage-five writer and exact-file exports consumed by subsequent stages."""
 import json
+import os
+from pathlib import Path
+from uuid import uuid4
+
+from app.config import settings
 
 from app.context import store
 from app.label import report, rule
 from app.label.overview import labels_for, session
 from app.model import infer, registry
-from app.services import s3
 
 
-def write_stage5(sid, data, model=None):
+def write_stage5(sid, data, model=None, *, generation=None):
     """The only stage_5.json writer. Caller holds the session lock."""
     result = report.label_part(sid)
     monitor = data.get('training', {}).get('monitor', {})
     result.update(model=model, monitorDivergence=monitor.get('monitorDivergence'),
                   monitor=monitor or None)
     key = f"sessions/{sid}/versions/{data['version']}/stage_5.json"
-    s3.save_json(key, result)
+    if generation is not None:
+        store.write_json(generation / 'stage_5.json', result)
+    else:
+        store.write_json(Path(settings.local_data_dir) / key, result)
     return result
 
 
@@ -64,12 +71,27 @@ def write(sid, version=None, *, without_model=False):
                 'desc': doc.get('desc') or doc.get('body') or doc.get('text') or '',
                 'cafe': doc.get('cafe') or '', 'kw': doc.get('kw') or '', **values,
                 'rule_version': rule.RULE_VERSION, 'modelId': None if unavailable else model_id})
-        base = f"classified/{sid}/{data['version']}"
+        base = f"classified/{sid}/{data['version']}/gen-{uuid4().hex}"
+        generation = Path(settings.local_data_dir) / base
+        generation.mkdir(parents=True, exist_ok=False)
         relevant = [r for r in rows if r['evidence_level_pred'] in ('core', 'supporting')]
-        s3.save_jsonl(base + '/all.jsonl', rows)
-        s3.save_jsonl(base + '/relevant.jsonl', relevant)
+        for name, items in (('all.jsonl', rows), ('relevant.jsonl', relevant)):
+            store.atomic_write(generation / name, ''.join(
+                json.dumps(row, ensure_ascii=False) + '\n' for row in items))
         model = None if meta is None else {key: meta[key] for key in ('modelId', 'kind', 'perHead', 'metrics')}
-        stage = write_stage5(sid, data, model)
+        stage = write_stage5(sid, data, model, generation=generation)
+        # atomic_write fsyncs each file and its directory. Persist the new
+        # generation's ancestor directory entries before publishing the pointer.
+        for directory in (generation.parent, generation.parent.parent, generation.parent.parent.parent):
+            fd = os.open(directory, os.O_RDONLY)
+            try:
+                os.fsync(fd)
+            finally:
+                os.close(fd)
         ref = base + '/relevant.jsonl'
-        store._update_locked(sid, {'training': {'exportRef': ref, 'allRef': base + '/all.jsonl', 'exportedAt': store.now()}})
+        store._update_locked(sid, {'training': {'exportRef': ref, 'allRef': base + '/all.jsonl', 'stage5Ref': base + '/stage_5.json', 'exportedAt': store.now()}})
+        # Compatibility report is atomic too; authoritative exported artifacts
+        # remain together under stage5Ref/exportRef. Retain generations because
+        # historical versions may still point to them.
+        store.write_json(store.session_dir(sid) / 'stage_5.json', stage)
         return dict(exportRef=ref, allRef=base + '/all.jsonl', total=len(rows), relevant=len(relevant), stage5=stage)

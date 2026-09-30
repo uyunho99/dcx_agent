@@ -27,7 +27,9 @@ def build_features(docs, vectors) -> np.ndarray:
     result = np.zeros((len(docs), INPUT_DIM), dtype=np.float32)
     result[:, :1024] = array
     for i, doc in enumerate(docs):
-        result[i, 1024 + CHANNELS.index(doc.get('channel', doc.get('source')))] = 1
+        channel = doc.get('channel', doc.get('source'))
+        if channel in CHANNELS:
+            result[i, 1024 + CHANNELS.index(channel)] = 1
         result[i, 1029:] = (np.log1p(len(doc.get('body') or '')),
                             bool(doc.get('is_snippet', doc.get('fetch_level') == 'snippet')), bool(doc.get('jev_truncated', False)))
     return result

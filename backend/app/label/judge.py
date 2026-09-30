@@ -9,7 +9,7 @@ import time
 from app.config import settings
 from app.context import versions
 from app.label import gpt
-from app.label.jev import JevClient, JevError, build_state
+from app.label.jev import get_jev_client as JevClient, JevError, build_state
 from app.label.questions import QVER, jev_questions
 from app.label.votes import VoteCache
 from app.work.status import transaction

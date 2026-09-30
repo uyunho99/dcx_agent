@@ -9,7 +9,7 @@ Naver Cafe 데이터 기반 소비자 인사이트 분석 파이프라인.
 |------|------|
 | Backend | FastAPI · Gunicorn · Scikit-learn |
 | Frontend | Next.js 16 · React 19 · Zustand · Tailwind CSS · D3.js |
-| AI/ML | Claude API · Voyage AI(임베딩) · Pinecone(벡터 DB) |
+| AI/ML | Jev · GPT(Codex/API) · PyTorch 앙상블 · Voyage AI(임베딩) · 로컬 float16 벡터 검색 |
 | 인프라 | AWS S3 · Naver Cafe API · Nginx · systemd |
 
 ## 프로젝트 구조
@@ -316,9 +316,30 @@ sudo certbot renew --dry-run
 | `NAVER_CLIENT_ID` | O | Naver 개발자 Client ID |
 | `NAVER_CLIENT_SECRET` | O | Naver 개발자 Client Secret |
 | `CLAUDE_API_KEY` | O | Anthropic Claude API 키 |
-| `PINECONE_API_KEY` | O | Pinecone 벡터 DB API 키 |
 | `VOYAGE_API_KEY` | O | Voyage AI 임베딩 API 키 |
 | `CORS_ORIGINS` | - | 허용 도메인 (기본: `*`, 프로덕션: 도메인 지정) |
+
+| `STORAGE` / `LOCAL_DATA_DIR` | - | 저장 방식 (`local`) / 로컬 데이터 경로 (`data`); 3~5단계와 검색은 로컬 벡터 재사용 |
+| `EMBED_BACKEND` | - | `voyage` (기본) 또는 오프라인 `fake` |
+| `EMBED_MODEL` / `EMBED_DIM` | - | `voyage-4` / `1024` |
+| `JEVMODEL_API_KEY` | Jev HTTP 사용 시 | Jev API 키; 여러 키는 쉼표로 구분 |
+| `JEV_BACKEND` / `JEV_MODEL` | - | `http` 또는 오프라인 `fake` / `jev-latest` |
+| `JEV_RATE_PER_MIN` | - | 키당 분당 요청 수 (`120`) |
+| `LABEL_GPT_BACKEND` | - | `codex_exec` (기본), `openai_api`, 오프라인 `fake` |
+| `LABEL_BATCH_SIZE` / `LABEL_CONCURRENCY` | - | GPT 배치 문서 수 (`20`) / 동시 실행 수 (`4`) |
+| `OPENAI_API_KEY` / `OPENAI_MODEL` | OpenAI API 사용 시 | API 인증 및 모델 선택 |
+| `CODEX_BIN` / `CODEX_PROFILE` / `CODEX_TIMEOUT_S` | Codex 사용 시 | 실행 파일 (`codex`), 프로필 (`dcx-worker`), 제한 시간 (`600`초) |
+| `KNOWN_THETA` | - | Known Insight 유사도 제외 기준 (`0.85`) |
+| `MODEL_CUT_LOW` / `MODEL_CUT_HIGH` | - | 모델의 사람 검수 구간 (`0.2` / `0.8`) |
+| `MONITOR_RATE` / `MONITOR_WARN` | - | 모델 감시 비율 (`0.01`) / 괴리 경고 기준 (`0.15`) |
+| `HEAD_MIN_SAMPLES` | - | 헤드별 최소 학습 표본 수 (`30`) |
+| `AUDIT_FIRST` / `AUDIT_EVERY` | - | 첫 감사 채택 수 (`1000`) / 이후 간격 (`10000`) |
+| `AUDIT_SIZE` / `AUDIT_REISSUE` | - | 감사 표본 수 (`50`) / 재판정 수 (`2`) |
+| `KAPPA_FLOOR` | - | 태그 정의 점검 기준 (`0.75`) |
+
+3단계에서 만든 로컬 벡터로 Core · Supporting 문서를 검색하며, Known Insight 필터를 적용합니다.
+별도의 벡터 DB 업로드나 API 키가 필요하지 않습니다. 오프라인 판정·임베딩 점검에는
+`EMBED_BACKEND=fake`, `JEV_BACKEND=fake`, `LABEL_GPT_BACKEND=fake`를 함께 설정하세요.
 
 ### .env 암호화/복호화
 

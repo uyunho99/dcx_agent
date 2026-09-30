@@ -86,7 +86,7 @@ def test_two_batches_then_retry_real_run_many(gpt, fake_codex, monkeypatch):
     roots = list((fake_codex / 'llm_runs').iterdir())
     assert len(roots) == 4
     digest = hashlib.sha256(json.dumps(['a', 'b'], ensure_ascii=False, separators=(',', ':')).encode()).hexdigest()[:12]
-    assert (fake_codex / f'llm_runs/lbl-session-q1-context-{digest}/manifest.json').exists()
+    assert len(list((fake_codex / 'llm_runs').glob(f'lbl-session-q1-*-{digest}/manifest.json'))) == 1
     assert all(len((root / 'invocations').read_text().splitlines()) == 1 for root in roots)
 
 
