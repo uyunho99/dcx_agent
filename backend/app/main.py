@@ -14,6 +14,7 @@ from app.routers import (
     preprocessing,
     prep,
     labeling,
+    labeling_v2,
     training,
     clustering,
     embedding,
@@ -48,6 +49,7 @@ app.include_router(crawl_v2.router)
 app.include_router(preprocessing.router)
 app.include_router(prep.router)
 app.include_router(labeling.router)
+app.include_router(labeling_v2.router)
 app.include_router(training.router)
 app.include_router(clustering.router)
 app.include_router(embedding.router)
