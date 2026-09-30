@@ -1,10 +1,12 @@
 import signal
 import subprocess
 import sys
+from pathlib import Path
 
 
 def test_kill_restart_no_duplicate_calls(tmp_path):
     # Real SIGKILL after row 40 commits; a 50-row lease leaves ten abandoned rows.
+    backend_dir = Path(__file__).resolve().parents[2]
     script = r'''
 import os, signal, sys, json
 import httpx
@@ -41,9 +43,9 @@ VoteCache.put = kill_after_commit
 ctx = SimpleNamespace(sid='session', version='v1', args={'labeler': 'jev'}, run_id=sys.argv[2], heartbeat=lambda *a: None, should_stop=lambda: False)
 judge.run_worker(ctx)
 '''
-    first = subprocess.run([sys.executable, '-c', script, str(tmp_path), 'first'], capture_output=True, timeout=20)
+    first = subprocess.run([sys.executable, '-c', script, str(tmp_path), 'first'], cwd=backend_dir, capture_output=True, timeout=20)
     assert first.returncode == -signal.SIGKILL, first.stderr.decode()
-    second = subprocess.run([sys.executable, '-c', script, str(tmp_path), 'second'], capture_output=True, timeout=20)
+    second = subprocess.run([sys.executable, '-c', script, str(tmp_path), 'second'], cwd=backend_dir, capture_output=True, timeout=20)
     assert second.returncode == 0, second.stderr.decode()
     calls = (tmp_path / 'calls').read_text().splitlines()
     assert len(calls) == len(set(calls)) == 100
