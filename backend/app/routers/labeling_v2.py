@@ -11,7 +11,7 @@ from app.context import store
 from app.label import audit, rule
 from app.label.overview import (session, labels_for, caches_for, index_documents,
                                 overview, LEGACY_MESSAGE)
-from app.label.route import next_item, rebuild_queue, submit_item
+from app.label.route import next_item, rebuild_queue, submit_item, sync
 from app.label.schema import Tags
 from app.routers.context import ContextRoute
 from app.work import runner
@@ -124,36 +124,50 @@ def control(sid: str, labeler: Literal['jev', 'gpt'], action: Literal['pause', '
 
 @router.get('/{sid}/overview')
 def get_overview(sid: str, version: str | None = None):
-    with store.locked(sid):
-        data = session(sid, version)
-        writable = not store.is_legacy(data) and (version is None or version == store.load_session(sid)['version'])
-        result = overview(sid, version, mark_seen=writable, sync=writable)
-        if data.get('labeling', {}).get('mode') == 'model':
-            from app.label.overview import now_card
-            training = data.get('training', {})
-            runs = {r['runId']: r for r in runner.status(sid)}
-            progress = {}
-            for kind in ('infer', 'monitor'):
-                run_id = training.get(kind + 'RunId') or data['labeling'].get(kind + 'RunId')
-                if run_id in runs:
-                    run = runs[run_id]
-                    progress[kind] = dict(run, pending=0, reason=run.get('detail', {}).get('reason'))
-            result['progress'] = progress
-            labels = labels_for(sid, data)
-            pending = next_item(labels, 'audit') is not None or next_item(labels, 'reissue') is not None
-            result['now'] = now_card(result['started'], progress, result['definitionCheck'],
-                                      result['queue']['total'], pending)
-        return result
+    data = session(sid, version)
+    writable = not store.is_legacy(data) and (version is None or version == store.load_session(sid)['version'])
+    result = overview(sid, version, sync=writable)
+    if data.get('labeling', {}).get('mode') == 'model':
+        from app.label.overview import now_card
+        training = data.get('training', {})
+        runs = {r['runId']: r for r in runner.status(sid)}
+        progress = {}
+        for kind in ('infer', 'monitor'):
+            run_id = training.get(kind + 'RunId') or data['labeling'].get(kind + 'RunId')
+            if run_id in runs:
+                run = runs[run_id]
+                progress[kind] = dict(run, pending=0, reason=run.get('detail', {}).get('reason'))
+        result['progress'] = progress
+        labels = labels_for(sid, data)
+        pending = next_item(labels, 'audit') is not None or next_item(labels, 'reissue') is not None
+        result['now'] = now_card(result['started'], progress, result['definitionCheck'],
+                                  result['queue']['total'], pending)
+    return result
 
 
 @router.get('/{sid}/next')
-def next_review(sid: str, mode: ReviewMode = 'escalate', version: str | None = None, round: int | None = None):
+def next_review(sid: str, mode: ReviewMode = 'escalate', version: str | None = None,
+                round: int | None = None, after: str | None = None):
+    data = session(sid, version)
+    if store.is_legacy(data):
+        raise store.StoreError(LEGACY_MESSAGE)
+    labels = labels_for(sid, data)
+    item = next_item(labels, mode, round, after)
+    if item is None and (version is None or version == store.load_session(sid)['version']):
+        caches = caches_for(sid, data)
+        sync(labels, caches.get('jev'), caches.get('gpt'))
+        item = next_item(labels, mode, round, after)
+    return dict(item=item, message=None if item else '사람이 볼 문서가 없습니다. 감사 라운드를 만들거나 학습으로 넘어가세요.')
+
+
+@router.post('/{sid}/seen')
+def seen(sid: str, version: str | None = None):
+    """Called once when opening the labeling screen, after reading its changes."""
     with store.locked(sid):
-        data = session(sid, version)
-        if store.is_legacy(data):
-            raise store.StoreError(LEGACY_MESSAGE)
-        item = next_item(labels_for(sid, data), mode, round)
-        return dict(item=item, message=None if item else '사람이 볼 문서가 없습니다. 감사 라운드를 만들거나 학습으로 넘어가세요.')
+        session(sid, version, writable=True)
+        at = store.now()
+        store._update_locked(sid, {'labeling': {'lastSeenAt': at}})
+        return {'lastSeenAt': at}
 
 
 @router.post('/{sid}/submit')

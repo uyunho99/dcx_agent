@@ -1,11 +1,13 @@
 """Version-local labeling overview, source indexing, and progress aggregation."""
 from datetime import datetime
+from functools import lru_cache
+import sqlite3
 import json
 
 from app.config import settings
 from app.context import store, versions
 from app.label import audit, judge
-from app.label.route import rebuild_queue, next_item
+from app.label.route import sync as rebuild_queue, next_item
 from app.label.store import LabelStore
 from app.label.votes import VoteCache
 from app.work import runner
@@ -66,6 +68,18 @@ def index_documents(sid, data, labels):
             db.execute('INSERT OR REPLACE INTO document_files VALUES (?,?)', (str(path), stamp))
 
 
+@lru_cache(maxsize=128)
+def _estimate(path, labeler, counts, context, stamp):
+    # Only deserialize the corpus on an estimate cache miss, never for worker ETAs.
+    with sqlite3.connect(path) as db:
+        docs = [json.loads(row[0]) for row in db.execute('SELECT payload FROM documents')]
+    result = judge.estimate(docs, context, labeler)
+    total = sum(counts)
+    if total and result['seconds'] is not None:
+        result['seconds'] *= counts[0] / total
+    return result
+
+
 def now_card(started, progress, definition, queue_count, audit_pending):
     if not started:
         return dict(state='before_start', priority=0, message='라벨링을 시작하세요', action='라벨링 시작')
@@ -83,8 +97,8 @@ def now_card(started, progress, definition, queue_count, audit_pending):
     return dict(state='done', priority=6, message='라벨링이 끝났습니다', action='학습으로')
 
 
-def overview(sid, version=None, *, mark_seen=False, sync=True) -> dict:
-    """Call under the session lock when persisting lastSeenAt/session metrics."""
+def overview(sid, version=None, *, sync=True) -> dict:
+    """Read version metrics without taking or writing the session lock."""
     data = session(sid, version)
     if store.is_legacy(data):
         return dict(legacy=True, readonly=True, message=LEGACY_MESSAGE,
@@ -100,8 +114,6 @@ def overview(sid, version=None, *, mark_seen=False, sync=True) -> dict:
         schema(labels)
     with labels._db() as db:
         accepted = db.execute("SELECT count(*) FROM final WHERE route='accepted'").fetchone()[0]
-    if sync and next_item(labels, 'audit') is None and next_item(labels, 'reissue') is None:
-        audit.maybe_new_round(labels, accepted)
     with labels._db() as db:
         rounds = [row[0] for row in db.execute('SELECT DISTINCT round FROM audit_set ORDER BY round')]
     history = []
@@ -128,7 +140,9 @@ def overview(sid, version=None, *, mark_seen=False, sync=True) -> dict:
         timestamp = datetime.fromisoformat(since).timestamp() if since else 0
         changes = dict.fromkeys(('merged', 'accepted', 'queued'), 0)
         changes.update(dict(db.execute('SELECT kind, count(*) FROM label_events WHERE at>? GROUP BY kind', (timestamp,))))
-        docs = [json.loads(r[0]) for r in db.execute('SELECT payload FROM documents')]
+        files = db.execute("SELECT 1 FROM sqlite_master WHERE name='document_files'").fetchone()
+        stamp = tuple(db.execute('SELECT path, stamp FROM document_files ORDER BY path').fetchall()) if files else ()
+        stamp = tuple(tuple(row) for row in stamp)
     changes['judged'] = 0
     for cache in caches.values():
         with cache._db() as db:
@@ -141,10 +155,8 @@ def overview(sid, version=None, *, mark_seen=False, sync=True) -> dict:
         detail = run.get('detail', {})
         estimate = detail.get('estimate')
         if estimate is None:
-            estimate = judge.estimate(docs, data.get('projectContext', {}).get('oneLiner', ''), name)
-            count = sum(counts.values())
-            if count and estimate['seconds'] is not None:
-                estimate['seconds'] *= counts['pending'] / count
+            estimate = dict(_estimate(str(labels.path), name, tuple(counts[k] for k in ('pending', 'done', 'bad')),
+                                      data.get('projectContext', {}).get('oneLiner', ''), stamp))
         count = sum(counts.values())
         progress[name] = dict(**counts, state=run.get('state', 'done' if count and not counts['pending'] else 'none'),
                               progress=run.get('progress', (counts['done']+counts['bad'])/count if count else 0),
@@ -160,7 +172,4 @@ def overview(sid, version=None, *, mark_seen=False, sync=True) -> dict:
     result['now'] = now_card(result['started'], progress, definition, queue_count, pending)
     if result['now']['state'] == 'review':
         result['now']['estimatedSeconds'] = queue_count * average
-    if mark_seen:
-        store.assert_writable(sid, version)
-        store._update_locked(sid, {'labeling': {**{k: result[k] for k in ('audit', 'labelerAccuracy', 'selfConsistency', 'definitionCheck')}, 'lastSeenAt': store.now()}})
     return result

@@ -135,6 +135,8 @@ def test_overview_and_report(client, session):
                  'progress', 'levelDistribution', 'queue', 'changes', 'audit'):
         assert name in view
     assert view['changes']['accepted'] == 1
+    assert client.get(f'/label/{sid}/overview').json()['changes']['accepted'] == 1
+    assert client.post(f'/label/{sid}/seen').status_code == 200
     assert client.get(f'/label/{sid}/overview').json()['changes']['accepted'] == 0
     report = importlib.import_module('app.label.report').label_part(sid)
     assert report['accepted'] == 1
@@ -280,3 +282,53 @@ def test_failed_submit_returns_surviving_vote_after_commit(client, session):
     assert response.json()['votes']['gpt'] == tags()
     assert labels.get('d').votes['gpt'] == tags()
     assert labels.get('d').source == 'human'
+
+
+def test_overview_reads_preserve_seen_and_estimates(client, session, monkeypatch):
+    from app.label import overview as module
+    sid, labels = session
+    seed_final(labels)
+    store.update_session(sid, {'labeling': {'lastSeenAt': '2000-01-01T00:00:00+00:00'}})
+    calls = []
+    monkeypatch.setattr(module.judge, 'estimate', lambda *a, **k: calls.append(a[2]) or {'seconds': 0, 'jevTokens': 0})
+    first = client.get(f'/label/{sid}/overview').json()
+    second = client.get(f'/label/{sid}/overview').json()
+    assert first['changes'] == second['changes']
+    assert store.load_session(sid)['labeling']['lastSeenAt'] == first['lastSeenAt']
+    assert calls == ['jev', 'gpt']
+    assert client.post(f'/label/{sid}/seen').status_code == 200
+    assert client.get(f'/label/{sid}/overview').json()['changes']['accepted'] == 0
+    assert client.post(f'/label/{sid}/seen?version=v99').status_code == 409
+
+
+def test_next_syncs_empty_queue_without_overview(client, session):
+    from app.label.overview import caches_for
+    sid, labels = session
+    cache = caches_for(sid, store.load_session(sid))['jev']
+    cache.seed(['d'])
+    cache.mark_bad('d', 'invalid')
+    response = client.get(f'/label/{sid}/next')
+    assert response.status_code == 200
+    assert response.json()['item']['doc_id'] == 'd'
+
+
+def test_next_skip_keyset(client, session):
+    sid, labels = session
+    seed_queue(labels, 3)
+    first = client.get(f'/label/{sid}/next').json()['item']
+    second = client.get(f'/label/{sid}/next', params={'after': '0:d0'}).json()['item']
+    assert second['doc_id'] != first['doc_id']
+    assert second['cursor'] == '0.0:d1'
+    assert client.get(f'/label/{sid}/next', params={'after': '0:d2'}).json()['item'] is None
+    for cursor in ('garbage', 'nan:d0', 'inf:d0', '0:'):
+        assert client.get(f'/label/{sid}/next', params={'after': cursor}).status_code == 422
+
+
+def test_overview_and_next_do_not_take_session_lock(client, session, monkeypatch):
+    sid, labels = session
+    seed_queue(labels, 40000)
+    def forbidden(*a, **kw):
+        raise AssertionError('Read/sync must not take the session lock')
+    monkeypatch.setattr(store, 'locked', forbidden)
+    assert client.get(f'/label/{sid}/next').status_code == 200
+    assert client.get(f'/label/{sid}/overview').status_code == 200

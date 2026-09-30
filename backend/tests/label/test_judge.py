@@ -333,3 +333,55 @@ def test_jev_document_faults_still_consume_attempts(setup_judge, monkeypatch, fa
     assert len(calls) == 6
     assert cache_for(env).counts() == dict(pending=0, done=0, bad=2)
     assert pending_rows(cache_for(env)) == [(3, None)] * 2
+
+
+def test_worker_syncs_final_queue_and_audit_without_overview(setup_judge, monkeypatch):
+    from app.label.store import LabelStore
+    from app.label import audit
+    env = setup_judge
+    env.prepare(3)
+    monkeypatch.setattr(settings, 'label_gpt_backend', 'fake')
+    env.judge.run_worker(Context('jev'))
+    env.judge.run_worker(Context('gpt'))
+    labels = LabelStore(versions.version_dir('session', 'v1'))
+    with labels._db() as db:
+        assert db.execute('SELECT count(*) FROM final').fetchone()[0] == 3
+    # Terminal failures also reach the queue when the other labeler has no vote.
+    env.prepare(4)
+    monkeypatch.setattr(env.judge.gpt, 'judge_batch', lambda docs, *a, **k: ({}, [d['doc_id'] for d in docs]))
+    env.judge.run_worker(Context('gpt'))
+    with labels._db() as db:
+        assert db.execute("SELECT reason FROM queue WHERE doc_id='d003'").fetchone()[0] == 'labeler_failed'
+
+
+def test_worker_creates_audit_after_committed_batches(setup_judge, monkeypatch):
+    from app.label.store import LabelStore
+    from app.label.gpt import GptVote
+    from app.label import rule
+    env = setup_judge
+    env.prepare(3)
+    monkeypatch.setattr(settings, 'audit_first', 2)
+    monkeypatch.setattr(settings, 'audit_size', 2)
+    monkeypatch.setattr(settings, 'label_batch_size', 1)
+    env.judge.run_worker(Context('jev'))
+    def matching(docs, *args, **kwargs):
+        result = {}
+        with cache_for(env)._db() as db:
+            for doc in docs:
+                probs = json.loads(db.execute('SELECT payload_json FROM votes WHERE doc_id=?', (doc['doc_id'],)).fetchone()[0])['probs']
+                result[doc['doc_id']] = GptVote(anchor=probs['anchor'] >= .5,
+                    situation=probs['situation'] >= .5, sem={k: int(probs[k] >= .5) for k in rule.SEM})
+        return result, []
+    monkeypatch.setattr(env.judge.gpt, 'judge_batch', matching)
+    ctx = Context('gpt')
+    observed = []
+    original = ctx.heartbeat
+    def heartbeat(progress, detail):
+        original(progress, detail)
+        with LabelStore(versions.version_dir('session', 'v1'))._db() as db:
+            observed.append(db.execute('SELECT count(*) FROM final').fetchone()[0])
+    ctx.heartbeat = heartbeat
+    env.judge.run_worker(ctx)
+    assert observed == [0, 1, 2, 3]
+    with LabelStore(versions.version_dir('session', 'v1'))._db() as db:
+        assert db.execute('SELECT count(*) FROM audit_set WHERE round=1').fetchone()[0] == 2

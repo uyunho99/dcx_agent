@@ -1,5 +1,6 @@
 """Queue reconciliation and one-item, blind human review operations."""
 import json
+import math
 import time
 
 from app.context.store import StoreError
@@ -16,6 +17,9 @@ def route(label) -> str:
 
 def schema(store):
     with store._db() as db:
+        db.execute('CREATE TABLE IF NOT EXISTS route_migrations (name TEXT PRIMARY KEY)')
+        if db.execute("SELECT 1 FROM route_migrations WHERE name='events-v1'").fetchone():
+            return
         audit._schema(db)
         db.execute('''CREATE TABLE IF NOT EXISTS review_done (
             mode TEXT, round INTEGER, doc_id TEXT, elapsed REAL,
@@ -39,14 +43,90 @@ def schema(store):
                 WHEN {condition} BEGIN INSERT OR IGNORE INTO label_events VALUES
                 ('{kind}', NEW.doc_id, (julianday('now')-2440587.5)*86400.0); END''')
 
+        db.execute("INSERT INTO route_migrations VALUES ('events-v1')")
+
+
+def _vote_journal(cache):
+    """Durable terminal-vote deltas, shared safely by independent version workers."""
+    with cache._db() as db:
+        if db.execute("SELECT 1 FROM sqlite_master WHERE name='route_vote_changes'").fetchone():
+            return
+        db.execute('CREATE TABLE route_vote_changes (seq INTEGER PRIMARY KEY AUTOINCREMENT, doc_id TEXT NOT NULL)')
+        db.execute("INSERT INTO route_vote_changes(doc_id) SELECT doc_id FROM votes WHERE status IN ('done','bad')")
+        for action in ('INSERT', 'UPDATE'):
+            db.execute(f"""CREATE TRIGGER route_vote_{action.lower()} AFTER {action} ON votes
+                WHEN NEW.status IN ('done','bad') BEGIN
+                INSERT INTO route_vote_changes(doc_id) VALUES (NEW.doc_id); END""")
+
+
+def rebuild_final(store, jev_cache, gpt_cache):
+    """Merge only pairs touched since this version's last committed sync.
+
+    Journals bootstrap existing caches once. Cursors and projections commit in
+    one transaction; a crash or a second worker cannot lose a newly paired vote.
+    A vote arriving later in either cache revisits its pair by primary key.
+    """
+    from app.label.merge import merge
+    from app.label.jev import JevVote
+    from app.label.gpt import GptVote
+    for cache in (jev_cache, gpt_cache):
+        _vote_journal(cache)
+    with store._db() as db:
+        db.execute('CREATE TABLE IF NOT EXISTS route_sync (name TEXT PRIMARY KEY, identity TEXT, seq INTEGER)')
+        db.execute('CREATE TEMP TABLE touched (doc_id TEXT PRIMARY KEY)')
+        checkpoints = []
+        first_sync = not db.execute('SELECT 1 FROM route_sync LIMIT 1').fetchone()
+        for name, cache in (('jev', jev_cache), ('gpt', gpt_cache)):
+            db.execute(f'ATTACH DATABASE ? AS {name}', (cache.path.resolve().as_uri() + '?mode=ro',))
+            identity = f'{cache.path.resolve()}:{rule.RULE_VERSION}:{questions.QVER}'
+            old = db.execute('SELECT identity, seq FROM route_sync WHERE name=?', (name,)).fetchone()
+            seq = old['seq'] if old and old['identity'] == identity else 0
+            high = db.execute(f'SELECT COALESCE(MAX(seq),0) FROM {name}.route_vote_changes').fetchone()[0]
+            db.execute(f'INSERT OR IGNORE INTO touched SELECT doc_id FROM {name}.route_vote_changes WHERE seq>? AND seq<=?', (seq, high))
+            checkpoints.append((name, identity, high))
+        changed = db.execute("""SELECT 1 FROM route_sync WHERE identity NOT LIKE ? LIMIT 1""",
+                             (f'%:{rule.RULE_VERSION}:{questions.QVER}',)).fetchone()
+        if first_sync:
+            changed = db.execute("""SELECT 1 FROM final WHERE source NOT IN ('human','model')
+                AND (rule_version!=? OR questions_version!=?) LIMIT 1""",
+                (rule.RULE_VERSION, questions.QVER)).fetchone()
+        if changed:
+            db.execute("DELETE FROM final WHERE source!='human' AND source!='model'")
+            db.execute("DELETE FROM queue WHERE reason='grade_mismatch' AND status='open'")
+        candidates = db.execute("""SELECT t.doc_id, j.payload_json AS jev_json, g.payload_json AS gpt_json
+            FROM touched t CROSS JOIN jev.votes j ON j.doc_id=t.doc_id
+            CROSS JOIN gpt.votes g ON g.doc_id=t.doc_id
+            LEFT JOIN final f ON f.doc_id=t.doc_id
+            WHERE j.status='done' AND g.status='done' AND f.doc_id IS NULL""").fetchall()
+        for row in candidates:
+            jev = JevVote.model_validate_json(row['jev_json'])
+            gpt = GptVote.model_validate_json(row['gpt_json'])
+            merged = merge(jev, gpt)
+            tags = Tags.model_validate(merged.model_dump())
+            db.execute('INSERT INTO final VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                (row['doc_id'], merged.evidence_level, merged.confidence, 'agreed',
+                 'escalated:grade_mismatch' if merged.grade_mismatch else 'accepted',
+                 tags.model_dump_json(), tags.reason_code, tags.signal, rule.RULE_VERSION,
+                 questions.QVER, json.dumps({'jev': jev.model_dump(), 'gpt': gpt.model_dump()}),
+                 json.dumps(merged.disagree), int(merged.grade_mismatch)))
+        db.executemany('INSERT OR REPLACE INTO route_sync VALUES (?,?,?)', checkpoints)
+        return len(candidates)
+
+
+def sync(store, jev_cache=None, gpt_cache=None):
+    rebuild_queue(store, jev_cache, gpt_cache)
+    if next_item(store, 'audit') is None and next_item(store, 'reissue') is None:
+        with store._db() as db:
+            accepted = db.execute("SELECT count(*) FROM final WHERE route='accepted'").fetchone()[0]
+        audit.maybe_new_round(store, accepted)
+
 
 def rebuild_queue(store, jev_cache=None, gpt_cache=None):
-    """Refresh on overview/judge polling, never on the indexed next-item path."""
+    """Reconcile committed vote deltas while preserving completed review rows."""
     schema(store)
     from app.model.infer import refresh_predictions
     model_mode = refresh_predictions(store)
     if not model_mode and jev_cache is not None and gpt_cache is not None:
-        from app.label.merge import rebuild_final
         rebuild_final(store, jev_cache, gpt_cache)
     with store._db() as db:
         # T09 carry-over: a recovered failed vote must not leave a stale review.
@@ -57,7 +137,8 @@ def rebuild_queue(store, jev_cache=None, gpt_cache=None):
             SELECT doc_id, 'grade_mismatch', 1+confidence, 'open' FROM final
             WHERE grade_mismatch=1 AND source='agreed'
             ON CONFLICT(doc_id) DO UPDATE SET reason=excluded.reason,
-                priority=excluded.priority WHERE queue.status='open'""")
+                priority=excluded.priority WHERE queue.status='open'
+                AND (queue.reason!=excluded.reason OR queue.priority!=excluded.priority)""")
         if model_mode:
             return
         for name, cache in (('jev', jev_cache), ('gpt', gpt_cache)):
@@ -69,7 +150,7 @@ def rebuild_queue(store, jev_cache=None, gpt_cache=None):
                 WHERE status='bad' AND NOT EXISTS (SELECT 1 FROM final f
                     WHERE f.doc_id=v.doc_id AND f.source='human')
                 ON CONFLICT(doc_id) DO UPDATE SET reason='labeler_failed', priority=0
-                    WHERE queue.status='open'""")
+                    WHERE queue.status='open' AND (queue.reason!='labeler_failed' OR queue.priority!=0)""")
 
 
 def _review_schema(db):
@@ -81,10 +162,21 @@ def _review_schema(db):
     db.execute('CREATE TABLE IF NOT EXISTS documents (doc_id TEXT PRIMARY KEY, payload TEXT NOT NULL)')
 
 
-def next_item(store, mode='escalate', round=None):
+def next_item(store, mode='escalate', round=None, after=None):
+    cursor = None
+    if after is not None:
+        try:
+            priority, doc_id = after.split(':', 1)
+            priority = float(priority)
+            if not math.isfinite(priority) or not doc_id or mode != 'escalate':
+                raise ValueError
+            cursor = (priority, doc_id)
+        except (ValueError, TypeError):
+            raise StoreError('올바른 검수 커서를 입력하세요.', 422, 'validation')
     with store._db() as db:
         if mode == 'escalate':
-            row = db.execute("SELECT doc_id, reason FROM queue WHERE status='open' ORDER BY priority, doc_id LIMIT 1").fetchone()
+            condition = 'AND (priority, doc_id) > (?, ?)' if cursor else ''
+            row = db.execute(f"SELECT doc_id, reason, priority FROM queue WHERE status='open' {condition} ORDER BY priority, doc_id LIMIT 1", cursor or ()).fetchone()
         else:
             _review_schema(db)
             table = 'audit_snapshot' if mode == 'audit' else 'audit_reissue'
@@ -99,6 +191,8 @@ def next_item(store, mode='escalate', round=None):
         if row is None:
             return None
         result = dict(row)
+        if mode == 'escalate':
+            result['cursor'] = f"{result.pop('priority')}:{row['doc_id']}"
         # The source index is populated at start/overview, not by a scan per item.
         exists = db.execute("SELECT 1 FROM sqlite_master WHERE name='documents'").fetchone()
         doc = db.execute('SELECT payload FROM documents WHERE doc_id=?', (row['doc_id'],)).fetchone() if exists else None

@@ -94,6 +94,13 @@ def run_worker(ctx):
     changed = not (root / 'votes.sqlite').exists() and any(root.parent.glob('*/votes.sqlite'))
     cache = VoteCache(root)
     cache.seed(docs)
+    from app.label.route import sync
+    from app.label.store import LabelStore
+    labels = LabelStore(versions.version_dir(ctx.sid, ctx.version))
+    caches = {name: VoteCache(cache_root(ctx.sid, ref['prepKey'], name, one_liner))
+              for name in ('jev', 'gpt')}
+    # Bootstrap cached results on restart, even if there is no work to lease.
+    sync(labels, caches['jev'], caches['gpt'])
     ctx_key = context_key(one_liner, labeler)
     recent = deque([(time.monotonic(), cache.counts()['done'])])
     message = '판정 맥락이 바뀌어 다시 판정합니다' if changed else None
@@ -133,6 +140,7 @@ def run_worker(ctx):
                         for doc_id in ids:
                             cache.fail(doc_id, 'gpt_backend_failed')
                     cache.release()
+                    sync(labels, caches['jev'], caches['gpt'])
                     _pause(ctx, str(exc), detail)
                     continue
                 for doc_id, vote in votes.items():
@@ -165,6 +173,7 @@ def run_worker(ctx):
                     else:
                         transient_failures = 0
                         cache.put(doc['doc_id'], vote.model_dump())
+            sync(labels, caches['jev'], caches['gpt'])
             recent.append((time.monotonic(), cache.counts()['done']))
             while len(recent) > 1 and recent[0][0] < time.monotonic() - 600:
                 recent.popleft()
