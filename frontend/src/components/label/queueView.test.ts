@@ -14,3 +14,9 @@ it('summarizes both model reasons and defaults absent counts to zero', () => {
  expect(queueReasonSummary('model', {})).toBe('모델 불확실 0건 · 모델 멤버 불일치 0건');
  expect(queueReasonSummary('llm', {grade_mismatch:2,labeler_failed:1})).toBe('등급 불일치 2건 · 판정 실패 1건');
 });
+
+it('uses a fallback for an unknown queue reason', () => {
+ const unknown = 'future_reason' as Parameters<typeof queueReasonLabel>[0];
+ expect(queueReasonLabel(unknown)).toBe('기타');
+ expect(queueReasonLabel(unknown, 'audit')).toBe('기타');
+});

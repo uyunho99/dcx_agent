@@ -8,7 +8,7 @@ const reasonLabels = {
 };
 
 export function queueReasonLabel(reason: QueueItem['reason'], mode: ReviewMode = 'escalate'): string {
-  return reason ? reasonLabels[reason] : mode === 'reissue' ? '이전 감사 다시 판정' : '감사 판정';
+  return reason ? reasonLabels[reason] ?? '기타' : mode === 'reissue' ? '이전 감사 다시 판정' : '감사 판정';
 }
 
 export function queueReasonSummary(mode: Overview['mode'], counts: Overview['queue']['byReason']): string {
