@@ -22,6 +22,7 @@ from app.routers import (
     personas,
     chat,
     search,
+    known,
 )
 
 @asynccontextmanager
@@ -58,6 +59,7 @@ app.include_router(embedding.router)
 app.include_router(personas.router)
 app.include_router(chat.router)
 app.include_router(search.router)
+app.include_router(known.router)
 
 
 @app.get("/health")

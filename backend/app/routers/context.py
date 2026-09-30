@@ -56,6 +56,8 @@ def post_context(ctx: ProjectContext):
     sid = 's' + uuid4().hex
     patch = context_patch(ctx)
     update_session(sid, {'schemaVersion': 2, 'sid': sid, 'step': 'start', 'drafts': {}, **patch})
+    from app.known.store import initialize
+    initialize(sid)
     return {'sid': sid}
 
 

@@ -1,12 +1,12 @@
 from fastapi import APIRouter
 
-from app.services.pinecone_svc import search_similar
+from app.known.filter import search_docs
 from app.models.schemas import SearchRequest
 
 router = APIRouter()
 
 
 @router.post("/search")
-def search_docs(req: SearchRequest):
-    results = search_similar(req.sid, req.query, req.top_k)
-    return {"status": "ok", "results": results}
+def search(req: SearchRequest):
+    result = search_docs(req.sid, [req.query], req.top_k, novel=req.novel)
+    return {"status": "ok", "results": result.items[0], "reason": result.reason}

@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 
 from app.services.s3 import load_data, save_json, load_json, list_objects
-from app.services.pinecone_svc import search_similar
+from app.known.filter import search_docs
 from app.services.claude import call_claude
 from app.jobs.manager import job_manager
 
@@ -47,17 +47,14 @@ def run_persona(config: dict) -> None:
         except Exception:
             pass
 
+        cluster_ids = sorted(clusters)
+        queries = [" ".join(x.get("kw", "") for x in clusters[cid][:5]) for cid in cluster_ids]
+        retrieved = search_docs(sid, queries, top_k=10, novel=config.get("novel", True))
         all_cluster_text = ""
-        for cid in sorted(clusters.keys()):
-            items = clusters[cid][:20]
-            try:
-                rag_docs = search_similar(
-                    sid, " ".join([x.get("kw", "") for x in clusters[cid][:5]]), top_k=10,
-                )
-                if rag_docs:
-                    items = [{"title": d.get("title", ""), "desc": d.get("desc", "")} for d in rag_docs]
-            except Exception:
-                pass
+        for cid, rag_docs in zip(cluster_ids, retrieved.items):
+            # Empty filtered results must stay empty: a raw-cluster fallback
+            # would reintroduce Known Insight documents into the prompt.
+            items = rag_docs
             text = "\n".join([f"- {x.get('title', '')} | {x.get('desc', '')[:100]}" for x in items])
             kw_set = set([x.get("kw", "") for x in clusters[cid] if x.get("kw", "")])
             all_cluster_text += (

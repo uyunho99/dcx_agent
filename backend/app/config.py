@@ -40,7 +40,6 @@ class Settings(BaseSettings):
     naver_client_id: str = "x"
     naver_client_secret: str = "x"
     claude_api_key: str = "x"
-    pinecone_api_key: str = "x"
     voyage_api_key: str = "x"
 
     embed_backend: Literal["voyage", "fake"] = "voyage"
