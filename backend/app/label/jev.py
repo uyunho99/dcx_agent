@@ -35,8 +35,9 @@ def _limiter_for(key: str, rate: float) -> ChannelLimiter:
 
 class JevError(RuntimeError):
     """Safe worker-facing failure; provider bodies and credentials are never copied."""
-    def __init__(self, code: str, message: str):
+    def __init__(self, code: str, message: str, *, transient: bool = False):
         self.code = code
+        self.transient = transient
         super().__init__(message)
 
 
@@ -180,15 +181,17 @@ class JevClient:
                     response = self._http.post(URL, headers=headers, json={'model': self.model, 'state': state, 'questions': questions})
             except httpx.RequestError:
                 # The worker can requeue with the same idempotency key.
-                raise JevError('bad', 'Jev 요청을 완료하지 못했습니다') from None
+                raise JevError('bad', 'Jev 요청을 완료하지 못했습니다', transient=True) from None
             status = response.status_code
             if status == 401:
                 raise JevError('unconnected', 'Jev 연결 키를 확인해 주세요')
             if status == 402:
                 raise JevError('insufficient', 'Jev 잔액이 부족합니다')
-            if status in (429, 502) and attempt < MAX_RETRIES:
-                time.sleep(2 ** attempt)
-                continue
+            if status == 429 or 500 <= status < 600:
+                if attempt < MAX_RETRIES:
+                    time.sleep(2 ** attempt)
+                    continue
+                raise JevError('bad', 'Jev 요청 또는 응답을 확인해 주세요', transient=True)
             if status != 200:
                 raise _bad()
             try:

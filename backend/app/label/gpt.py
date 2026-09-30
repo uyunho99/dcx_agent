@@ -22,6 +22,9 @@ _USAGE_MESSAGE = 'GPT 판정이 사용량 한도로 멈췄습니다. 잠시 뒤 
 
 class LabelerPaused(RuntimeError):
     """Worker must return its leased batch to pending before stopping."""
+    def __init__(self, message: str, *, usage_limit: bool = False):
+        self.usage_limit = usage_limit
+        super().__init__(message)
 
 
 class GptVote(Tags):
@@ -137,8 +140,9 @@ def judge_batch(docs: list[dict], one_liner: str, *, sid: str, ctx_key: str,
     if not result.ok:
         if result.error and result.error.kind in ('parse', 'schema'):
             return {}, ids
-        raise LabelerPaused(_pause_message(run_id) if backend == 'codex_exec'
-                            else 'GPT 판정을 완료하지 못해 멈췄습니다. API 연결 설정을 확인해 주세요.')
+        message = (_pause_message(run_id) if backend == 'codex_exec'
+                   else 'GPT 판정을 완료하지 못해 멈췄습니다. API 연결 설정을 확인해 주세요.')
+        raise LabelerPaused(message, usage_limit=message == _USAGE_MESSAGE)
     expected = set(ids)
     votes = {}
     for item in result.data.items:

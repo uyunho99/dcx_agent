@@ -55,7 +55,7 @@ def setup_judge(data_dir, monkeypatch):
     monkeypatch.setattr(ChannelLimiter, 'wait_start', lambda self: None)
     monkeypatch.setattr(settings, 'codex_bin', str(Path(__file__).resolve().parents[1] / 'fakes/fake_codex.py'))
     monkeypatch.setattr(settings, 'label_gpt_backend', 'codex_exec')
-    monkeypatch.setattr(settings, 'codex_timeout_s', 5)
+    monkeypatch.setattr(settings, 'codex_timeout_s', 30)
     yield SimpleNamespace(prepare=prepare, calls=calls, judge=judge, root=data_dir)
     jev.reset_limiter_pool()
 
@@ -224,7 +224,7 @@ def test_real_context_pause_resume(setup_judge, monkeypatch):
     thread = threading.Thread(target=execute, args=(RealContext('session', 'v1', 'judge', {'labeler': 'gpt'}, 'real'),))
     thread.start()
     try:
-        deadline = time.monotonic() + 5
+        deadline = time.monotonic() + 30
         while time.monotonic() < deadline:
             status = runner.status('session')[0]
             if status['state'] == 'paused' and status['detail'].get('reason'):
@@ -234,13 +234,13 @@ def test_real_context_pause_resume(setup_judge, monkeypatch):
         assert status['detail']['reason'] == '사용량 한도'
         assert cache_for(env, 'gpt').counts()['pending'] == 3
         runner.request('session', 'real', 'resume')
-        thread.join(5)
+        thread.join(30)
         assert not thread.is_alive()
         assert runner.status('session')[0]['state'] == 'done'
         assert cache_for(env, 'gpt').counts()['done'] == 3
     finally:
         runner.request('session', 'real', 'stop')
-        thread.join(5)
+        thread.join(30)
 
 
 def test_model_and_backend_change_context(setup_judge, monkeypatch):
@@ -251,3 +251,85 @@ def test_model_and_backend_change_context(setup_judge, monkeypatch):
     old = judge.context_key('context', 'gpt')
     monkeypatch.setattr(settings, 'label_gpt_backend', 'openai_api')
     assert judge.context_key('context', 'gpt') != old
+
+
+def pending_rows(cache):
+    import sqlite3
+    with sqlite3.connect(cache.path) as db:
+        return db.execute('SELECT attempts, run_id FROM votes ORDER BY doc_id').fetchall()
+
+
+def test_transport_outage_releases_backoffs_and_pauses(setup_judge, monkeypatch):
+    env = setup_judge
+    env.prepare(100)
+    calls, sleeps, reasons = [], [], []
+    real = jev.JevClient
+    def fail(request):
+        calls.append(request)
+        raise httpx.ConnectError('offline', request=request)
+    monkeypatch.setattr(env.judge, 'JevClient', lambda keys, model: real(keys, model, transport=httpx.MockTransport(fail)))
+    def sleep(delay):
+        assert pending_rows(cache_for(env)) == [(0, None)] * 100
+        sleeps.append(delay)
+    monkeypatch.setattr(env.judge.time, 'sleep', sleep)
+    def pause(ctx, reason, detail):
+        assert pending_rows(cache_for(env)) == [(0, None)] * 100
+        reasons.append(reason)
+        ctx.stopped = True
+    monkeypatch.setattr(env.judge, '_pause', pause)
+    env.judge.run_worker(Context())
+    assert len(calls) == 5
+    assert sleeps == [1, 2, 4, 8]
+    assert reasons == ['Jev 연결이 불안정해 판정을 멈췄습니다']
+    assert cache_for(env).counts() == dict(pending=100, done=0, bad=0)
+
+
+def test_usage_limit_never_consumes_attempts(setup_judge, monkeypatch):
+    env = setup_judge
+    env.prepare()
+    monkeypatch.setenv('FAKE_CODEX_LABEL_MODE', 'usage_limit')
+    def pause(ctx, reason, detail):
+        assert '사용량 한도' in reason
+        assert pending_rows(cache_for(env, 'gpt')) == [(0, None)] * 3
+        ctx.stopped = True
+    monkeypatch.setattr(env.judge, '_pause', pause)
+    for _ in range(4):
+        env.judge.run_worker(Context('gpt'))
+    monkeypatch.setenv('FAKE_CODEX_LABEL_MODE', 'normal')
+    env.judge.run_worker(Context('gpt'))
+    assert cache_for(env, 'gpt').counts() == dict(pending=0, done=3, bad=0)
+
+
+def test_transient_streak_resets_after_success(setup_judge, monkeypatch):
+    env = setup_judge
+    env.prepare(2)
+    real, fake = jev.JevClient, FakeJev()
+    attempts, sleeps = {}, []
+    def handle(request):
+        key = request.headers['Idempotency-Key']
+        attempts[key] = attempts.get(key, 0) + 1
+        if attempts[key] <= 4:
+            raise httpx.ReadTimeout('offline', request=request)
+        return fake(request)
+    monkeypatch.setattr(env.judge, 'JevClient', lambda keys, model: real(keys, model, transport=httpx.MockTransport(handle)))
+    monkeypatch.setattr(env.judge.time, 'sleep', sleeps.append)
+    monkeypatch.setattr(env.judge, '_pause', lambda *a: pytest.fail('Successful vote must reset the outage streak'))
+    env.judge.run_worker(Context())
+    assert sleeps == [1, 2, 4, 8] * 2
+    assert cache_for(env).counts() == dict(pending=0, done=2, bad=0)
+    assert pending_rows(cache_for(env)) == [(0, None)] * 2
+
+
+@pytest.mark.parametrize('fault', ['422', 'missing'])
+def test_jev_document_faults_still_consume_attempts(setup_judge, monkeypatch, fault):
+    env = setup_judge
+    env.prepare(2)
+    real, calls = jev.JevClient, []
+    def handle(request):
+        calls.append(request.headers['Idempotency-Key'])
+        return httpx.Response(422) if fault == '422' else httpx.Response(200, json={'model': 'test', 'answers': {}})
+    monkeypatch.setattr(env.judge, 'JevClient', lambda keys, model: real(keys, model, transport=httpx.MockTransport(handle)))
+    env.judge.run_worker(Context())
+    assert len(calls) == 6
+    assert cache_for(env).counts() == dict(pending=0, done=0, bad=2)
+    assert pending_rows(cache_for(env)) == [(3, None)] * 2

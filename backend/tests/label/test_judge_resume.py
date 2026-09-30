@@ -60,3 +60,12 @@ def test_live_leases_are_not_stolen(tmp_path):
     first.put('a', {'ok': True})
     first.seed(['a'])
     assert first.counts() == dict(pending=1, done=1, bad=0)
+
+
+def test_leases_prioritize_fewer_attempts(tmp_path):
+    from app.label.votes import VoteCache
+    cache = VoteCache(tmp_path)
+    cache.seed(['a', 'b', 'c'])
+    assert cache.lease(1, 'run') == ['a']
+    cache.fail('a', 'invalid_answer')
+    assert cache.lease(3, 'run') == ['b', 'c', 'a']

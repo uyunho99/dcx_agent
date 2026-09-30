@@ -53,7 +53,7 @@ class VoteCache:
             if owner and owner['pid'] != os.getpid():
                 raise ValueError('Run already owned by another process')
             db.execute('INSERT OR IGNORE INTO owners VALUES (?,?)', (run_id, os.getpid()))
-            ids = [r['doc_id'] for r in db.execute("SELECT doc_id FROM votes WHERE status='pending' AND run_id IS NULL ORDER BY doc_id LIMIT ?", (n,))]
+            ids = [r['doc_id'] for r in db.execute("SELECT doc_id FROM votes WHERE status='pending' AND run_id IS NULL ORDER BY attempts, doc_id LIMIT ?", (n,))]
             db.executemany('UPDATE votes SET run_id=?, at=? WHERE doc_id=?', ((run_id, time.time(), i) for i in ids))
             return ids
 

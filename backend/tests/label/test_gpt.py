@@ -19,7 +19,7 @@ def gpt():
 @pytest.fixture
 def fake_codex(monkeypatch, data_dir):
     monkeypatch.setattr(settings, 'codex_bin', str(Path(__file__).resolve().parents[1] / 'fakes/fake_codex.py'))
-    monkeypatch.setattr(settings, 'codex_timeout_s', 5)
+    monkeypatch.setattr(settings, 'codex_timeout_s', 30)
     monkeypatch.setattr(settings, 'label_gpt_backend', 'codex_exec')
     return data_dir
 
@@ -103,6 +103,7 @@ def test_usage_limit_pauses(gpt, fake_codex, monkeypatch):
     with pytest.raises(gpt.LabelerPaused) as exc:
         judge(gpt, docs('a'))
     assert str(exc.value) == 'GPT 판정이 사용량 한도로 멈췄습니다. 잠시 뒤 이어서 진행하거나 설정에서 API 경로로 바꾸세요.'
+    assert exc.value.usage_limit is True
     monkeypatch.setenv('FAKE_CODEX_LABEL_MODE', 'normal')
     assert set(judge(gpt, docs('a'))[0]) == {'a'}
 

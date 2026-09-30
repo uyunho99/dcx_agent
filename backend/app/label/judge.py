@@ -15,6 +15,10 @@ from app.label.votes import VoteCache
 from app.work.status import transaction
 
 
+JEV_TRANSIENT_LIMIT = 5
+JEV_BACKOFF_CAP_S = 30
+
+
 def context_key(one_liner, labeler):
     if labeler == 'jev':
         identity = f'{settings.jev_model}/{settings.jev_backend}'
@@ -98,6 +102,7 @@ def run_worker(ctx):
         raise ValueError('Batch size must be positive')
     total_estimate = estimate(list(docs.values()), one_liner, labeler)
     client = JevClient(settings.jev_api_keys, settings.jev_model) if labeler == 'jev' else None
+    transient_failures = 0
     try:
         while True:
             counts = cache.counts()
@@ -124,8 +129,9 @@ def run_worker(ctx):
                 try:
                     votes, missing = gpt.judge_batch(batch, one_liner, sid=ctx.sid, ctx_key=ctx_key, qver=QVER)
                 except gpt.LabelerPaused as exc:
-                    for doc_id in ids:
-                        cache.fail(doc_id, 'gpt_backend_failed')
+                    if not exc.usage_limit:
+                        for doc_id in ids:
+                            cache.fail(doc_id, 'gpt_backend_failed')
                     cache.release()
                     _pause(ctx, str(exc), detail)
                     continue
@@ -138,6 +144,16 @@ def run_worker(ctx):
                     try:
                         vote = client.judge(doc, one_liner, idempotency_key=f"{doc['doc_id']}:{QVER}-{ctx_key}")
                     except JevError as exc:
+                        if exc.transient:
+                            cache.release()
+                            transient_failures += 1
+                            if transient_failures >= JEV_TRANSIENT_LIMIT:
+                                _pause(ctx, 'Jev 연결이 불안정해 판정을 멈췄습니다', detail)
+                                transient_failures = 0
+                            else:
+                                time.sleep(min(2 ** (transient_failures - 1), JEV_BACKOFF_CAP_S))
+                            break
+                        transient_failures = 0
                         if exc.code == 'unconnected':
                             ctx.heartbeat(progress, {**detail, 'reason': str(exc), 'code': exc.code})
                             raise
@@ -147,6 +163,7 @@ def run_worker(ctx):
                             break
                         cache.fail(doc['doc_id'], exc.code)
                     else:
+                        transient_failures = 0
                         cache.put(doc['doc_id'], vote.model_dump())
             recent.append((time.monotonic(), cache.counts()['done']))
             while len(recent) > 1 and recent[0][0] < time.monotonic() - 600:

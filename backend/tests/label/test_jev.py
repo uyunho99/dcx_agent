@@ -151,7 +151,7 @@ def test_error_mapping_retry_success(answer, status, monkeypatch):
     assert sleeps == [1, 2, 4, 8, 16]
 
 
-@pytest.mark.parametrize('status', [429, 502])
+@pytest.mark.parametrize('status', [429, 500, 502, 503, 504])
 def test_retry_exhaustion(status):
     calls = []
     def handle(request):
@@ -160,6 +160,7 @@ def test_retry_exhaustion(status):
     with JevClient(['secret'], 'jev-latest', transport=httpx.MockTransport(handle)) as client, pytest.raises(JevError) as error:
         client.judge(DOC, '맥락')
     assert error.value.code == 'bad' and len(calls) == 6
+    assert error.value.transient is True
 
 
 def test_key_rotation_and_per_key_limit(answer, monkeypatch):
@@ -255,6 +256,7 @@ def test_transport_failure_is_safe():
         with pytest.raises(JevError) as error:
             client.judge(DOC, '맥락')
     assert error.value.code == 'bad' and 'secret' not in str(error.value)
+    assert error.value.transient is True
 
 
 def test_state_without_truncation():
