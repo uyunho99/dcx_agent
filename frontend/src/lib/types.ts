@@ -139,14 +139,14 @@ export type KappaSummary = { n: number; fields: Record<string, KappaMetric>; gra
 export type Overview = {
  started: boolean; mode: 'llm' | 'model'; modelId: string | null; progress: Record<string, LabelProgress>;
  definitionCheck: { needed: boolean; reason: string | null }; queue: { total: number; estimatedSeconds: number; byReason: Record<string, number> };
- now: { state: string; priority?: number; message?: string; action?: string | null }; merged: number; total: number; accepted: number; escalated: number; mismatchRate: number;
+ now: { state: string; priority?: number; message?: string; action?: string | null }; merged: number; total: number; accepted: number; trainable?: number; escalated: number; mismatchRate: number;
  levelDistribution: Record<EvidenceLevel, number>; audit: { round: number; n: number; kappaAI: KappaSummary; at: number | null }[];
  labelerAccuracy: { jev: KappaSummary; gpt: KappaSummary; n: number }; selfConsistency: KappaSummary & { accuracy: number | null; agree: number | null };
  changes: { judged: number; merged: number; accepted: number; queued: number }; lastSeenAt: string | null;
 };
 export type LegacyOverview = { legacy: true; readonly: true; message: string; legacyLabels: Record<string, unknown>[] };
 export type SourceDocument = { doc_id: string; text?: string; title?: string; body?: string; content?: string; url?: string; channel?: string; comments?: { text: string }[] };
-export type QueueItem = { doc_id: string; cursor?: string; reason?: 'labeler_failed' | 'grade_mismatch'; round?: number; document: SourceDocument | null };
+export type QueueItem = { doc_id: string; cursor?: string; reason?: 'labeler_failed' | 'grade_mismatch' | 'model_uncertain' | 'model_disagree'; round?: number; document: SourceDocument | null };
 export type LabelVote = { probs?: Record<string, number>; tags?: LabelTags; anchor?: boolean; sem?: LabelTags['sem']; situation?: boolean; evidence_level?: EvidenceLevel };
 export type LabelSubmission = { doc_id: string; labeler: string; mode: ReviewMode; tags: LabelTags; round?: number; elapsedSeconds?: number };
 export type LabelResult = { doc_id: string; level: EvidenceLevel; votes: Record<string, LabelVote> };

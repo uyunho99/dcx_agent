@@ -26,7 +26,6 @@ function LabelingScreen({sid}: {sid: string}) {
   const [overview, setOverview] = useState<OverviewData | LegacyOverview | null>(null);
   const [error, setError] = useState('');
   const [seenError, setSeenError] = useState('');
-  useLabelSeen(sid, version, readonly, setSeenError);
   const [revision, setRevision] = useState(0);
   const refresh = useCallback(() => setRevision(n => n + 1), []);
   useEffect(() => {
@@ -43,6 +42,8 @@ function LabelingScreen({sid}: {sid: string}) {
     const timer = setInterval(() => void read(), 5000);
     return () => {active = false; clearInterval(timer);};
   }, [sid, version, revision]);
+  // Start overview independently; seen records visits without changing displayed server counts.
+  useLabelSeen(sid, version, readonly, setSeenError);
   return <main className="space-y-6">
     <header className="flex flex-wrap items-start justify-between gap-4"><div><p className="ds-eyebrow">4단계 · 라벨링</p><h1 className="ds-t-screen">엇갈린 문서를 한 건씩 정합니다</h1><p>채택 라벨은 감사로 확인하고, 제출한 판정은 바로 저장합니다.</p></div><div className="flex flex-wrap items-center gap-3">{overview && !('legacy' in overview) && overview.started && <Badge>{overview.mode === 'llm' ? 'LLM 라벨' : '분류 모델'} · 방식 잠금</Badge>}<RestartVersion stage="stage4" label="4단계부터 다시" disabled={readonly}/></div></header>
     {seenError && <p role="alert">방문 시각을 기록하지 못했습니다. {seenError}</p>}

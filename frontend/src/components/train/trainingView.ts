@@ -36,8 +36,9 @@ export async function exportAndAdvance(write: () => Promise<unknown>, patch: () 
   navigate();
 }
 
-export function trainingLabels(overview: {accepted: number; merged?: number} | null) {
-  return {count: overview?.accepted, empty: overview?.accepted === 0};
+export function trainingLabels(overview: {accepted: number; trainable?: number; merged?: number} | null) {
+  const count = overview?.trainable ?? overview?.accepted;
+  return {count, empty: count === 0};
 }
 export function modelDate(value: unknown): string {
   const date = typeof value === 'string' ? new Date(value) : null;

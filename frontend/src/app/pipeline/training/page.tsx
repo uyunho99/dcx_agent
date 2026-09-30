@@ -62,7 +62,7 @@ function TrainingScreen({ sid, version, readonly }: { sid: string; version?: str
   const model = models.find(m => m.modelId === status?.training.modelId);
   const train = status?.workers?.find(w => w.kind === 'train');
   const divergence = number(record(status?.training.monitor).monitorDivergence) ?? number(status?.stage5?.monitorDivergence);
-  const {count: accepted, empty} = trainingLabels(overview);
+  const {count: trainable, empty} = trainingLabels(overview);
   const drift = driftMessage(!!status?.training.modelId, divergence);
 
   async function start(parent: string | null = null) {
@@ -94,7 +94,7 @@ function TrainingScreen({ sid, version, readonly }: { sid: string; version?: str
     {(error || state.error) && <Banner tone="danger">{error || state.error}</Banner>}
     {state.monitorNotice && <Banner tone="warning">{state.monitorNotice}</Banner>}
     {drift && <Banner tone="warning">{drift}</Banner>}
-    {!status ? <Card><p role="status">학습 정보를 불러오는 중…</p></Card> : state.busy ? <Card className="space-y-4"><h2 className="ds-t-card">학습 · 추론 진행 중</h2><ProgressBar label="전체 작업 진행" value={number(train?.progress) === undefined ? undefined : train!.progress * 100} /><div className="grid gap-4 md:grid-cols-4">{['MLP 1', 'MLP 2', 'MLP 3', '선형 1'].map(name => <div key={name}><h3 className="ds-t-label">{name}</h3><ProgressBar label={`${name} 학습 진행`} value={train?.state === 'done' ? 100 : undefined} /></div>)}</div><p className="ds-t-caption">멤버별 진행률은 확인 중입니다. 학습 후 전체 문서를 추론합니다.</p></Card> : state.ready && model ? <TrainingResult model={model} disabled={blocked} onExport={() => void save(false)} /> : <Card className="space-y-3"><h2 className="ds-t-card">학습 준비</h2><p>{empty ? '학습할 라벨이 없습니다. 라벨링을 먼저 끝내세요.' : '합의로 채택한 라벨과 사람이 판정한 라벨로 학습합니다.'}</p>{overview && <p>학습할 라벨 {accepted?.toLocaleString('ko-KR')}건 · 검수 대기 {overview.queue.total.toLocaleString('ko-KR')}건</p>}<p className="ds-t-caption">정확한 학습 건수는 학습 후 확인할 수 있습니다. 임베딩에 실패한 문서는 학습에서 제외됩니다.</p></Card>}
+    {!status ? <Card><p role="status">학습 정보를 불러오는 중…</p></Card> : state.busy ? <Card className="space-y-4"><h2 className="ds-t-card">학습 · 추론 진행 중</h2><ProgressBar label="전체 작업 진행" value={number(train?.progress) === undefined ? undefined : train!.progress * 100} /><div className="grid gap-4 md:grid-cols-4">{['MLP 1', 'MLP 2', 'MLP 3', '선형 1'].map(name => <div key={name}><h3 className="ds-t-label">{name}</h3><ProgressBar label={`${name} 학습 진행`} value={train?.state === 'done' ? 100 : undefined} /></div>)}</div><p className="ds-t-caption">멤버별 진행률은 확인 중입니다. 학습 후 전체 문서를 추론합니다.</p></Card> : state.ready && model ? <TrainingResult model={model} disabled={blocked} onExport={() => void save(false)} /> : <Card className="space-y-3"><h2 className="ds-t-card">학습 준비</h2><p>{empty ? '학습할 라벨이 없습니다. 라벨링을 먼저 끝내세요.' : '합의로 채택한 라벨과 사람이 판정한 라벨로 학습합니다.'}</p>{overview && <p>학습할 라벨 {trainable?.toLocaleString('ko-KR')}건 · 검수 대기 {overview.queue.total.toLocaleString('ko-KR')}건</p>}<p className="ds-t-caption">정확한 학습 건수는 학습 후 확인할 수 있습니다. 임베딩에 실패한 문서는 학습에서 제외됩니다.</p></Card>}
     <p className="ds-t-caption flex flex-wrap items-center gap-2">내보내기에는 <LevelBadge level="core" />와 <LevelBadge level="supporting" /> 문서가 포함됩니다.</p>
     <ModelRepository models={models} current={typeof status?.training.modelId === 'string' ? status.training.modelId : undefined} disabled={blocked || empty} onTrain={id => void start(id)} />
   </div>;

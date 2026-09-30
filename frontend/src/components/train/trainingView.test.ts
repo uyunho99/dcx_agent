@@ -46,7 +46,7 @@ it('advances only after export and PATCH succeed', async () => {
 });
 
 import { trainingLabels, modelDate, driftMessage, shouldPollTraining } from './trainingView';
-it('uses accepted labels for the count and empty state', () => {
+it('uses accepted labels as a fallback for older responses', () => {
  expect(trainingLabels({accepted:0, merged:25})).toEqual({count:0, empty:true});
  expect(trainingLabels({accepted:12, merged:0})).toEqual({count:12, empty:false});
  expect(trainingLabels(null).empty).toBe(false);
@@ -95,4 +95,9 @@ it('accepts persisted monitor summaries without a worker run', () => {
  expect(trainingState({training:{modelId:'m',inferStatus:'done'},monitor:{incomplete:1}})).toMatchObject({ready:true,monitorNotice:'감시를 끝내지 못했습니다'});
  expect(trainingState({training:{modelId:'m',inferStatus:'done'},monitor:{incomplete:0}})).toMatchObject({ready:true,monitorNotice:''});
  expect(shouldPollTraining({training:{},monitor:{incomplete:0}})).toBe(false);
+});
+
+it('counts human-only trainable labels and honors an explicit zero', () => {
+ expect(trainingLabels({accepted:0, trainable:40})).toEqual({count:40, empty:false});
+ expect(trainingLabels({accepted:12, trainable:0})).toEqual({count:0, empty:true});
 });

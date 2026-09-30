@@ -66,3 +66,15 @@ it('renders model export with a secondary monitor failure notice', async () => {
   expect(tree.find(n=>n.type==='TrainingResult')?.props.disabled).toBe(false);
   expect(tree.find(n=>n.props?.children==='감시를 끝내지 못했습니다 · 감시 연결 실패')?.props.tone).toBe('warning');
 });
+
+it('enables fresh and additional training for 40 human-only labels', async () => {
+  vi.useFakeTimers();
+  vi.mocked(getTrainingStatus).mockResolvedValue({training:{}});
+  vi.mocked(getLabelOverview).mockResolvedValue({accepted:0,trainable:40,queue:{total:0}} as any);
+  render(); await vi.advanceTimersByTimeAsync(0);
+  const tree=render();
+  expect(tree.some(n=>n.props?.children==='학습할 라벨이 없습니다. 라벨링을 먼저 끝내세요.')).toBe(false);
+  expect(tree.find(n=>n.props?.children==='학습 시작').props.disabled).toBe(false);
+  expect(tree.find(n=>n.type==='ModelRepository').props.disabled).toBe(false);
+  expect(tree.some(n=>Array.isArray(n.props?.children) && n.props.children[0]==='학습할 라벨 ' && n.props.children[1]==='40')).toBe(true);
+});

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '../ds/Button';
 import { Card } from '../ds/Card';
 import { Table } from '../ds/Table';
+import { queueReasonLabel } from './queueView';
 import { TagToggle } from './TagToggle';
 import { LevelBadge, levelNames } from './LevelBadge';
 import { previewLabelRule, submitLabel } from '@/lib/api/label';
@@ -26,7 +27,7 @@ function JudgingCard({sid, version, item, mode = 'escalate', labeler, focusZone 
  const [preview,setPreview] = useState<{tags: LabelTags; level: EvidenceLevel} | null>(null);
  const [previewError,setPreviewError] = useState(''); const [retry,setRetry] = useState(0);
  const [error,setError] = useState(''); const [busy,setBusy] = useState(false); const [result,setResult] = useState<LabelResult | null>(null);
- const source = useRef<HTMLParagraphElement>(null); const lock = useRef(false); const opened = useRef<number | null>(null);
+ const source = useRef<HTMLDivElement>(null); const lock = useRef(false); const opened = useRef<number | null>(null);
  useEffect(() => { source.current?.focus(); opened.current = Date.now(); }, []);
  useEffect(() => {
   let active = true;
@@ -46,14 +47,18 @@ function JudgingCard({sid, version, item, mode = 'escalate', labeler, focusZone 
   } catch(e) { setError(displayError(e,'저장하지 못했습니다. 입력은 그대로 있습니다. 다시 제출하세요.')); }
   finally { lock.current = false; setBusy(false); }
  }
+ const body = item.document?.text || item.document?.body || item.document?.content;
  const fields: [string,string][] = [['anchor','대상 경험'],...semantics,['situation','상황']];
  return <Card data-focus-zone="card" onKeyDown={event => {
   const action = keyAction(event.nativeEvent,focusZone); if(!action || disabled) return;
   event.preventDefault();
   if(action === 'submit') void submit(); else if(action === 'skip') { if(item.cursor) onNext(item.cursor); } else if(action === 'toggleAnchor') change({...tags,anchor:!tags.anchor}); else if(action === 'toggleSituation') change({...tags,situation:!tags.situation}); else toggleSem(action.index);
  }}>
-  <p className="ds-t-label">{item.reason === 'labeler_failed' ? '판정 실패' : item.reason === 'grade_mismatch' ? '두 라벨러 등급 불일치' : mode === 'reissue' ? '이전 감사 다시 판정' : '감사 판정'}</p>
-  <p ref={source} tabIndex={-1}>{item.document?.text || item.document?.body || item.document?.content || item.document?.title || '원문을 찾지 못했습니다. 다음 문서를 확인하세요.'}</p>
+  <p className="ds-t-label">{queueReasonLabel(item.reason, mode)}</p>
+  <div ref={source} tabIndex={-1}>
+   {item.document?.title && <h3 className="ds-t-card">{item.document.title}</h3>}
+   {body ? <p>{body}</p> : !item.document?.title && <p>원문을 찾지 못했습니다. 다음 문서를 확인하세요.</p>}
+  </div>
   {item.document?.comments?.map((comment,index) => <p key={index}>{comment.text}</p>)}
   <p className="ds-t-caption">{item.document?.channel}</p>
   <TagToggle label="대상 경험" shortcut="A" pressed={tags.anchor} disabled={disabled} onChange={anchor => change({...tags,anchor})}/>
