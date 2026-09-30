@@ -10,7 +10,7 @@ from app.context import store, versions
 from app.prep.config import PrepConfig
 from app.prep.guards import assert_ready
 from app.routers.context import ContextRoute
-from app.vectors.embedder import FakeEmbedder, VoyageEmbedder
+from app.vectors.embedder import FakeEmbedder, VoyageEmbedder, embedder_name
 from app.work import runner
 
 router = APIRouter(prefix='/prep', route_class=ContextRoute)
@@ -68,10 +68,16 @@ def _view(sid, data):
     report = None
     ref = prep.get('derivedRef')
     if state == 'done' and ref:
-        report = store.read_json(_root(sid, ref['collectionId'], ref['prepKey']) / 'stage_3.json')
+        root = _root(sid, ref['collectionId'], ref['prepKey'])
+        report = store.read_json(root / 'stage_3.json')
+        manifest = store.read_json(root / 'manifest.json') or {}
+        if report and manifest.get('embedder'):
+            report['embedder'] = embedder_name(manifest['embedder'])
     return dict(status=state, progress=work['progress'] if work else (1 if state == 'done' else 0),
                 detail=work['detail'] if work else {}, runId=prep.get('runId'),
-                derivedRef=ref, stage3=report, error=error)
+                derivedRef=ref, stage3=report, error=error,
+                config=PrepConfig.model_validate(prep.get('config', {})).model_dump(),
+                reused=state == 'done' and prep.get('reused', False))
 
 
 @router.put('/{sid}/config')
@@ -83,7 +89,7 @@ def config(sid: str, body: Config, version: str | None = None):
             raise store.StoreError('전처리 작업이 끝난 뒤 설정을 바꾸세요.')
         if (body.embedModel, body.embedDim) != (settings.embed_model, settings.embed_dim):
             raise store.StoreError('임베딩 모델과 차원 설정을 확인하세요.', 422, 'validation')
-        prep = _save(sid, config=body.model_dump(), status='none', derivedRef=None, runId=None)
+        prep = _save(sid, config=body.model_dump(), status='none', derivedRef=None, runId=None, reused=False)
         return dict(status='ok', prep=prep)
 
 
@@ -102,10 +108,10 @@ def run(sid: str, version: str | None = None):
         if (manifest and manifest.get('collectionFinalized') is True and manifest.get('status') == 'done' and manifest.get('compatWritten')
                 and (root / 'stage_3.json').exists()
                 and (Path(settings.local_data_dir) / manifest['compatRef']).exists()):
-            _save(sid, config=cfg.model_dump(), derivedRef=ref, status='done', runId=None)
+            _save(sid, config=cfg.model_dump(), derivedRef=ref, status='done', runId=None, reused=True)
             return {**_view(sid, store.load_session(sid)), 'reused': True}
         work = runner.start(sid, data['version'], 'prep', {'config': cfg.model_dump()})
-        _save(sid, config=cfg.model_dump(), derivedRef=ref, status=work['state'], runId=work['runId'])
+        _save(sid, config=cfg.model_dump(), derivedRef=ref, status=work['state'], runId=work['runId'], reused=False)
         return dict(status=work['state'], runId=work['runId'], progress=work['progress'], reused=False)
 
 

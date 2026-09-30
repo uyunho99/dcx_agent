@@ -135,6 +135,7 @@ def overview(sid, version=None, *, sync=True) -> dict:
         distribution.update(dict(db.execute('SELECT level, count(*) FROM final GROUP BY level')))
         reasons = dict.fromkeys(('labeler_failed', 'grade_mismatch'), 0)
         reasons.update(dict(db.execute("SELECT reason, count(*) FROM queue WHERE status='open' GROUP BY reason")))
+        mismatches = db.execute("SELECT count(*) FROM queue WHERE reason='grade_mismatch'").fetchone()[0]
         average = db.execute("SELECT avg(elapsed) FROM review_done WHERE mode='escalate' AND elapsed IS NOT NULL").fetchone()[0] or 10
         since = labeling.get('prevSeenAt', labeling.get('lastSeenAt'))
         timestamp = datetime.fromisoformat(since).timestamp() if since else 0
@@ -166,7 +167,7 @@ def overview(sid, version=None, *, sync=True) -> dict:
     from app.model.dataset import trainable_count
     result = dict(trainable=trainable_count(sid, data, labels), mode=labeling.get('mode', 'llm'), modelId=labeling.get('modelId'), started=labeling.get('started', False),
                   merged=merged, total=total, accepted=accepted, escalated=queue_count,
-                  mismatchRate=queue_count / merged if merged else 0,
+                  mismatchRate=mismatches / merged if merged else 0,
                   levelDistribution=distribution, queue=dict(total=queue_count, byReason=reasons, estimatedSeconds=queue_count * average),
                   labelerAccuracy=accuracy, selfConsistency=consistency, definitionCheck=definition,
                   progress=progress, audit=history, changes=changes,

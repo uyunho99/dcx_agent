@@ -70,7 +70,8 @@ def run_worker(ctx):
     client = None
     try:
         for i, doc_id in enumerate(sampled):
-            ctx.heartbeat(i / max(len(sampled), 1), {'phase': 'monitor', 'sampled': len(sampled)})
+            ctx.heartbeat(i / max(len(sampled), 1),
+                          {'phase': 'monitor', 'sampled': len(sampled), 'done': i, 'total': len(sampled)})
             if ctx.should_stop():
                 return
             votes = {}
@@ -116,7 +117,8 @@ def run_worker(ctx):
             else:
                 errors.append(dict(doc_id=doc_id, reason='missing_prediction_or_vote'))
         result = divergence(predicted, judged)
-        result.update(sampled=len(sampled), incomplete=len(sampled)-len(predicted), errors=errors,
+        result.update(sampled=len(sampled), done=len(sampled), total=len(sampled),
+            incomplete=len(sampled)-len(predicted), errors=errors,
             state='done', reason=f'감시 표본 {len(errors)}건을 완료하지 못했습니다.' if errors else None,
             perLabeler={name: divergence(predicted, levels)['monitorDivergence'] for name, levels in per_labeler.items()})
         with store.locked(ctx.sid):

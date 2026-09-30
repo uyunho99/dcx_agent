@@ -142,7 +142,12 @@ def get_overview(sid: str, version: str | None = None):
             run_id = training.get(kind + 'RunId') or data['labeling'].get(kind + 'RunId')
             if run_id in runs:
                 run = runs[run_id]
-                progress[kind] = dict(run, pending=0, reason=run.get('detail', {}).get('reason'))
+                detail = run.get('detail', {})
+                total = detail.get('total', detail.get('sampled' if kind == 'monitor' else 'n', 0))
+                done = detail.get('done', total if run['state'] == 'done' else 0)
+                progress[kind] = dict(run, done=done, total=total, pending=max(total-done, 0),
+                                      bad=detail.get('incomplete', 0), estimate=detail.get('estimate'),
+                                      reason=detail.get('reason') or run.get('error'))
         result['progress'] = progress
         labels = labels_for(sid, data)
         pending = next_item(labels, 'audit') is not None or next_item(labels, 'reissue') is not None

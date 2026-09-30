@@ -212,6 +212,8 @@ def test_train_worker_and_parent_snapshot(client, data_dir, monkeypatch):
     monkeypatch.setattr(training_v2.runner, 'start', lambda *args: launches.append(args) or dict(runId='next', state='running'))
     training_v2.run_worker(context(sid, 'train'))
     model_id = store.load_session(sid)['training']['modelId']
+    assert client.get(f'/train/{sid}/status').json()['training']['embedder']['name'] == 'fake'
+    assert client.get(f'/train/{sid}/status').json()['training']['embedderName'] == 'fake'
     assert registry.metadata(model_id)['n'] == 12
     assert registry.metadata(model_id)['metrics']['evaluation_split'] == 'validation'
     assert registry.dataset(model_id)['weights'].tolist() == [3.] * 12
@@ -274,3 +276,51 @@ def test_unchanged_model_audit_is_human_training_row(client, data_dir, monkeypat
     assert labels.get(item['doc_id']).source == 'human'
     _, targets = training_data(sid, store.load_session(sid))
     assert targets.doc_ids.tolist() == [item['doc_id']] and targets.weights.tolist() == [3.]
+
+
+@pytest.mark.parametrize('state,done,total', [('running', 731, 2000), ('done', 2000, 2000)])
+def test_qa_q4_overview_model_workers(client, data_dir, monkeypatch, state, done, total):
+    sid, _ = prepared(data_dir)
+    store.update_session(sid, {'labeling': {'mode': 'model', 'started': True, 'inferRunId': 'i'},
+                              'training': {'inferRunId': 'i', 'monitorRunId': 'm'}})
+    rows = [dict(runId=rid, kind=kind, version='v1', state=state, progress=d/t,
+                 detail=dict(done=d, total=t), error=None)
+            for rid, kind, d, t in [('i', 'infer', done, total), ('m', 'monitor', 7, 20)]]
+    monkeypatch.setattr('app.work.runner.status', lambda s: rows)
+    view = client.get(f'/label/{sid}/overview').json()
+    for name, d, t in [('infer', done, total), ('monitor', 7, 20)]:
+        progress = view['progress'][name]
+        assert progress['done'] == d and progress['total'] == t
+        assert progress['pending'] == t-d and progress['bad'] == 0
+        assert progress['state'] == state and progress['runId']
+        assert progress['progress'] == d/t
+        assert {'estimate', 'reason'} <= progress.keys()
+
+
+def test_qa_q4_infer_reports_exact_counts(data_dir, monkeypatch):
+    sid, docs = prepared(data_dir)
+    mid = save_model()
+    store.update_session(sid, {'labeling': {'mode': 'model', 'modelId': mid}})
+    monkeypatch.setattr(settings, 'monitor_rate', 0)
+    ctx = context(sid)
+    beats = []
+    ctx.heartbeat = lambda p, detail: beats.append(detail)
+    infer.run_worker(ctx)
+    assert beats[0]['done'] == 0 and beats[0]['total'] == len(docs)
+    assert beats[-1]['done'] == beats[-1]['total'] == len(docs)
+
+
+def test_qa_q4_monitor_reports_exact_counts(data_dir, monkeypatch):
+    sid, docs = prepared(data_dir)
+    mid = save_model()
+    store.update_session(sid, {'labeling': {'mode': 'model', 'modelId': mid}})
+    monkeypatch.setattr(settings, 'monitor_rate', 0)
+    infer.run_worker(context(sid))
+    monkeypatch.setattr(settings, 'monitor_rate', 1)
+    monkeypatch.setattr(monitor, '_claim', lambda *a: False)
+    ctx = context(sid, 'monitor', {'modelId': mid})
+    beats = []
+    ctx.heartbeat = lambda p, detail: beats.append(detail)
+    monitor.run_worker(ctx)
+    assert [(b['done'], b['total']) for b in beats] == [(i, len(docs)) for i in range(len(docs)+1)]
+    assert beats[-1]['incomplete'] == len(docs)

@@ -13,6 +13,7 @@ from app.model import registry, infer, export
 from app.model.train import Targets, build_targets, train_ensemble
 from app.routers.labeling_v2 import LabelRoute
 from app.work import runner
+from app.vectors.embedder import embedder_name
 
 router = APIRouter(route_class=LabelRoute)
 
@@ -140,7 +141,9 @@ def run_worker(ctx):
         model_id = registry.save(result, dict(trainedFrom=dict(sid=ctx.sid, version=ctx.version),
             bk=project.get('bk', ''), oneLiner=project.get('oneLiner', ''), embedder=embedder, parent=parent),
             training_data=_pack(X[indices], targets.take(indices)))
-        store._update_locked(ctx.sid, {'training': {'modelId': model_id, 'metrics': registry.metadata(model_id)['metrics']}})
+        store._update_locked(ctx.sid, {'training': {'modelId': model_id,
+            'embedder': embedder, 'embedderName': embedder_name(embedder),
+            'metrics': registry.metadata(model_id)['metrics']}})
         work = runner.start(ctx.sid, ctx.version, 'infer', {'modelId': model_id})
         store._update_locked(ctx.sid, {'training': {'inferRunId': work['runId'], 'inferStatus': 'running'}})
     ctx.heartbeat(1, {'phase': 'done', 'modelId': model_id})

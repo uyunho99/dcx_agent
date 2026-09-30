@@ -336,3 +336,23 @@ def test_overview_and_next_do_not_take_session_lock(client, session, monkeypatch
     monkeypatch.setattr(store, 'locked', forbidden)
     assert client.get(f'/label/{sid}/next').status_code == 200
     assert client.get(f'/label/{sid}/overview').status_code == 200
+
+
+def test_qa_q11_mismatch_rate_survives_review_and_excludes_failures(client, session):
+    sid, labels = session
+    seed_final(labels, 4)
+    with labels._db() as db:
+        db.execute("UPDATE final SET grade_mismatch=1, route='escalated:grade_mismatch' WHERE doc_id IN ('d0','d1')")
+        db.execute("INSERT INTO queue VALUES ('failed', 'labeler_failed', 0, 'open')")
+    before = client.get(f'/label/{sid}/overview').json()
+    assert before['merged'] == 4
+    assert before['queue']['total'] == 3
+    assert before['mismatchRate'] == .5
+    for doc_id in ('d0', 'd1', 'failed'):
+        response = client.post(f'/label/{sid}/submit', json={
+            'doc_id': doc_id, 'labeler': 'person', 'mode': 'escalate', 'tags': tags()})
+        assert response.status_code == 200, response.text
+    after = client.get(f'/label/{sid}/overview').json()
+    assert after['queue']['total'] == 0
+    assert after['merged'] == 4
+    assert after['mismatchRate'] == .5

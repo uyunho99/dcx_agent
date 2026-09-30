@@ -153,7 +153,7 @@ def test_stage3_report_contract(setup):
                            'tokens_written', 'embedded', 'embed_failed_zero_vector',
                            'prepKey', 'embedder', 'analyzer', 'at'}
     assert report['original'] == report['after'] == report['tokens_written'] == report['embedded'] == 1
-    assert report['embedder'] == 'voyage-4' and report['analyzer'].startswith('kiwi-0.24')
+    assert report['embedder'] == 'fake' and report['analyzer'].startswith('kiwi-0.24')
 
 
 def test_done_cache_does_not_read_collection_again(setup, monkeypatch):

@@ -123,3 +123,65 @@ def test_config_replaces_removed_boilerplate(collected):
     configure(collected, boilerplate={'naver_cafe': ['remove me']})
     configure(collected, boilerplate={})
     assert store.load_session('s')['prep']['config']['boilerplate'] == {}
+
+
+def test_qa_q1_server_default_exposed_and_first_run_succeeds(collected, monkeypatch):
+    from app.config import Settings
+    monkeypatch.setattr(settings, 'embed_backend', Settings(_env_file=None).embed_backend)
+    assert collected.get('/prep/s/status').json()['config']['embedder'] == 'fake'
+    assert collected.post('/prep/s/run').status_code == 200
+    assert finished(collected)['status'] == 'done'
+    assert store.load_session('s')['prep']['config']['embedder'] == 'fake'
+
+
+def test_qa_q5_prep_reports_actual_embedder(collected, data_dir):
+    configure(collected)
+    assert collected.post('/prep/s/run').status_code == 200
+    result = finished(collected)
+    assert result['stage3']['embedder'] == 'fake'
+    ref = result['derivedRef']
+    manifest = store.read_json(data_dir / 'derived/s' / ref['collectionId'] / ref['prepKey'] / 'manifest.json')
+    assert manifest['embedder']['name'] == 'fake'
+    assert manifest['embedderName'] == 'fake'
+
+
+def test_qa_q6_partial_embedding_failure_is_not_reuse(collected, data_dir):
+    from types import SimpleNamespace
+    from app.prep.pipeline import run_prep
+    from app.vectors.embedder import EmbedderUnconnected
+    configure(collected, embedder='voyage')
+    ctx = SimpleNamespace(args={}, heartbeat=lambda *a: None, should_stop=lambda: False)
+    with pytest.raises(EmbedderUnconnected):
+        run_prep(ctx, 's', 'v1')
+    assert list((data_dir / 'derived/s').rglob('docs/*.jsonl'))
+    assert list((data_dir / 'derived/s').rglob('tokens/*.jsonl'))
+    configure(collected, embedder='fake')
+    first = collected.post('/prep/s/run').json()
+    assert first['reused'] is False
+    result = finished(collected)
+    assert result['status'] == 'done'
+    assert result['reused'] is False
+    assert collected.post('/prep/s/run').json()['reused'] is True
+    assert collected.get('/prep/s/status').json()['reused'] is True
+    configure(collected, minBodyChars=11)
+    assert collected.get('/prep/s/status').json()['reused'] is False
+
+
+def test_qa_q5_reused_old_report_uses_manifest_backend(collected, data_dir):
+    configure(collected)
+    collected.post('/prep/s/run')
+    result = finished(collected)
+    assert result['status'] == 'done'
+    ref = result['derivedRef']
+    root = data_dir / 'derived/s' / ref['collectionId'] / ref['prepKey']
+    report = store.read_json(root / 'stage_3.json')
+    report['embedder'] = 'voyage-4'  # Artifact written before R-112.
+    store.write_json(root / 'stage_3.json', report)
+    manifest = store.read_json(root / 'manifest.json')
+    manifest.pop('embedderName')
+    store.write_json(root / 'manifest.json', manifest)
+    reused = collected.post('/prep/s/run').json()
+    assert reused['reused'] is True
+    assert reused['stage3']['embedder'] == 'fake'
+    assert collected.get('/prep/s/status').json()['stage3']['embedder'] == 'fake'
+    assert store.read_json(root / 'stage_3.json') == report  # No mutation of historical artifacts.

@@ -14,6 +14,7 @@ from app.config import settings
 from app.context import store
 from app.label import questions, rule
 from app.model.net import HEADS, MultiHeadMLP
+from app.vectors.embedder import embedder_name
 
 MISMATCH = '다른 임베딩으로 학습된 모델입니다'
 
@@ -50,6 +51,7 @@ def save(result, meta, *, training_data=None) -> str:
             torch.save(training_data, staging / 'training.pt')
         store.write_json(staging / 'calib.json', result.temperatures)
         info = dict(meta, modelId=model_id, kind='ensemble', members=4,
+            embedderName=embedder_name(meta.get('embedder', {})),
             createdAt=store.now(), n=len(result.doc_ids), perHead=result.perHead,
             metrics={**result.metrics, 'evaluation_split': 'validation'},
             rule_version=rule.RULE_VERSION, questions_version=questions.QVER,

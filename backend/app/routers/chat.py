@@ -10,6 +10,13 @@ from app.jobs.manager import job_manager
 from app.models.schemas import ChatRequest, InsightChatRequest
 
 router = APIRouter()
+ANSWER_UNCONNECTED = '답변 모델이 연결되지 않아 근거 원문만 보여 줍니다.'
+
+
+def _unconnected(req, sources, reason, **extra):
+    if 'sid' not in req.model_fields_set or not req.sid:
+        return dict(status='error', answer=ANSWER_UNCONNECTED, sources=[], **extra)
+    return dict(status='ok', answer=ANSWER_UNCONNECTED, sources=sources, reason=reason, **extra)
 
 
 @router.post("/chat")
@@ -96,7 +103,7 @@ ADDED_KEYWORDS: 화재, 침수, 누수
                 if added_kw:
                     answer += "\n\n" + ", ".join(added_kw) + " 키워드가 추가되었습니다."
             return {"status": "ok", "answer": answer, "sources": similar_docs, "reason": search_result.reason, "added_keywords": added_kw}
-        return {"status": "error", "answer": "API 오류", "sources": []}
+        return _unconnected(req, similar_docs, search_result.reason)
     except Exception as e:
         return {"status": "error", "answer": f"오류가 발생했습니다: {str(e)}", "sources": []}
 
@@ -222,6 +229,6 @@ def insight_chat(req: InsightChatRequest):
             clean_answer = re.sub(r"```MODIFIED_DATA\s*\n[\s\S]*?\n```", "", answer).strip()
             return {"status": "ok", "answer": clean_answer, "modified": modified, "sources": similar_docs, "reason": search_result.reason}
 
-        return {"status": "error", "answer": "API 오류", "modified": False, "sources": []}
+        return _unconnected(req, similar_docs, search_result.reason, modified=False)
     except Exception as e:
         return {"status": "error", "answer": f"오류: {str(e)}", "modified": False, "sources": []}

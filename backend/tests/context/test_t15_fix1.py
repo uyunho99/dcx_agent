@@ -126,3 +126,13 @@ def test_stage3_compare_includes_both_reports(client):
         'stage_3': {'before': {'after': 10}, 'after': {'after': 20}},
         'stage_5': {'before': {'accepted': 8}, 'after': {'accepted': 18}},
         'same': False}
+
+
+@pytest.mark.parametrize('predecessor', [None, 'failed', 'interrupted', 'running'])
+def test_qa_q8_finished_latest_training_has_no_badge(client, predecessor):
+    sid = create(client)
+    if predecessor:
+        record_run(sid, 'old-train', predecessor, kind='train', labeler=None)
+    record_run(sid, 'finished-train', 'done', kind='train', labeler=None, started=2)
+    assert store.session_activities(sid, store.load_session(sid)) == []
+    assert client.get('/sessions').json()['sessions'][0]['activity'] is None

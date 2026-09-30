@@ -196,7 +196,8 @@ def run_worker(ctx):
     docs = documents(ctx.sid, data)
     completed = 0
     for batch, X in _batches(ctx.sid, data, docs):
-        ctx.heartbeat(completed / max(len(docs), 1), {'phase': 'infer', 'modelId': model_id})
+        ctx.heartbeat(completed / max(len(docs), 1),
+                      {'phase': 'infer', 'modelId': model_id, 'done': completed, 'total': len(docs)})
         if ctx.should_stop():
             return
         predictions = predict(model, X)
@@ -220,4 +221,5 @@ def run_worker(ctx):
             from app.work import runner
             work = runner.start(ctx.sid, ctx.version, 'monitor', {'modelId': model_id})
             store._update_locked(ctx.sid, {'training': {'monitorRunId': work['runId']}})
-    ctx.heartbeat(1, {'phase': 'done', 'modelId': model_id, 'n': len(docs)})
+    ctx.heartbeat(1, {'phase': 'done', 'modelId': model_id, 'n': len(docs),
+                      'done': completed, 'total': len(docs)})

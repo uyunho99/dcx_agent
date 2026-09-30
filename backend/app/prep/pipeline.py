@@ -18,7 +18,7 @@ from app.prep.config import PrepConfig, analyzer_version, prep_key
 from app.prep.report import stage3_report
 from app.prep.tokens import tokenize
 from app.services.preprocessing import _crawl_docs, filter_documents
-from app.vectors.embedder import EmbedderUnconnected, FakeEmbedder, VoyageEmbedder, get_embedder
+from app.vectors.embedder import EmbedderUnconnected, FakeEmbedder, VoyageEmbedder, get_embedder, embedder_name
 from app.vectors.store import VectorStore
 
 SHARD_ROWS = 10_000
@@ -123,7 +123,7 @@ def _publish_compat(root, manifest):
         store.write_json(root / 'manifest.json', manifest)
 
 
-def _publish(sid, version, root, cfg, manifest):
+def _publish(sid, version, root, cfg, manifest, *, reused=False):
     _publish_compat(root, manifest)
     with store.locked(sid):
         path = version_dir(sid, version) / 'session.json'
@@ -135,7 +135,7 @@ def _publish(sid, version, root, cfg, manifest):
                 raise store.StoreError('전처리 대상 수집본이 바뀌었습니다. 다시 실행하세요.')
             session['prep'] = dict(config=cfg.model_dump(),
                                    derivedRef=dict(collectionId=manifest['collectionId'], prepKey=root.name),
-                                   status='done', savedAt=store.now())
+                                   status='done', savedAt=store.now(), reused=reused)
             store.write_json(path, session)
 
 
@@ -179,13 +179,14 @@ def run_prep(ctx, sid: str, version: str) -> Path:
                     shutil.rmtree(artifact) if artifact.is_dir() else artifact.unlink()
             manifest = None
         if manifest and manifest['status'] == 'done':
-            _publish(sid, version, root, cfg, manifest)
+            _publish(sid, version, root, cfg, manifest, reused=True)
             return root
         if manifest is None:
             manifest = dict(collectionId=cid, prepKey=key, config=cfg.model_dump(), collectionFinalized=True,
                             embedder=dict(name=embedder.name, model=embedder.model, dim=embedder.dim),
                             analyzer=analyzer_version(), createdAt=store.now(), counts={}, progress={},
                             compatRef=f'preprocessed/{sid}/{time.time_ns()}.jsonl')
+        manifest['embedderName'] = embedder_name(manifest['embedder'])
         manifest['status'] = 'running'
         store.write_json(root / 'manifest.json', manifest)
         try:
@@ -269,7 +270,7 @@ def _run(ctx, sid, version, root, cfg, embedder, documents, manifest, unconnecte
     report = stage3_report(original=len(documents), after=len(filtered), removed=removed,
                            boilerplate_replaced=replacements, tokens_written=len(filtered),
                            embedded=len(existing) - failures, embed_failed_zero_vector=failures,
-                           prepKey=root.name, embedder=embedder.model, analyzer=analyzer_version())
+                           prepKey=root.name, embedder=embedder_name(manifest['embedder']), analyzer=analyzer_version())
     store.write_json(root / 'stage_3.json', report)
     manifest['counts'] = report
     manifest['status'] = 'done'

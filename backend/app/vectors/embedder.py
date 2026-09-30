@@ -22,6 +22,11 @@ class EmbedderUnconnected(RuntimeError):
     """Voyage credentials have not been configured."""
 
 
+def embedder_name(meta: dict) -> str:
+    """Display the actual backend/model without changing cache identity."""
+    return 'fake' if meta.get('name') == 'fake' else meta.get('model', meta.get('name', ''))
+
+
 class VoyageEmbedder:
     name = 'voyage'
 

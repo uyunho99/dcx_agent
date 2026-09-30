@@ -54,3 +54,9 @@ def test_registry_missing_embedder_not_selectable(data_dir):
     row = registry.list_models(EMBEDDER)[0]
     assert row['selectable'] is False
     assert row['reason'] == registry.MISMATCH
+
+
+def test_qa_q5_registry_exposes_actual_embedder_name(data_dir):
+    mid = save_model()
+    assert registry.metadata(mid)['embedderName'] == 'fake'
+    assert registry.list_models(EMBEDDER)[0]['embedderName'] == 'fake'
