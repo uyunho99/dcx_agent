@@ -15,7 +15,7 @@ function Drawer({sid, version, onClose, onChange, readonly = false}: KnownInsigh
  const [items,setItems] = useState<KnownInsight[]>([]); const [text,setText] = useState('');
  const [loading,setLoading] = useState(true); const [busy,setBusy] = useState(false); const [error,setError] = useState(''); const [retry,setRetry] = useState(0); const lock = useRef(false);
  useEffect(() => { const previous = document.activeElement as HTMLElement | null; const node = dialog.current; node?.showModal(); return () => { node?.close(); previous?.focus(); }; }, []);
- useEffect(() => { let active = true; getKnownInsights(sid).then(data => { if(active) {setItems(data.items);setLoading(false); if(!data.items.length) input.current?.focus();} }).catch(e => {if(active) {setError(displayError(e));setLoading(false);}}); return () => {active = false;}; }, [sid,retry]);
+ useEffect(() => { let active = true; getKnownInsights(sid, version).then(data => { if(active) {setItems(data.items);setLoading(false); if(!data.items.length) input.current?.focus();} }).catch(e => {if(active) {setError(displayError(e));setLoading(false);}}); return () => {active = false;}; }, [sid,version,retry]);
  async function mutate(action: () => Promise<KnownInsight[]>) {
   if(lock.current || readonly) return; lock.current = true;setBusy(true);setError('');
   try { const next = await action(); setItems(next);onChange?.(next); } catch(e) {setError(displayError(e));} finally {lock.current = false;setBusy(false);}

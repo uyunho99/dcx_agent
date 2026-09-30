@@ -64,3 +64,35 @@ it('polls active work and stops at idle, done or failed', () => {
  expect(shouldPollTraining({training:{},workers:[{runId:'r',kind:'train',state:'running',progress:0,detail:{}}]})).toBe(true);
  expect(shouldPollTraining({training:{inferStatus:'running'},workers:[{runId:'r',kind:'infer',state:'failed',progress:0,detail:{}}]})).toBe(false);
 });
+
+import type { Worker, WorkerState } from '../../lib/types';
+it.each(['running', 'paused', 'failed', 'interrupted', 'cancelled', 'done'] as WorkerState[])('monitor %s never blocks model export', state => {
+ const monitor: Worker = {runId:'monitor',kind:'monitor',state,progress:.5,detail:{},error:state === 'failed' ? 'Jev 연결 실패' : null};
+ for (const extra of [{workers:[monitor]}, {monitor}]) {
+  const status = {training:{modelId:'m',inferStatus:'done'},...extra};
+  expect(trainingState(status)).toMatchObject({ready:true,busy:false,error:''});
+  if (state === 'failed') expect(trainingState(status).monitorNotice).toBe('감시를 끝내지 못했습니다 · Jev 연결 실패');
+  expect(shouldPollTraining(status)).toBe(state === 'running');
+ }
+});
+it('shows incomplete monitor reasons, including done runs, without requiring a reason', () => {
+ for (const [state, detail, error, expected] of [
+  ['failed', {}, null, '감시를 끝내지 못했습니다'],
+  ['done', {reason:'표본 판정 실패'}, null, '감시를 끝내지 못했습니다 · 표본 판정 실패'],
+ ] as const) {
+  expect(trainingState({training:{modelId:'m',inferStatus:'done'},monitor:{runId:'r',kind:'monitor',state,progress:1,detail,error}}).monitorNotice).toBe(expected);
+ }
+});
+it('still blocks failed inference alongside a failed monitor', () => {
+ expect(trainingState({training:{modelId:'m',inferStatus:'done'},workers:[{runId:'i',kind:'infer',state:'failed',progress:0,detail:{},error:'추론 실패'},{runId:'m',kind:'monitor',state:'failed',progress:0,detail:{}}]})).toMatchObject({ready:false,error:'추론 실패'});
+});
+
+it('uses the separate monitor status reason verbatim', () => {
+ expect(trainingState({training:{modelId:'m',inferStatus:'done'},monitor:{runId:'r',kind:'monitor',state:'failed',progress:0,detail:{},reason:'표본 감시 연결 실패'}}).monitorNotice).toBe('감시를 끝내지 못했습니다 · 표본 감시 연결 실패');
+});
+
+it('accepts persisted monitor summaries without a worker run', () => {
+ expect(trainingState({training:{modelId:'m',inferStatus:'done'},monitor:{incomplete:1}})).toMatchObject({ready:true,monitorNotice:'감시를 끝내지 못했습니다'});
+ expect(trainingState({training:{modelId:'m',inferStatus:'done'},monitor:{incomplete:0}})).toMatchObject({ready:true,monitorNotice:''});
+ expect(shouldPollTraining({training:{},monitor:{incomplete:0}})).toBe(false);
+});

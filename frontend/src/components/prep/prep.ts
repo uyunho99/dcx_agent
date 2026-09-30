@@ -10,6 +10,7 @@ export const CHANNELS = [
   ['youtube', '유튜브'], ['ppomppu', '뽐뿌'], ['clien', '클리앙'],
 ] as const;
 export type PrepSession = {
+  labeling?: { started?: boolean };
   collectionId?: string | null;
   crawlConfig?: { adWords?: string[]; excludeSources?: string[] } | null;
   prep?: { config?: Partial<PrepConfig> };
@@ -21,9 +22,12 @@ export type PrepReport = {
   embedded: number; embed_failed_zero_vector: number;
   at?: string; embedder?: string; analyzer?: string; prepKey?: string;
 };
+export function prepEditLock(session: PrepSession): string | null {
+  return session.labeling?.started ? '라벨링을 시작한 뒤에는 이 버전에서 바꿀 수 없습니다. 새 버전에서 다시 하세요.' : null;
+}
 export function prepConfig(session: PrepSession, includeDraft = true): PrepConfig {
   const saved = session.prep?.config;
-  const draft = includeDraft ? session.drafts?.prep?.config : undefined;
+  const draft = includeDraft && !prepEditLock(session) ? session.drafts?.prep?.config : undefined;
   return {
     adFilter: session.crawlConfig?.adWords ?? [], excludeSources: session.crawlConfig?.excludeSources ?? [],
     minBodyChars: 10, analyzer: 'kiwi', tokenPos: ['NNG', 'NNP', 'VV', 'VA', 'XR'],

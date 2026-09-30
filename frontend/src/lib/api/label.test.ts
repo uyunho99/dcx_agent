@@ -22,12 +22,12 @@ it('uses feature routes, methods and bodies for every stage 3–5 client', async
  await prep.savePrepConfig('s',{...config,adFilter:[],excludeSources:[],tokenPos:['NNG']},'v1'); await prep.runPrep('s','v1'); await prep.getPrepStatus('s','v1');
  await label.setLabelMode('s',{mode:'model',modelId:'m1'},'v1'); await label.startLabel('s','v1'); await label.controlLabeler('s','jev','pause','v1'); await label.controlLabeler('s','gpt','resume','v1'); await label.getLabelOverview('s','v1'); await label.previewLabelRule(tags); await label.submitLabel('s',{doc_id:'d',labeler:'human',mode:'audit',round:1,tags},'v1'); await label.createAudit('s','v1');
  await train.startTraining('s','parent','v1'); await train.getTrainingStatus('s','v1'); await train.exportTraining('s',true,'v1'); await train.getModels('s','v1'); await train.getModel('m/a');
- await known.getKnownInsights('s'); await known.addKnownInsight('s',{type:'doc',doc_id:'d'},'v1'); await known.updateKnownInsight('s','i/a','새 문장','v1'); await known.deleteKnownInsight('s','i/a','v1');
+ await known.getKnownInsights('s','v1'); await known.addKnownInsight('s',{type:'doc',doc_id:'d'},'v1'); await known.updateKnownInsight('s','i/a','새 문장','v1'); await known.deleteKnownInsight('s','i/a','v1');
  expect(fetcher.mock.calls.map(([url,init]) => [url,init.method])).toEqual([
  ['/prep/s/config?version=v1','PUT'],['/prep/s/run?version=v1','POST'],['/prep/s/status?version=v1','GET'],
  ['/label/s/mode?version=v1','POST'],['/label/s/start?version=v1','POST'],['/label/s/judge/jev/pause?version=v1','POST'],['/label/s/judge/gpt/resume?version=v1','POST'],['/label/s/overview?version=v1','GET'],['/label/rule/preview','POST'],['/label/s/submit?version=v1','POST'],['/label/s/audit?version=v1','POST'],
  ['/train/s?version=v1','POST'],['/train/s/status?version=v1','GET'],['/train/s/export?version=v1','POST'],['/models?sid=s&version=v1','GET'],['/models/m%2Fa','GET'],
- ['/known/s','GET'],['/known/s?version=v1','POST'],['/known/s/i%2Fa?version=v1','PATCH'],['/known/s/i%2Fa?version=v1','DELETE']]);
+ ['/known/s?version=v1','GET'],['/known/s?version=v1','POST'],['/known/s/i%2Fa?version=v1','PATCH'],['/known/s/i%2Fa?version=v1','DELETE']]);
  expect(JSON.parse(fetcher.mock.calls[8][1].body)).toEqual({tags});
  expect(JSON.parse(fetcher.mock.calls[9][1].body)).toEqual({doc_id:'d',labeler:'human',mode:'audit',round:1,tags});
  expect(JSON.parse(fetcher.mock.calls[11][1].body)).toEqual({parent:'parent'});
@@ -38,4 +38,26 @@ it('uses feature routes, methods and bodies for every stage 3–5 client', async
 it('preserves Korean API failure text for retry UI', async () => {
  vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:false,status:500,json:async()=>({status:'error',error:{kind:'storage',message:'저장하지 못했습니다. 입력은 그대로 있습니다. 다시 제출하세요.'}})}));
  await expect(label.markLabelSeen('s')).rejects.toThrow('저장하지 못했습니다. 입력은 그대로 있습니다. 다시 제출하세요.');
+});
+
+it.each(['pause','resume','stop'] as const)('controls model inference via judge/infer/%s', async action => {
+ const fetcher = vi.fn().mockResolvedValue({ok:true,json:async()=>({})}); vi.stubGlobal('fetch',fetcher);
+ await label.controlLabeler('s/a','infer',action,'v 2');
+ expect(fetcher).toHaveBeenCalledWith(`/label/s%2Fa/judge/infer/${action}?version=v%202`,expect.objectContaining({method:'POST'}));
+});
+it('reads the selected Known Insight version and retains the default-version route', async () => {
+ const fetcher = vi.fn().mockResolvedValue({ok:true,json:async()=>({items:[]})}); vi.stubGlobal('fetch',fetcher);
+ await known.getKnownInsights('s/a','v 2'); await known.getKnownInsights('s/a');
+ expect(fetcher.mock.calls.map(([url]) => url)).toEqual(['/known/s%2Fa?version=v%202','/known/s%2Fa']);
+});
+import { putContext } from './context';
+import { emptyStartForm } from '../logic/startForm';
+import { prepConfig } from '../../components/prep/prep';
+import { displayError } from './errors';
+it.each(['detail','error'] as const)('preserves the labeling lock from %s on both saves', async shape => {
+ const message = '라벨링을 시작한 뒤에는 이 버전에서 바꿀 수 없습니다. 새 버전에서 다시 하세요.';
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:false,status:409,json:async()=>shape === 'detail' ? {detail:message} : {error:{code:'labeling_started',message}}}));
+ for (const save of [() => prep.savePrepConfig('s',prepConfig({}),'v1'), () => putContext('s',emptyStartForm,'v1')]) {
+  try { await save(); expect.unreachable('save must fail'); } catch (error) { expect(displayError(error,'저장에 실패했습니다.')).toBe(message); }
+ }
 });

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button, Card, InsightCard } from '@/components/ds';
 import { KappaTable } from './KappaTable';
 import { LabelerProgress } from './LabelerProgress';
+import { controlTarget, type WorkerAction } from './workerControls';
 import { LevelBadge } from './LevelBadge';
 import { controlLabeler, setLabelMode, startLabel } from '@/lib/api/label';
 import { getModels } from '@/lib/api/train';
@@ -32,7 +33,7 @@ export function Overview({sid, version, overview: o, readonly = false, onRefresh
     catch(e) {setError(displayError(e)); onRefresh();}
     finally {lock.current = false; setBusy(false);}
   }
-  async function control(labeler: 'jev' | 'gpt', action: 'pause' | 'resume') {
+  async function control(labeler: 'jev' | 'gpt' | 'infer', action: WorkerAction) {
     if (readonly || lock.current) return;
     lock.current = true; setBusy(true); setError('');
     try {await controlLabeler(sid, labeler, action, version); onRefresh();}
@@ -50,7 +51,7 @@ export function Overview({sid, version, overview: o, readonly = false, onRefresh
       </Card> : <InsightCard eyebrow="지금 할 일" insight={now.title} interpretation={<><p>{now.body}</p><p>지난 접속 이후 새로 판정 {o.changes.judged.toLocaleString('ko-KR')}건 · 채택 {o.changes.accepted.toLocaleString('ko-KR')}건 · 큐에 쌓인 문서 {o.changes.queued.toLocaleString('ko-KR')}건</p></>} evidence={[{label:'불일치율',value:`${(o.mismatchRate * 100).toFixed(1)}%`}]} nextAction={now.action && <Button variant="primary" onClick={() => {const target = now.action!.target; if(target === 'workers') {workers.current?.focus(); workers.current?.scrollIntoView({behavior:'smooth'});} else if(target !== 'start') onNavigate(target);}}>{now.action.label}</Button>}/>}</div>
       <Card><h2 className="ds-t-card">합친 결과</h2><dl className="space-y-2"><dt>합친 문서</dt><dd>{o.merged.toLocaleString('ko-KR')} / {o.total.toLocaleString('ko-KR')}건</dd><dt>채택</dt><dd>{o.accepted.toLocaleString('ko-KR')}건</dd><dt>불일치율</dt><dd>{(o.mismatchRate * 100).toFixed(1)}%</dd><dt>검수 큐</dt><dd>{o.queue.total.toLocaleString('ko-KR')}건 · 예상 {Math.ceil(o.queue.estimatedSeconds / 60)}분</dd></dl></Card>
     </div>
-    <div ref={workers} tabIndex={-1}><Card className="space-y-4"><h2 className="ds-t-card">전량 판정</h2><p className="ds-t-caption">화면을 닫아도 계속됩니다.</p><div className="grid gap-6 md:grid-cols-2">{Object.entries(o.progress).map(([name, progress]) => <div key={name} className="space-y-2"><LabelerProgress key={name} name={name === 'jev' ? 'Jev' : name === 'gpt' ? 'GPT' : name === 'infer' ? '분류 모델' : '감시'} progress={progress} busy={busy} onControl={!readonly && (name === 'jev' || name === 'gpt') ? action => void control(name, action) : undefined}/>{progress.state === 'running' && progress.estimate?.seconds != null && <p className="ds-t-caption">예상 완료 · {new Date(Date.now() + progress.estimate.seconds * 1000).toLocaleString('ko-KR')}</p>}{name === 'jev' && <p className="ds-t-caption">예상 Jev 비용 · 금액 추정은 아직 제공되지 않습니다.{typeof progress.estimate?.jevTokens === 'number' && ` 예상 입력 ${progress.estimate.jevTokens.toLocaleString('ko-KR')}토큰`}</p>}</div>)}</div></Card></div>
+    <div ref={workers} tabIndex={-1}><Card className="space-y-4"><h2 className="ds-t-card">전량 판정</h2><p className="ds-t-caption">화면을 닫아도 계속됩니다.</p><div className="grid gap-6 md:grid-cols-2">{Object.entries(o.progress).map(([name, progress]) => <div key={name} className="space-y-2"><LabelerProgress key={name} name={name === 'jev' ? 'Jev' : name === 'gpt' ? 'GPT' : name === 'infer' ? '분류 모델' : '감시'} progress={progress} busy={busy} onControl={!readonly && controlTarget(name, o.mode) ? action => void control(controlTarget(name, o.mode)!, action) : undefined}/>{progress.state === 'running' && progress.estimate?.seconds != null && <p className="ds-t-caption">예상 완료 · {new Date(Date.now() + progress.estimate.seconds * 1000).toLocaleString('ko-KR')}</p>}{name === 'jev' && <p className="ds-t-caption">예상 Jev 비용 · 금액 추정은 아직 제공되지 않습니다.{typeof progress.estimate?.jevTokens === 'number' && ` 예상 입력 ${progress.estimate.jevTokens.toLocaleString('ko-KR')}토큰`}</p>}</div>)}</div></Card></div>
     <Card><h2 className="ds-t-card">등급 분포</h2><div className="flex flex-wrap gap-6">{(['core','supporting','non'] as EvidenceLevel[]).map(level => <p key={level}><LevelBadge level={level}/> {o.levelDistribution[level].toLocaleString('ko-KR')}건</p>)}</div></Card>
     <Card><KappaTable audit={o.audit.at(-1)?.kappaAI} jev={o.labelerAccuracy.jev} gpt={o.labelerAccuracy.gpt}/></Card>
   </div>;

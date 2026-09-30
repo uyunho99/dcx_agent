@@ -16,7 +16,7 @@ vi.mock('@/components/train/TrainingResult', () => ({TrainingResult:'TrainingRes
 vi.mock('@/lib/api/train', () => ({getTrainingStatus:vi.fn(),getModels:vi.fn().mockResolvedValue({models:[]}),startTraining:vi.fn(),exportTraining:vi.fn()}));
 vi.mock('@/lib/api/label', () => ({getLabelOverview:vi.fn()}));
 import TrainingPage from './page';
-import { getTrainingStatus, startTraining } from '@/lib/api/train';
+import { getTrainingStatus, getModels, startTraining } from '@/lib/api/train';
 import { getLabelOverview } from '@/lib/api/label';
 function nodes(node: any): any[] {return !node || typeof node!=='object' ? [] : Array.isArray(node) ? node.flatMap(nodes) : [node,...nodes(node.props?.children)];}
 function render() {
@@ -54,4 +54,15 @@ it('stops idle polling, allows empty export, resumes on start and stops after co
   expect(getTrainingStatus).toHaveBeenCalledTimes(calls+1);
   await vi.advanceTimersByTimeAsync(15000);
   expect(getTrainingStatus).toHaveBeenCalledTimes(calls+1);
+});
+
+it('renders model export with a secondary monitor failure notice', async () => {
+  vi.useFakeTimers();
+  vi.mocked(getModels).mockResolvedValue({models:[{modelId:'m',kind:'ensemble'}]});
+  vi.mocked(getTrainingStatus).mockResolvedValue({training:{modelId:'m',inferStatus:'done'},workers:[],monitor:{runId:'watch',kind:'monitor',state:'failed',progress:0,detail:{},reason:'감시 연결 실패'}});
+  vi.mocked(getLabelOverview).mockResolvedValue({accepted:12,queue:{total:0}} as any);
+  render(); await vi.advanceTimersByTimeAsync(0);
+  const tree=render();
+  expect(tree.find(n=>n.type==='TrainingResult')?.props.disabled).toBe(false);
+  expect(tree.find(n=>n.props?.children==='감시를 끝내지 못했습니다 · 감시 연결 실패')?.props.tone).toBe('warning');
 });

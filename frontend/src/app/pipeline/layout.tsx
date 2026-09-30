@@ -46,7 +46,7 @@ function PipelineShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!sid) return;
     let active = true;
-    getKnownInsights(sid).then(data => {if (active) setKnown(data.items);}).catch(() => {if (active) setKnown(null);});
+    getKnownInsights(sid, view.version).then(data => {if (active) setKnown(data.items);}).catch(() => {if (active) setKnown(null);});
     return () => {active = false;};
   }, [sid, view.version, knownRevision]);
 

@@ -16,7 +16,7 @@ export interface SessionInfo {
   schemaVersion?: number;
   legacy?: boolean;
   updatedAt?: string;
-  activity?: { kind: string; status: string; progress?: number; updatedAt?: string } | null;
+  activity?: { kind: string; status: string; progress?: number; updatedAt?: string; label?: string } | null;
   sid: string;
   bk: string;
   step: string;
@@ -132,7 +132,7 @@ export type SemanticTag = 'sense' | 'feel' | 'think' | 'act' | 'relate' | 'outco
 export type LabelTags = { anchor: boolean; sem: Record<SemanticTag, 0 | 1>; situation: boolean; reason_code?: 'ad' | 'no_needs' | 'pure_criticism' | 'other' | null; signal?: 'pain' | 'unmet' | 'workaround' | 'delight' | 'none' | null };
 export type ReviewMode = 'escalate' | 'audit' | 'reissue';
 export type WorkerState = 'none' | 'running' | 'paused' | 'failed' | 'interrupted' | 'done' | 'cancelled';
-export type Worker = { runId: string; kind: string; state: WorkerState; progress: number; detail: Record<string, unknown>; error?: string | null };
+export type Worker = { runId: string; kind: string; state: WorkerState; progress: number; detail: Record<string, unknown>; reason?: string | null; error?: string | null };
 export type LabelProgress = { state: string; pending: number; done?: number; bad?: number; progress?: number; reason?: string | null; runId?: string | null; estimate?: { seconds: number | null; [key: string]: unknown } };
 export type KappaMetric = { n: number; accuracy: number | null; kappa: number | null };
 export type KappaSummary = { n: number; fields: Record<string, KappaMetric>; grade: KappaMetric };
@@ -154,4 +154,4 @@ export type KnownInsight = { id: string; type: 'statement' | 'doc'; text: string
 export type PrepConfig = { adFilter: string[]; excludeSources: string[]; minBodyChars: number; boilerplate: Record<string, string[]>; analyzer: 'kiwi'; tokenPos: string[]; embedder: 'voyage' | 'fake'; embedModel: 'voyage-4'; embedDim: 1024 };
 export type PrepStatus = { status: WorkerState; progress: number; runId: string | null; detail?: Record<string, unknown>; derivedRef?: { collectionId: string; prepKey: string } | null; stage3?: Record<string, unknown> | null; error?: { kind: string; message: string } | null; reused?: boolean };
 export type ModelMetadata = { modelId: string; selectable?: boolean; reason?: string | null; metrics?: Record<string, unknown>; [key: string]: unknown };
-export type TrainingStatus = { readonly?: boolean; training: Record<string, unknown>; workers?: Worker[]; stage5?: Record<string, unknown> | null };
+export type TrainingStatus = { readonly?: boolean; training: Record<string, unknown>; workers?: Worker[]; monitor?: (Partial<Worker> & { incomplete?: number }) | null; stage5?: Record<string, unknown> | null };

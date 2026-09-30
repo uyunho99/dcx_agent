@@ -5,7 +5,7 @@ export type { Overview, QueueItem, LabelTags, LabelResult } from '../types';
 const path = (sid: string, action: string, version?: string) => versionQuery(`/label/${encodeURIComponent(sid)}/${action}`,version);
 export const setLabelMode = (sid: string, body: {mode: 'llm' | 'model'; modelId?: string | null}, version?: string) => contextRequest<typeof body>(path(sid,'mode',version),'POST',body);
 export const startLabel = (sid: string, version?: string) => contextRequest<{started: boolean; workers: Record<string, Worker>}>(path(sid,'start',version),'POST');
-export const controlLabeler = (sid: string, labeler: 'jev' | 'gpt', action: 'pause' | 'resume', version?: string) => contextRequest<Worker>(path(sid,`judge/${labeler}/${action}`,version),'POST');
+export const controlLabeler = (sid: string, labeler: 'jev' | 'gpt' | 'infer', action: 'pause' | 'resume' | 'stop', version?: string) => contextRequest<Worker>(path(sid,`judge/${labeler}/${action}`,version),'POST');
 export const getLabelOverview = (sid: string, version?: string) => contextRequest<Overview | LegacyOverview>(path(sid,'overview',version));
 export function getNextLabel(sid: string, options: {mode?: ReviewMode; round?: number; after?: string; version?: string} = {}) {
  const query = new URLSearchParams();

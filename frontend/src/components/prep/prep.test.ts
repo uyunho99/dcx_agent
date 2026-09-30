@@ -43,3 +43,12 @@ describe('preparation status', () => {
     expect(prepEstimate({ original: 100, after: 80 })).toEqual({ original: 100, after: 80, storageBytes: 163840 });
   });
 });
+
+import { prepEditLock } from './prep';
+it('locks prep rules after labeling starts and ignores stale draft rules', () => {
+ const session = {labeling:{started:true},prep:{config:{minBodyChars:20}},drafts:{prep:{config:{minBodyChars:99}}}};
+ expect(prepEditLock(session)).toBe('라벨링을 시작한 뒤에는 이 버전에서 바꿀 수 없습니다. 새 버전에서 다시 하세요.');
+ expect(prepConfig(session).minBodyChars).toBe(20);
+ expect(prepEditLock({labeling:{started:false}})).toBeNull();
+ expect(prepEditLock({})).toBeNull();
+});
