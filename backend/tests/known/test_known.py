@@ -259,3 +259,116 @@ def test_clustering_follows_inherited_export_ref(prepared, monkeypatch):
     clustering.run_clustering({'sid': 's1', 'num_clusters': 1})
     assert clustering.job_manager.get('cluster', 's1')['status'] == 'done'
     embed.assert_not_called()
+
+
+@pytest.fixture
+def persona_prompt(monkeypatch):
+    from app.services import personas
+    monkeypatch.setattr(personas, 'load_json', lambda key: None)
+    monkeypatch.setattr(personas, 'save_json', lambda *args: None)
+    llm = Mock(return_value='[]')
+    monkeypatch.setattr(personas, 'call_claude', llm)
+    return personas, llm
+
+
+@pytest.mark.parametrize('reason', ['no_vectors', 'no_labels', 'embedder_unconnected', 'all_known'])
+def test_persona_fallback_reasons_and_known_exclusion(data_dir, persona_prompt, monkeypatch, reason):
+    from app.known.filter import SearchResult
+    personas, llm = persona_prompt
+    store.update_session('legacy', {'knownInsights': [dict(type='doc', doc_id='known', text='known')]})
+    docs = [dict(cluster=0, kw='query', doc_id='known', title='KNOWN_TITLE')]
+    docs += [dict(cluster=0, kw='query', doc_id=str(i), title=f'EVIDENCE_{i}_END') for i in range(21)]
+    monkeypatch.setattr(personas, 'load_data', lambda key: docs)
+    # The legacy case exercises real search with no derivedRef.
+    if reason != 'no_vectors':
+        monkeypatch.setattr(personas, 'search_docs', Mock(return_value=SearchResult([[]], reason)))
+    personas.run_persona({'sid': 'legacy'})
+    assert personas.job_manager.get('persona', 'legacy')['status'] == 'done'
+    prompt = llm.call_args.args[0]
+    assert ('EVIDENCE_0_END' in prompt) == (reason != 'all_known')
+    assert 'KNOWN_TITLE' not in prompt
+    assert 'EVIDENCE_19_END' not in prompt  # Slice raw cluster to 20 before filtering.
+
+
+@pytest.mark.parametrize('all_empty', [False, True])
+def test_persona_skips_empty_queries(data_dir, persona_prompt, monkeypatch, all_empty):
+    from app.known.filter import SearchResult
+    personas, llm = persona_prompt
+    docs = [dict(cluster=0, title='EMPTY_QUERY_EVIDENCE', kw='  '),
+            dict(cluster=1, title='SECOND_CLUSTER', kw='' if all_empty else 'query')]
+    monkeypatch.setattr(personas, 'load_data', lambda key: docs)
+    search = Mock(return_value=SearchResult([[dict(title='RAG_EVIDENCE')]]))
+    monkeypatch.setattr(personas, 'search_docs', search)
+    personas.run_persona({'sid': 's1'})
+    assert personas.job_manager.get('persona', 's1')['status'] == 'done'
+    prompt = llm.call_args.args[0]
+    assert 'EMPTY_QUERY_EVIDENCE' in prompt
+    if all_empty:
+        search.assert_not_called()
+        assert 'SECOND_CLUSTER' in prompt
+    else:
+        search.assert_called_once_with('s1', ['query'], top_k=10, novel=True)
+        assert 'RAG_EVIDENCE' in prompt.split('### 클러스터 2')[1]
+
+
+def test_search_releases_lock_before_embedding_and_scans(prepared, monkeypatch):
+    import fcntl
+    from app.known import filter as search
+
+    def assert_unlocked():
+        with (store.root_dir('s1') / '.lock').open('a') as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+    embedder = Mock()
+    def embed(texts):
+        assert_unlocked()
+        return prepared[1][:len(texts)]
+    embedder.embed.side_effect = embed
+    monkeypatch.setattr(search, 'get_embedder', lambda: embedder)
+    original_docs = search.relevant_documents
+    def read_docs(*args, **kwargs):
+        assert_unlocked()
+        return original_docs(*args, **kwargs)
+    monkeypatch.setattr(search, 'relevant_documents', read_docs)
+    original_scan = VectorStore.iter_shards
+    scans = []
+    def scan(self):
+        assert_unlocked()
+        scans.append(True)
+        yield from original_scan(self)
+    monkeypatch.setattr(VectorStore, 'iter_shards', scan)
+    result = search.search_docs('s1', ['q'], 5)
+    assert result.items[0]
+    embedder.embed.assert_called_once_with(['q'])
+    assert len(scans) == 1
+
+
+@pytest.mark.parametrize('ref', ['classified/s1/missing/relevant.jsonl',
+                                  'classified/s1/v1/all.jsonl',
+                                  'classified/other/v1/relevant.jsonl'])
+def test_invalid_export_returns_no_labels(client, prepared, ref):
+    from app.known.filter import search_docs
+    store.update_session('s1', {'training': {'exportRef': ref}})
+    result = search_docs('s1', ['q', 'q2'], 5)
+    assert result.reason == 'no_labels' and result.items == [[], []]
+    response = client.post('/search', json={'sid': 's1', 'query': 'q'})
+    assert response.status_code == 200
+    assert response.json()['reason'] == 'no_labels'
+
+
+def test_initialize_batches_missing_statement_vectors(prepared, monkeypatch):
+    from app.known import store as known
+    store.update_session('s1', {'bk': 'same', 'knownInsights': ['first', 'second']})
+    store.update_session('previous', {'bk': 'same', 'knownInsights': ['second', 'copied']})
+    embedder = Mock()
+    embedder.embed.return_value = prepared[1][:3]
+    monkeypatch.setattr(known, 'get_embedder', lambda: embedder)
+    known.initialize('s1')
+    embedder.embed.assert_called_once_with(['first', 'second', 'copied'])
+    items = known.list_known('s1')
+    assert [item.vectorRow for item in items] == [0, 1, 2]
+    np.testing.assert_allclose(known.known_vectors('s1', items, VectorStore(prepared[0])),
+                               prepared[1][:3], atol=.001)
+    known.initialize('s1')
+    assert embedder.embed.call_count == 1

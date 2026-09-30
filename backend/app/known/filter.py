@@ -44,10 +44,10 @@ def prepared_documents(root):
     return {doc['doc_id']: doc for path in sorted((root / 'docs').glob('*.jsonl')) for doc in read_jsonl(path)}
 
 
-def relevant_documents(sid, data, root):
+def relevant_documents(sid, data, root, version_dir=None):
     if data.get('training', {}).get('exportRef'):
         return {doc['doc_id']: doc for doc in read_export(sid, data)}
-    path = sessions.session_dir(sid) / 'labels.sqlite'
+    path = (version_dir if version_dir is not None else sessions.session_dir(sid)) / 'labels.sqlite'
     if not path.exists():
         return {}
     with sqlite3.connect(f'{path.resolve().as_uri()}?mode=ro', uri=True) as db:
@@ -59,45 +59,46 @@ def search_docs(sid, queries: list[str], top_k, novel=True) -> SearchResult:
     empty = [[] for _ in queries]
     with sessions.locked(sid):
         data = sessions.load_session(sid) or {}
-        root = store.prepared_root(sid, data)
-        if root is None:
-            return SearchResult(empty, 'no_vectors')
-        vectors = VectorStore(root)
-        if not vectors.count():
-            return SearchResult(empty, 'no_vectors')
-        docs = relevant_documents(sid, data, root)
-        if not docs:
-            return SearchResult(empty, 'no_labels')
-        valid = set()
-        for ids, rows, failed in vectors.iter_shards():
-            valid.update(doc_id for doc_id, row, bad in zip(ids, rows, failed)
-                         if doc_id in docs and not bad and np.isfinite(row).all() and np.linalg.norm(row) > 0)
-        if not valid:
-            return SearchResult(empty, 'no_vectors')
-        if not queries or top_k <= 0:
-            return SearchResult(empty)
-        try:
-            query_vectors = store.session_embedder(sid, data, get_embedder).embed([query[:2000] for query in queries])
-        except EmbedderUnconnected:
-            return SearchResult(empty, 'embedder_unconnected')
-        candidates = cosine_topk(vectors, query_vectors, top_k * 3, valid, set())
-        known = read_known(data) if novel else []
-        excluded = {item.doc_id for item in known if item.type == 'doc'}
-        known_vecs = store.known_vectors(sid, known, vectors) if known else np.empty((0, settings.embed_dim))
-        if len(known_vecs):
-            norms = np.linalg.norm(known_vecs, axis=1)
-            known_vecs = known_vecs[norms > 0] / norms[norms > 0, None]
-        items = []
-        removed = False
-        for matches in candidates:
-            kept = []
-            ids, rows = vectors.get([doc_id for doc_id, score in matches])
-            rows_by_id = dict(zip(ids, rows))
-            for doc_id, score in matches:
-                row = rows_by_id[doc_id]
-                if doc_id in excluded or (len(known_vecs) and np.max(known_vecs @ (row / np.linalg.norm(row))) >= settings.known_theta):
-                    removed = True
-                    continue
-                kept.append({**docs[doc_id], 'doc_id': doc_id, 'score': score})
-            items.append(kept[:top_k])
-        return SearchResult(items, 'all_known' if removed and not any(items) else None)
+        version_dir = sessions.session_dir(sid)
+    root = store.prepared_root(sid, data)
+    if root is None:
+        return SearchResult(empty, 'no_vectors')
+    vectors = VectorStore(root)
+    if not vectors.count():
+        return SearchResult(empty, 'no_vectors')
+    try:
+        docs = relevant_documents(sid, data, root, version_dir=version_dir)
+    except sessions.StoreError:
+        return SearchResult(empty, 'no_labels')
+    if not docs:
+        return SearchResult(empty, 'no_labels')
+    if not queries or top_k <= 0:
+        return SearchResult(empty)
+    try:
+        query_vectors = store.session_embedder(sid, data, get_embedder).embed([query[:2000] for query in queries])
+    except EmbedderUnconnected:
+        return SearchResult(empty, 'embedder_unconnected')
+    candidates = cosine_topk(vectors, query_vectors, top_k * 3, set(docs), set())
+    if not any(candidates):
+        # No searchable rows (including zero/failed vectors); no second scan.
+        return SearchResult(empty, 'no_vectors')
+    known = read_known(data) if novel else []
+    excluded = {item.doc_id for item in known if item.type == 'doc'}
+    known_vecs = store.known_vectors(sid, known, vectors, version_dir=version_dir) if known else np.empty((0, settings.embed_dim))
+    if len(known_vecs):
+        norms = np.linalg.norm(known_vecs, axis=1)
+        known_vecs = known_vecs[norms > 0] / norms[norms > 0, None]
+    items = []
+    removed = False
+    for matches in candidates:
+        kept = []
+        ids, rows = vectors.get([doc_id for doc_id, score in matches])
+        rows_by_id = dict(zip(ids, rows))
+        for doc_id, score in matches:
+            row = rows_by_id[doc_id]
+            if doc_id in excluded or (len(known_vecs) and np.max(known_vecs @ (row / np.linalg.norm(row))) >= settings.known_theta):
+                removed = True
+                continue
+            kept.append({**docs[doc_id], 'doc_id': doc_id, 'score': score})
+        items.append(kept[:top_k])
+    return SearchResult(items, 'all_known' if removed and not any(items) else None)

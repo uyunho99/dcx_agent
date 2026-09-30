@@ -3,6 +3,8 @@ import json
 from datetime import datetime
 
 from app.services.s3 import load_data, save_json, load_json, list_objects
+from app.context import store as sessions
+from app.known.models import read_known
 from app.known.filter import search_docs
 from app.services.claude import call_claude
 from app.jobs.manager import job_manager
@@ -48,13 +50,21 @@ def run_persona(config: dict) -> None:
             pass
 
         cluster_ids = sorted(clusters)
-        queries = [" ".join(x.get("kw", "") for x in clusters[cid][:5]) for cid in cluster_ids]
-        retrieved = search_docs(sid, queries, top_k=10, novel=config.get("novel", True))
+        queries = {cid: " ".join(x.get("kw") or "" for x in clusters[cid][:5]).strip()
+                   for cid in cluster_ids}
+        searchable = [cid for cid in cluster_ids if queries[cid]]
+        retrieved = (search_docs(sid, [queries[cid] for cid in searchable], top_k=10,
+                                 novel=config.get("novel", True)) if searchable else None)
+        rag_by_cluster = dict(zip(searchable, retrieved.items)) if retrieved else {}
+        with sessions.locked(sid):
+            known = read_known(sessions.load_session(sid) or {})
+        excluded = {item.doc_id for item in known if item.type == 'doc' and item.doc_id}
+        fallback_reasons = {'no_vectors', 'no_labels', 'embedder_unconnected'}
         all_cluster_text = ""
-        for cid, rag_docs in zip(cluster_ids, retrieved.items):
-            # Empty filtered results must stay empty: a raw-cluster fallback
-            # would reintroduce Known Insight documents into the prompt.
-            items = rag_docs
+        for cid in cluster_ids:
+            items = rag_by_cluster.get(cid, [])
+            if not queries[cid] or (not items and retrieved.reason in fallback_reasons):
+                items = [doc for doc in clusters[cid][:20] if doc.get('doc_id') not in excluded]
             text = "\n".join([f"- {x.get('title', '')} | {x.get('desc', '')[:100]}" for x in items])
             kw_set = set([x.get("kw", "") for x in clusters[cid] if x.get("kw", "")])
             all_cluster_text += (

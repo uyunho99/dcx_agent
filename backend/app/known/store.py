@@ -50,20 +50,31 @@ def _save(sid, items):
 
 
 def _embed(sid, item):
+    _embed_many(sid, [item])
+
+
+def _embed_many(sid, items):
+    if not items:
+        return
     try:
-        vectors = np.asarray(session_embedder(sid, _data(sid), get_embedder).embed([item.text[:2000]]), dtype=np.float32)
+        vectors = np.asarray(session_embedder(sid, _data(sid), get_embedder).embed([item.text[:2000] for item in items]), dtype=np.float32)
     except Exception:
         # Provider failures never discard the user's statement. The API exposes
         # an unconnected warning, and a later PATCH can retry the missing row.
         return
-    if vectors.shape != (1, settings.embed_dim) or not np.isfinite(vectors).all() or not np.linalg.norm(vectors):
+    if vectors.shape != (len(items), settings.embed_dim):
+        return
+    valid = np.isfinite(vectors).all(axis=1) & (np.linalg.norm(vectors, axis=1) > 0)
+    if not valid.any():
         return
     path = sessions.session_dir(sid) / 'known_vectors.f16'
     # Publish vector bytes before their row pointer in session.json. Orphaned
     # rows after interruption are harmless and are never reused.
     with path.open('ab') as stream:
-        item.vectorRow = stream.tell() // (settings.embed_dim * 2)
-        stream.write(vectors.astype(np.float16).tobytes())
+        for item, vector, usable in zip(items, vectors, valid):
+            if usable:
+                item.vectorRow = stream.tell() // (settings.embed_dim * 2)
+                stream.write(vector.astype(np.float16).tobytes())
         stream.flush()
         os.fsync(stream.fileno())
 
@@ -140,16 +151,15 @@ def initialize(sid):
                 if item.type == 'statement' and item.text not in seen:
                     items.append(KnownInsight(type='statement', text=item.text, origin='prev_session'))
                     seen.add(item.text)
-        for item in items:
-            if item.type == 'statement' and item.vectorRow is None:
-                _embed(sid, item)
+        _embed_many(sid, [item for item in items
+                          if item.type == 'statement' and item.vectorRow is None])
         _save(sid, items)
 
 
-def known_vectors(sid, items, vectors):
+def known_vectors(sid, items, vectors, version_dir=None):
     _, docs = vectors.get([item.doc_id for item in items if item.type == 'doc' and item.doc_id])
     result = list(docs)
-    path = sessions.session_dir(sid) / 'known_vectors.f16'
+    path = (version_dir if version_dir is not None else sessions.session_dir(sid)) / 'known_vectors.f16'
     if path.exists():
         stored = np.fromfile(path, dtype=np.float16).reshape(-1, settings.embed_dim)
         result.extend(stored[item.vectorRow].astype(np.float32) for item in items
