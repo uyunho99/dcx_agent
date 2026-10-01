@@ -174,3 +174,7 @@ textarea.ds-inp{resize:vertical}
 .ds-stat dd { margin:0; }
 .ds-chip:disabled,.ds-sw:disabled,.ds-tab:disabled { opacity:.5; cursor:not-allowed; }
 .ds-tabs { flex-wrap:wrap; }
+
+/* Drawer restart forms stay in the scrollable drawer layout. */
+.ds-pop-contained { display:block; min-width:0; }
+.ds-pop-contained > .ds-pop { position:static; width:100%; max-width:100%; margin-top:12px; }

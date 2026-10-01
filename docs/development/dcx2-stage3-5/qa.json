@@ -1,0 +1,184 @@
+{
+  "verdict": "PASS",
+  "head": "1a4853b0e3dadaf5f1dc808efa01f105171c4b82",
+  "fingerprint": "499f04072c4cc4acdb84291980dc6f887bcb218098e83daa89febe1f66ce8170",
+  "commands": [
+    {
+      "command": "browser QA via Claude built-in browser (gstack qa-only), 3 rounds",
+      "exitCode": 0
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "QA-P",
+      "url": "http://localhost:3310/pipeline/preprocess",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage3-5/qa/qa-report-2026-09-30.md (1회차 표 + 2회차 표, screenshots/)"
+    },
+    {
+      "id": "QA-L1",
+      "url": "http://localhost:3310/pipeline/labeling",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage3-5/qa/qa-report-2026-09-30.md (1회차 표 + 2회차 표, screenshots/)"
+    },
+    {
+      "id": "QA-L2",
+      "url": "http://localhost:3310/pipeline/labeling",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage3-5/qa/qa-report-2026-09-30.md (1회차 표 + 2회차 표, screenshots/)"
+    },
+    {
+      "id": "QA-L3",
+      "url": "http://localhost:3310/pipeline/labeling",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage3-5/qa/qa-report-2026-09-30.md (1회차 표 + 2회차 표, screenshots/)"
+    },
+    {
+      "id": "QA-L4",
+      "url": "http://localhost:3310/pipeline/labeling",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage3-5/qa/qa-report-2026-09-30.md (1회차 표 + 2회차 표, screenshots/)"
+    },
+    {
+      "id": "QA-L5",
+      "url": "http://localhost:3310/pipeline/labeling",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage3-5/qa/qa-report-2026-09-30.md (1회차 표 + 2회차 표, screenshots/)"
+    },
+    {
+      "id": "QA-M",
+      "url": "http://localhost:3310/pipeline/training",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage3-5/qa/qa-report-2026-09-30.md (1회차 표 + 2회차 표, screenshots/)"
+    },
+    {
+      "id": "QA-M2",
+      "url": "http://localhost:3310/pipeline/labeling",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage3-5/qa/qa-report-2026-09-30.md (1회차 표 + 2회차 표, screenshots/)"
+    },
+    {
+      "id": "QA-K",
+      "url": "http://localhost:3310/pipeline/clustering",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage3-5/qa/qa-report-2026-09-30.md (1회차 표 + 2회차 표, screenshots/)"
+    },
+    {
+      "id": "QA-V",
+      "url": "http://localhost:3310/pipeline/labeling",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage3-5/qa/qa-report-2026-09-30.md (1회차 표 + 2회차 표, screenshots/)"
+    },
+    {
+      "id": "QA-R",
+      "url": "http://localhost:3310/pipeline/labeling",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage3-5/qa/qa-report-2026-09-30.md (1회차 표 + 2회차 표, screenshots/)"
+    },
+    {
+      "id": "UAT-U1",
+      "url": "http://localhost:3310/pipeline/keywords",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage3-5/qa/qa-report-2026-09-30.md (3회차)"
+    },
+    {
+      "id": "UAT-U2",
+      "url": "http://localhost:3310/pipeline/labeling",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage3-5/qa/qa-report-2026-09-30.md (3회차), screenshots/uat-u2-queuecard.jpg"
+    },
+    {
+      "id": "UAT-U3",
+      "url": "http://localhost:3310/pipeline/labeling",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage3-5/qa/qa-report-2026-09-30.md (3회차), screenshots/uat-u3-known.jpg"
+    },
+    {
+      "id": "UAT-U4",
+      "url": "http://localhost:3310/pipeline/labeling",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage3-5/qa/qa-report-2026-09-30.md (3회차)"
+    }
+  ],
+  "partial": [
+    {
+      "id": "QA-L6",
+      "reason": "κ 0.00→0.00, two-drop banner condition not producible; covered by nowCard.test.ts + backend audit tests"
+    },
+    {
+      "id": "QA-S",
+      "reason": "embedding-unconnected + empty Known Insight verified; Jev-unconnected needs key"
+    },
+    {
+      "id": "QA-E2E",
+      "reason": "0→6단계 완료; 페르소나 needs LLM key"
+    },
+    {
+      "id": "QA-W",
+      "reason": "not run: fake judges finish <1s; covered by test_kill_restart_no_duplicate_calls"
+    }
+  ],
+  "resolvedFindings": [
+    {
+      "id": "Q1",
+      "status": "fixed"
+    },
+    {
+      "id": "Q2",
+      "status": "fixed"
+    },
+    {
+      "id": "Q3",
+      "status": "fixed"
+    },
+    {
+      "id": "Q4",
+      "status": "fixed"
+    },
+    {
+      "id": "Q5",
+      "status": "fixed"
+    },
+    {
+      "id": "Q6",
+      "status": "fixed"
+    },
+    {
+      "id": "Q7",
+      "status": "fixed"
+    },
+    {
+      "id": "Q8",
+      "status": "fixed"
+    },
+    {
+      "id": "Q9",
+      "status": "fixed"
+    },
+    {
+      "id": "Q10",
+      "status": "fixed"
+    },
+    {
+      "id": "Q11",
+      "status": "fixed"
+    },
+    {
+      "id": "Q12",
+      "status": "fixed"
+    }
+  ],
+  "deferred": [
+    {
+      "id": "R2-1",
+      "severity": "Low",
+      "to": "backlog B-109"
+    },
+    {
+      "id": "R2-2",
+      "severity": "Low",
+      "to": "backlog B-109"
+    }
+  ],
+  "findings": []
+}

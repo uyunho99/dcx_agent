@@ -5,7 +5,6 @@ boto3
 numpy
 requests
 voyageai
-pinecone-client
 scikit-learn
 gunicorn
 httpx
@@ -14,3 +13,6 @@ crawl4ai
 yt-dlp
 pydantic>=2
 openai
+kiwipiepy
+torch
+scipy

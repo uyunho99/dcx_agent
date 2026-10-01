@@ -19,6 +19,7 @@ import time
 from uuid import uuid4
 
 from app.config import settings
+from app.work.proc import pid_alive
 from app.context import store
 from app.crawl.adapters import available_sources
 from app.crawl.filters import DEFAULT_AD_WORDS, DEFAULT_EXCLUDE_SOURCES
@@ -30,16 +31,6 @@ from app.crawl import gate, report
 @dataclass
 class ReadQueue:
     path: Path
-
-
-def pid_alive(pid):
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
 
 
 def collection_dir(sid):

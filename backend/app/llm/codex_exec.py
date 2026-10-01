@@ -10,20 +10,9 @@ import subprocess
 import uuid
 
 from app.config import settings
+from app.work.proc import pid_alive as _alive
 from app.llm.base import LLMTask, LLMResult, failure, validate
 from app.llm.compose import compose
-
-
-def _alive(pid: int) -> bool:
-    if pid <= 0:
-        return False
-    try:
-        os.kill(pid, 0)
-        return True
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
 
 
 def _safe(text: str) -> str:

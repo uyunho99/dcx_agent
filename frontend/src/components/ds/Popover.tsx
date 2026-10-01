@@ -13,6 +13,7 @@ export type PopoverTrigger = {
 };
 export type PopoverProps = {
   label: string;
+  contained?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   children: ReactNode;
@@ -21,7 +22,7 @@ export type PopoverProps = {
   | { triggerLabel?: string; renderTrigger: (trigger: PopoverTrigger) => ReactNode }
 );
 // Custom triggers must forward ref and spread props onto a focusable button.
-export function Popover({ label, triggerLabel, renderTrigger, open, onOpenChange, children }: PopoverProps) {
+export function Popover({ contained = false, label, triggerLabel, renderTrigger, open, onOpenChange, children }: PopoverProps) {
   const id = useId(); const trigger = useRef<HTMLButtonElement>(null); const panel = useRef<HTMLDivElement>(null); const wasOpen = useRef(false);
   const setTriggerRef = useCallback((node: HTMLButtonElement | null) => { trigger.current = node; }, []);
   useEffect(() => {
@@ -41,5 +42,5 @@ export function Popover({ label, triggerLabel, renderTrigger, open, onOpenChange
     "aria-controls": open ? id : undefined,
     onClick: () => onOpenChange(!open),
   };
-  return <div className="ds-pop-anchor">{renderTrigger ? renderTrigger({ ref: setTriggerRef, props: triggerProps }) : <button ref={trigger} className="ds-btn" {...triggerProps}>{triggerLabel}</button>}{open && <div ref={panel} id={id} className="ds-pop" role="dialog" aria-label={label} tabIndex={-1}>{children}<div className="ds-actions"><Button size="sm" variant="quiet" onClick={() => onOpenChange(false)}>닫기</Button></div></div>}</div>;
+  return <div className={contained ? "ds-pop-anchor ds-pop-contained" : "ds-pop-anchor"}>{renderTrigger ? renderTrigger({ ref: setTriggerRef, props: triggerProps }) : <button ref={trigger} className="ds-btn" {...triggerProps}>{triggerLabel}</button>}{open && <div ref={panel} id={id} className="ds-pop" role="dialog" aria-label={label} tabIndex={-1}>{children}<div className="ds-actions"><Button size="sm" variant="quiet" onClick={() => onOpenChange(false)}>닫기</Button></div></div>}</div>;
 }

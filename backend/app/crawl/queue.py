@@ -16,6 +16,7 @@ from typing import Any, Iterable, Mapping, Protocol
 from uuid import uuid4
 
 from app.crawl.urls import normalize_url
+from app.work.proc import pid_alive as _alive
 
 HEARTBEAT_INTERVAL = 10
 STALE_AFTER_S = 60
@@ -150,16 +151,6 @@ class UrlRow:
 
 def _get(obj, key, default=None):
     return obj.get(key, default) if isinstance(obj, Mapping) else getattr(obj, key, default)
-
-
-def _alive(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
 
 
 class CrawlQueue:

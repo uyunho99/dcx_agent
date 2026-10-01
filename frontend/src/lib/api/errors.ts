@@ -23,7 +23,7 @@ export function responseError(data: {error?: {code?: string; message?: string}; 
  if(status === 409 && (data.error?.code === 'version_conflict' || data.error?.message?.includes('다른 버전이 활성화되었습니다')) && typeof window !== 'undefined') window.dispatchEvent(new Event('dcx-version-conflict'));
  const code = data.error?.code ?? '';
  if (Object.hasOwn(messages, code)) return messages[code];
- const message = data.error?.message ?? '';
+ const message = data.error?.message ?? (typeof data.detail === 'string' ? data.detail : '');
  return hasHangul(message) ? message : genericError;
 }
 export function displayError(error: unknown, fallback = genericError): string {

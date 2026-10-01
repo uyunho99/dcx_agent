@@ -19,9 +19,7 @@ def test_integration_dependencies(monkeypatch):
     monkeypatch.setattr(settings, 'naver_client_secret', 'configured')
     entries = {e.name: e for e in integration_status()}
     assert not {'youtube', 'naver_search'} & entries.keys()
-    shopping = entries['naver_shopping']
-    assert not shopping.connected and shopping.env_vars == []
-    assert '종료' in shopping.last_error
+    assert set(entries) == {'openai', 'claude'}
 
 
 def test_cheap_availability_and_offline_flag(monkeypatch):

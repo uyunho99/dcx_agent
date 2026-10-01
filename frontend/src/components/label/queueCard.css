@@ -1,0 +1,59 @@
+.queue-card-controls {
+  display: grid;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.queue-card-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 16px;
+}
+
+.queue-card-row-label {
+  flex: 0 0 100px;
+  padding-top: 8px;
+  font: var(--type-caption);
+  color: var(--ink);
+}
+
+.queue-card-toggles,
+.queue-card-selects {
+  display: flex;
+  flex: 1 1 240px;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.queue-card-controls .ds-chip {
+  height: auto;
+  min-height: 36px;
+}
+
+.queue-card-controls .ds-chip[aria-pressed=true] {
+  background: var(--action);
+  border-color: var(--action);
+  color: var(--paper);
+}
+
+.queue-card-controls .ds-chip[aria-pressed=true]:hover:not(:disabled) {
+  background: var(--action-hover);
+  border-color: var(--action-hover);
+}
+
+.queue-card-controls .ds-chip:focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: 2px;
+}
+
+.queue-card-selects {
+  gap: 12px;
+}
+
+.queue-card-selects > .ds-field {
+  flex: 1 1 160px;
+  min-width: 0;
+  margin-bottom: 0;
+}
