@@ -5,13 +5,16 @@ blocks the checkpoint until resumed; stop leaves the run interrupted for retry.
 """
 import argparse
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
+import logging
 import os
 from threading import Event, Thread
 import time
 
 from app.work.status import ACTIVE, HEARTBEAT_INTERVAL, transaction
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -21,6 +24,16 @@ class Context:
     kind: str
     args: dict
     run_id: str
+    _heartbeat_callback: Callable[[], None] | None = field(default=None, init=False, repr=False)
+
+    def _refresh_leases(self):
+        callback = self._heartbeat_callback
+        if callback is not None:
+            try:
+                callback()
+            except Exception as exc:
+                # Keep the heartbeat alive; retry next time without logging payloads.
+                logger.warning('Vote lease refresh failed (%s)', type(exc).__name__)
 
     def _row(self):
         with transaction(self.sid) as db:
@@ -36,8 +49,10 @@ class Context:
 
     def _pulse(self):
         with transaction(self.sid) as db:
-            db.execute('''UPDATE runs SET heartbeat_at=? WHERE run_id=? AND pid=?
+            updated = db.execute('''UPDATE runs SET heartbeat_at=? WHERE run_id=? AND pid=?
                 AND state IN ('running','paused')''', (time.time(), self.run_id, os.getpid()))
+        if updated.rowcount:
+            self._refresh_leases()
 
     def heartbeat(self, progress, detail):
         while True:
@@ -46,10 +61,12 @@ class Context:
                 if row is None or row['state'] not in ACTIVE or row['action'] == 'stop':
                     return
                 paused = row['action'] == 'pause'
-                db.execute('''UPDATE runs SET state=?,progress=?,detail=?,heartbeat_at=?
+                updated = db.execute('''UPDATE runs SET state=?,progress=?,detail=?,heartbeat_at=?
                     WHERE run_id=? AND pid=?''',
                            ('paused' if paused else 'running', progress, json.dumps(detail),
                             time.time(), self.run_id, os.getpid()))
+            if updated.rowcount:
+                self._refresh_leases()
             if not paused:
                 return
             time.sleep(.1)
@@ -61,8 +78,19 @@ def _prep(context: Context):
 
 
 def _judge(context: Context):
-    from app.label.judge import run_worker
-    run_worker(context)
+    from app.context import versions
+    from app.label.judge import cache_root, run_worker
+    from app.label.votes import VoteCache
+
+    session = versions._data(context.sid, context.version)
+    root = cache_root(context.sid, session['prep']['derivedRef']['prepKey'],
+                      context.args['labeler'], session['projectContext']['oneLiner'])
+    cache = VoteCache(root)
+    context._heartbeat_callback = lambda: cache.refresh(context.run_id)
+    try:
+        run_worker(context)
+    finally:
+        context._heartbeat_callback = None
 
 
 def _train(context: Context):
