@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     codex_timeout_s: int = 600
     claude_model: str = "claude-sonnet-4-20250514"
     naver_search_base_url: str = "https://openapi.naver.com"
+    autocomplete_backend: Literal["http", "fake"] = "http"
     searchad_api_key: str = ""
     searchad_secret: str = ""
     searchad_customer_id: str = ""
