@@ -12,3 +12,8 @@ Review coverage (T1-T4,T12): Needs fixes — I1 R2 re-commit returns stale saved
 Fix round 1 dispatched in 3 parallel file-disjoint jobs: fix1-coverage.md, fix1-stability.md, fix1-display.md. Ruling: cold index batching done now (reviewer: 10s+ single write txn can cause 'database is locked' for submits) — cost if wrong: small code change.
 Fix round 1 committed d7cb46d(cov) 0a3ba12(stab) 1b64004(disp); backend 1395 (0 net), vitest 285, lint, build. Perf: index 0.99s batched; cold estimate 11.7s (in-process cache) -> backlog candidate.
 Fix1 re-review Approved (17/17). Fix2 dispatched: completion fail-soft + source-aware failure copy. Parked minors → backlog: interrupted classification shown connected (m6 missing); labeling.status done not reset on same-version rejudge; stale false completion until reload; release/refresh race (pre-existing); cold estimate 11.7s after restart.
+Review phase: 5 findings → retry. R-207. rfix-coverage.md + rfix-completion.md dispatched.
+Review-phase fixes committed 63d99dd,698dee3; backend 1430 (0 net), vitest 288.
+Rfix re-review: Needs fixes (I1 stage6 never cleared → clustersDone false forever in restarted versions; minors M1-M6). Round 2 dispatched: rfix2-cluster.md, rfix2-coverage.md.
+Round-2 fixes committed; backend 1447 (0 net), vitest 288.
+Rfix2 re-review Approved. Parked minors: clustering.py session['version'] KeyError risk; clusters_done no version compare; _restart keeps inherited clustering field.
