@@ -26,7 +26,7 @@ class AutocompleteResult:
 
 
 class AutocompleteUnavailable(RuntimeError):
-    """No seed produced usable autocomplete results."""
+    """Every seed failed, or no seeds were supplied."""
 
 
 def _parse(payload) -> list[tuple[str, int]]:
@@ -41,8 +41,6 @@ def _parse(payload) -> list[tuple[str, int]]:
                 or not norm_key(row[0])):
             raise ValueError('Invalid autocomplete query')
         queries.append((row[0], rank))
-    if not queries:
-        raise ValueError('Empty autocomplete results')
     return queries
 
 
@@ -89,6 +87,6 @@ def suggestions(seeds: list[str], client: httpx.Client | None = None,
     finally:
         if owned:
             client.close()
-    if not queries:
-        raise AutocompleteUnavailable('No autocomplete results received')
+    if failed == len(seeds):
+        raise AutocompleteUnavailable('No autocomplete seed succeeded')
     return AutocompleteResult(list(queries.values()), failed, len(seeds))

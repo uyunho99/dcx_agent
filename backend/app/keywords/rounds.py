@@ -366,9 +366,13 @@ def _coverage_patch(data, value):
 
 def _recompute_coverage(data, saved):
     llm = [k for k in _keywords(data) if k.status == 'approved' and k.origin == 'llm']
-    report = asdict(coverage.compute(saved['humanQueries'], llm, saved.get('humanAxes'),
-                                    weighting=saved.get('weighting', 'volume')))
-    return {**saved, **report, 'status': 'connected', 'error': None}
+    bk = data.get('projectContext', {}).get('bk', '')
+    weighting = saved.get('weighting', 'volume')
+    human = (coverage.without_product_query(saved['humanQueries'], bk)
+             if weighting == 'rank' else saved['humanQueries'])
+    report = asdict(coverage.compute(human, llm, saved.get('humanAxes'),
+                                    weighting=weighting, bk=bk))
+    return {**saved, **report, 'humanQueries': human, 'status': 'connected', 'error': None}
 
 
 def compute_coverage(sid, version=None, refresh=False):
@@ -447,7 +451,7 @@ def _run_coverage(sid, data, directory):
             metadata = {'source': 'autocomplete', 'weighting': 'rank',
                         'seeds': len(seeds), 'failedSeeds': len(seeds)}
             result = naver_autocomplete.suggestions(seeds, on_progress=lambda: progress({}))
-            human = result.queries
+            human = coverage.without_product_query(result.queries, bk)
             metadata.update(seeds=result.total, failedSeeds=result.failed)
         human_axes = None
         progress({**metadata, 'humanQueries': human, 'humanAxes': None, 'phase': 'classifying'})
@@ -460,7 +464,7 @@ def _run_coverage(sid, data, directory):
             if classification.ok:
                 human_axes = classification.data.axes
         report = asdict(coverage.compute(human, [k for k in approved if k.origin == 'llm'],
-                                         human_axes, weighting=metadata['weighting']))
+                                         human_axes, weighting=metadata['weighting'], bk=bk))
         value = {'status': 'connected', 'humanQueries': human, 'humanAxes': human_axes, **report}
     except _JobSuperseded:
         return

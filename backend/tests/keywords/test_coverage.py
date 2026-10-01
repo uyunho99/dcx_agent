@@ -144,3 +144,29 @@ def test_rank_empty_and_axis_counts(sample):
     assert compute(ranks, llm, {q: 'physical' for q, _ in ranks}, weighting='rank').m6 == 0
     assert compute(ranks, llm, {q: 'behavioral' for q, _ in ranks}, weighting='rank').m6 == 1
     assert [kw.model_dump() for kw in llm] == before
+
+
+@pytest.mark.parametrize('query,word', [('에어컨 소음', '소음'), ('에어컨추천', '추천'),
+                                      ('에어컨 소음', '소음원인')])
+def test_rank_product_filter_and_partial_matching(query, word):
+    human = [(' 에 어 컨 ', 1), (query, 2)]
+    result = compute(human, [keyword(word)], {query: 'physical'}, weighting='rank', bk='에어컨')
+    assert result.m1 == 1
+    assert result.missing_top == []
+    assert result.m2_bands[0]['value'] == 1
+    assert result.m6 == 0
+    assert len(human) == 2
+
+
+def test_rank_only_product_has_no_human_metrics():
+    result = compute([('에어컨', 1)], [keyword('소음')], weighting='rank', bk='에어컨')
+    assert result.m1 is None and result.m6 is None
+    assert result.missing_top == []
+    assert all(band['value'] is None for band in result.m2_bands)
+
+
+def test_volume_ignores_product_context():
+    human = [('에어컨', 100), ('에어컨 소음', 50)]
+    llm = [keyword('소음원인', 0)]
+    assert compute(human, llm, bk='에어컨') == compute(human, llm)
+    assert compute(human, llm, bk='에어컨').m1 == 0

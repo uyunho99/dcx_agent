@@ -72,7 +72,7 @@ def test_partial_failure_returns_received_and_counts_failed(adapter, payload):
     assert pauses == [1, 1]
 
 
-@pytest.mark.parametrize('body', [None, {}, {'items': []}, {'items': [[]]},
+@pytest.mark.parametrize('body', [None, {}, {'items': []},
     {'items': 'bad'}, {'items': [[[]]]}, {'items': [[['ok'], [3]]]},
     {'items': [[['   ']]]}, {'items': [['text']]}])
 def test_all_failed_raises_unavailable(adapter, body):
@@ -155,3 +155,21 @@ def test_review_progress_can_stop_superseded_fetch(adapter, payload, monkeypatch
         adapter.suggestions(['first', 'never'], sleep=lambda _: None, on_progress=superseded)
     assert requested == ['first']
     assert client.is_closed
+
+
+@pytest.mark.parametrize('bodies,failed', [
+    ([{'items': [[]]}, {'items': [[]]}], 0),
+    ([{}, {'items': [[]]}], 1),
+    ([{'items': [[]]}, {'items': [[['소음']]]}, {}], 1),
+])
+def test_empty_results_are_successful_seeds(adapter, bodies, failed):
+    responses = iter(bodies)
+    progress = []
+    with httpx.Client(transport=httpx.MockTransport(
+        lambda request: httpx.Response(200, json=next(responses))
+    )) as client:
+        result = adapter.suggestions(['seed'] * len(bodies), client=client,
+            sleep=lambda _: None, on_progress=lambda: progress.append(True))
+    assert (result.failed, result.total) == (failed, len(bodies))
+    assert result.queries == ([('소음', 1)] if len(bodies) == 3 else [])
+    assert len(progress) == len(bodies)

@@ -976,3 +976,40 @@ def test_review2_progress_supersession_still_stops_fetch(client, monkeypatch, ba
     assert not progressed
     assert not backend.calls
     assert store.load_session('test')['coverage'] == replacement
+
+
+@pytest.mark.parametrize('empty', [False, True])
+def test_qfix_autocomplete_empty_and_product_queries(client, monkeypatch, empty):
+    data = store.load_session('test')
+    data.update(projectContext={'bk': '에어컨'}, keywords=[
+        {'id': 'noise', 'kw': '소음원인', 'axis': 'physical', 'sub': 'space',
+         'round': 1, 'origin': 'llm', 'status': 'approved'}])
+    store.write_json(store.session_dir('test') / 'session.json', data)
+    monkeypatch.setattr(naver_autocomplete, '_load', lambda *args:
+        {'items': [[]] if empty else [[[' 에 어 컨 '], ['에어컨 소음']]]})
+    classified = []
+    original = rounds.run_task
+    def classify(task):
+        classified.append(task.instructions)
+        return original(task)
+    monkeypatch.setattr(rounds, 'run_task', classify)
+    assert client.post('/keywords/test/coverage').status_code == 200
+    saved = client.get('/keywords/test').json()['coverage']
+    assert saved['status'] == 'connected'
+    assert saved['failedSeeds'] == 0
+    assert saved['humanQueries'] == ([] if empty else [['에어컨 소음', 2]])
+    assert saved['m1'] == (None if empty else 1)
+    assert saved['missing_top'] == []
+    assert len(classified) == (0 if empty else 1)
+    if classified:
+        assert ' 에 어 컨 ' not in classified[0]
+    # Also migrate a previously cached product-only row on local recomputation.
+    store.update_session('test', {'coverage': {'humanQueries':
+        [['에어컨', 1]] + saved['humanQueries']}})
+    def forbidden(*args, **kwargs):
+        pytest.fail('Cached coverage must not fetch or classify')
+    monkeypatch.setattr(naver_autocomplete, 'suggestions', forbidden)
+    monkeypatch.setattr(rounds, 'run_task', forbidden)
+    cached = client.post('/keywords/test/coverage').json()
+    assert cached['humanQueries'] == saved['humanQueries']
+    assert cached['m1'] == saved['m1']

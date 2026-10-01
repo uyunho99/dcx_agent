@@ -62,9 +62,15 @@ def _weighted(rows: list[tuple[str, int, bool]],
     return sum(weight for weight, matched in weights if matched) / total if total else None
 
 
+def without_product_query(human: list[tuple[str, int]], bk: str) -> list[tuple[str, int]]:
+    """Exclude the normalized product-only query from autocomplete coverage."""
+    product_key = norm_key(bk)
+    return [row for row in human if not product_key or norm_key(row[0]) != product_key]
+
+
 def compute(human: list[tuple[str, int]], llm: list[Keyword],
             human_axes: dict[str, str] | None = None,
-            weighting: Literal['volume', 'rank'] = 'volume') -> CoverageReport:
+            weighting: Literal['volume', 'rank'] = 'volume', bk: str = '') -> CoverageReport:
     """Compute metrics; absent human data yields None for m1/m2/m6.
 
     m7 uses the design's fixed <10 cutoff. With no human rows it uses
@@ -72,12 +78,20 @@ def compute(human: list[tuple[str, int]], llm: list[Keyword],
     Incomplete axis labels yield m6=None.
     The returned IDs let callers attach llm_only badges without side effects.
     Rank mode expects ranks 1–10, uses reciprocal weights and three fixed
-    bands, and leaves volume-dependent m7 and LLM-only badges unavailable.
+    bands, excludes product-only queries and also matches product-stripped queries,
+    and leaves volume-dependent m7 and LLM-only badges unavailable.
     """
     rank_mode = weighting == 'rank'
+    product_key = norm_key(bk) if rank_mode else ''
+    if rank_mode:
+        human = without_product_query(human, bk)
     human_keys = [norm_key(query) for query, _ in human]
     llm_keys = [norm_key(kw.kw) for kw in llm]
-    rows = sorted([(query, count, any(_matches(key, other) for other in llm_keys))
+    def matched(key):
+        remainder = norm_key(key.replace(product_key, '').strip()) if product_key and product_key in key else ''
+        return any(_matches(key, other) or _matches(remainder, other) for other in llm_keys)
+
+    rows = sorted([(query, count, matched(key))
                    for (query, count), key in zip(human, human_keys)],
                   key=lambda row: row[1], reverse=not rank_mode)
     bands = None
