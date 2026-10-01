@@ -1,0 +1,184 @@
+{
+  "verdict": "PASS",
+  "head": "710a4df85c9ec61d98452b3146a2df7da2b71c8f",
+  "fingerprint": "499f04072c4cc4acdb84291980dc6f887bcb218098e83daa89febe1f66ce8170",
+  "commands": [
+    {
+      "command": "backend/.venv/bin/python -m pytest backend/tests -q  (1279 passed)",
+      "exitCode": 0
+    },
+    {
+      "command": "npm --prefix frontend test -- --run  (242 passed)",
+      "exitCode": 0
+    },
+    {
+      "command": "npm --prefix frontend run lint",
+      "exitCode": 0
+    },
+    {
+      "command": "npm --prefix frontend run build",
+      "exitCode": 0
+    }
+  ],
+  "findings": [],
+  "reviews": [
+    {
+      "scope": "gstack /review read-only (0e4501e..e16c5ce)",
+      "result": "6 findings (0 critical); all fixed",
+      "evidence": "docs/development/dcx2-stage3-5/reports/gstack-review1.md"
+    },
+    {
+      "scope": "Codex read-only branch review (0e4501e..e16c5ce)",
+      "result": "0 Critical, 6 Important, 1 Minor; all fixed",
+      "evidence": "docs/development/dcx2-stage3-5/reports/codex-branch-review1.md"
+    },
+    {
+      "scope": "fix dispatch (backend+frontend) e16c5ce..eaf81a6",
+      "result": "re-review Approved; 1 Important perf follow-up",
+      "evidence": "docs/development/dcx2-stage3-5/reports/review-fix1-report.md; docs/development/dcx2-stage3-5/reports/review-fix1-fe-report.md; docs/development/dcx2-stage3-5/reports/review-fix1-rereview.md"
+    },
+    {
+      "scope": "fix 2 eaf81a6..0c648c3",
+      "result": "re-review Approved",
+      "evidence": "docs/development/dcx2-stage3-5/reports/review-fix2-report.md"
+    },
+    {
+      "scope": "earlier whole-branch final review (opus) + fix",
+      "result": "5 Important fixed, re-review Approved",
+      "evidence": "docs/development/dcx2-stage3-5/reports/final-review1.md; docs/development/dcx2-stage3-5/reports/final-rereview1.md"
+    },
+    {
+      "scope": "browser-QA fix dispatch 83c5701..adbef78 (Q1-Q12)",
+      "result": "re-review Approved; Q8 backend unreproduced + regression tests, Q12 partial → recheck in QA round 2",
+      "evidence": "docs/development/dcx2-stage3-5/reports/qa-fix1-report.md; docs/development/dcx2-stage3-5/reports/qa-fix1-fe-report.md; docs/development/dcx2-stage3-5/reports/qa-fix1-rereview.md"
+    },
+    {
+      "scope": "UAT feedback fix c0eea42..5af814c (U1-U4)",
+      "result": "Approved, 0 Critical/Important",
+      "evidence": "docs/development/dcx2-stage3-5/reports/uat-u1-report.md..uat-u4-report.md; docs/development/dcx2-stage3-5/reports/uat-fix1-review.md"
+    }
+  ],
+  "resolvedFindings": [
+    {
+      "id": "C1",
+      "status": "fixed"
+    },
+    {
+      "id": "C2",
+      "status": "fixed"
+    },
+    {
+      "id": "C3",
+      "status": "fixed"
+    },
+    {
+      "id": "C4",
+      "status": "fixed"
+    },
+    {
+      "id": "C5",
+      "status": "fixed"
+    },
+    {
+      "id": "C6",
+      "status": "fixed"
+    },
+    {
+      "id": "C7",
+      "status": "fixed"
+    },
+    {
+      "id": "G1",
+      "status": "fixed"
+    },
+    {
+      "id": "G2",
+      "status": "fixed"
+    },
+    {
+      "id": "G3",
+      "status": "fixed"
+    },
+    {
+      "id": "G4",
+      "status": "fixed"
+    },
+    {
+      "id": "G5",
+      "status": "fixed"
+    },
+    {
+      "id": "G6",
+      "status": "fixed"
+    },
+    {
+      "id": "RR1",
+      "status": "fixed"
+    },
+    {
+      "id": "Q1",
+      "status": "fixed"
+    },
+    {
+      "id": "Q2",
+      "status": "fixed"
+    },
+    {
+      "id": "Q3",
+      "status": "fixed"
+    },
+    {
+      "id": "Q4",
+      "status": "fixed"
+    },
+    {
+      "id": "Q5",
+      "status": "fixed"
+    },
+    {
+      "id": "Q6",
+      "status": "fixed"
+    },
+    {
+      "id": "Q7",
+      "status": "fixed"
+    },
+    {
+      "id": "Q8",
+      "status": "fixed"
+    },
+    {
+      "id": "Q9",
+      "status": "fixed"
+    },
+    {
+      "id": "Q10",
+      "status": "fixed"
+    },
+    {
+      "id": "Q11",
+      "status": "fixed"
+    },
+    {
+      "id": "Q12",
+      "status": "fixed"
+    },
+    {
+      "id": "U1",
+      "status": "fixed"
+    },
+    {
+      "id": "U2",
+      "status": "fixed"
+    },
+    {
+      "id": "U3",
+      "status": "fixed"
+    },
+    {
+      "id": "U4",
+      "status": "fixed"
+    }
+  ],
+  "deferred": "docs/development/dcx2-stage3-5/backlog.md B-108"
+}

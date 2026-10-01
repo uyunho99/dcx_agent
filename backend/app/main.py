@@ -12,13 +12,17 @@ from app.routers import (
     keywords_v2,
     crawl_v2,
     preprocessing,
+    prep,
     labeling,
+    labeling_v2,
     training,
+    training_v2,
     clustering,
     embedding,
     personas,
     chat,
     search,
+    known,
 )
 
 @asynccontextmanager
@@ -45,13 +49,17 @@ app.include_router(keywords.router)
 app.include_router(keywords_v2.router)
 app.include_router(crawl_v2.router)
 app.include_router(preprocessing.router)
+app.include_router(prep.router)
 app.include_router(labeling.router)
+app.include_router(labeling_v2.router)
 app.include_router(training.router)
+app.include_router(training_v2.router)
 app.include_router(clustering.router)
 app.include_router(embedding.router)
 app.include_router(personas.router)
 app.include_router(chat.router)
 app.include_router(search.router)
+app.include_router(known.router)
 
 
 @app.get("/health")

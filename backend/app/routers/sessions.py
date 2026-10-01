@@ -22,6 +22,7 @@ def save_session(req: SessionSaveRequest, version: str | None = None):
             if (existing and not store.is_legacy(existing)) or req.data.get("schemaVersion") == 2:
                 owned = {"projectContext", "knownInsights", "keywords", "keywordRounds", "coverage",
                          "crawlConfig", "collectionId", "drafts", "schemaVersion", "sid",
+                         "prep", "labeling", "training",
                          "parentVersion", "restartFrom", "stale", "updatedAt",
                          "bk", "pd", "problemDef", "allKw", "_pendingKw", "ages", "ar", "gens"}
                 patch = {k: v for k, v in req.data.items() if k not in owned and not k.startswith("version")}

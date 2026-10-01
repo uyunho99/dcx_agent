@@ -7,27 +7,41 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from app.services.s3 import load_data, save_jsonl
 from app.services.voyage import get_embeddings
 from app.jobs.manager import job_manager
+from app.context import store
+from app.known.filter import read_export
+from app.known.store import prepared_root
+from app.vectors.store import VectorStore
 
 
 def run_clustering(config: dict) -> None:
-    """Mini-RAG clustering: Voyage embeddings + KMeans."""
+    """Cluster exported documents using stage-three vectors (legacy: Voyage)."""
     sid = config.get("sid", "s0")
     num_clusters = config.get("num_clusters", 0)
     job_manager.set("cluster", sid, {"status": "running", "phase": "loading", "progress": 0})
 
     try:
-        data = load_data(f"classified/{sid}/relevant_")
-        if not data:
-            data = load_data(f"preprocessed/{sid}/")
+        session = store.load_session(sid) or {}
+        if session and not store.is_legacy(session):
+            with store.locked(sid):
+                session = store.load_session(sid)
+                data = read_export(sid, session)
+                root = prepared_root(sid, session)
+                if root is None:
+                    raise ValueError("3단계 벡터가 없습니다")
+                ids, vectors = VectorStore(root).get([doc['doc_id'] for doc in data])
+                usable = {doc_id: vector for doc_id, vector in zip(ids, vectors)
+                          if np.isfinite(vector).all() and np.linalg.norm(vector) > 0}
+                data = [doc for doc in data if doc['doc_id'] in usable]
+                X = np.asarray([usable[doc['doc_id']] for doc in data])
+        else:
+            data = load_data(f"classified/{sid}/relevant_")
+            if not data:
+                data = load_data(f"preprocessed/{sid}/")
+            X = np.asarray(get_embeddings([f"{d.get('title', '')} {d.get('desc', '')}" for d in data])) if data else np.empty((0, 0))
         if not data:
             job_manager.set("cluster", sid, {"status": "error", "error": "no data"})
             return
-
-        job_manager.update("cluster", sid, progress=10, phase="embedding")
-
         texts = [f"{d.get('title', '')} {d.get('desc', '')}" for d in data]
-        embeddings = get_embeddings(texts)
-        X = np.array(embeddings)
 
         job_manager.update("cluster", sid, progress=40, phase="clustering")
 
@@ -46,6 +60,7 @@ def run_clustering(config: dict) -> None:
             num_clusters = best_k
 
         job_manager.update("cluster", sid, progress=60)
+        num_clusters = max(1, min(num_clusters, len(data)))
         kmeans = KMeans(n_clusters=num_clusters, random_state=42, n_init=10)
         labels = kmeans.fit_predict(X)
 

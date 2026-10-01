@@ -132,6 +132,7 @@ def test_no_api_keys_full_run(client, offline):
     assert response.status_code == 200
     responses.append(response.json())
     assert response.json() == [entry.model_dump() for entry in integration_status()]
+    assert [entry['name'] for entry in response.json()] == ['openai', 'claude']
     assert all(not entry['connected'] for entry in response.json())
 
 
@@ -189,6 +190,7 @@ def test_integrations_never_exposes_configured_secrets(client, offline, monkeypa
     response = client.get('/integrations')
     assert calls == [True, True]
     assert response.json() == [entry.model_dump() for entry in integration_status()]
+    assert [entry['name'] for entry in response.json()] == ['openai', 'claude']
     assert all(getattr(settings, name) not in response.text for name in KEY_FIELDS)
 
 
@@ -254,12 +256,43 @@ def test_quality_and_desc_limit(data_dir):
 
 
 def test_downstream_clustering_reads_compat_fields(client, offline, monkeypatch):
+    from app.label import questions, rule
+    from app.label.schema import Tags
+    from app.label.store import LabelStore
+    from app.routers.prep import _root
     from app.services import clustering
+    from app.vectors.store import VectorStore
+
     sid, docs, _ = full_flow(client, offline)
-    def embeddings(texts):
+    # Seed stage-three artifacts and final labels, then use the real stage-five export.
+    cid = store.load_session(sid)['collectionId']
+    prep_key = 'p_123456789abc'
+    root = _root(sid, cid, prep_key)
+    save_jsonl(f'derived/{sid}/{cid}/{prep_key}/docs/part-00001.jsonl', docs)
+    vectors = np.random.default_rng(42).normal(size=(len(docs), settings.embed_dim))
+    VectorStore(root).write_shard([d['doc_id'] for d in docs], vectors, [False] * len(docs))
+    store.update_session(sid, {'prep': {'status': 'done', 'derivedRef': {
+        'collectionId': cid, 'prepKey': prep_key}}})
+    labels = LabelStore(store.session_dir(sid))
+    tags = Tags(anchor=True, situation=True, sem={k: int(k == 'sense') for k in rule.SEM})
+    with labels._db() as db:
+        db.executemany('INSERT INTO final VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+            (d['doc_id'], 'core', 1., 'agreed', 'accepted', tags.model_dump_json(),
+             None, None, rule.RULE_VERSION, questions.QVER, '{}', '[]', 0) for d in docs])
+    response = client.post(f'/train/{sid}/export', json={'withoutModel': True})
+    assert response.status_code == 200, response.text
+    assert response.json()['total'] == response.json()['relevant'] == 200
+    assert response.json()['stage5']['model'] is None
+    assert store.load_session(sid)['training']['exportRef'] == response.json()['exportRef']
+
+    texts_seen = []
+    fit_transform = clustering.TfidfVectorizer.fit_transform
+    def check_texts(vectorizer, texts):
+        texts_seen.extend(texts)
+        assert len(texts) == len(docs)
         assert all(d['desc'] in text for d, text in zip(docs, texts))
-        return np.random.default_rng(42).normal(size=(len(texts), 8)).tolist()
-    monkeypatch.setattr(clustering, 'get_embeddings', embeddings)
+        return fit_transform(vectorizer, texts)
+    monkeypatch.setattr(clustering.TfidfVectorizer, 'fit_transform', check_texts)
     from threadpoolctl import threadpool_limits
     with threadpool_limits(limits=1):
         clustering.run_clustering({'sid': sid, 'num_clusters': 3})
@@ -267,6 +300,12 @@ def test_downstream_clustering_reads_compat_fields(client, offline, monkeypatch)
     assert status['status'] == 'done', status
     assert status['total'] == 200
     assert all(s['desc'] and s['cafe'] for c in status['clusters'].values() for s in c['samples'])
+    assert len(texts_seen) == len(docs)
+    assert all(d['desc'] in text for d, text in zip(docs, texts_seen))
+    clustered = {d['doc_id']: d for d in load_data(f'clusters/{sid}/')}
+    assert set(clustered) == {d['doc_id'] for d in docs}
+    assert all(clustered[d['doc_id']][field] == d[field]
+               for d in docs for field in ('desc', 'cafe', 'link'))
 
 
 @pytest.mark.parametrize('module,endpoint,service', [
@@ -354,7 +393,7 @@ def test_missing_manifest_status_hides_path(client, data_dir):
     preprocess_data({'sid': sid})
     response = client.get(f'/preprocess-status/{sid}')
     assert response.status_code == 200
-    assert response.json() == {'status': 'error', 'error': '수집본을 읽을 수 없습니다 (c2)'}
+    assert response.json() == {'status': 'error', 'error': '수집이 끝난 뒤에 전처리를 실행할 수 있습니다.'}
     assert str(data_dir) not in response.text
 
 

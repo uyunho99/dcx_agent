@@ -3,13 +3,20 @@ import json
 from datetime import datetime
 from fastapi import APIRouter
 
-from app.services.pinecone_svc import search_similar
+from app.known.filter import search_docs
 from app.services.s3 import load_data, list_objects, load_json, save_json
 from app.services.claude import call_claude
 from app.jobs.manager import job_manager
 from app.models.schemas import ChatRequest, InsightChatRequest
 
 router = APIRouter()
+ANSWER_UNCONNECTED = '답변 모델이 연결되지 않아 근거 원문만 보여 줍니다.'
+
+
+def _unconnected(req, sources, reason, **extra):
+    if 'sid' not in req.model_fields_set or not req.sid:
+        return dict(status='error', answer=ANSWER_UNCONNECTED, sources=[], **extra)
+    return dict(status='ok', answer=ANSWER_UNCONNECTED, sources=sources, reason=reason, **extra)
 
 
 @router.post("/chat")
@@ -17,7 +24,8 @@ def chat_agent(req: ChatRequest):
     try:
         sid, query, pipeline_ctx = req.sid, req.query, req.pipeline_context
 
-        similar_docs = search_similar(sid, query, top_k=5)
+        search_result = search_docs(sid, [query], top_k=5, novel=req.novel)
+        similar_docs = search_result.items[0]
 
         persona_info = ""
         try:
@@ -94,8 +102,8 @@ ADDED_KEYWORDS: 화재, 침수, 누수
                 answer = re.sub(r"ADDED_KEYWORDS:\s*.+", "", answer).strip()
                 if added_kw:
                     answer += "\n\n" + ", ".join(added_kw) + " 키워드가 추가되었습니다."
-            return {"status": "ok", "answer": answer, "sources": similar_docs, "added_keywords": added_kw}
-        return {"status": "error", "answer": "API 오류", "sources": []}
+            return {"status": "ok", "answer": answer, "sources": similar_docs, "reason": search_result.reason, "added_keywords": added_kw}
+        return _unconnected(req, similar_docs, search_result.reason)
     except Exception as e:
         return {"status": "error", "answer": f"오류가 발생했습니다: {str(e)}", "sources": []}
 
@@ -121,7 +129,8 @@ def insight_chat(req: InsightChatRequest):
             persona_data.get("personas", []) if persona_data else [], ensure_ascii=False, indent=2,
         )
 
-        similar_docs = search_similar(sid, query, top_k=5)
+        search_result = search_docs(sid, [query], top_k=5, novel=req.novel)
+        similar_docs = search_result.items[0]
 
         cluster_samples = ""
         try:
@@ -218,8 +227,8 @@ def insight_chat(req: InsightChatRequest):
                     pass
 
             clean_answer = re.sub(r"```MODIFIED_DATA\s*\n[\s\S]*?\n```", "", answer).strip()
-            return {"status": "ok", "answer": clean_answer, "modified": modified, "sources": similar_docs}
+            return {"status": "ok", "answer": clean_answer, "modified": modified, "sources": similar_docs, "reason": search_result.reason}
 
-        return {"status": "error", "answer": "API 오류", "modified": False, "sources": []}
+        return _unconnected(req, similar_docs, search_result.reason, modified=False)
     except Exception as e:
         return {"status": "error", "answer": f"오류: {str(e)}", "modified": False, "sources": []}

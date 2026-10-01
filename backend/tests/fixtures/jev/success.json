@@ -1,0 +1,14 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "anchor": {"type": "noul", "noul": 0.96},
+    "sense": {"type": "noul", "noul": 0.12},
+    "feel": {"type": "noul", "noul": 0.8},
+    "think": {"type": "noul", "noul": 0.3},
+    "act": {"type": "noul", "noul": 0.7},
+    "situation": {"type": "noul", "noul": 0.9},
+    "relate_outcome": {"type": "choice", "choice": "outcome", "probabilities": {"none": 0.1, "relate": 0.2, "outcome": 0.6, "both": 0.1}, "confidence": 0.6},
+    "reason_code": {"type": "choice", "choice": "not_non", "probabilities": {"ad": 0.01, "no_needs": 0.01, "pure_criticism": 0.01, "other": 0.02, "not_non": 0.95}, "confidence": 0.95}
+  },
+  "usage": {"input_tokens": 100, "output_tokens": 50}
+}

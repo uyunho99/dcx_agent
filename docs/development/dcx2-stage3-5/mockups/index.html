@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DCX 3~5단계 목업</title>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+@font-face{font-family:Pretendard;font-weight:400;font-display:swap;src:url("assets/fonts/Pretendard-Regular.otf") format("opentype")}
+@font-face{font-family:Pretendard;font-weight:600;font-display:swap;src:url("assets/fonts/Pretendard-SemiBold.otf") format("opentype")}
+@font-face{font-family:Pretendard;font-weight:700;font-display:swap;src:url("assets/fonts/Pretendard-Bold.otf") format("opentype")}
+@font-face{font-family:Pretendard;font-weight:800;font-display:swap;src:url("assets/fonts/Pretendard-ExtraBold.otf") format("opentype")}
+
+/* ── 토큰: 수정본(BI) 색·레이아웃 + core 컴포넌트 액션 ── */
+:root{
+  --blue:#38B6F9; --blue-deep:#168FCC; --blue-soft:#EAF8FF; --blue-tint:#DDF4FE;
+  --ink:#676668; --ink-strong:#1c1e22; --sub:#8A8A8C; /* 키트 값 유지 (리뷰 8B) */
+  --line:#E7EAEE; --line-strong:#7f838b; --paper:#FFFFFF; --soft:#F8FCFF; --sunken:#F3F4F6;
+  --action:#0a73b5; --action-hover:#085d93; --action-soft:#e8f4fc;
+  --success:#1b7446; --success-soft:#e6f6ec; --warning:#9a5b00; --warning-soft:#fff3dc; --danger:#c62828; --danger-soft:#fdeaea;
+  --r-input:6px; --r-button:10px; --r-card:14px; --r-overlay:18px; --r-full:999px;
+  --shadow-overlay:0 8px 24px rgba(28,30,34,.12),0 1px 2px rgba(28,30,34,.06);
+  --font:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",system-ui,sans-serif;
+  --mono:"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font:400 15px/24px var(--font);letter-spacing:-.01em;color:var(--ink);background:var(--soft);-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--action);outline-offset:2px}
+/* 브라우저 기본 요소 테마 (리뷰 5A) */
+html{accent-color:var(--action);caret-color:var(--action);scrollbar-color:var(--line-strong) transparent;scrollbar-width:thin}
+::selection{background:var(--blue-tint);color:var(--ink-strong)}
+input[type=checkbox]{width:16px;height:16px;margin:0;vertical-align:middle}
+select.inp{appearance:none;padding-right:32px;background:var(--paper) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23676668' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center}
+table,.stat .v,.kv dd,.bar .v{font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* 시맨틱 스케일 */
+.t-insight{font:800 40px/52px var(--font);letter-spacing:-.04em;color:var(--ink-strong);margin:0}
+.t-screen{font:800 30px/40px var(--font);letter-spacing:-.035em;color:var(--ink-strong);margin:0}
+.t-section{font:700 24px/34px var(--font);letter-spacing:-.03em;color:var(--ink-strong);margin:0}
+.t-card{font:700 18px/27px var(--font);letter-spacing:-.02em;color:var(--ink-strong);margin:0}
+.t-body{font:400 15px/24px var(--font);letter-spacing:-.01em}
+.t-label{font:600 13px/19px var(--font);letter-spacing:-.005em}
+.t-caption{font:400 12px/18px var(--font);color:var(--sub)}
+.eyebrow{font:700 12px/18px var(--font);letter-spacing:.06em;color:var(--ink)}
+.num{font-variant-numeric:tabular-nums}
+.mono{font:400 12px/18px var(--mono)}
+
+/* 목업 전환 바 (제품 UI 아님) */
+.mockbar{position:sticky;top:0;z-index:50;display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:8px 16px;background:#1c1e22;color:#fff}
+.mockbar b{font:600 12px/18px var(--font);margin-right:8px;opacity:.8}
+.mockbar button{font:600 12px/18px var(--font);color:#fff;background:transparent;border:1px solid #55585f;border-radius:6px;padding:4px 10px;cursor:pointer}
+.mockbar button[aria-pressed=true]{background:#fff;color:#1c1e22;border-color:#fff}
+
+/* 셸 */
+.shell{display:flex;min-height:calc(100vh - 38px)}
+.side{width:224px;flex:none;background:var(--soft);border-right:1px solid var(--line);padding:28px 20px;display:flex;flex-direction:column;gap:28px}
+.side img{width:104px;height:auto}
+.side .grp{font:700 12px/18px var(--font);letter-spacing:.08em;color:var(--sub);margin:0 8px 8px}
+.nav{display:grid;gap:2px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;text-decoration:none;font:500 13px/19px var(--font);color:var(--sub)}
+.nav a .n{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font:700 11px/1 var(--font);background:var(--sunken);color:var(--sub)}
+.nav a.done .n{background:var(--success-soft);color:var(--success)}
+.nav a.on{background:var(--paper);color:var(--ink-strong);font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.nav a.on .n{background:var(--blue);color:var(--ink-strong)}
+.nav a small{margin-left:auto;font:400 11px/16px var(--font);color:var(--sub)}
+.side .foot{margin-top:auto}
+main{flex:1;min-width:0;padding:32px 32px 64px}
+.wrap{max-width:1200px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:24px;align-items:start}
+.s12{grid-column:span 12}.s8{grid-column:span 8}.s6{grid-column:span 6}.s4{grid-column:span 4}
+@media (max-width:1100px){.s8,.s6,.s4{grid-column:span 12}.side{width:72px;padding:20px 10px}.side img,.side .grp,.nav a span,.nav a small,.side .foot{display:none}}
+
+/* 페이지 헤더 */
+.ph{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:32px}
+.ph .eyebrow{margin-bottom:8px}
+.ph p{margin:12px 0 0;max-width:720px}
+.actions{display:flex;gap:8px;justify-content:flex-end;align-items:center}
+
+/* 카드 */
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-card);padding:24px;min-width:0}
+.card.sm{padding:16px}
+.card-h{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:24px}
+.card-h p{margin:4px 0 0}
+.card-f{display:flex;justify-content:flex-end;gap:8px;margin-top:24px;padding-top:16px;border-top:1px solid var(--line)}
+.sticky{position:sticky;top:62px}
+
+/* 버튼 */
+.btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:var(--r-button);font:600 13px/19px var(--font);cursor:pointer;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink-strong);transition:background 150ms ease-out;white-space:nowrap}
+.btn:hover{background:var(--action-soft)}
+.btn.primary{background:var(--action);color:#fff;border-color:transparent}
+.btn.primary:hover{background:var(--action-hover)}
+.btn.quiet{border-color:transparent;background:transparent;color:var(--action)}
+.btn.quiet:hover{background:var(--action-soft)}
+.btn.sm{height:28px;padding:0 10px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn svg,.ic svg{width:16px;height:16px;stroke-width:1.5}
+
+/* 폼 */
+.field{display:grid;gap:6px;margin-bottom:20px;align-content:start}
+.field:last-child{margin-bottom:0}
+.field label,.field .lab{font:600 13px/19px var(--font);color:var(--ink-strong)}
+.field .req{color:var(--danger);margin-left:2px}
+.field .hint{font:400 12px/18px var(--font);color:var(--sub)}
+.field .err{font:400 12px/18px var(--font);color:var(--danger);display:flex;gap:4px;align-items:center}
+.inp,textarea.inp{width:100%;min-height:36px;padding:7px 12px;border:1px solid var(--line-strong);border-radius:var(--r-input);font:400 14px/20px var(--font);color:var(--ink-strong);background:var(--paper)}
+textarea.inp{resize:vertical}
+.inp.error{border-color:var(--danger)}
+.inp::placeholder{color:var(--sub)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px;align-items:start}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;align-items:start}
+.row2>.field,.row3>.field{margin-bottom:0}
+.field .row2,.field .row3{margin-bottom:0}
+.card>:last-child{margin-bottom:0}
+/* 나란히 놓인 카드는 높이를 맞추고, 다음 행동은 카드 바닥에 붙인다 */
+.grid.eq{align-items:stretch}
+.card.insight{display:flex;flex-direction:column}
+.card.insight .meta{margin-bottom:20px}
+.card.insight .nextact{margin-top:auto}
+
+/* 선택 칩 (button + aria-pressed) */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{height:32px;padding:0 12px;border-radius:var(--r-button);border:1px solid var(--line);background:var(--paper);color:var(--ink);font:600 13px/19px var(--font);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed=true]{border-color:var(--blue);background:var(--blue-soft);color:var(--blue-deep)}
+.chip .x{opacity:.7}
+
+/* 배지 (분류는 Neutral) */
+.badge{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:6px;font:600 12px/18px var(--font);background:var(--sunken);color:var(--ink);white-space:nowrap}
+.badge.pill{border-radius:999px}
+.badge.success{background:var(--success-soft);color:var(--success)}
+.badge.warning{background:var(--warning-soft);color:var(--warning)}
+.badge.danger{background:var(--danger-soft);color:var(--danger)}
+.badge.info{background:var(--action-soft);color:var(--action)}
+.badge .dot{width:6px;height:6px;border-radius:999px;background:currentColor}
+
+/* 목록 입력 */
+.listin{display:grid;gap:6px}
+.listin .item{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 12px;border:1px solid var(--line);border-radius:var(--r-input);background:var(--paper);font:400 14px/20px var(--font);color:var(--ink-strong)}
+.listin .item .btn{margin-left:auto}
+.listin .add{display:flex;gap:8px;align-items:center}
+
+/* 세그먼트 */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r-button);overflow:hidden}
+.seg button{border:0;border-right:1px solid var(--line);background:var(--paper);height:32px;padding:0 14px;font:600 13px/19px var(--font);color:var(--ink);cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:var(--blue-soft);color:var(--blue-deep)}
+
+/* 토글 */
+.toggle{display:flex;align-items:flex-start;gap:12px}
+.sw{width:36px;height:20px;border-radius:999px;background:var(--line-strong);position:relative;flex:none;margin-top:2px;border:0;cursor:pointer}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:999px;background:#fff}
+.sw[aria-checked=true]{background:var(--action)}.sw[aria-checked=true]::after{left:18px}
+
+/* 라운드 스테퍼 */
+.stepper{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:24px}
+.stp{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--paper)}
+.stp .k{font:700 12px/18px var(--font);color:var(--sub)}
+.stp .v{font:600 13px/19px var(--font);color:var(--ink-strong)}
+.stp .c{font:400 12px/18px var(--font);color:var(--sub)}
+.stp.done .k{color:var(--success)}
+.stp.on{border-color:var(--blue);background:var(--blue-soft)}
+.stp.on .k{color:var(--blue-deep)}
+
+/* 탭 */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:20px}
+.tab{border:0;background:transparent;padding:10px 12px;font:600 13px/19px var(--font);color:var(--sub);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab[aria-selected=true]{color:var(--ink-strong);border-bottom-color:var(--action)}
+.tab .num{margin-left:4px;color:var(--sub);font-weight:400}
+
+/* 키워드 그룹 · 칩 */
+.kgroup{border:1px solid var(--line);border-radius:10px;margin-bottom:12px;background:var(--paper)}
+.kgroup-h{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.kgroup-h .t-label{color:var(--ink-strong)}
+.kgroup-h .btn{margin-left:auto}
+.kgroup-b{display:flex;flex-wrap:wrap;gap:8px;padding:14px;position:relative}
+.kw{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 6px 0 12px;border-radius:var(--r-button);border:1px solid var(--line);background:var(--paper);font:600 13px/19px var(--font);color:var(--ink-strong);cursor:grab}
+.kw .v{font:400 12px/18px var(--font);color:var(--sub)}
+.kw .more{border:0;background:transparent;color:var(--sub);cursor:pointer;padding:4px;display:inline-flex;min-width:24px;min-height:24px;align-items:center;justify-content:center;border-radius:6px}
+.kw .more:hover{background:var(--action-soft)}
+.listin .item .btn.quiet{min-width:24px;min-height:24px;padding:0 4px;justify-content:center}
+.kw.rej{background:var(--sunken);color:var(--sub);text-decoration:line-through;border-style:dashed}
+.kw.rej .badge{text-decoration:none}
+.kw.manual{border-color:var(--line-strong)}
+.kw.dragging{box-shadow:0 1px 2px rgba(28,30,34,.06);border-color:var(--line-strong)}
+.dropzone{border:1px dashed var(--blue);background:var(--blue-soft)}
+
+/* 팝오버 */
+.pop{position:absolute;z-index:10;width:300px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-overlay);box-shadow:var(--shadow-overlay);padding:16px}
+.pop h4{margin:0 0 4px;font:700 14px/20px var(--font);color:var(--ink-strong)}
+.pop .chips{margin:12px 0}
+.pop .kbd{font:400 11px/16px var(--mono);border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--sub)}
+
+/* 막대 */
+.bars{display:grid;gap:12px}
+.bar{display:grid;grid-template-columns:48px 1fr 44px;align-items:center;gap:10px}
+.bar .track{height:8px;background:var(--sunken);border-radius:999px;overflow:hidden}
+.bar .fill{height:100%;background:var(--ink);border-radius:999px}
+.bar .fill.hi{background:var(--blue)}
+.bar .v{text-align:right}
+
+/* 표 */
+.tbl{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper)}
+.tbl th{background:var(--sunken);text-align:left;font:600 12px/18px var(--font);color:var(--ink);padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--line);font:400 14px/20px var(--font);color:var(--ink-strong);vertical-align:middle;white-space:nowrap}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tbody tr:hover td{background:var(--soft)}
+.tbl tr.sel td{background:var(--blue-soft)}
+.tbl .r{text-align:right}
+.tbl caption{caption-side:bottom;text-align:left;padding:10px 12px;font:400 12px/18px var(--font);color:var(--sub)}
+.tbl .dim{color:var(--sub)}
+
+/* 증거 · 메타 */
+.meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font:400 12px/18px var(--font);color:var(--sub)}
+.meta .sep{width:3px;height:3px;border-radius:999px;background:var(--line-strong)}
+.nextact{margin-top:20px;padding-top:16px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.nextact .t-label{color:var(--ink-strong)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:10px 16px;margin:0}
+.kv dt{font:600 13px/19px var(--font);color:var(--ink)}
+.kv dd{margin:0;font:400 14px/20px var(--font);color:var(--ink-strong);text-align:right}
+.stat{display:grid;gap:2px}
+.stat .v{font:700 24px/34px var(--font);letter-spacing:-.03em;color:var(--ink-strong)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.progress{height:10px;background:var(--sunken);border-radius:999px;overflow:hidden}
+.progress>div{height:100%;background:var(--blue)}
+
+/* 알림 */
+.note{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:10px;background:var(--sunken);font:400 14px/20px var(--font);color:var(--ink-strong)}
+.note.warn{background:var(--warning-soft)}
+.note.warn .ic{color:var(--warning)}
+.note .ic{color:var(--ink);margin-top:2px}
+.note .actions{margin-left:auto}
+
+pre.md{margin:0;padding:14px;background:var(--soft);border:1px solid var(--line);border-radius:10px;font:400 12px/19px var(--mono);color:var(--ink-strong);white-space:pre-wrap;max-height:420px;overflow:auto}
+details summary{cursor:pointer;font:600 13px/19px var(--font);color:var(--ink-strong);list-style:none;display:flex;align-items:center;gap:6px}
+details summary::-webkit-details-marker{display:none}
+.screen{display:none}.screen.on{display:block}
+.divider{height:1px;background:var(--line);margin:20px 0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+/* 게이트 표 (리뷰 13A) */
+.chbars{display:inline-grid;grid-template-columns:repeat(4,28px);gap:4px;align-items:end;height:18px;vertical-align:middle}
+.chbars i{display:block;background:var(--ink);border-radius:2px;min-height:2px}
+.chbars i.zero{background:transparent;border:1px dashed var(--line-strong);height:16px!important}
+.tbl.sticky-h thead th{position:sticky;top:38px;z-index:2}
+.tbl.sticky-h{overflow:visible}
+.tbl tr.exp td{background:var(--soft);white-space:normal}
+.expd{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:4px 0}
+.expd .t-label{color:var(--ink-strong)}
+.tbl .tog{border:0;background:transparent;cursor:pointer;color:var(--sub);padding:2px;display:inline-flex;vertical-align:middle;min-width:24px;min-height:24px;align-items:center;justify-content:center;border-radius:6px}
+/* 상태 */
+.skel{background:var(--sunken);border-radius:6px;height:12px}
+.skel.chip{width:84px;height:32px;border-radius:10px;border:0}
+.state-label{font:700 12px/18px var(--font);letter-spacing:.06em;color:var(--sub);margin-bottom:12px}
+.empty{display:grid;justify-items:start;gap:12px;padding:8px 0}
+.empty .t-card{margin:0}
+.banner{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:10px;border:1px solid var(--line);background:var(--paper)}
+.banner.danger{background:var(--danger-soft);border-color:transparent}
+.banner.danger .ic{color:var(--danger)}
+.banner.warn{background:var(--warning-soft);border-color:transparent}
+.banner.warn .ic{color:var(--warning)}
+.banner .actions{margin-left:auto}
+.banner .ic{margin-top:2px}
+
+.tagrow{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.tagrow>.t-label{width:88px;flex:none}
+.chip .kbd{margin-right:4px}
+.lvl{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:var(--r-full);font:700 12px/18px var(--font);border:1px solid var(--line-strong);color:var(--ink-strong);background:var(--paper)}
+.lvl.core{border-color:var(--blue);background:var(--blue-soft);color:var(--blue-deep)}
+.lvl.sup{background:var(--sunken)}
+.src{display:grid;grid-template-columns:1fr auto;gap:6px 16px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-card);background:var(--paper);margin-bottom:8px}
+.src .meta{grid-column:1}.src .btn{grid-row:1/3;grid-column:2}
+.src.done{background:var(--sunken)}
+.drawer{box-shadow:var(--shadow-overlay);border-radius:var(--r-overlay)}
+.kilist{list-style:none;margin:0;padding:0}
+.kilist li{display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:center;padding:10px 0;border-top:1px solid var(--line);font:400 14px/20px var(--font);color:var(--ink-strong)}
+.kilist li .t-caption{grid-column:2}
+.note.error{background:var(--danger-soft)}.note.error .ic{color:var(--danger)}
+</style>
+</head>
+<body>
+<div class="mockbar" role="toolbar" aria-label="목업 화면 전환">
+  <b>DCX 3~5단계 목업</b>
+  <button data-go="s1" aria-pressed="true">3단계 · 전처리</button>
+  <button data-go="s2" aria-pressed="false">4단계 · 개요</button>
+  <button data-go="s4" aria-pressed="false">4단계 · 검수 큐</button>
+  <button data-go="s5" aria-pressed="false">4단계 · 감사</button>
+  <button data-go="s6" aria-pressed="false">5단계 · 학습 · 모델</button>
+  <button data-go="s7" aria-pressed="false">Known Insight · 근거 원문</button>
+  <button data-go="s8" aria-pressed="false">상태 모음</button>
+</div>
+<div class="shell">
+<aside class="side" aria-label="파이프라인">
+  <img src="assets/person-a-logo.png" alt="Person A">
+  <div>
+    <div class="grp">파이프라인</div>
+    <nav class="nav" id="nav">
+      <a href="#"><i class="n">1</i><span>시작</span></a>
+      <a href="#"><i class="n">2</i><span>키워드</span></a>
+      <a href="#"><i class="n">3</i><span>크롤링</span></a>
+      <a href="#"><i class="n">4</i><span>전처리</span></a>
+      <a href="#"><i class="n">5</i><span>라벨링</span></a>
+      <a href="#"><i class="n">6</i><span>학습</span></a>
+      <a href="#"><i class="n">7</i><span>클러스터링</span></a>
+      <a href="#"><i class="n">8</i><span>페르소나</span></a>
+    </nav>
+  </div>
+  <div class="foot">
+    <div class="t-label" style="color:var(--ink-strong)">LG 휘센 에어컨</div>
+    <button class="btn quiet sm" style="padding:0 6px;margin:2px 0 2px -6px"><i data-lucide="git-branch"></i>v2 · 활성<i data-lucide="chevron-down"></i></button>
+    <div style="margin-top:8px"><span class="badge info"><span class="dot"></span>판정 62%</span></div>
+    <button class="btn quiet sm" style="margin-top:8px;padding:0 6px;margin-left:-6px" data-go-drawer><i data-lucide="lightbulb"></i>Known Insight · 5</button>
+    <button class="btn quiet sm" style="padding:0 6px;margin-left:-6px"><i data-lucide="plug"></i>외부 API · 3/5 연결</button> <span class="badge">내부용</span>
+  </div>
+</aside>
+<main><div class="wrap">
+
+<!-- ═════════════ S1 · 3단계 전처리 ═════════════ -->
+<section class="screen on" id="s1" aria-labelledby="s1t">
+  <div class="ph">
+    <div>
+      <div class="eyebrow">3단계 · 전처리 · 임베딩</div>
+      <h1 class="t-section" id="s1t">라벨링에 쓸 문서와 벡터를 만듭니다</h1>
+      <p class="t-body">규칙은 명백한 광고 · 중복 · 너무 짧은 글만 뺍니다. 대상과 관련 있는지는 4단계에서 판단합니다.</p>
+    </div>
+    <div class="actions"><button class="btn">임시 저장</button><button class="btn">다시 실행</button></div>
+  </div>
+  <div class="grid">
+    <div class="s8">
+      <div class="card" style="margin-bottom:24px">
+        <div class="card-h"><div><h2 class="t-card">규칙 필터</h2><p class="t-caption">본문 + 댓글 기준 · 0~2단계 설정을 그대로 가져왔습니다</p></div></div>
+        <dl class="kv">
+          <dt>광고어</dt><dd>협찬 · 체험단 · 쿠팡 파트너스 · 원고료 · 중고 · 판매 · 거래 외 24개 <a href="#" class="btn quiet sm">편집</a></dd>
+          <dt>제외 출처</dt><dd>카페 2곳 <a href="#" class="btn quiet sm">편집</a></dd>
+          <dt>최소 본문</dt><dd class="num">10자 (스니펫 문서는 제목 5자 또는 요약 10자)</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <div class="card-h"><div><h2 class="t-card">채널 정형 문구</h2><p class="t-caption">본문 · 댓글에서 문자열만 지웁니다. 글은 남습니다.</p></div></div>
+        <div class="tabs" role="tablist" aria-label="채널">
+          <button class="tab" role="tab" aria-selected="true">네이버 카페 <span class="t-caption">6</span></button>
+          <button class="tab" role="tab" aria-selected="false">네이버 블로그 <span class="t-caption">4</span></button>
+          <button class="tab" role="tab" aria-selected="false">유튜브 <span class="t-caption">0</span></button>
+          <button class="tab" role="tab" aria-selected="false">뽐뿌 <span class="t-caption">2</span></button>
+          <button class="tab" role="tab" aria-selected="false">클리앙 <span class="t-caption">1</span></button>
+        </div>
+        <table class="tbl" style="border:0">
+          <tbody>
+            <tr><td>카페 회원이 되시면 더 많은 글을 볼 수 있습니다</td><td class="dim">기본</td><td class="r num">88,120건</td><td class="r"><button class="btn quiet sm" aria-label="삭제"><i data-lucide="x"></i></button></td></tr>
+            <tr><td>이 게시글은 카페 등급 이상만 볼 수 있습니다</td><td class="dim">기본</td><td class="r num">812건</td><td class="r"><button class="btn quiet sm" aria-label="삭제"><i data-lucide="x"></i></button></td></tr>
+            <tr><td>출처: 네이버 카페 …</td><td class="dim">추가 · 오늘</td><td class="r num dim">실행 후 집계</td><td class="r"><button class="btn quiet sm" aria-label="삭제"><i data-lucide="x"></i></button></td></tr>
+          </tbody>
+        </table>
+        <div class="row2" style="margin-top:12px"><input class="inp" placeholder="지울 문구를 붙여 넣으세요"><div class="actions" style="justify-content:flex-start"><button class="btn sm">추가</button></div></div>
+      </div>
+    </div>
+    <div class="s4">
+      <div class="card" style="margin-bottom:24px">
+        <h2 class="t-card" style="margin-bottom:12px">만들어지는 것</h2>
+        <dl class="kv">
+          <dt>원문 정제본</dt><dd>라벨러 · 임베딩 입력</dd>
+          <dt>형태소 토큰</dt><dd>Kiwi · 문장부호 삭제</dd>
+          <dt>임베딩</dt><dd>voyage-4 · 1024차원 · 전량 1회</dd>
+        </dl>
+        <div class="divider"></div>
+        <p class="t-caption" style="margin:0">같은 수집본과 같은 규칙이면 새 버전에서도 다시 만들지 않습니다.</p>
+      </div>
+      <div class="card insight">
+        <div class="eyebrow" style="margin-bottom:8px">예상</div>
+        <p class="t-section" style="margin:0">412,330건 → 약 31만 건</p>
+        <div class="meta" style="margin-top:12px"><span>임베딩 약 2시간</span><span class="sep"></span><span>저장 약 0.6GB</span></div>
+        <div class="nextact"><span class="t-label">규칙을 확인하고 실행하세요</span></div>
+      </div>
+    </div>
+
+    <div class="s12"><div class="divider"></div><div class="eyebrow">실행 후 · stage_3.json</div></div>
+    <div class="card s8 insight">
+      <div class="eyebrow" style="margin-bottom:8px">전처리 결과</div>
+      <p class="t-insight">318,204건이 라벨링으로<br>넘어갑니다.</p>
+      <p class="t-body" style="margin:12px 0 0">원본 412,330건 중 광고 51,200 · 너무 짧음 39,014 · 제외 출처 3,100 · 중복 812건을 뺐습니다. 임베딩 실패 54건은 0벡터로 남기고 검색 · 학습에서 제외합니다.</p>
+      <div class="meta" style="margin-top:16px"><span>수집본 c1</span><span class="sep"></span><span>voyage-4 · 1024</span><span class="sep"></span><span>Kiwi</span><span class="sep"></span><span>2026. 9. 30. 14:20</span><span class="sep"></span><span class="mono">p_3f9a</span></div>
+      <div class="nextact"><span class="t-label">다음 행동 · 라벨링을 시작하세요</span><button class="btn primary sm">라벨링으로<i data-lucide="arrow-right"></i></button></div>
+    </div>
+    <div class="card s4">
+      <h3 class="t-card" style="margin-bottom:16px">규칙별 제거</h3>
+      <div class="bars">
+        <div class="bar"><span class="t-label">광고어</span><div class="track"><div class="fill hi" style="width:100%"></div></div><span class="v t-label num">51,200</span></div>
+        <div class="bar"><span class="t-label">짧음</span><div class="track"><div class="fill" style="width:76%"></div></div><span class="v t-label num">39,014</span></div>
+        <div class="bar"><span class="t-label">제외 출처</span><div class="track"><div class="fill" style="width:6%"></div></div><span class="v t-label num">3,100</span></div>
+        <div class="bar"><span class="t-label">중복</span><div class="track"><div class="fill" style="width:2%"></div></div><span class="v t-label num">812</span></div>
+      </div>
+      <p class="t-caption" style="margin:12px 0 0">정형 문구 치환 100,124건 · 토큰 318,204건</p>
+    </div>
+  </div>
+</section>
+
+<!-- 라벨링 공통 헤더 -->
+<template id="labhead">
+  <div class="ph">
+    <div>
+      <div class="eyebrow">4단계 · 라벨링</div>
+      <h1 class="t-section">HEAD</h1>
+    </div>
+    <div class="actions"><span class="badge info">LLM 라벨</span><button class="btn">임시 저장</button><button class="btn">저장</button></div>
+  </div>
+  <div class="tabs" role="tablist" aria-label="라벨링">
+    <button class="tab" role="tab" data-tab="s2">개요</button>
+    <button class="tab" role="tab" data-tab="s4">검수 큐 <span class="t-caption">214</span></button>
+    <button class="tab" role="tab" data-tab="s5">감사 <span class="t-caption">라운드 3</span></button>
+  </div>
+</template>
+
+<!-- ═════════════ S2 · 4단계 개요 ═════════════ -->
+<section class="screen" id="s2" data-head="판정이 62% 진행됐습니다">
+  <div class="grid eq">
+    <div class="card s8 insight">
+      <div class="eyebrow" style="margin-bottom:8px">지금 할 일</div>
+      <p class="t-insight">사람이 볼 문서가<br>214건 있습니다.</p>
+      <p class="t-body" style="margin:12px 0 0">지난 접속(9. 28. 18:40) 이후 Jev · GPT가 132,400건을 더 판정했고, 그중 118,020건을 채택했습니다. 214건은 두 라벨러의 등급이 엇갈렸거나 판정에 실패했습니다.</p>
+      <div class="meta" style="margin-top:16px"><span>불일치율 0.1%</span><span class="sep"></span><span>감사 라운드 3 · κ 0.79</span></div>
+      <div class="nextact"><span class="t-label">다음 행동 · 검수 큐 214건 · 예상 38분</span><button class="btn primary sm">검수 시작<i data-lucide="arrow-right"></i></button></div>
+    </div>
+    <div class="card s4">
+      <h3 class="t-card" style="margin-bottom:12px">합친 결과</h3>
+      <dl class="kv">
+        <dt>합친 문서</dt><dd class="num">197,017건</dd>
+        <dt>두 라벨러 합의 · 채택</dt><dd class="num">196,803건</dd>
+        <dt>등급 불일치 · 검수</dt><dd class="num">210건 · 0.1%</dd>
+        <dt>판정 실패 · 검수</dt><dd class="num">4건</dd>
+      </dl>
+      <div class="divider"></div>
+      <p class="t-caption" style="margin:0">사람은 두 라벨러가 등급을 다르게 본 글과 판정에 실패한 글만 봅니다. 채택분은 무작위 감사로 확인합니다.</p>
+    </div>
+    <div class="card s8" aria-live="polite">
+      <div class="card-h"><h3 class="t-card">전량 판정</h3><span class="t-caption">화면을 닫아도 계속됩니다</span></div>
+      <table class="tbl" style="border:0">
+        <thead><tr><th>라벨러</th><th>상태</th><th style="width:40%">진행</th><th class="r">완료 / 대상</th><th class="r">예상 완료</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>Jev</td><td><span class="badge info"><span class="dot"></span>판정 중</span></td><td><div class="progress"><div style="width:62%"></div></div></td><td class="r num">197,300 / 318,204</td><td class="r num">10. 1. 16:40</td><td class="r"><button class="btn quiet sm">일시 정지</button></td></tr>
+          <tr><td>GPT</td><td><span class="badge warning"><span class="dot"></span>사용량 한도</span></td><td><div class="progress"><div style="width:64%"></div></div></td><td class="r num">203,110 / 318,204</td><td class="r num">—</td><td class="r"><button class="btn sm">이어서 진행</button></td></tr>
+        </tbody>
+        <caption>합친 문서 197,017건 · 불량 답 12건(격리 후 재시도) · 예상 Jev 비용 $9.40 / $15.20</caption>
+      </table>
+    </div>
+    <div class="card s4">
+      <h3 class="t-card" style="margin-bottom:16px">등급 분포 (채택분)</h3>
+      <div class="bars">
+        <div class="bar"><span class="t-label">Core</span><div class="track"><div class="fill hi" style="width:21%"></div></div><span class="v t-label num">12%</span></div>
+        <div class="bar"><span class="t-label">Supporting</span><div class="track"><div class="fill" style="width:54%"></div></div><span class="v t-label num">31%</span></div>
+        <div class="bar"><span class="t-label">Non</span><div class="track"><div class="fill" style="width:100%"></div></div><span class="v t-label num">57%</span></div>
+      </div>
+      <p class="t-caption" style="margin:12px 0 0">합친 문서 197,017건 기준</p>
+    </div>
+    <div class="card s12">
+      <div class="card-h"><h3 class="t-card">라벨러 성능 · 감사 정답 150건 기준</h3><span class="t-caption">κ가 낮은 칸은 모델이 아니라 태그 정의를 고칩니다</span></div>
+      <table class="tbl" style="border:0">
+        <thead><tr><th>칸</th><th class="r">감사 κ</th><th class="r">Jev 정확도</th><th class="r">GPT 정확도</th><th class="r">Jev·GPT κ</th><th>비고</th></tr></thead>
+        <tbody>
+          <tr><td>등급</td><td class="r num">0.81</td><td class="r num">86%</td><td class="r num">84%</td><td class="r num">0.72</td><td></td></tr>
+          <tr><td>anchor</td><td class="r num">0.88</td><td class="r num">93%</td><td class="r num">91%</td><td class="r num">0.79</td><td></td></tr>
+          <tr><td>feel</td><td class="r num">0.74</td><td class="r num">82%</td><td class="r num">85%</td><td class="r num">0.66</td><td></td></tr>
+          <tr><td>relate</td><td class="r num">0.70</td><td class="r num">79%</td><td class="r num">83%</td><td class="r num">0.58</td><td><span class="badge warning">합친 질문 · 확인 필요</span></td></tr>
+          <tr><td>Non 사유</td><td class="r num">0.77</td><td class="r num">88%</td><td class="r num">86%</td><td class="r num">0.71</td><td></td></tr>
+        </tbody>
+        <caption>나머지 칸 7개는 펼쳐서 봅니다 · signal은 GPT만 판정합니다(Jev 없음)</caption>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ S4 · 검수 큐 ═════════════ -->
+<section class="screen" id="s4" data-head="엇갈린 문서를 한 건씩 정합니다">
+  <div class="grid">
+    <div class="s8">
+      <div class="card">
+        <div class="card-h"><div><span class="badge warning">두 라벨러 등급 불일치</span> <span class="t-caption">남은 214건 · 예상 38분</span></div><span class="t-caption mono">nc_8812…</span></div>
+        <p class="t-body" style="font-size:17px;line-height:28px;margin:8px 0 4px">새벽에 짜증나서 그냥 껐다</p>
+        <p class="t-caption" style="margin:0 0 20px">네이버 카페 · 키워드 "새벽소음" · 2026. 7. 14.</p>
+        <div class="tagrow"><span class="t-label">대상 경험</span><div class="seg" role="radiogroup" aria-label="대상 경험"><button aria-pressed="true">대상 경험</button><button aria-pressed="false">무관</button></div></div>
+        <div class="tagrow"><span class="t-label">경험 6차원</span><div class="chips" role="group" aria-label="경험 6차원"><button class="chip" aria-pressed="false"><span class="kbd">1</span> 감각</button><button class="chip" aria-pressed="true"><span class="kbd">2</span> 감정</button><button class="chip" aria-pressed="false"><span class="kbd">3</span> 판단</button><button class="chip" aria-pressed="true"><span class="kbd">4</span> 행동</button><button class="chip" aria-pressed="false"><span class="kbd">5</span> 관계</button><button class="chip" aria-pressed="false"><span class="kbd">6</span> 결과</button></div></div>
+        <div class="tagrow"><span class="t-label">상황</span><div class="seg" role="radiogroup" aria-label="상황"><button aria-pressed="true">보임</button><button aria-pressed="false">안 보임</button></div></div>
+        <div class="tagrow"><span class="t-label">신호</span><div class="chips" role="radiogroup" aria-label="신호"><button class="chip" aria-pressed="true">불편</button><button class="chip" aria-pressed="false">미충족</button><button class="chip" aria-pressed="false">우회</button><button class="chip" aria-pressed="false">만족</button><button class="chip" aria-pressed="false">없음</button></div></div>
+        <div class="nextact"><span><span class="lvl core">Core</span> <span class="t-caption">감정 · 행동 · 상황 → 규칙으로 계산</span></span><div class="actions"><button class="btn sm">건너뛰기 <span class="kbd">→</span></button><button class="btn primary sm">제출 <span class="kbd">Enter</span></button></div></div>
+      </div>
+      <div class="card" style="margin-top:24px;border-style:dashed">
+        <div class="card-h"><h3 class="t-card">제출 후 · 라벨러와 비교</h3><span class="t-caption">제출하기 전에는 보이지 않습니다</span></div>
+        <table class="tbl" style="border:0"><thead><tr><th>칸</th><th>내 판정</th><th>Jev</th><th>GPT</th></tr></thead>
+          <tbody><tr><td>감정</td><td>있음</td><td>있음 0.91</td><td class="dim">없음</td></tr><tr><td>상황</td><td>보임</td><td class="dim">안 보임 0.38</td><td>보임</td></tr><tr><td>등급</td><td><span class="lvl core">Core</span></td><td><span class="lvl sup">Supporting</span></td><td><span class="lvl sup">Supporting</span></td></tr></tbody></table>
+      </div>
+    </div>
+    <div class="s4">
+      <div class="card" style="margin-bottom:24px">
+        <h3 class="t-card" style="margin-bottom:12px">큐 사유</h3>
+        <dl class="kv"><dt>등급 불일치</dt><dd class="num">210</dd><dt>판정 실패</dt><dd class="num">4</dd></dl>
+      </div>
+      <div class="card">
+        <h3 class="t-card" style="margin-bottom:12px">키보드</h3>
+        <dl class="kv"><dt><span class="kbd">A</span></dt><dd>대상 경험 전환</dd><dt><span class="kbd">1</span>~<span class="kbd">6</span></dt><dd>6차원 켜고 끄기</dd><dt><span class="kbd">S</span></dt><dd>상황 전환</dd><dt><span class="kbd">Enter</span></dt><dd>제출 = 저장</dd><dt><span class="kbd">→</span></dt><dd>건너뛰기</dd></dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ S5 · 감사 ═════════════ -->
+<section class="screen" id="s5" data-head="채택된 라벨이 맞는지 무작위로 확인합니다">
+  <div class="note warn" style="margin-bottom:24px" role="status"><i data-lucide="alert-triangle" class="ic"></i><div><b>최근 두 라운드 연속 일치도가 떨어졌습니다</b> (0.81 → 0.77 → 0.72). 태그 정의를 확인하세요.</div><div class="actions"><button class="btn primary">태그 정의 보기</button></div></div>
+  <div class="grid">
+    <div class="card s8">
+      <div class="card-h"><h3 class="t-card">라운드별 일치도 (κ_AI · 등급)</h3><button class="btn sm">새 라운드 만들기 · 50건</button></div>
+      <table class="tbl" style="border:0"><thead><tr><th>라운드</th><th>시점</th><th class="r">표본</th><th class="r">등급 κ</th><th class="r">사람이 고친 건</th><th></th></tr></thead>
+        <tbody><tr><td>1</td><td class="dim">채택 1,000건</td><td class="r num">50</td><td class="r num">0.81</td><td class="r num">4</td><td></td></tr><tr><td>2</td><td class="dim">채택 1.1만 건</td><td class="r num">50</td><td class="r num">0.77</td><td class="r num">6</td><td></td></tr><tr class="sel"><td>3</td><td class="dim">채택 2.1만 건</td><td class="r num">50</td><td class="r num">0.72</td><td class="r num">9</td><td><span class="badge warning">기준 0.75 미만</span></td></tr></tbody></table>
+      <p class="t-caption" style="margin:12px 0 0">감사에서는 AI 판정을 숨긴 채 판정합니다(independent). 사람이 고친 라벨은 그대로 반영됩니다.</p>
+    </div>
+    <div class="card s4">
+      <h3 class="t-card" style="margin-bottom:12px">자기 일관성 (re-issue)</h3>
+      <p class="t-body" style="margin:0">라운드마다 이전 감사 문서 2건을 다시 보여 줍니다. 지금까지 6건 중 같은 답 5건.</p>
+      <div class="divider"></div>
+      <p class="t-caption" style="margin:0">두 AI가 같은 방향으로 틀리는 글(반어 · 업체 후기 위장)은 감사에서만 드러나므로 표본을 줄이지 않습니다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ S6 · 학습 · 모델 저장소 ═════════════ -->
+<section class="screen" id="s6" aria-labelledby="s6t">
+  <div class="ph">
+    <div>
+      <div class="eyebrow">5단계 · 학습</div>
+      <h1 class="t-section" id="s6t">합의 라벨로 분류 모델을 만듭니다</h1>
+      <p class="t-body">벡터 위 작은 모델 4개(앙상블)가 태그를 예측하고, 등급은 규칙으로 계산합니다. 다음 세션은 이 모델로 LLM 없이 라벨링할 수 있습니다.</p>
+    </div>
+    <div class="actions"><button class="btn">모델 없이 내보내기</button><button class="btn">다시 학습</button></div>
+  </div>
+  <div class="grid eq">
+    <div class="card s8 insight">
+      <div class="eyebrow" style="margin-bottom:8px">학습 결과 · m_0930a</div>
+      <p class="t-insight">등급 정확도 88%</p>
+      <p class="t-body" style="margin:12px 0 0">학습 281,410건(합의 280,800 · 사람 610). 감사 정답 150건 기준으로 Jev(86%)보다 조금 높습니다. 멤버끼리 등급이 갈린 문서는 3.1%입니다.</p>
+      <div class="meta" style="margin-top:16px"><span>voyage-4 · 1024</span><span class="sep"></span><span>규칙 r1</span><span class="sep"></span><span>질문 q1</span><span class="sep"></span><span>2026. 10. 2.</span></div>
+      <div class="nextact"><span class="t-label">다음 행동 · 저장하면 클러스터링이 이 결과를 씁니다</span><button class="btn primary sm">저장하고 클러스터링으로</button></div>
+    </div>
+    <div class="card s4">
+      <h3 class="t-card" style="margin-bottom:12px">헤드별</h3>
+      <table class="tbl" style="border:0"><thead><tr><th>헤드</th><th class="r">F1</th><th class="r">보정 오차</th></tr></thead>
+        <tbody><tr><td>anchor</td><td class="r num">0.93</td><td class="r num">0.02</td></tr><tr><td>6차원 평균</td><td class="r num">0.81</td><td class="r num">0.03</td></tr><tr><td>상황</td><td class="r num">0.84</td><td class="r num">0.03</td></tr><tr><td>신호</td><td class="r num">0.71</td><td class="r num">0.05</td></tr><tr><td>Non 사유</td><td class="r num">0.86</td><td class="r num">0.03</td></tr></tbody></table>
+      <p class="t-caption" style="margin:12px 0 0">선형 멤버 대비 MLP +2.4%p</p>
+    </div>
+    <div class="s12">
+      <div class="card-h" style="margin-top:8px"><h2 class="t-section">모델 저장소</h2><span class="t-caption">다른 세션이 4단계에서 골라 씁니다</span></div>
+      <table class="tbl">
+        <thead><tr><th>모델</th><th>종류</th><th>학습한 세션</th><th class="r">학습 건수</th><th class="r">등급 정확도</th><th>임베딩</th><th></th></tr></thead>
+        <tbody>
+          <tr class="sel"><td class="mono">m_0930a</td><td>앙상블 4</td><td>LG 휘센 에어컨 · v2<div class="t-caption">"여름철 가정용 에어컨 사용 경험"</div></td><td class="r num">281,410</td><td class="r num">88%</td><td>voyage-4</td><td class="r"><button class="btn sm">단일 모델 만들기</button></td></tr>
+          <tr><td class="mono">m_0930a-s</td><td>단일 (증류)</td><td>m_0930a에서</td><td class="r num">318,150</td><td class="r num">87%</td><td>voyage-4</td><td class="r dim">불일치 신호 없음</td></tr>
+          <tr class="dim"><td class="mono">m_0801x</td><td>앙상블 4</td><td>공기청정기 · v1</td><td class="r num">94,002</td><td class="r num">85%</td><td>voyage-multilingual-2</td><td class="r t-caption">다른 임베딩 · 고를 수 없음</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ S7 · Known Insight 패널 + 근거 원문 ═════════════ -->
+<section class="screen" id="s7" aria-labelledby="s7t">
+  <div class="ph"><div><div class="eyebrow">페르소나 · 채팅</div><h1 class="t-screen" id="s7t">근거 원문을 Known Insight에 추가합니다</h1></div></div>
+  <div class="grid">
+    <div class="s8">
+      <div class="card" style="margin-bottom:16px"><p class="t-body" style="margin:0"><b>질문</b> · 야간 소음에 대한 불만은 어떤 상황에서 나오나요?</p><div class="divider"></div><p class="t-body" style="margin:0">주로 아이를 재우는 시간대와 새벽 냉방 전환 때 나옵니다. 실외기 소음은 이웃 관계로 번지는 경우가 있고…</p></div>
+      <div class="card-h"><h3 class="t-card">근거 원문 5건</h3><label class="t-label" style="display:flex;align-items:center;gap:8px">새 발견 찾기 <button class="sw" role="switch" aria-checked="true" aria-label="새 발견 찾기"></button></label></div>
+      <div class="src"><p class="t-body" style="margin:0">밤에 윙윙거려서 애가 깨요 ㅠ</p><div class="meta"><span class="lvl core">Core</span><span>네이버 카페</span><span class="sep"></span><span>유사도 0.82</span></div><button class="btn sm">Known Insight에 추가</button></div>
+      <div class="src"><p class="t-body" style="margin:0">실외기 소리 때문에 옆집이랑 싸웠어요</p><div class="meta"><span class="lvl core">Core</span><span>뽐뿌</span><span class="sep"></span><span>유사도 0.79</span></div><button class="btn sm">Known Insight에 추가</button></div>
+      <div class="src done"><p class="t-body dim" style="margin:0">에어컨 켜면 전기세 폭탄이라 선풍기만…</p><div class="meta"><span class="badge">추가됨</span><span>다음 검색부터 비슷한 원문이 빠집니다</span></div><button class="btn quiet sm">되돌리기</button></div>
+      <div class="actions" style="margin-top:16px"><button class="btn">추가한 이야기 빼고 다시 찾기</button></div>
+      <p class="t-caption" style="margin-top:8px">Known Insight와 비슷해서 뺀 원문 7건 · 끄면 모두 보입니다</p>
+    </div>
+    <div class="s4">
+      <div class="card drawer">
+        <div class="card-h"><h3 class="t-card">Known Insight · 에어컨</h3><button class="btn quiet sm" aria-label="닫기"><i data-lucide="x"></i></button></div>
+        <ul class="kilist">
+          <li><span class="badge">문장</span> 야간 소음이 불만 1순위다<span class="t-caption">0단계</span></li>
+          <li><span class="badge">문장</span> 필터 청소가 번거롭다<span class="t-caption">이전 세션</span></li>
+          <li><span class="badge">원문</span> 밤에 윙윙거려서 애가 깨요 ㅠ<span class="t-caption">근거에서 넘김</span></li>
+          <li><span class="badge">원문</span> 에어컨 켜면 전기세 폭탄이라…<span class="t-caption">근거에서 넘김</span></li>
+        </ul>
+        <div class="row2" style="margin-top:12px"><input class="inp" placeholder="이미 아는 이야기를 한 문장으로"><div class="actions" style="justify-content:flex-start"><button class="btn sm">추가</button></div></div>
+        <p class="t-caption" style="margin:8px 0 0">지우면 다음 검색부터 다시 나옵니다. 모든 단계 화면에서 사이드바로 엽니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ S8 · 상태 모음 ═════════════ -->
+<section class="screen" id="s8" aria-labelledby="s8t">
+  <div class="ph"><div><div class="eyebrow">참고 시트</div><h1 class="t-screen" id="s8t">3~5단계 상태 모음</h1></div></div>
+  <div class="grid">
+    <div class="s6"><div class="state-label">3단계 · 임베딩 미연결</div><div class="note warn" role="alert"><i data-lucide="plug" class="ic"></i><div><b>임베딩 API가 연결되지 않았습니다.</b> 필터와 토큰까지 끝났고, 임베딩부터 멈췄습니다.</div><div class="actions"><button class="btn sm">연결 상태 보기</button></div></div></div>
+    <div class="s6"><div class="state-label">3단계 · 통과 0건</div><div class="card empty"><p class="t-body" style="margin:0">규칙을 통과한 문서가 없습니다. 광고어와 길이 규칙을 확인하세요.</p><button class="btn sm">규칙 편집</button></div></div>
+    <div class="s6"><div class="state-label">4단계 · Jev 잔액 부족</div><div class="note warn" role="alert"><i data-lucide="wallet" class="ic"></i><div><b>Jev 잔액이 부족해 판정을 멈췄습니다.</b> 197,300건까지 저장되어 있습니다. 충전한 뒤 이어서 진행하세요.</div><div class="actions"><button class="btn sm">이어서 진행</button></div></div></div>
+            <div class="s6"><div class="state-label">4단계 · 큐 0건</div><div class="card empty"><p class="t-body" style="margin:0">사람이 볼 문서가 없습니다. 감사 라운드를 만들거나 학습으로 넘어가세요.</p><div class="actions" style="justify-content:flex-start"><button class="btn sm">감사 라운드 만들기</button><button class="btn primary sm">학습으로</button></div></div></div>
+    <div class="s6"><div class="state-label">4단계 · 제출 실패</div><div class="note error" role="alert"><i data-lucide="x-circle" class="ic"></i><div>저장하지 못했습니다. 입력은 그대로 있습니다. 다시 제출하세요.</div></div></div>
+    <div class="s6"><div class="state-label">5단계 · 헤드 표본 부족</div><div class="note" role="status"><i data-lucide="info" class="ic"></i><div>신호 헤드는 표본이 부족해 학습하지 않았습니다(18/30). 이 모델로는 분류 모델 방식을 쓸 수 없습니다.</div></div></div>
+    <div class="s6"><div class="state-label">분류 모델 방식 · 감시 괴리</div><div class="note warn" role="status"><i data-lucide="alert-triangle" class="ic"></i><div>무작위 1% 재판정에서 등급이 18% 엇갈렸습니다. 이 도메인은 LLM 라벨로 다시 하거나 추가 학습하세요.</div></div></div>
+    <div class="s6"><div class="state-label">근거 원문 · 모두 제외됨</div><div class="card empty"><p class="t-body" style="margin:0">이미 아는 이야기를 빼니 남는 원문이 없습니다. '새 발견 찾기'를 끄면 모두 보입니다.</p></div></div>
+  </div>
+</section>
+
+</div></main>
+</div>
+
+<script>
+const stepOf={s1:3,s2:4,s4:4,s5:4,s6:5,s7:7,s8:4};
+const tpl=document.getElementById('labhead').innerHTML;
+document.querySelectorAll('section[data-head]').forEach(s=>{s.insertAdjacentHTML('afterbegin',tpl.replace('HEAD',s.dataset.head));s.querySelectorAll('[data-tab]').forEach(b=>{b.setAttribute('aria-selected',b.dataset.tab===s.id);b.onclick=()=>go(b.dataset.tab)})});
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));
+  document.querySelectorAll('.mockbar button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.go===id));
+  document.querySelectorAll('#nav a').forEach((a,i)=>{a.classList.toggle('on',i===stepOf[id]);a.classList.toggle('done',i<stepOf[id]);a.querySelector('.n').textContent=i<stepOf[id]?'✓':i+1});
+  history.replaceState(null,'','#'+id); window.scrollTo(0,0);
+}
+document.querySelectorAll('.mockbar button').forEach(b=>b.onclick=()=>go(b.dataset.go));
+document.querySelector('[data-go-drawer]').onclick=()=>go('s7');
+document.querySelectorAll('.chip,.seg button').forEach(c=>c.addEventListener('click',()=>{
+  const g=c.parentElement; if(g.getAttribute('role')==='radiogroup'){g.querySelectorAll('[aria-pressed]').forEach(x=>x.setAttribute('aria-pressed','false'));c.setAttribute('aria-pressed','true')}
+  else c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')!=='true');
+}));
+document.querySelectorAll('.sw').forEach(s=>s.onclick=()=>s.setAttribute('aria-checked',s.getAttribute('aria-checked')!=='true'));
+go(location.hash.slice(1)||'s1');
+if(window.lucide) lucide.createIcons();
+</script>
+</body>
+</html>

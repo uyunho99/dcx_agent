@@ -1,0 +1,45 @@
+.list {
+ display: grid;
+ gap: 16px;
+ padding: 0;
+ list-style: none;
+}
+
+.card {
+ display: grid;
+ gap: 12px;
+}
+
+.badges {
+ display: flex;
+ flex-wrap: wrap;
+ gap: 8px;
+}
+
+.body {
+ margin: 0;
+ white-space: pre-wrap;
+ overflow-wrap: anywhere;
+}
+
+.clamped {
+ display: -webkit-box;
+ -webkit-box-orient: vertical;
+ -webkit-line-clamp: 3;
+ overflow: hidden;
+}
+
+.warning {
+ margin: 0;
+}
+
+.footer {
+ display: flex;
+ align-items: center;
+ justify-content: space-between;
+ gap: 8px;
+}
+
+.delete {
+ margin-left: auto;
+}
