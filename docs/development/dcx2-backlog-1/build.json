@@ -1,14 +1,14 @@
 {
   "verdict": "PASS",
-  "head": "e6c5e7558928f04aa61c8d152d103397e87bf1c5",
-  "fingerprint": "0db1471d93430361740b677c0f9a919d6b3ac1c91ab38ca5b365b077101f3790",
+  "head": "b9324bf9a45d46005c9949b907b3676b5be57150",
+  "fingerprint": "c50e01f71be403da0389c07321267faaad13156bb9934603d3d8b003c39163fc",
   "commands": [
     {
       "command": "backend/.venv/bin/python -m pytest backend/tests -q  (1458 passed, 1 perf deselected; external connects 0)",
       "exitCode": 0
     },
     {
-      "command": "npm --prefix frontend test -- --run  (294 passed)",
+      "command": "npm --prefix frontend test -- --run  (318 passed)",
       "exitCode": 0
     },
     {
@@ -101,18 +101,18 @@
     {
       "id": "T10",
       "executor": "codex",
-      "dispatch": "task-mup6j17r-2njg3j; fix round 1 task-mup7rzwe-tfw24b (docs/development/dcx2-backlog-1/reports/fix1-display-report.md); ledger docs/development/dcx2-backlog-1/reports/sdd-ledger.md; review-phase fixes task-mup90y31-mzuak0 (coverage), task-mup90zy5-szrufz (completion), round 2 task-mup9heer-a9ap51 (coverage), task-mup9hbu5-yxnjoj (cluster) ; QA round 1 fixes (R-208): task-mupa65bu-it6u7q (qfix-coverage), task-mupa67s5-2aq0k0 (qfix-prep), task-mupa6akm-eh0iy7 (qfix-fe) — reports/qfix-*-report.md",
+      "dispatch": "task-mup6j17r-2njg3j; fix round 1 task-mup7rzwe-tfw24b (docs/development/dcx2-backlog-1/reports/fix1-display-report.md); ledger docs/development/dcx2-backlog-1/reports/sdd-ledger.md; review-phase fixes task-mup90y31-mzuak0 (coverage), task-mup90zy5-szrufz (completion), round 2 task-mup9heer-a9ap51 (coverage), task-mup9hbu5-yxnjoj (cluster) ; QA round 1 fixes (R-208): task-mupa65bu-it6u7q (qfix-coverage), task-mupa67s5-2aq0k0 (qfix-prep), task-mupa6akm-eh0iy7 (qfix-fe) — reports/qfix-*-report.md ; QA round 2 fix (R-209): task-muparug1-ozttm3, round 1 task-mupb864a-oavcni — reports/qfix2-refresh-report.md, reports/qfix2-round1-report.md (commits by controller: Codex sandbox blocks git)",
       "red": "docs/development/dcx2-backlog-1/reports/task-T10-report.md (RED section)",
       "green": "docs/development/dcx2-backlog-1/reports/task-T10-report.md (GREEN) + docs/development/dcx2-backlog-1/reports/fix1-display-report.md (GREEN) + controller full-suite re-run with external-connect guard",
-      "review": "docs/development/dcx2-backlog-1/reports/review-display-1.md (Needs fixes) → docs/development/dcx2-backlog-1/reports/review-fix1-rereview.md (Approved); review-phase: docs/development/dcx2-backlog-1/reports/gstack-review1.md, docs/development/dcx2-backlog-1/reports/codex-branch-review1.md → docs/development/dcx2-backlog-1/reports/review-rfix-rereview.md (Needs fixes) → docs/development/dcx2-backlog-1/reports/review-rfix2-rereview.md (Approved) ; QA fixes: docs/development/dcx2-backlog-1/reports/review-qfix-rereview.md (Approved)"
+      "review": "docs/development/dcx2-backlog-1/reports/review-display-1.md (Needs fixes) → docs/development/dcx2-backlog-1/reports/review-fix1-rereview.md (Approved); review-phase: docs/development/dcx2-backlog-1/reports/gstack-review1.md, docs/development/dcx2-backlog-1/reports/codex-branch-review1.md → docs/development/dcx2-backlog-1/reports/review-rfix-rereview.md (Needs fixes) → docs/development/dcx2-backlog-1/reports/review-rfix2-rereview.md (Approved) ; QA fixes: docs/development/dcx2-backlog-1/reports/review-qfix-rereview.md (Approved) ; QA2: docs/development/dcx2-backlog-1/reports/review-qfix2-rereview.md (Needs fixes → Approved)"
     },
     {
       "id": "T11",
       "executor": "codex",
-      "dispatch": "task-mup6j3zi-p0lt13; fix round 1 task-mup7rzwe-tfw24b (docs/development/dcx2-backlog-1/reports/fix1-display-report.md); ledger docs/development/dcx2-backlog-1/reports/sdd-ledger.md; review-phase fixes task-mup90y31-mzuak0 (coverage), task-mup90zy5-szrufz (completion), round 2 task-mup9heer-a9ap51 (coverage), task-mup9hbu5-yxnjoj (cluster) ; QA round 1 fixes (R-208): task-mupa65bu-it6u7q (qfix-coverage), task-mupa67s5-2aq0k0 (qfix-prep), task-mupa6akm-eh0iy7 (qfix-fe) — reports/qfix-*-report.md",
+      "dispatch": "task-mup6j3zi-p0lt13; fix round 1 task-mup7rzwe-tfw24b (docs/development/dcx2-backlog-1/reports/fix1-display-report.md); ledger docs/development/dcx2-backlog-1/reports/sdd-ledger.md; review-phase fixes task-mup90y31-mzuak0 (coverage), task-mup90zy5-szrufz (completion), round 2 task-mup9heer-a9ap51 (coverage), task-mup9hbu5-yxnjoj (cluster) ; QA round 1 fixes (R-208): task-mupa65bu-it6u7q (qfix-coverage), task-mupa67s5-2aq0k0 (qfix-prep), task-mupa6akm-eh0iy7 (qfix-fe) — reports/qfix-*-report.md ; QA round 2 fix (R-209): task-muparug1-ozttm3, round 1 task-mupb864a-oavcni — reports/qfix2-refresh-report.md, reports/qfix2-round1-report.md (commits by controller: Codex sandbox blocks git)",
       "red": "docs/development/dcx2-backlog-1/reports/task-T11-report.md (RED section)",
       "green": "docs/development/dcx2-backlog-1/reports/task-T11-report.md (GREEN) + docs/development/dcx2-backlog-1/reports/fix1-display-report.md (GREEN) + controller full-suite re-run with external-connect guard",
-      "review": "docs/development/dcx2-backlog-1/reports/review-display-1.md (Needs fixes) → docs/development/dcx2-backlog-1/reports/review-fix1-rereview.md (Approved); review-phase: docs/development/dcx2-backlog-1/reports/gstack-review1.md, docs/development/dcx2-backlog-1/reports/codex-branch-review1.md → docs/development/dcx2-backlog-1/reports/review-rfix-rereview.md (Needs fixes) → docs/development/dcx2-backlog-1/reports/review-rfix2-rereview.md (Approved) ; QA fixes: docs/development/dcx2-backlog-1/reports/review-qfix-rereview.md (Approved)"
+      "review": "docs/development/dcx2-backlog-1/reports/review-display-1.md (Needs fixes) → docs/development/dcx2-backlog-1/reports/review-fix1-rereview.md (Approved); review-phase: docs/development/dcx2-backlog-1/reports/gstack-review1.md, docs/development/dcx2-backlog-1/reports/codex-branch-review1.md → docs/development/dcx2-backlog-1/reports/review-rfix-rereview.md (Needs fixes) → docs/development/dcx2-backlog-1/reports/review-rfix2-rereview.md (Approved) ; QA fixes: docs/development/dcx2-backlog-1/reports/review-qfix-rereview.md (Approved) ; QA2: docs/development/dcx2-backlog-1/reports/review-qfix2-rereview.md (Needs fixes → Approved)"
     },
     {
       "id": "T12",
