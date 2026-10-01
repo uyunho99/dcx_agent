@@ -20,3 +20,6 @@ Rfix2 re-review Approved. Parked minors: clustering.py session['version'] KeyErr
 Browser QA 1: Q1-Q4 → retry. R-208. qfix-coverage/qfix-prep/qfix-fe dispatched.
 QA fixes committed; backend 1458 (0 net), vitest 294.
 QA-fix re-review Approved (reports/review-qfix-rereview.md). Parked minors: 1-char remainder broad match; no 'previous' label while loading; redundant without_product_query; prep save/clear_stale not atomic.
+QA2 Q5 fix committed (Codex task-muparug1-ozttm3; commit by controller, sandbox blocked git). vitest 313, lint, build ok.
+QA2 fix round 1 committed 7eefcf6 (Codex task-mupb864a-oavcni); vitest 318.
+QA2 fix re-review Approved. Parked: overlapping refresh sequence guard; redundant refresh on page entry / training double refresh; shared safe-refresh helper.
