@@ -53,17 +53,23 @@ def _truths(db, round=None):
         ) WHERE (? IS NULL OR s.round=?) ORDER BY h.rowid''', (round, round)).fetchall()
 
 
-def maybe_new_round(store, accepted_count) -> int | None:
+def maybe_new_round(store, accepted_count, *, kind='auto') -> int | None:
     """Create one due round at 1,000 + k*10,000 accepted documents.
 
     Repeated calls catch up crossed thresholds one at a time. Selection and
     snapshots commit atomically; a restart cannot duplicate an existing round.
     Reissues are extra items and excluded from the fresh random sample.
+    Manual rounds bypass the threshold and do not advance the automatic schedule.
+    Both kinds share the same round numbering and sampling logic.
     """
+    if kind not in ('auto', 'manual'):
+        raise ValueError('Unknown audit round kind')
     with store._db() as db:
         _schema(db)
         previous = db.execute('SELECT COALESCE(MAX(round), 0) FROM audit_set').fetchone()[0]
-        if accepted_count < settings.audit_first + previous * settings.audit_every:
+        auto_rounds = db.execute(
+            "SELECT COUNT(DISTINCT round) FROM audit_set WHERE kind='auto'").fetchone()[0]
+        if kind == 'auto' and accepted_count < settings.audit_first + auto_rounds * settings.audit_every:
             return None
         round = previous + 1
         rng = random.Random(_SEED + round)
@@ -87,8 +93,8 @@ def maybe_new_round(store, accepted_count) -> int | None:
             return None
         picked_at = time.time()
         floor = db.execute('SELECT COALESCE(MAX(rowid), 0) FROM human').fetchone()[0]
-        db.executemany('INSERT INTO audit_set VALUES (?,?,?)',
-                       ((round, r['doc_id'], picked_at) for r in sample))
+        db.executemany('INSERT INTO audit_set (round, doc_id, picked_at, kind) VALUES (?,?,?,?)',
+                       ((round, r['doc_id'], picked_at, kind) for r in sample))
         db.executemany('INSERT INTO audit_snapshot VALUES (?,?,?,?,?,?)',
                        ((round, r['doc_id'], r['tags_json'], r['level'], r['votes_json'], floor)
                         for r in sample))

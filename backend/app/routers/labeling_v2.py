@@ -201,9 +201,7 @@ def new_audit(sid: str, version: str | None = None):
             raise store.StoreError('진행 중인 감사 라운드를 먼저 완료하세요.')
         with labels._db() as db:
             count = db.execute("SELECT count(*) FROM final WHERE route='accepted'").fetchone()[0]
-            previous = db.execute('SELECT COALESCE(MAX(round),0) FROM audit_set').fetchone()[0]
         if count < settings.audit_size:
             raise store.StoreError(f'채택 라벨 {settings.audit_size}건 이상일 때 감사를 만들 수 있습니다.')
-        # T10 exposes a threshold-driven sampler; manual creation bypasses only the threshold.
-        round_id = audit.maybe_new_round(labels, settings.audit_first + previous * settings.audit_every)
+        round_id = audit.maybe_new_round(labels, count, kind='manual')
         return {'round': round_id}
