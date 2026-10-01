@@ -157,6 +157,7 @@ export type ModelMetadata = { modelId: string; selectable?: boolean; reason?: st
 export type TrainingStatus = { readonly?: boolean; training: Record<string, unknown>; workers?: Worker[]; monitor?: (Partial<Worker> & { incomplete?: number }) | null; stage5?: Record<string, unknown> | null };
 
 export type Coverage = {
+  previous?: Pick<Coverage, 'source' | 'weighting' | 'humanQueries' | 'm1' | 'm2' | 'm2_bands' | 'm6' | 'm7' | 'm7_reason' | 'missing_top'>;
   status?: string;
   source?: 'searchad' | 'autocomplete';
   weighting?: 'volume' | 'rank';

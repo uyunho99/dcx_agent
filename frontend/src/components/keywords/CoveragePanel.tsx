@@ -58,16 +58,18 @@ export function startCoveragePolling<T extends { coverage: Coverage }>(read: () 
   return () => { cancelled = true; clearTimeout(timer); };
 }
 
-export function CoveragePanel({ coverage: c, onRefresh, busy, beforeR3 }: { coverage: Coverage; onRefresh: () => void; busy: boolean; beforeR3: boolean }) {
-  const loading = c.status === 'loading';
+export function CoveragePanel({ coverage, onRefresh, busy, beforeR3 }: { coverage: Coverage; onRefresh: () => void; busy: boolean; beforeR3: boolean }) {
+  const loading = coverage.status === 'loading';
+  // Refresh snapshots retain the old provider along with its queries and metrics.
+  const c: Coverage = loading && coverage.previous ? { ...coverage.previous, status: coverage.status } : coverage;
   const autocomplete = c.source === 'autocomplete';
   const metrics = coverageMetrics(c);
-  return <div className="kw-coverage">
+  return <div className="kw-coverage" aria-busy={loading} style={loading ? { opacity: 0.5 } : undefined}>
     {beforeR3 && c.status === 'unconnected' && <Banner>미연결 · 검색광고 API가 연결되지 않았습니다. 커버리지 없이 R3을 생성합니다.</Banner>}
     {c.status === 'failed' && <Banner tone="warning">커버리지 조회에 실패했습니다. 다시 계산하세요.</Banner>}
     {beforeR3 && c.status === 'connected' && c.humanQueries?.length === 0 && <Banner>비교할 사람 검색어가 없습니다. 이 입력 없이 R3을 생성합니다.</Banner>}
-    <InsightCard eyebrow="커버리지 신호" insight={loading && c.m1 == null ? '커버리지를 계산하는 중입니다' : c.status === 'unavailable' || c.m1 == null ? '커버리지 계산 불가' : `사람들이 많이 찾는 표현의 ${percent(c.m1)}${josa(percent(c.m1), '을/를')} 덮고 있습니다.`} interpretation={<span aria-live="polite">{coverageInterpretation(c)}</span>} evidence={coverageEvidence(c)} nextAction={<><span>누락 쿼리를 확인하고 다음 라운드를 생성하세요.</span><Button size="sm" loading={busy || loading} onClick={onRefresh}>다시 계산하기</Button></>} />
-    <Card style={loading ? { opacity: 0.5 } : undefined}><h3 className="ds-t-card">지표 요약</h3><dl className="kw-metrics"><dt>{metrics.firstLabel}</dt><dd>{percent(c.status === 'unavailable' ? null : c.m1)}</dd><dt>⑥ 축 분포 차이 (JS)</dt><dd>{c.status === 'unavailable' || c.m6 == null ? '계산 불가' : c.m6.toFixed(2)}</dd><dt>⑦ LLM 단독</dt><dd>{metrics.m7}</dd></dl><h3 className="ds-t-card">{metrics.bandTitle}</h3><BarList max={1} items={metrics.bands} /></Card>
+    <InsightCard eyebrow="커버리지 신호" insight={loading && c.m1 == null ? '커버리지를 계산하는 중입니다' : c.status === 'unavailable' || c.m1 == null ? '커버리지 계산 불가' : `사람들이 많이 찾는 표현의 ${percent(c.m1)}${josa(percent(c.m1), '을/를')} 덮고 있습니다.`} interpretation={<span aria-live="polite">{coverageInterpretation(coverage)}</span>} evidence={coverageEvidence(c)} nextAction={<><span>누락 쿼리를 확인하고 다음 라운드를 생성하세요.</span><Button size="sm" loading={busy || loading} onClick={onRefresh}>다시 계산하기</Button></>} />
+    <Card><h3 className="ds-t-card">지표 요약</h3><dl className="kw-metrics"><dt>{metrics.firstLabel}</dt><dd>{percent(c.status === 'unavailable' ? null : c.m1)}</dd><dt>⑥ 축 분포 차이 (JS)</dt><dd>{c.status === 'unavailable' || c.m6 == null ? '계산 불가' : c.m6.toFixed(2)}</dd><dt>⑦ LLM 단독</dt><dd>{metrics.m7}</dd></dl><h3 className="ds-t-card">{metrics.bandTitle}</h3><BarList max={1} items={metrics.bands} /></Card>
     <div className="kw-table-wrap"><table className="kw-table"><caption>다음 라운드에 반영할 누락 쿼리</caption><thead><tr><th scope="col">{autocomplete ? '사람 검색어' : '사람 쿼리'}</th><th scope="col">{autocomplete ? '자동완성 순위' : '월간 검색수'}</th></tr></thead><tbody>{c.missing_top?.map(([query, volume]) => <tr key={query}><td>{query}</td><td>{volume.toLocaleString('ko-KR')}</td></tr>)}</tbody></table>{!c.missing_top?.length && <p className="ds-t-caption">{autocomplete ? (c.status === 'connected' ? '자동완성 검색어를 모두 덮고 있습니다.' : null) : '표시할 누락 쿼리가 없습니다.'}</p>}</div>
   </div>;
 }
