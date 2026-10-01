@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from app.config import settings
-from app.context import store, versions
+from app.context import stale, store, versions
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
@@ -44,16 +44,11 @@ def _completion(sid, data, version=None):
         return all(latest.get(name) == "done" for name in ("jev", "gpt"))
 
     def clusters_done():
-        # Clustering currently stores session-scoped results, not version artifacts.
-        job = job_manager.get("cluster", sid)
-        if job.get("status") == "done" and bool(job.get("clusters")):
-            return True
-        root = Path(settings.local_data_dir)
-        return any(
-            p.is_file() and p.stat().st_size > 0
-            for folder, pattern in (("clusters", "cluster_*.jsonl"), ("clusters_refined", "data_*.jsonl"))
-            for p in (root / folder / sid).glob(pattern)
-        )
+        # Session-scoped jobs cannot complete an invalidated version. Files
+        # are published individually and are not proof of a successful job.
+        if "stage6" in data.get("stale", {}):
+            return False
+        return job_manager.get("cluster", sid).get("status") == "done"
 
     def export_done():
         export_ref = data.get("training", {}).get("exportRef")
@@ -107,6 +102,7 @@ def get_session(sid: str, version: str | None = None):
     try:
         data = versions._data(sid, version) if version else store.load_session(sid) or load_json(f"sessions/{sid}/session.json")
         if data and not store.is_legacy(data):
+            data = stale.reconcile_judge_done(sid, data, version)
             data = {**data, "completion": _completion(sid, data, version)}
     except store.StoreError as exc:
         from fastapi.responses import JSONResponse

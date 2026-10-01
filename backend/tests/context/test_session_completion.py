@@ -1,4 +1,4 @@
-"""Completion is a local, read-only projection for active and selected versions."""
+"""Completion uses local evidence and recovers pending judge publication."""
 from contextlib import closing
 import socket
 import sqlite3
@@ -75,7 +75,7 @@ def test_cluster_result_and_session_milestones(client, data_dir, source):
         root.mkdir(parents=True)
         (root / ('cluster_0_123.jsonl' if source == 'clusters' else 'data_123.jsonl')).write_text('{"cluster":0}\n')
     result = client.get('/session/display').json()['data']['completion']
-    assert result == dict(crawlDone=False, prepDone=True, labelingDone=True, exportDone=True, clustersDone=True)
+    assert result == dict(crawlDone=False, prepDone=True, labelingDone=True, exportDone=True, clustersDone=source == 'job')
 
 
 def test_selected_version_does_not_use_active_milestones(client):
@@ -141,3 +141,28 @@ def test_malformed_milestone_is_isolated(field, completion):
     assert result[completion] is False
     assert all(result[name] for name in ('prepDone', 'labelingDone', 'exportDone')
         if name != completion)
+
+
+@pytest.mark.parametrize('status', ['error', 'running', 'not_found'])
+@pytest.mark.parametrize('folder', ['clusters', 'clusters_refined'])
+def test_partial_cluster_files_never_complete(client, data_dir, status, folder):
+    seed()
+    root = data_dir / folder / 'display'
+    root.mkdir(parents=True)
+    filename = 'cluster_0_123.jsonl' if folder == 'clusters' else 'data_123.jsonl'
+    (root / filename).write_text('{"cluster":0}\n')
+    sessions.job_manager.set('cluster', 'display', {'status': status,
+        'clusters': {'0': {'size': 1}}})
+    assert client.get('/session/display').json()['data']['completion']['clustersDone'] is False
+
+
+@pytest.mark.parametrize('restart', ['stage3', 'stage6'])
+def test_restarted_version_does_not_inherit_cluster_job(client, restart):
+    seed()
+    store.update_session('display', {'collectionId': None})
+    sessions.job_manager.set('cluster', 'display', {'status': 'done',
+        'clusters': {'0': {'size': 1}}})
+    versions.create_version('display', 'v1', restart, '')
+    for query in ('', '?version=v2'):
+        assert client.get('/session/display' + query).json()['data']['completion']['clustersDone'] is False
+    assert client.get('/session/display?version=v1').json()['data']['completion']['clustersDone'] is True

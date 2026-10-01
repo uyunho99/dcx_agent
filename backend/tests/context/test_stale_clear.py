@@ -135,3 +135,52 @@ def test_clear_is_idempotent_and_version_local(data_dir):
     clear_stale(sid, version, 'stage3')
     assert_stale(sid, version, 'stage3')
     assert_stale(sid, 'v1')
+
+
+@pytest.mark.parametrize('recovery', ['replay', 'active_read', 'selected_read'])
+def test_judge_publication_recovers_after_write_failure(client, monkeypatch, recovery):
+    from app.context.stale import judge_done
+
+    store.update_session('session', {'schemaVersion': 2, 'sid': 'session',
+        'version': 'v1', 'labeling': {'status': 'stale'}})
+    mark('session', 'v1')
+    add_run('jev', 'done', version='v1')
+    ctx = add_run('gpt', version='v1')
+    original_write = store.write_json
+    attempts = []
+
+    def failed_write(path, data):
+        attempts.append(path)
+        raise OSError('injected publication failure')
+
+    monkeypatch.setattr(store, 'write_json', failed_write)
+    with pytest.raises(OSError, match='injected publication failure'):
+        judge_done(ctx)
+    with transaction('session') as db:
+        assert [r['state'] for r in db.execute('SELECT state FROM runs')] == ['done', 'done']
+    assert_stale('session', 'v1')
+    # Read recovery is fail-soft while publication is still unavailable.
+    response = client.get('/session/session?version=v1')
+    assert response.status_code == 200
+    assert 'stage4' in response.json()['data']['stale']
+    assert_stale('session', 'v1')
+
+    writes = []
+    def restored_write(path, data):
+        writes.append(path)
+        original_write(path, data)
+
+    monkeypatch.setattr(store, 'write_json', restored_write)
+    for _ in range(2):
+        if recovery == 'replay':
+            judge_done(ctx)
+        else:
+            query = '?version=v1' if recovery == 'selected_read' else ''
+            response = client.get('/session/session' + query)
+            assert response.status_code == 200
+            assert 'stage4' not in response.json()['data']['stale']
+            assert response.json()['data']['labeling']['status'] == 'done'
+    assert_stale('session', 'v1', 'stage4')
+    assert versions._data('session', 'v1')['labeling']['status'] == 'done'
+    assert len(writes) == 1
+    assert len(attempts) == 2
