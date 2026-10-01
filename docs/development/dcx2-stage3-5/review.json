@@ -1,14 +1,14 @@
 {
   "verdict": "PASS",
-  "head": "49fc6f8a58c1e55eb5706ed10cc5900ae4701f9f",
-  "fingerprint": "5bf0ce7c3de8f72124b4601578ab8e8b9a95109e5ea5fd011a705afbc3ef10bc",
+  "head": "710a4df85c9ec61d98452b3146a2df7da2b71c8f",
+  "fingerprint": "499f04072c4cc4acdb84291980dc6f887bcb218098e83daa89febe1f66ce8170",
   "commands": [
     {
       "command": "backend/.venv/bin/python -m pytest backend/tests -q  (1279 passed)",
       "exitCode": 0
     },
     {
-      "command": "npm --prefix frontend test -- --run  (230 passed)",
+      "command": "npm --prefix frontend test -- --run  (242 passed)",
       "exitCode": 0
     },
     {
@@ -51,6 +51,11 @@
       "scope": "browser-QA fix dispatch 83c5701..adbef78 (Q1-Q12)",
       "result": "re-review Approved; Q8 backend unreproduced + regression tests, Q12 partial → recheck in QA round 2",
       "evidence": "docs/development/dcx2-stage3-5/reports/qa-fix1-report.md; docs/development/dcx2-stage3-5/reports/qa-fix1-fe-report.md; docs/development/dcx2-stage3-5/reports/qa-fix1-rereview.md"
+    },
+    {
+      "scope": "UAT feedback fix c0eea42..5af814c (U1-U4)",
+      "result": "Approved, 0 Critical/Important",
+      "evidence": "docs/development/dcx2-stage3-5/reports/uat-u1-report.md..uat-u4-report.md; docs/development/dcx2-stage3-5/reports/uat-fix1-review.md"
     }
   ],
   "resolvedFindings": [
@@ -156,6 +161,22 @@
     },
     {
       "id": "Q12",
+      "status": "fixed"
+    },
+    {
+      "id": "U1",
+      "status": "fixed"
+    },
+    {
+      "id": "U2",
+      "status": "fixed"
+    },
+    {
+      "id": "U3",
+      "status": "fixed"
+    },
+    {
+      "id": "U4",
       "status": "fixed"
     }
   ],
