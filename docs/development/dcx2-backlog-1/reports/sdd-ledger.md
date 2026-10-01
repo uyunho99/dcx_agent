@@ -17,3 +17,6 @@ Review-phase fixes committed 63d99dd,698dee3; backend 1430 (0 net), vitest 288.
 Rfix re-review: Needs fixes (I1 stage6 never cleared → clustersDone false forever in restarted versions; minors M1-M6). Round 2 dispatched: rfix2-cluster.md, rfix2-coverage.md.
 Round-2 fixes committed; backend 1447 (0 net), vitest 288.
 Rfix2 re-review Approved. Parked minors: clustering.py session['version'] KeyError risk; clusters_done no version compare; _restart keeps inherited clustering field.
+Browser QA 1: Q1-Q4 → retry. R-208. qfix-coverage/qfix-prep/qfix-fe dispatched.
+QA fixes committed; backend 1458 (0 net), vitest 294.
+QA-fix re-review Approved (reports/review-qfix-rereview.md). Parked minors: 1-char remainder broad match; no 'previous' label while loading; redundant without_product_query; prep save/clear_stale not atomic.
