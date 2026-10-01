@@ -8,6 +8,7 @@ import time
 
 from app.config import settings
 from app.context import versions
+from app.context.stale import judge_done
 from app.label import gpt
 from app.label.jev import get_jev_client as JevClient, JevError, build_state
 from app.label.questions import QVER, jev_questions
@@ -141,6 +142,7 @@ def run_worker(ctx):
                         return
                     time.sleep(.1)
                     continue
+                judge_done(ctx)
                 return
             lease_waits = 0
             batch = [docs[i] for i in ids]

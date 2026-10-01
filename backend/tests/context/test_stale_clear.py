@@ -1,0 +1,132 @@
+"""T10: only a successfully recompleted stage loses its stale banner."""
+import os
+import socket
+import time
+
+import pytest
+
+from app.config import settings
+from app.context import store, versions
+from app.model import export
+from app.prep import pipeline
+from app.work.status import transaction
+from app.work.worker import Context, execute
+from tests.prep.test_pipeline import setup, doc, Context as PrepContext
+from tests.label.test_judge import setup_judge
+from tests.model.test_model_mode import prepared
+from tests.model.test_export import seed
+
+
+STALE = {f'stage{n}': 'stage3 changed in v2' for n in range(3, 7)}
+
+
+@pytest.fixture(autouse=True)
+def offline(monkeypatch):
+    def forbidden(*args, **kwargs):
+        pytest.fail('T10 tests must not access the network')
+    monkeypatch.setattr(socket.socket, 'connect', forbidden)
+
+
+def mark(sid, version):
+    path = versions.version_dir(sid, version) / 'session.json'
+    data = store.read_json(path)
+    data['stale'] = dict(STALE)
+    store.write_json(path, data)
+
+
+def assert_stale(sid, version, cleared=None):
+    assert versions._data(sid, version)['stale'] == {
+        key: value for key, value in STALE.items() if key != cleared}
+
+
+@pytest.mark.parametrize('reuse', [False, True])
+def test_prep_completion_clears_only_stage3(setup, reuse):
+    setup([doc()])
+    if reuse:
+        pipeline.run_prep(PrepContext(), 's', 'v1')
+    version = versions.create_version('s', 'v1', 'stage3', '')
+    mark('s', version)
+    pipeline.run_prep(PrepContext(), 's', version)
+    assert versions._data('s', version)['prep']['reused'] is reuse
+    assert_stale('s', version, 'stage3')
+    assert 'stale' not in versions._data('s', 'v1')
+
+
+def test_interrupted_prep_keeps_stale(setup):
+    setup([doc()])
+    version = versions.create_version('s', 'v1', 'stage3', '')
+    mark('s', version)
+    pipeline.run_prep(PrepContext(stop_after=0), 's', version)
+    assert_stale('s', version)
+
+
+def add_run(labeler, state='running', version='v2', run_id=None, started=None):
+    run_id = run_id or labeler
+    now = time.time()
+    with transaction('session') as db:
+        db.execute('''INSERT INTO runs
+            (run_id,version,kind,labeler,args_json,pid,state,heartbeat_at,started_at)
+            VALUES (?,?,'judge',?,'{}',?,?,?,?)''',
+            (run_id, version, labeler, os.getpid(), state, now, started or now))
+    return Context('session', version, 'judge', {'labeler': labeler}, run_id)
+
+
+@pytest.mark.parametrize('other_state', ['running', 'paused', 'failed', 'interrupted', 'missing'])
+def test_judge_waits_for_both_workers(setup_judge, monkeypatch, other_state):
+    setup_judge.prepare(version='v2')
+    monkeypatch.setattr(settings, 'label_gpt_backend', 'fake')
+    mark('session', 'v2')
+    # A completed worker in another version cannot satisfy this version.
+    add_run('gpt', 'done', 'v1', 'old-version')
+    if other_state != 'missing':
+        add_run('gpt', other_state)
+    execute(add_run('jev'))
+    assert_stale('session', 'v2')
+    execute(add_run('gpt', run_id='gpt-retry'))
+    assert_stale('session', 'v2', 'stage4')
+    with transaction('session') as db:
+        assert db.execute("SELECT state FROM runs WHERE run_id='gpt-retry'").fetchone()[0] == 'done'
+
+
+def test_stopped_judge_preserves_stale(setup_judge, monkeypatch):
+    setup_judge.prepare(version='v2')
+    monkeypatch.setattr(settings, 'label_gpt_backend', 'fake')
+    mark('session', 'v2')
+    add_run('jev', 'done')
+    ctx = add_run('gpt')
+    with transaction('session') as db:
+        db.execute("UPDATE runs SET action='stop' WHERE run_id='gpt'")
+    execute(ctx)
+    assert_stale('session', 'v2')
+
+
+def test_export_clears_only_stage5(data_dir):
+    sid, _ = prepared(data_dir)
+    version = versions.create_version(sid, 'v1', 'stage5', '')
+    seed(sid)
+    mark(sid, version)
+    result = export.write(sid, version, without_model=True)
+    assert (data_dir / result['exportRef']).exists()
+    assert_stale(sid, version, 'stage5')
+    assert 'stale' not in versions._data(sid, 'v1')
+
+
+def test_failed_export_preserves_stale(data_dir):
+    sid, _ = prepared(data_dir)
+    version = versions.create_version(sid, 'v1', 'stage5', '')
+    mark(sid, version)
+    with pytest.raises(store.StoreError):
+        export.write(sid, version, without_model=True)
+    assert_stale(sid, version)
+
+
+def test_clear_is_idempotent_and_version_local(data_dir):
+    from app.context.stale import clear_stale
+    sid, _ = prepared(data_dir)
+    version = versions.create_version(sid, 'v1', 'stage3', '')
+    mark(sid, 'v1')
+    mark(sid, version)
+    clear_stale(sid, version, 'stage3')
+    clear_stale(sid, version, 'stage3')
+    assert_stale(sid, version, 'stage3')
+    assert_stale(sid, 'v1')

@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from app.config import settings
 
+from app.context.stale import clear_stale
 from app.context import store
 from app.label import report, rule
 from app.label.overview import labels_for, session
@@ -94,4 +95,5 @@ def write(sid, version=None, *, without_model=False):
         # remain together under stage5Ref/exportRef. Retain generations because
         # historical versions may still point to them.
         store.write_json(store.session_dir(sid) / 'stage_5.json', stage)
+        clear_stale(sid, data['version'], 'stage5', already_locked=True)
         return dict(exportRef=ref, allRef=base + '/all.jsonl', total=len(rows), relevant=len(relevant), stage5=stage)
