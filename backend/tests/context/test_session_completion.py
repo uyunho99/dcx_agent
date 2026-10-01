@@ -63,19 +63,21 @@ def test_latest_judge_runs_are_version_local(client, other):
     assert payload['completion']['labelingDone'] is (other == 'done')
 
 
-@pytest.mark.parametrize('source', ['job', 'clusters', 'clusters_refined'])
+@pytest.mark.parametrize('source', ['persisted', 'job', 'clusters', 'clusters_refined'])
 def test_cluster_result_and_session_milestones(client, data_dir, source):
     seed()
     store.update_session('display', {'prep': {'status': 'done'}, 'labeling': {'status': 'done'},
         'training': {'exportRef': 'exports/relevant.jsonl'}})
-    if source == 'job':
+    if source == 'persisted':
+        store.update_session('display', {'clustering': {'status': 'done', 'version': 'v1', 'at': store.now()}})
+    elif source == 'job':
         sessions.job_manager.set('cluster', 'display', {'status': 'done', 'clusters': {'0': {'size': 1}}})
     else:
         root = data_dir / source / 'display'
         root.mkdir(parents=True)
         (root / ('cluster_0_123.jsonl' if source == 'clusters' else 'data_123.jsonl')).write_text('{"cluster":0}\n')
     result = client.get('/session/display').json()['data']['completion']
-    assert result == dict(crawlDone=False, prepDone=True, labelingDone=True, exportDone=True, clustersDone=source == 'job')
+    assert result == dict(crawlDone=False, prepDone=True, labelingDone=True, exportDone=True, clustersDone=source == 'persisted')
 
 
 def test_selected_version_does_not_use_active_milestones(client):
@@ -98,6 +100,7 @@ def test_completion_failure_is_isolated(client, query, failure):
     store.update_session('display', {'prep': {'status': 'done'},
         'training': {'exportRef': 'exports/relevant.jsonl'}})
     sessions.job_manager.set('cluster', 'display', {'status': 'done', 'clusters': {'0': {'size': 1}}})
+    store.update_session('display', {'clustering': {'status': 'done', 'version': 'v1', 'at': store.now()}})
     if failure == 'invalid_collection':
         store.update_session('display', {'collectionId': '../invalid'})
         run('jev', 'done')
@@ -162,7 +165,87 @@ def test_restarted_version_does_not_inherit_cluster_job(client, restart):
     store.update_session('display', {'collectionId': None})
     sessions.job_manager.set('cluster', 'display', {'status': 'done',
         'clusters': {'0': {'size': 1}}})
+    store.update_session('display', {'clustering': {'status': 'done', 'version': 'v1', 'at': store.now()}})
     versions.create_version('display', 'v1', restart, '')
     for query in ('', '?version=v2'):
         assert client.get('/session/display' + query).json()['data']['completion']['clustersDone'] is False
     assert client.get('/session/display?version=v1').json()['data']['completion']['clustersDone'] is True
+
+
+@pytest.fixture
+def cluster_service(monkeypatch, data_dir):
+    import numpy as np
+    from app.services import clustering
+
+    monkeypatch.setattr(clustering, 'job_manager', sessions.job_manager)
+    monkeypatch.setattr(clustering, 'read_export', lambda *args: [
+        {'doc_id': 'a', 'title': 'alpha'}, {'doc_id': 'b', 'title': 'beta'}])
+    monkeypatch.setattr(clustering, 'prepared_root', lambda *args: data_dir)
+    monkeypatch.setattr(clustering.VectorStore, 'get',
+        lambda self, ids: (ids, np.asarray([[1., 0.], [0., 1.]])))
+    return clustering
+
+
+@pytest.mark.parametrize('restart', ['stage3', 'stage6'])
+def test_clustering_publishes_version_local_completion_surviving_restart(
+        client, monkeypatch, cluster_service, restart):
+    seed()
+    store.update_session('display', {'collectionId': None})
+    versions.create_version('display', 'v1', restart, '')
+    old_path = versions.version_dir('display', 'v1') / 'session.json'
+    old_bytes = old_path.read_bytes()
+    before_stale = versions._data('display', 'v2')['stale']
+    assert not client.get('/session/display').json()['data']['completion']['clustersDone']
+
+    cluster_service.run_clustering({'sid': 'display', 'num_clusters': 1})
+    assert sessions.job_manager.get('cluster', 'display')['status'] == 'done'
+    saved = versions._data('display', 'v2')
+    assert saved['clustering']['status'] == 'done'
+    assert saved['clustering']['version'] == 'v2'
+    from datetime import datetime
+    assert datetime.fromisoformat(saved['clustering']['at'])
+    assert saved['stale'] == {k: v for k, v in before_stale.items() if k != 'stage6'}
+    for query in ('', '?version=v2'):
+        assert client.get('/session/display' + query).json()['data']['completion']['clustersDone']
+    monkeypatch.setattr(sessions, 'job_manager', JobManager())
+    monkeypatch.setattr(cluster_service, 'job_manager', sessions.job_manager)
+    assert client.get('/session/display').json()['data']['completion']['clustersDone']
+    assert not client.get('/session/display?version=v1').json()['data']['completion']['clustersDone']
+    assert old_path.read_bytes() == old_bytes
+
+
+def test_failed_cluster_publication_preserves_stale(client, monkeypatch, cluster_service):
+    seed()
+    store.update_session('display', {'collectionId': None})
+    versions.create_version('display', 'v1', 'stage3', '')
+    before = versions._data('display', 'v2')
+    def fail(*args):
+        raise OSError('publication failed')
+    monkeypatch.setattr(cluster_service, 'save_jsonl', fail)
+    cluster_service.run_clustering({'sid': 'display', 'num_clusters': 1})
+    assert sessions.job_manager.get('cluster', 'display')['status'] == 'error'
+    assert versions._data('display', 'v2') == before
+    assert not client.get('/session/display').json()['data']['completion']['clustersDone']
+
+
+def test_cluster_cannot_complete_a_different_active_version(client, monkeypatch, cluster_service):
+    seed()
+    store.update_session('display', {'collectionId': None})
+    before = versions._data('display', 'v1')
+    monkeypatch.setattr(cluster_service, 'save_jsonl',
+        lambda *args: versions.create_version('display', 'v1', 'stage3', ''))
+    cluster_service.run_clustering({'sid': 'display', 'num_clusters': 1})
+    assert sessions.job_manager.get('cluster', 'display')['status'] == 'error'
+    assert versions._data('display', 'v1') == before
+    assert 'stage6' in versions._data('display', 'v2')['stale']
+    assert 'clustering' not in versions._data('display', 'v2')
+
+
+def test_session_save_cannot_overwrite_cluster_publication(client):
+    seed()
+    saved = {'status': 'done', 'version': 'v1', 'at': store.now()}
+    store.update_session('display', {'clustering': saved})
+    response = client.post('/save-session', json={'sid': 'display',
+        'data': {'clustering': {'status': 'running', 'version': 'v2'}}})
+    assert response.json()['status'] == 'saved'
+    assert versions._data('display', 'v1')['clustering'] == saved

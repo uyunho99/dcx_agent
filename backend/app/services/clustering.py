@@ -8,6 +8,7 @@ from app.services.s3 import load_data, save_jsonl
 from app.services.voyage import get_embeddings
 from app.jobs.manager import job_manager
 from app.context import store
+from app.context.stale import clear_stale
 from app.known.filter import read_export
 from app.known.store import prepared_root
 from app.vectors.store import VectorStore
@@ -20,10 +21,12 @@ def run_clustering(config: dict) -> None:
     job_manager.set("cluster", sid, {"status": "running", "phase": "loading", "progress": 0})
 
     try:
+        run_version = None
         session = store.load_session(sid) or {}
         if session and not store.is_legacy(session):
             with store.locked(sid):
-                session = store.load_session(sid)
+                session = store.assert_writable(sid)
+                run_version = session['version']
                 data = read_export(sid, session)
                 root = prepared_root(sid, session)
                 if root is None:
@@ -102,6 +105,16 @@ def run_clustering(config: dict) -> None:
         for cid in range(num_clusters):
             cdata = [d for d in data if d.get("cluster") == cid]
             save_jsonl(f"clusters/{sid}/cluster_{cid}_{ts}.jsonl", cdata)
+
+        if run_version is not None:
+            with store.locked(sid):
+                # A version switch during computation must not complete either
+                # the now-readonly source or the new active version.
+                store.assert_writable(sid, run_version)
+                store._update_locked(sid, {'clustering': {
+                    'status': 'done', 'version': run_version, 'at': store.now(),
+                }})
+                clear_stale(sid, run_version, 'stage6', already_locked=True)
 
         job_manager.set("cluster", sid, {
             "status": "done", "progress": 100,

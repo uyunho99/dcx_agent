@@ -44,11 +44,10 @@ def _completion(sid, data, version=None):
         return all(latest.get(name) == "done" for name in ("jev", "gpt"))
 
     def clusters_done():
-        # Session-scoped jobs cannot complete an invalidated version. Files
-        # are published individually and are not proof of a successful job.
+        # Only the selected version's durable publication is completion evidence.
         if "stage6" in data.get("stale", {}):
             return False
-        return job_manager.get("cluster", sid).get("status") == "done"
+        return data.get("clustering", {}).get("status") == "done"
 
     def export_done():
         export_ref = data.get("training", {}).get("exportRef")
@@ -79,7 +78,7 @@ def save_session(req: SessionSaveRequest, version: str | None = None):
             if (existing and not store.is_legacy(existing)) or req.data.get("schemaVersion") == 2:
                 owned = {"projectContext", "knownInsights", "keywords", "keywordRounds", "coverage",
                          "crawlConfig", "collectionId", "drafts", "schemaVersion", "sid",
-                         "prep", "labeling", "training", "completion",
+                         "prep", "labeling", "training", "clustering", "completion",
                          "parentVersion", "restartFrom", "stale", "updatedAt",
                          "bk", "pd", "problemDef", "allKw", "_pendingKw", "ages", "ar", "gens"}
                 patch = {k: v for k, v in req.data.items() if k not in owned and not k.startswith("version")}

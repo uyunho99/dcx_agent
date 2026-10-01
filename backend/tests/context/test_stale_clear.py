@@ -184,3 +184,30 @@ def test_judge_publication_recovers_after_write_failure(client, monkeypatch, rec
     assert versions._data('session', 'v1')['labeling']['status'] == 'done'
     assert len(writes) == 1
     assert len(attempts) == 2
+
+
+@pytest.mark.parametrize('explicit_version', [False, True])
+def test_reconcile_judge_done_skips_readonly_version(client, monkeypatch, explicit_version):
+    from app.context.stale import reconcile_judge_done
+
+    store.update_session('session', {'schemaVersion': 2, 'sid': 'session',
+        'version': 'v1', 'labeling': {'status': 'stale'}})
+    mark('session', 'v1')
+    add_run('jev', 'done', version='v1')
+    add_run('gpt', 'done', version='v1')
+    versions.create_version('session', 'v1', 'stage3', '')
+    old_path = versions.version_dir('session', 'v1') / 'session.json'
+    before = old_path.read_bytes()
+    old_data = versions._data('session', 'v1')
+    writes = []
+    original_write = store.write_json
+    def record_write(path, data):
+        writes.append(path)
+        original_write(path, data)
+    monkeypatch.setattr(store, 'write_json', record_write)
+    result = reconcile_judge_done('session', old_data, 'v1' if explicit_version else None)
+    assert result == old_data
+    assert client.get('/session/session?version=v1').status_code == 200
+    assert writes == []
+    assert old_path.read_bytes() == before
+    assert versions._data('session', 'v2')['labeling']['status'] == 'stale'

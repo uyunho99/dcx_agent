@@ -64,6 +64,7 @@ def reconcile_judge_done(sid, data, version=None):
                 selected = (store.read_json(store.root_dir(sid) / 'meta.json') or {}).get('activeVersion')
             if not selected:
                 return data
+            store.assert_writable(sid, selected)
             with closing(sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True)) as db:
                 complete = _judges_complete(db, selected)
             if complete:
