@@ -1,0 +1,95 @@
+{
+  "verdict": "PASS",
+  "head": "7f8d9ca6129d0a7f0c27cdc88c2e4dbfbb54d05f",
+  "fingerprint": "c50e01f71be403da0389c07321267faaad13156bb9934603d3d8b003c39163fc",
+  "commands": [
+    {
+      "command": "gstack qa-only (report-only) in Claude built-in browser against backend :8310 (fake LLM/embed/Jev/GPT, real Naver autocomplete) + next dev :3310; 3 rounds",
+      "exitCode": 0
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "QA-C1",
+      "url": "http://localhost:3310/pipeline/keywords",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-backlog-1/qa/qa-report-2026-10-01.md (1회차 · 2회차 표, qa2-c1-connected-92.jpg)"
+    },
+    {
+      "id": "QA-C2",
+      "url": "http://localhost:3310/pipeline/keywords",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-backlog-1/qa/qa-report-2026-10-01.md (1회차 · 2회차 표, qa-c2-loading.jpg, qa2-c2-loading-previous-dimmed.jpg)"
+    },
+    {
+      "id": "QA-C3",
+      "url": "http://localhost:3310/pipeline/keywords",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-backlog-1/qa/qa-report-2026-10-01.md (1회차 표, qa-c3-unavailable.jpg)"
+    },
+    {
+      "id": "QA-C4",
+      "url": "http://localhost:3310/pipeline/keywords",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-backlog-1/qa/qa-report-2026-10-01.md (1회차 · 2회차 표)"
+    },
+    {
+      "id": "QA-R3GATE",
+      "url": "http://localhost:3310/pipeline/keywords",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-backlog-1/qa/qa-report-2026-10-01.md (1회차 표(서버 409))"
+    },
+    {
+      "id": "QA-V1",
+      "url": "http://localhost:3310/pipeline/preprocess",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-backlog-1/qa/qa-report-2026-10-01.md (3회차 표, qa3-v1-*.jpg)"
+    },
+    {
+      "id": "QA-R",
+      "url": "http://localhost:3310/pipeline/keywords",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-backlog-1/qa/qa-report-2026-10-01.md (1회차 표(1024x768))"
+    }
+  ],
+  "partial": [
+    {
+      "id": "QA-S1",
+      "reason": "crawlDone 표시는 화면 확인; 저장 step이 뒤처진 경우는 시드로 재현 불가 → completedThrough.test.ts"
+    },
+    {
+      "id": "QA-M1",
+      "reason": "not run: fake monitor finishes instantly → test_versions_backlog1.py"
+    }
+  ],
+  "resolvedFindings": [
+    {
+      "id": "Q1",
+      "status": "fixed"
+    },
+    {
+      "id": "Q2",
+      "status": "fixed"
+    },
+    {
+      "id": "Q3",
+      "status": "fixed"
+    },
+    {
+      "id": "Q4",
+      "status": "fixed"
+    },
+    {
+      "id": "Q5",
+      "status": "fixed"
+    }
+  ],
+  "deferred": [
+    {
+      "id": "Q6",
+      "severity": "Low",
+      "to": "backlog (narrow-width restart popover clipped; component unchanged in this run)"
+    }
+  ],
+  "findings": []
+}
