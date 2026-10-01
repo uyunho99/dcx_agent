@@ -1,14 +1,14 @@
 {
   "verdict": "PASS",
-  "head": "6806e8b035c6702771343dc648719bfaf2b9cb3c",
-  "fingerprint": "0db1471d93430361740b677c0f9a919d6b3ac1c91ab38ca5b365b077101f3790",
+  "head": "c567a342cfe2b5c358d9d6cdf6268fb310556325",
+  "fingerprint": "c50e01f71be403da0389c07321267faaad13156bb9934603d3d8b003c39163fc",
   "commands": [
     {
       "command": "backend/.venv/bin/python -m pytest backend/tests -q  (1458 passed; external connects 0)",
       "exitCode": 0
     },
     {
-      "command": "npm --prefix frontend test -- --run  (294 passed)",
+      "command": "npm --prefix frontend test -- --run  (318 passed)",
       "exitCode": 0
     },
     {
@@ -46,6 +46,11 @@
       "scope": "browser QA round 1 fixes (b95e927..ad032f1)",
       "result": "scoped re-review Approved (0 Critical, 0 Important, 4 Minor parked)",
       "evidence": "docs/development/dcx2-backlog-1/reports/review-qfix-rereview.md; docs/development/dcx2-backlog-1/reports/qfix-coverage-report.md; docs/development/dcx2-backlog-1/reports/qfix-prep-report.md; docs/development/dcx2-backlog-1/reports/qfix-fe-report.md"
+    },
+    {
+      "scope": "browser QA round 2 fix Q5 (c0fc3ee..7eefcf6)",
+      "result": "Needs fixes (3 Important) → round 1 → re-review Approved",
+      "evidence": "docs/development/dcx2-backlog-1/reports/review-qfix2-rereview.md; docs/development/dcx2-backlog-1/reports/qfix2-refresh-report.md; docs/development/dcx2-backlog-1/reports/qfix2-round1-report.md"
     }
   ],
   "resolvedFindings": [
@@ -111,6 +116,22 @@
     },
     {
       "id": "QA-Q4",
+      "status": "fixed"
+    },
+    {
+      "id": "QA-Q5",
+      "status": "fixed"
+    },
+    {
+      "id": "QA2-I1",
+      "status": "fixed"
+    },
+    {
+      "id": "QA2-I2",
+      "status": "fixed"
+    },
+    {
+      "id": "QA2-I3",
       "status": "fixed"
     }
   ],
