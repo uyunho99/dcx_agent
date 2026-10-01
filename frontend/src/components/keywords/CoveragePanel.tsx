@@ -5,7 +5,10 @@ const percent = (v?: number | null) => v == null ? '계산 불가' : `${Math.rou
 export function coverageInterpretation(coverage: Coverage): string {
   if (coverage.status === 'loading' && coverage.source === 'searchad') return '네이버 검색광고에서 사람 검색어를 받는 중입니다.';
   if (coverage.status === 'loading') return '네이버 자동완성에서 사람 검색어를 받는 중입니다(약 20초).';
-  if (coverage.status === 'unavailable') return '네이버 자동완성을 받지 못해 커버리지를 계산할 수 없습니다. 판정은 플래그만 하며 자동 탈락시키지 않습니다.';
+  if (coverage.status === 'unavailable' || coverage.status === 'failed') {
+    const provider = coverage.source === 'searchad' ? '네이버 검색광고를' : '네이버 자동완성을';
+    return `${provider} 받지 못해 커버리지를 계산할 수 없습니다. 판정은 플래그만 하며 자동 탈락시키지 않습니다.`;
+  }
   if (coverage.status === 'unconnected') {
     return '검색광고가 연결되지 않아 사람 검색어를 받지 못했습니다. 판정은 플래그만 하며 자동 탈락시키지 않습니다.';
   }

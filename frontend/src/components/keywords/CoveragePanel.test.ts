@@ -14,8 +14,18 @@ it.each([[], undefined])('preserves R-114 unconnected copy with humanQueries=%j'
   expect(coverageInterpretation(coverage)).toBe('검색광고가 연결되지 않아 사람 검색어를 받지 못했습니다. 판정은 플래그만 하며 자동 탈락시키지 않습니다.');
   expect(render(coverage)).toContain('미연결 · 검색광고 API가 연결되지 않았습니다. 커버리지 없이 R3을 생성합니다.');
 });
-it.each(['connected', 'failed', undefined])('preserves round interpretation for %s', status => {
+it.each(['connected', undefined])('preserves round interpretation for %s', status => {
   expect(coverageInterpretation({ status, missing_top: [['검색어', 100]] })).toBe('누락 쿼리 1개가 다음 라운드의 입력에 반영됩니다. 판정은 플래그만 하며 자동 탈락시키지 않습니다.');
+});
+it.each([
+  ['autocomplete', 'unavailable', '자동완성을'],
+  ['autocomplete', 'failed', '자동완성을'],
+  ['searchad', 'unavailable', '검색광고를'],
+  ['searchad', 'failed', '검색광고를'],
+] as const)('explains %s %s using its source', (source, status, provider) => {
+  const copy = `네이버 ${provider} 받지 못해 커버리지를 계산할 수 없습니다. 판정은 플래그만 하며 자동 탈락시키지 않습니다.`;
+  expect(coverageInterpretation({ source, status })).toBe(copy);
+  expect(render({ source, status })).toContain(copy);
 });
 it('renders autocomplete insight, evidence and partial failures', () => {
   const html = render(autocomplete);

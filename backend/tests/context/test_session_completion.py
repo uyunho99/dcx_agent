@@ -1,6 +1,8 @@
 """Completion is a local, read-only projection for active and selected versions."""
 from contextlib import closing
 import socket
+import sqlite3
+from pathlib import Path
 
 import pytest
 
@@ -8,7 +10,7 @@ from app.context import store, versions
 from app.crawl.queue import CrawlQueue
 from app.jobs.manager import JobManager
 from app.routers import sessions
-from app.work.status import transaction
+from app.work.status import database_path, transaction
 
 
 @pytest.fixture(autouse=True)
@@ -87,3 +89,55 @@ def test_selected_version_does_not_use_active_milestones(client):
     assert client.get('/session/display').json()['data']['completion']['labelingDone'] is True
     old = client.get('/session/display?version=v1').json()['data']['completion']
     assert not any(old.values())
+
+
+@pytest.mark.parametrize('query', ['', '?version=v1'])
+@pytest.mark.parametrize('failure', ['invalid_collection', 'missing_runs_table'])
+def test_completion_failure_is_isolated(client, query, failure):
+    seed()
+    store.update_session('display', {'prep': {'status': 'done'},
+        'training': {'exportRef': 'exports/relevant.jsonl'}})
+    sessions.job_manager.set('cluster', 'display', {'status': 'done', 'clusters': {'0': {'size': 1}}})
+    if failure == 'invalid_collection':
+        store.update_session('display', {'collectionId': '../invalid'})
+        run('jev', 'done')
+        run('gpt', 'done')
+    else:
+        path = database_path('display')
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with closing(sqlite3.connect(path)) as db:
+            db.execute('CREATE TABLE unrelated (id INTEGER)')
+    response = client.get('/session/display' + query)
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload['status'] == 'ok'
+    assert payload['data']['completion'] == dict(crawlDone=False, prepDone=True,
+        labelingDone=failure == 'invalid_collection', exportDone=True, clustersDone=True)
+
+
+@pytest.mark.parametrize('query', ['', '?version=v1'])
+def test_missing_cluster_file_is_isolated(client, monkeypatch, query):
+    seed()
+    store.update_session('display', {'prep': {'status': 'done'},
+        'labeling': {'status': 'done'}, 'training': {'exportRef': 'export.jsonl'}})
+
+    def missing_files(*args, **kwargs):
+        raise FileNotFoundError('Cluster directory disappeared')
+
+    monkeypatch.setattr(Path, 'glob', missing_files)
+    response = client.get('/session/display' + query)
+    assert response.status_code == 200
+    assert response.json()['data']['completion'] == dict(crawlDone=False, prepDone=True,
+        labelingDone=True, exportDone=True, clustersDone=False)
+
+
+@pytest.mark.parametrize('field, completion', [('prep', 'prepDone'),
+    ('labeling', 'labelingDone'), ('training', 'exportDone')])
+def test_malformed_milestone_is_isolated(field, completion):
+    data = {'prep': {'status': 'done'}, 'labeling': {'status': 'done'},
+        'training': {'exportRef': 'export.jsonl'}}
+    data[field] = None
+    result = sessions._completion('display', data)
+    assert result[completion] is False
+    assert all(result[name] for name in ('prepDone', 'labelingDone', 'exportDone')
+        if name != completion)

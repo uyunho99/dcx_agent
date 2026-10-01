@@ -18,40 +18,62 @@ router = APIRouter()
 
 def _completion(sid, data, version=None):
     """Project durable local evidence without refreshing runs or writing state."""
-    from app.crawl.control import phase_state
-    from app.work.status import database_path
+    def crawl_done():
+        from app.crawl.control import phase_state
 
-    collection = data.get("collectionId")
-    crawl_done = bool(collection and phase_state(sid, collection) == "done")
-    labeling_done = data.get("labeling", {}).get("status") == "done"
-    selected = version or data.get("version")
-    if not selected:
-        selected = (store.read_json(store.root_dir(sid) / "meta.json") or {}).get("activeVersion")
-    path = database_path(sid)
-    if not labeling_done and selected and path.exists():
+        collection = data.get("collectionId")
+        return bool(collection and phase_state(sid, collection) == "done")
+
+    def labeling_done():
+        from app.work.status import database_path
+
+        if data.get("labeling", {}).get("status") == "done":
+            return True
+        selected = version or data.get("version")
+        if not selected:
+            selected = (store.read_json(store.root_dir(sid) / "meta.json") or {}).get("activeVersion")
+        path = database_path(sid)
+        if not selected or not path.exists():
+            return False
         latest = {}
         with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as db:
             for labeler, state in db.execute("""SELECT labeler, state FROM runs
                     WHERE version=? AND kind='judge'
                     ORDER BY started_at DESC, rowid DESC""", (selected,)):
                 latest.setdefault(labeler, state)
-        labeling_done = all(latest.get(name) == "done" for name in ("jev", "gpt"))
+        return all(latest.get(name) == "done" for name in ("jev", "gpt"))
 
-    # Clustering currently stores session-scoped results, not version artifacts.
-    job = job_manager.get("cluster", sid)
-    clusters_done = job.get("status") == "done" and bool(job.get("clusters"))
-    if not clusters_done:
+    def clusters_done():
+        # Clustering currently stores session-scoped results, not version artifacts.
+        job = job_manager.get("cluster", sid)
+        if job.get("status") == "done" and bool(job.get("clusters")):
+            return True
         root = Path(settings.local_data_dir)
-        clusters_done = any(
+        return any(
             p.is_file() and p.stat().st_size > 0
             for folder, pattern in (("clusters", "cluster_*.jsonl"), ("clusters_refined", "data_*.jsonl"))
             for p in (root / folder / sid).glob(pattern)
         )
-    export_ref = data.get("training", {}).get("exportRef")
-    return dict(crawlDone=crawl_done, prepDone=data.get("prep", {}).get("status") == "done",
-                labelingDone=labeling_done,
-                exportDone=isinstance(export_ref, str) and bool(export_ref.strip()),
-                clustersDone=clusters_done)
+
+    def export_done():
+        export_ref = data.get("training", {}).get("exportRef")
+        return isinstance(export_ref, str) and bool(export_ref.strip())
+
+    result = {}
+    for field, compute in (
+        ("crawlDone", crawl_done),
+        ("prepDone", lambda: data.get("prep", {}).get("status") == "done"),
+        ("labelingDone", labeling_done),
+        ("exportDone", export_done),
+        ("clustersDone", clusters_done),
+    ):
+        try:
+            result[field] = compute()
+        except Exception:
+            # Completion is optional evidence; one broken source must not block
+            # session/version reads or discard the other fields' evidence.
+            result[field] = False
+    return result
 
 
 @router.post("/save-session")
