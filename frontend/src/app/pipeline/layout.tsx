@@ -81,7 +81,7 @@ function PipelineShell({ children }: { children: React.ReactNode }) {
       <div className="pipeline-shell">
         <aside className="pipeline-side" aria-label="파이프라인">
           <Image className="pipeline-logo" src="/person-a-logo.png" alt="Person A" width={104} height={32} priority />
-          <StepBar currentStep={step} />
+          <StepBar currentStep={step} session={view.session ?? (view.readonly ? null : store.sd)} />
           <div className="pipeline-foot">
             <div className="ds-t-label text-ink-strong">{bk || "세션 없음"}</div>
             <VersionPicker />
