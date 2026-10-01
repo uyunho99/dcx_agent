@@ -1,3 +1,5 @@
+import ipaddress
+import socket
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -10,6 +12,33 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 # Keep the application singleton independent of a developer's real .env.
 with patch("pydantic_settings.sources.DotEnvSettingsSource.__call__", return_value={}):
     from app.config import settings
+
+
+@pytest.fixture(autouse=True)
+def fake_autocomplete(monkeypatch):
+    monkeypatch.setattr(settings, "autocomplete_backend", "fake")
+
+
+@pytest.fixture(autouse=True)
+def no_external_connections(monkeypatch):
+    original_connect = socket.socket.connect
+
+    def guarded_connect(sock, address):
+        if sock.family in (socket.AF_INET, socket.AF_INET6):
+            host = address[0]
+            loopback = host == "localhost"
+            if not loopback:
+                try:
+                    loopback = ipaddress.ip_address(host).is_loopback
+                except ValueError:
+                    loopback = False
+            if not loopback:
+                # Unlike OSError/AssertionError, this escapes application catch-all
+                # handlers that could otherwise turn network use into a pass.
+                pytest.fail(f"External network connection forbidden: {address!r}")
+        return original_connect(sock, address)
+
+    monkeypatch.setattr(socket.socket, "connect", guarded_connect)
 
 
 @pytest.fixture

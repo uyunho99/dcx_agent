@@ -48,23 +48,31 @@ def index_documents(sid, data, labels):
     with labels._db() as db:
         db.execute('CREATE TABLE IF NOT EXISTS documents (doc_id TEXT PRIMARY KEY, payload TEXT NOT NULL)')
         db.execute('CREATE TABLE IF NOT EXISTS document_files (path TEXT PRIMARY KEY, stamp TEXT)')
-        for path in sorted(root.glob('*.jsonl')):
-            stat = path.stat()
-            stamp = f'{stat.st_mtime_ns}:{stat.st_size}'
+    for path in sorted(root.glob('*.jsonl')):
+        stat = path.stat()
+        stamp = f'{stat.st_mtime_ns}:{stat.st_size}'
+        with labels._db() as db:
             seen = db.execute('SELECT stamp FROM document_files WHERE path=?', (str(path),)).fetchone()
-            if seen and seen[0] == stamp:
-                continue
-            with path.open(encoding='utf-8') as stream:
-                for line in stream:
-                    if not line.strip():
-                        continue
-                    doc = json.loads(line)
-                    # Only original text/source metadata is safe on a blind card.
-                    public = {key: doc[key] for key in ('doc_id', 'text', 'title', 'body', 'content', 'url', 'channel') if key in doc}
-                    if 'comments' in doc:
-                        public['comments'] = [{'text': c.get('text', '')} for c in doc['comments']]
-                    db.execute('INSERT OR REPLACE INTO documents VALUES (?,?)',
-                               (doc['doc_id'], json.dumps(public, ensure_ascii=False)))
+        if seen and seen[0] == stamp:
+            continue
+        batch = []
+        with path.open(encoding='utf-8') as stream:
+            for line in stream:
+                if not line.strip():
+                    continue
+                doc = json.loads(line)
+                # Only original text/source metadata is safe on a blind card.
+                public = {key: doc[key] for key in ('doc_id', 'text', 'title', 'body', 'content', 'url', 'channel') if key in doc}
+                if 'comments' in doc:
+                    public['comments'] = [{'text': c.get('text', '')} for c in doc['comments']]
+                batch.append((doc['doc_id'], json.dumps(public, ensure_ascii=False)))
+                if len(batch) == 10_000:
+                    with labels._db() as db:
+                        db.executemany('INSERT OR REPLACE INTO documents VALUES (?,?)', batch)
+                    batch.clear()
+        # Stamp only a complete file. Interrupted files are safely replayed.
+        with labels._db() as db:
+            db.executemany('INSERT OR REPLACE INTO documents VALUES (?,?)', batch)
             db.execute('INSERT OR REPLACE INTO document_files VALUES (?,?)', (str(path), stamp))
 
 

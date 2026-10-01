@@ -9,7 +9,8 @@ vi.mock('react', async () => ({...await vi.importActual('react'),
 }));
 vi.mock('next/navigation', () => ({useRouter: () => ({push: vi.fn()})}));
 vi.mock('@/stores/useSessionStore', () => ({useSessionStore: (select: any) => select({sid:'s'})}));
-vi.mock('@/components/versions/VersionProvider', () => ({useVersion: () => ({version:'v1',readonly:false})}));
+const refreshSessionAfterStage=vi.hoisted(()=>vi.fn().mockResolvedValue(undefined));
+vi.mock('@/components/versions/VersionProvider', () => ({useVersion: () => ({version:'v1',readonly:false,refreshSessionAfterStage})}));
 vi.mock('@/components/versions/StageVersion', () => ({RestartVersion:'RestartVersion'}));
 vi.mock('@/components/ds', () => ({Badge:'Badge',Button:'Button',Tabs:'Tabs'}));
 vi.mock('@/components/label/Overview', () => ({Overview:'Overview'}));
@@ -47,4 +48,18 @@ it('fetches overview before seen, displays server changes, and marks once across
  expect(tree.find(n=>n.type==='Tabs').props.items[0].content.props.overview).toBe(next);
  expect(markLabelSeen).toHaveBeenCalledTimes(1);
  expect(getLabelOverview).toHaveBeenCalledTimes(2);
+});
+
+it('refreshes the session once when both judges complete, including while review remains', async () => {
+ vi.useFakeTimers();
+ vi.mocked(markLabelSeen).mockResolvedValue({lastSeenAt:'now'});
+ const overview={started:true,mode:'llm',queue:{total:20},progress:{jev:{state:'done',runId:'j'},gpt:{state:'running',runId:'g'}}};
+ vi.mocked(getLabelOverview).mockResolvedValue(overview as any);
+ render();await vi.advanceTimersByTimeAsync(0);render();
+ expect(refreshSessionAfterStage).not.toHaveBeenCalled();
+ vi.mocked(getLabelOverview).mockResolvedValue({...overview,progress:{...overview.progress,gpt:{state:'done',runId:'g'}}} as any);
+ await vi.advanceTimersByTimeAsync(5000);render();
+ expect(refreshSessionAfterStage).toHaveBeenCalledTimes(1);
+ await vi.advanceTimersByTimeAsync(10000);render();
+ expect(refreshSessionAfterStage).toHaveBeenCalledTimes(1);
 });

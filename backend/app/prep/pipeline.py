@@ -12,6 +12,7 @@ import numpy as np
 
 from app.config import settings
 from app.context import store
+from app.context.stale import clear_stale
 from app.context.versions import version_dir
 from app.prep.clean import clean_html, strip_boilerplate, token_text
 from app.prep.config import PrepConfig, analyzer_version, prep_key
@@ -137,6 +138,7 @@ def _publish(sid, version, root, cfg, manifest, *, reused=False):
                                    derivedRef=dict(collectionId=manifest['collectionId'], prepKey=root.name),
                                    status='done', savedAt=store.now(), reused=reused)
             store.write_json(path, session)
+            clear_stale(sid, version, 'stage3', already_locked=True)
 
 
 def run_prep(ctx, sid: str, version: str) -> Path:

@@ -1,9 +1,11 @@
 import shutil
+import sqlite3
+from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 
 from app.config import settings
-from app.context import store, versions
+from app.context import stale, store, versions
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
@@ -14,6 +16,60 @@ from app.models.schemas import SessionSaveRequest
 router = APIRouter()
 
 
+def _completion(sid, data, version=None):
+    """Project durable local evidence without refreshing runs or writing state."""
+    def crawl_done():
+        from app.crawl.control import phase_state
+
+        collection = data.get("collectionId")
+        return bool(collection and phase_state(sid, collection) == "done")
+
+    def labeling_done():
+        from app.work.status import database_path
+
+        if data.get("labeling", {}).get("status") == "done":
+            return True
+        selected = version or data.get("version")
+        if not selected:
+            selected = (store.read_json(store.root_dir(sid) / "meta.json") or {}).get("activeVersion")
+        path = database_path(sid)
+        if not selected or not path.exists():
+            return False
+        latest = {}
+        with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as db:
+            for labeler, state in db.execute("""SELECT labeler, state FROM runs
+                    WHERE version=? AND kind='judge'
+                    ORDER BY started_at DESC, rowid DESC""", (selected,)):
+                latest.setdefault(labeler, state)
+        return all(latest.get(name) == "done" for name in ("jev", "gpt"))
+
+    def clusters_done():
+        # Only the selected version's durable publication is completion evidence.
+        if "stage6" in data.get("stale", {}):
+            return False
+        return data.get("clustering", {}).get("status") == "done"
+
+    def export_done():
+        export_ref = data.get("training", {}).get("exportRef")
+        return isinstance(export_ref, str) and bool(export_ref.strip())
+
+    result = {}
+    for field, compute in (
+        ("crawlDone", crawl_done),
+        ("prepDone", lambda: data.get("prep", {}).get("status") == "done"),
+        ("labelingDone", labeling_done),
+        ("exportDone", export_done),
+        ("clustersDone", clusters_done),
+    ):
+        try:
+            result[field] = compute()
+        except Exception:
+            # Completion is optional evidence; one broken source must not block
+            # session/version reads or discard the other fields' evidence.
+            result[field] = False
+    return result
+
+
 @router.post("/save-session")
 def save_session(req: SessionSaveRequest, version: str | None = None):
     try:
@@ -22,7 +78,7 @@ def save_session(req: SessionSaveRequest, version: str | None = None):
             if (existing and not store.is_legacy(existing)) or req.data.get("schemaVersion") == 2:
                 owned = {"projectContext", "knownInsights", "keywords", "keywordRounds", "coverage",
                          "crawlConfig", "collectionId", "drafts", "schemaVersion", "sid",
-                         "prep", "labeling", "training",
+                         "prep", "labeling", "training", "clustering", "completion",
                          "parentVersion", "restartFrom", "stale", "updatedAt",
                          "bk", "pd", "problemDef", "allKw", "_pendingKw", "ages", "ar", "gens"}
                 patch = {k: v for k, v in req.data.items() if k not in owned and not k.startswith("version")}
@@ -44,6 +100,9 @@ def save_session(req: SessionSaveRequest, version: str | None = None):
 def get_session(sid: str, version: str | None = None):
     try:
         data = versions._data(sid, version) if version else store.load_session(sid) or load_json(f"sessions/{sid}/session.json")
+        if data and not store.is_legacy(data):
+            data = stale.reconcile_judge_done(sid, data, version)
+            data = {**data, "completion": _completion(sid, data, version)}
     except store.StoreError as exc:
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=exc.status, content={"status": "error", "error": {"kind": exc.kind, "message": str(exc)}})

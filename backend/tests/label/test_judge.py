@@ -385,3 +385,21 @@ def test_worker_creates_audit_after_committed_batches(setup_judge, monkeypatch):
     assert observed == [0, 1, 2, 3]
     with LabelStore(versions.version_dir('session', 'v1'))._db() as db:
         assert db.execute('SELECT count(*) FROM audit_set WHERE round=1').fetchone()[0] == 2
+
+
+def test_worker_dispatch_preserves_context_notice_and_refresh(setup_judge):
+    from app.work import worker
+    env = setup_judge
+    env.prepare()
+    env.judge.run_worker(Context())
+    env.prepare(one_liner='다른 경험')
+    ctx = Context()
+    original = ctx.heartbeat
+    def heartbeat(progress, detail):
+        assert callable(ctx._heartbeat_callback)
+        ctx._heartbeat_callback()
+        original(progress, detail)
+    ctx.heartbeat = heartbeat
+    worker._judge(ctx)
+    assert any(d.get('message') == '판정 맥락이 바뀌어 다시 판정합니다' for d in ctx.details)
+    assert ctx._heartbeat_callback is None

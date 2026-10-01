@@ -10,6 +10,8 @@ import { useLabelSeen } from '@/components/label/useLabelSeen';
 import { Queue } from '@/components/label/Queue';
 import { Audit } from '@/components/label/Audit';
 import { getLabelOverview } from '@/lib/api/label';
+import { useStageCompletionRefresh } from '@/components/versions/useStageCompletionRefresh';
+import { labelCompletionKey } from '@/lib/refreshSessionAfterStage';
 import { displayError } from '@/lib/api/errors';
 import type { LegacyOverview, Overview as OverviewData } from '@/lib/types';
 
@@ -24,6 +26,7 @@ function LabelingScreen({sid}: {sid: string}) {
   const {version, readonly, session} = useVersion();
   const [tab, setTab] = useState('overview');
   const [overview, setOverview] = useState<OverviewData | LegacyOverview | null>(null);
+  useStageCompletionRefresh(labelCompletionKey(overview));
   const [error, setError] = useState('');
   const [seenError, setSeenError] = useState('');
   const [revision, setRevision] = useState(0);

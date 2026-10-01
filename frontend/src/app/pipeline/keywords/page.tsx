@@ -9,7 +9,7 @@ import { useSessionStore } from '@/stores/useSessionStore';
 import { Banner, Badge, BarList, Button, Card, ChoiceChips, Input, Popover, Select, Skeleton, Stepper, Tabs, type StepperItem } from '@/components/ds';
 import { SaveBar } from '@/components/SaveBar';
 import { KeywordGroup } from '@/components/keywords/KeywordGroup';
-import { CoveragePanel } from '@/components/keywords/CoveragePanel';
+import { CoveragePanel, startCoveragePolling } from '@/components/keywords/CoveragePanel';
 import { axes, destinations, groupKey, groupLabel } from '@/components/keywords/taxonomy';
 import { addKeyword, commitRound, getCoverage, KeywordApiError, postEvent, regenerateRound, startRound, suggestWords, type Axis, type Decision, type Destination, type Draft, type Keyword, type KeywordState, type Rejection } from '@/lib/api/keywords';
 import { contextRequest, patchSession } from '@/lib/api/context';
@@ -47,6 +47,8 @@ function KeywordScreen({ sid }: { sid: string }) {
   const [duplicate, setDuplicate] = useState<Keyword | null>(null);
   const nextRound = data?.keywordRounds[String(round + 1)];
   const current = data?.keywordRounds[String(round)]; const ui = roundUi({ round, status: current?.job.status, committed: current?.committed, gen: current?.gen, jobGen: current?.job.gen, needsRegeneration: current?.needsRegeneration, nextRound: nextRound ? {...nextRound, status: nextRound.job.status} : undefined, dirty });
+  const coverageLoading = data?.coverage.status === 'loading';
+  const r3Blocked = round === 3 && coverageLoading;
   const running = current?.job.status === 'running';
   const reportError = useCallback((e: unknown) => setError(displayError(e)), []);
   const reload = useCallback(async () => { const fresh = await getVersionKeywords(sid, version); setData(fresh); return fresh; }, [sid, version]);
@@ -64,6 +66,10 @@ function KeywordScreen({ sid }: { sid: string }) {
     }).catch(e => { if (!cancelled) reportError(e); });
     return () => { cancelled = true; };
   }, [sid, version, initialReadonly, reportError]);
+  useEffect(() => {
+    if (!coverageLoading) return;
+    return startCoveragePolling(() => getVersionKeywords(sid, version), setData, reportError);
+  }, [coverageLoading, sid, version, reportError]);
   useEffect(() => {
     if (!running || readonly) return;
     let cancelled = false; let timer: ReturnType<typeof setTimeout>;
@@ -99,7 +105,7 @@ function KeywordScreen({ sid }: { sid: string }) {
     });
   }
   async function saveDirection(targetRound = directionRound(round)) { if (direction.trim()) { const result = await postEvent(sid, { round: targetRound, type: 'direction', text: direction.trim() }, version); await patchSession(sid, {drafts:{keywords:{[`r${round}`]:{direction:''}}}}, version); if(drafts.current[`r${round}`]) drafts.current[`r${round}`].direction = ''; setData(d => d ? { ...d, feedback_md: result.feedback_md } : d); setDirection(''); setSavedDirection(''); } }
-  async function generate(n: number, regenerate = false) { if ((dirty && current) || (regenerate && !(n === round ? ui.canRegenerate : ui.canNext))) return; await action(async () => { await saveDirection(n); const job = await (regenerate ? regenerateRound(sid, n, version) : startRound(sid, n, version)); setOverrides({}); setDirty(false); setElapsed(0); setRound(n); setData(d => d ? { ...d, keywordRounds: { ...d.keywordRounds, [n]: { round: n, gen: job.gen, job, committed: false, keywords: [] } } } : d); await patchSession(sid, { step: `r${n}` }, version); useSessionStore.getState().setSession({ step: `r${n}` }); }); }
+  async function generate(n: number, regenerate = false) { if ((n === 3 && coverageLoading) || (dirty && current) || (regenerate && !(n === round ? ui.canRegenerate : ui.canNext))) return; await action(async () => { await saveDirection(n); const job = await (regenerate ? regenerateRound(sid, n, version) : startRound(sid, n, version)); setOverrides({}); setDirty(false); setElapsed(0); setRound(n); setData(d => d ? { ...d, keywordRounds: { ...d.keywordRounds, [n]: { round: n, gen: job.gen, job, committed: false, keywords: [] } } } : d); await patchSession(sid, { step: `r${n}` }, version); useSessionStore.getState().setSession({ step: `r${n}` }); }); }
   async function review(k: Keyword, rejection: Rejection | null, to?: Destination) {
     let failed: unknown;
     await action(async () => { try {
@@ -141,8 +147,8 @@ function KeywordScreen({ sid }: { sid: string }) {
     {error && <Banner tone="danger">{error}{duplicate && <Button size="sm" onClick={() => { reveal(duplicate); setDuplicate(null); }}>중복 키워드 확인하기</Button>}</Banner>}{notice && !readonly && <Banner>{notice}</Banner>}
     <div className="kw-layout"><div className="kw-main space-y-4"><Card><fieldset disabled={busy || running}><Input label="다음 라운드 방향 지시 (선택)" value={direction} onChange={e => setDirection(e.target.value)} placeholder="예: 영유아 관련 맥락을 더 발산해줘" /><div className="ds-actions"><Button disabled={!direction.trim()} onClick={() => void action(saveDirection)}>지시 저장하기</Button></div></fieldset></Card>
       {running ? <Card><p role="status" aria-live="polite">처리 중… R{round} 생성 중 · 보통 30~90초 · 경과 {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}</p><div className="space-y-4 mt-4">{[0, 1, 2].map(i => <Skeleton key={i} height={112} />)}</div><p className="ds-t-caption">다른 화면으로 이동해도 생성은 계속됩니다.</p></Card> : <>
-      {current?.job.status === 'failed' && <Banner tone="danger" actions={<Button disabled={busy} onClick={() => void generate(round)}>다시 생성하기</Button>}>R{round} 생성에 실패했습니다(원인: {reasons[current.job.error?.kind ?? ''] ?? '생성 도구 오류'}). 승인한 키워드는 그대로 있습니다. 다시 생성하세요.{current.job.error?.kind === 'backend' && ' 설정에서 claude_api로 바꿀 수 있습니다.'}</Banner>}
-      {current?.job.status === 'done' && !current.committed && (current?.keywords.length === 0 ? <Banner actions={<Button disabled={busy || !ui.canRegenerate} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}>새 키워드가 나오지 않았습니다. 방향 지시를 바꾸거나 다시 생성하세요.</Banner> : current?.below_min ? <Banner actions={<Button disabled={busy || !ui.canRegenerate} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}>목표 {current.below_min.min}개 중 {current.below_min.got}개가 생성되었습니다. 그대로 검토하거나 다시 생성하세요.</Banner> : null)}
+      {current?.job.status === 'failed' && <Banner tone="danger" actions={<Button disabled={busy || r3Blocked} onClick={() => void generate(round)}>다시 생성하기</Button>}>R{round} 생성에 실패했습니다(원인: {reasons[current.job.error?.kind ?? ''] ?? '생성 도구 오류'}). 승인한 키워드는 그대로 있습니다. 다시 생성하세요.{current.job.error?.kind === 'backend' && ' 설정에서 claude_api로 바꿀 수 있습니다.'}</Banner>}
+      {current?.job.status === 'done' && !current.committed && (current?.keywords.length === 0 ? <Banner actions={<Button disabled={busy || r3Blocked || !ui.canRegenerate} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}>새 키워드가 나오지 않았습니다. 방향 지시를 바꾸거나 다시 생성하세요.</Banner> : current?.below_min ? <Banner actions={<Button disabled={busy || r3Blocked || !ui.canRegenerate} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}>목표 {current.below_min.min}개 중 {current.below_min.got}개가 생성되었습니다. 그대로 검토하거나 다시 생성하세요.</Banner> : null)}
       {ui.canEdit && <Card><Tabs label="3축" value={axis} onChange={setAxis} items={[{ value: 'all', label: '전체' }, ...axes].map(a => ({ ...a, count: all.filter(k => a.value === 'all' || k.axis === a.value).length, content: a.value === axis ? reviewPanel : null }))} />
 
       </Card>}</>}
@@ -151,6 +157,7 @@ function KeywordScreen({ sid }: { sid: string }) {
     {INTERNAL_TOOLS && <Card><details><summary>keyword_feedback.md 미리보기 <Badge>내부용</Badge></summary><pre style={{color:"var(--ink)"}} className="ds-t-caption">{data.feedback_md || '아직 기록된 피드백이 없습니다.'}</pre></details></Card>}</aside></div>
     {data.keywordRounds['2']?.committed && <section className="mt-6" aria-label="커버리지 검사"><CoveragePanel beforeR3={!data.keywordRounds['3'] && !data.keywordRounds['4']} coverage={data.coverage} busy={busy || running} onRefresh={() => void action(async () => { await getCoverage(sid, version); await reload(); })} /></section>}
     <p className="ds-t-caption" aria-live="polite">승인 예정 {approved.length} · 거절 {all.length - approved.length}</p>
-    <SaveBar dirty={dirty || direction !== savedDirection} valid={ui.canCommit && !busy} saving={busy} onDraft={() => void draft()} onSave={() => void commit()} primary={<>{ui.showRegenerate && <Button disabled={busy || !ui.canRegenerate} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}<Button disabled={!ui.canStart || busy || (dirty && !!current)} onClick={() => void generate(round)}>{ui.final ? '추가 생성하기' : current?.job.status === 'failed' ? '다시 생성하기' : '생성하기'}</Button>{(round === 4 || !nextRound || ui.canNext) && <Button variant="primary" disabled={!ui.canNext || busy || dirty} onClick={() => void next()}>{round === 4 ? '크롤링 설정하기' : '다음 라운드 생성'}</Button>}</>} />
+    {(round === 2 || round === 3) && coverageLoading && <p role="status" aria-live="polite">커버리지를 받는 중입니다. 끝나면 R3를 만들 수 있습니다.</p>}
+    <SaveBar dirty={dirty || direction !== savedDirection} valid={ui.canCommit && !busy} saving={busy} onDraft={() => void draft()} onSave={() => void commit()} primary={<>{ui.showRegenerate && <Button disabled={busy || r3Blocked || !ui.canRegenerate} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}<Button disabled={!ui.canStart || busy || r3Blocked || (dirty && !!current)} onClick={() => void generate(round)}>{ui.final ? '추가 생성하기' : current?.job.status === 'failed' ? '다시 생성하기' : '생성하기'}</Button>{(round === 4 || !nextRound || ui.canNext) && <Button variant="primary" disabled={!ui.canNext || busy || dirty || (round === 2 && coverageLoading)} onClick={() => void next()}>{round === 4 ? '크롤링 설정하기' : '다음 라운드 생성'}</Button>}</>} />
   </div>;
 }

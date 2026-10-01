@@ -3,6 +3,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Check } from "lucide-react";
 
+import { completedThrough } from "@/lib/logic/completedThrough";
+
 import { useDirty } from "./DirtyProvider";
 
 const STEPS = [
@@ -35,9 +37,11 @@ export function stepIndex(step: string) {
   return STEP_MAP[step] ?? 0;
 }
 
-export default function StepBar({ currentStep }: { currentStep: string }) {
+export default function StepBar({ currentStep, session }: { currentStep: string; session?: Record<string, unknown> | null }) {
   const {confirmNavigation} = useDirty();
-  const index = stepIndex(currentStep);
+  // Saved step is exclusive; server completion includes the completed stage itself.
+  const completed = completedThrough(session);
+  const index = Math.max(stepIndex(currentStep), completed > 0 ? completed + 1 : 0);
   const pathname = usePathname();
   const viewed = STEPS.findIndex(step => step.path === pathname);
   return <div><div className="pipeline-group">파이프라인</div><nav className="pipeline-nav" aria-label="파이프라인 단계">{STEPS.map((step, i) => <Link key={step.path} href={step.path} onClick={e => {if(!confirmNavigation()) e.preventDefault();}} className={i === viewed ? "on" : i < index ? "done" : ""} aria-current={i === viewed ? "step" : undefined} aria-label={`${i + 1}. ${step.name}${i < index ? " 완료" : ""}`}><i className="n" aria-hidden="true">{i < index ? <Check size={14} /> : i + 1}</i><span>{step.name}</span>{i === viewed && <small>진행 중</small>}</Link>)}</nav></div>;

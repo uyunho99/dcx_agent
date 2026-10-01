@@ -28,7 +28,10 @@ class LabelStore:
             db.execute('CREATE INDEX IF NOT EXISTS human_doc ON human(doc_id, submitted_at)')
             db.execute('''CREATE TABLE IF NOT EXISTS audit_set (
                 round INTEGER NOT NULL, doc_id TEXT NOT NULL, picked_at REAL NOT NULL,
+                kind TEXT DEFAULT 'auto',
                 PRIMARY KEY(round, doc_id))''')
+            if 'kind' not in {row['name'] for row in db.execute('PRAGMA table_info(audit_set)')}:
+                db.execute("ALTER TABLE audit_set ADD COLUMN kind TEXT DEFAULT 'auto'")
             db.execute('''CREATE TABLE IF NOT EXISTS queue (
                 doc_id TEXT PRIMARY KEY, reason TEXT NOT NULL, priority REAL NOT NULL,
                 status TEXT NOT NULL DEFAULT 'open')''')

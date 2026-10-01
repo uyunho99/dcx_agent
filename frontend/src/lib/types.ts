@@ -155,3 +155,21 @@ export type PrepConfig = { adFilter: string[]; excludeSources: string[]; minBody
 export type PrepStatus = { config?: PrepConfig; status: WorkerState; progress: number; runId: string | null; detail?: Record<string, unknown>; derivedRef?: { collectionId: string; prepKey: string } | null; stage3?: Record<string, unknown> | null; error?: { kind: string; message: string } | null; reused?: boolean };
 export type ModelMetadata = { modelId: string; selectable?: boolean; reason?: string | null; metrics?: Record<string, unknown>; [key: string]: unknown };
 export type TrainingStatus = { readonly?: boolean; training: Record<string, unknown>; workers?: Worker[]; monitor?: (Partial<Worker> & { incomplete?: number }) | null; stage5?: Record<string, unknown> | null };
+
+export type Coverage = {
+  previous?: Pick<Coverage, 'source' | 'weighting' | 'humanQueries' | 'm1' | 'm2' | 'm2_bands' | 'm6' | 'm7' | 'm7_reason' | 'missing_top'>;
+  status?: string;
+  source?: 'searchad' | 'autocomplete';
+  weighting?: 'volume' | 'rank';
+  seeds?: number;
+  failedSeeds?: number;
+  startedAt?: string;
+  humanQueries?: [string, number][];
+  m1?: number | null;
+  m2?: (number | null)[] | null;
+  m2_bands?: { label: string; value: number | null }[];
+  m6?: number | null;
+  m7?: number | null;
+  m7_reason?: string | null;
+  missing_top?: [string, number][];
+};

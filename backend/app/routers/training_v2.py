@@ -65,7 +65,9 @@ def status(sid: str, version: str | None = None):
                         and r['kind'] == 'monitor'), None)
     monitor = training.get('monitor')
     if monitor_run:
-        reason = monitor_run.get('detail', {}).get('reason') or monitor_run.get('error')
+        reason = monitor_run.get('detail', {}).get('reason') or (monitor or {}).get('reason')
+        if not reason and monitor_run.get('error'):
+            reason = f"감시 중 오류가 났습니다({monitor_run['error']})."
         if not reason and monitor_run['state'] in ('failed', 'interrupted'):
             reason = '감시를 완료하지 못했습니다.'
         monitor = {**(monitor or {}), **monitor_run, 'reason': reason}

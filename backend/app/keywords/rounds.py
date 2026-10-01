@@ -1,18 +1,19 @@
 """Persistent keyword jobs. IDs are k_r{round}g{generation}_{1-based index:04d}."""
 from copy import deepcopy
 from dataclasses import asdict
+from datetime import datetime
 import json
 import logging
 from pathlib import Path
-from threading import Thread
+from threading import Event, Thread
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
 from app.config import settings
 from app.context import store
-from app.external import naver_searchad
-from app.external.base import Unconnected
+from app.external import naver_autocomplete, naver_searchad
+from app.external.base import Unconnected, configured
 from app.keywords import coverage
 from app.keywords.events import KeywordEvent, append_event, load_events
 from app.keywords.feedback import write_feedback_md
@@ -117,6 +118,9 @@ def start_round(sid, n, regenerate: bool = False, version=None) -> RoundJob:
         previous = rounds.get(str(n), {})
         if (previous.get('job') or {}).get('status') == 'running':
             return {}
+        cov = deepcopy(coverage_status(data.get('coverage') or {})) if n == 3 else None
+        if cov is not None and cov.get('status') == 'loading':
+            raise store.StoreError('커버리지를 받는 중입니다. 끝나면 R3를 만들 수 있습니다.', 409)
         restarting = previous.get('needsRegeneration', False) or (
             bool(data.get('stale', {}).get('stage1')) and previous.get('committed', False))
         if previous.get('committed') and n != 4 and not restarting:
@@ -133,6 +137,7 @@ def start_round(sid, n, regenerate: bool = False, version=None) -> RoundJob:
             'replacing': restarting or previous.get('replacing', False),
             'needsRegeneration': False,
             'keywords': previous.get('keywords', []) if regenerate and not previous.get('committed') else [],
+            **({'coverageSnapshot': _Replacement(cov)} if n == 3 else {}),
             'inputs': {}, 'below_min': None, 'promptVersion': PROMPT_VERSION[n],
             'job': job.model_dump()}}}
     data = mutate(sid, patch, version=version)
@@ -184,11 +189,14 @@ def _inputs(sid, data, n):
     feedback = write_feedback_md(sid)
     rejected = [k for k in _keywords(data) if k.status == 'rejected']
     signals = '\n'.join(f'{k.kw}: {json.dumps(k.reject, ensure_ascii=False)}' for k in rejected) or None
-    cov = data.get('coverage') or {}
+    admitted = data.get('keywordRounds', {}).get(str(n), {})
+    cov = (admitted['coverageSnapshot'] if n == 3 and 'coverageSnapshot' in admitted
+           else coverage_status(data.get('coverage') or {}))
     coverage_text = ''
     if cov.get('status') in ('connected', 'ok'):
-        coverage_text = json.dumps(cov['missing_top'], ensure_ascii=False) if cov.get('missing_top') else '부족 축 없음'
-    elif cov.get('status') == 'failed':
+        label = '자동완성 순위' if cov.get('source') == 'autocomplete' else '월간 검색수'
+        coverage_text = f'{label}: ' + json.dumps(cov['missing_top'], ensure_ascii=False) if cov.get('missing_top') else '부족 축 없음'
+    elif cov.get('status') in ('failed', 'unavailable'):
         coverage_text = '커버리지 계산 실패 — 축 분포 균형에 집중'
     project_type = ctx.get('projectType', {'choice': 'renewal'})
     return RoundInputs(
@@ -336,21 +344,118 @@ class HumanAxes(BaseModel):
     axes: dict[str, str]
 
 
-def compute_coverage(sid, version=None):
-    with store.locked(sid):
-        data = store.assert_writable(sid, version)
-        version = data.get("version")
-        directory = store.session_dir(sid)
+def coverage_status(saved):
+    """Interpret abandoned background work without fetching or mutating on reads."""
+    if saved.get('status') == 'loading':
+        try:
+            age = (datetime.fromisoformat(store.now()) -
+                   datetime.fromisoformat(saved.get('updatedAt') or saved['startedAt'])).total_seconds()
+        except (KeyError, TypeError, ValueError):
+            age = 121
+        if age > 120:
+            return {**saved, 'status': 'unavailable', 'error': {'kind': 'interrupted'}}
+    return saved
+
+
+def _coverage_patch(data, value):
+    ids = value.get('llm_only_ids', [])
+    keywords = [{**k, 'badges': [b for b in k.get('badges', []) if b != 'llm_only']
+                 + (['llm_only'] if k['id'] in ids else [])} for k in data.get('keywords', [])]
+    return {'coverage': _Replacement(value), 'keywords': keywords}
+
+
+def _recompute_coverage(data, saved):
+    llm = [k for k in _keywords(data) if k.status == 'approved' and k.origin == 'llm']
+    bk = data.get('projectContext', {}).get('bk', '')
+    weighting = saved.get('weighting', 'volume')
+    human = (coverage.without_product_query(saved['humanQueries'], bk)
+             if weighting == 'rank' else saved['humanQueries'])
+    report = asdict(coverage.compute(human, llm, saved.get('humanAxes'),
+                                    weighting=weighting, bk=bk))
+    return {**saved, **report, 'humanQueries': human, 'status': 'connected', 'error': None}
+
+
+def compute_coverage(sid, version=None, refresh=False):
+    """Recompute cached queries; explicit refresh replaces the human-query cache."""
+    created = False
+    def begin(data):
+        nonlocal created
+        saved = coverage_status(data.get('coverage') or {})
+        if saved.get('status') == 'loading':
+            return {}
+        if not refresh and 'humanQueries' in saved:
+            return _coverage_patch(data, _recompute_coverage(data, saved))
+        if not refresh and (saved.get('error') or {}).get('kind') == 'interrupted':
+            return {}
+        created = True
+        fields = {'humanQueries', 'humanAxes', 'source', 'weighting',
+                  *coverage.CoverageReport.__dataclass_fields__}
+        previous = ({key: saved[key] for key in fields if key in saved}
+                    if 'humanQueries' in saved else saved.get('previous'))
+        now = store.now()
+        return {'coverage': _Replacement({'status': 'loading',
+            'source': 'searchad' if all(configured(name) for name in
+                ('SEARCHAD_API_KEY', 'SEARCHAD_SECRET', 'SEARCHAD_CUSTOMER_ID')) else 'autocomplete',
+            **({'previous': previous} if previous is not None else {}),
+            'phase': 'fetching', 'startedAt': now, 'updatedAt': now})}
+    data = mutate(sid, begin, version=version)
+    value = coverage_status(data.get('coverage') or {})
+    if created:
+        # Capture the active version and context before returning to the caller.
+        with store.locked(sid):
+            store.assert_writable(sid, data.get('version'))
+            directory = store.session_dir(sid)
+        execute(lambda: _run_coverage(sid, data, directory))
+    return value
+
+
+def _run_coverage(sid, data, directory):
+    version = data.get('version')
+    started_at = data['coverage']['startedAt']
     approved = [k for k in _keywords(data) if k.status == 'approved']
-    saved = data.get('coverage') or {}
+    metadata = {'source': 'searchad', 'weighting': 'volume'}
+    def progress(values):
+        def patch(current):
+            saved = current.get('coverage') or {}
+            if saved.get('status') != 'loading' or saved.get('startedAt') != started_at:
+                raise _JobSuperseded('작업이 변경되었습니다')
+            return {'coverage': _Replacement({**saved, **values, 'updatedAt': store.now()})}
+        try:
+            mutate(sid, patch, version=version)
+        except _JobSuperseded:
+            raise
+        except Exception:
+            logger.warning('Could not persist coverage progress for session %s', sid)
+    # Cover fetching as well as classification; per-seed callbacks also stop
+    # superseded autocomplete work at the next bounded request boundary.
+    stopped = Event()
+    def heartbeat():
+        while not stopped.wait(30):
+            try:
+                progress({})
+            except Exception:
+                return
+    worker = Thread(target=heartbeat, daemon=True, name='coverage-heartbeat')
+    worker.start()
     try:
-        human = saved.get('humanQueries')
-        if human is None:
-            top = sorted(approved, key=lambda k: (k.volume or {}).get('monthly') or 0, reverse=True)[:4]
-            hints = [data.get('projectContext', {}).get('bk', '')] + [k.kw for k in top]
-            human = naver_searchad.related_queries([h for h in hints if h])
-        human_axes = saved.get('humanAxes')
-        if human and human_axes is None:
+        top = sorted(approved, key=lambda k: (k.volume or {}).get('monthly') or 0, reverse=True)[:4]
+        bk = data.get('projectContext', {}).get('bk', '')
+        hints = [h for h in [bk] + [k.kw for k in top] if h]
+        metadata.update(seeds=len(hints), failedSeeds=0)
+        try:
+            human = naver_searchad.related_queries(hints)
+        except Unconnected:
+            # Stable round sorting retains generation/display order within a round.
+            llm = sorted((k for k in approved if k.origin == 'llm'), key=lambda k: k.round)
+            seeds = ([bk] if bk and bk.strip() else []) + [k.kw for k in llm[:20]]
+            metadata = {'source': 'autocomplete', 'weighting': 'rank',
+                        'seeds': len(seeds), 'failedSeeds': len(seeds)}
+            result = naver_autocomplete.suggestions(seeds, on_progress=lambda: progress({}))
+            human = coverage.without_product_query(result.queries, bk)
+            metadata.update(seeds=result.total, failedSeeds=result.failed)
+        human_axes = None
+        progress({**metadata, 'humanQueries': human, 'humanAxes': None, 'phase': 'classifying'})
+        if human:
             context_md = (directory / 'project_context.md').read_text(encoding='utf-8')
             classification = run_task(LLMTask(task='kw_axis_classify', sid=sid,
                 instructions='각 검색어를 physical, psychological, behavioral 중 하나로 분류하세요. axes는 검색어→축 매핑입니다.\n'
@@ -358,21 +463,34 @@ def compute_coverage(sid, version=None):
                 attachments=[Attachment(title='project_context.md', body=context_md)], output_schema=HumanAxes))
             if classification.ok:
                 human_axes = classification.data.axes
-        report = asdict(coverage.compute(human, [k for k in approved if k.origin == 'llm'], human_axes))
+        report = asdict(coverage.compute(human, [k for k in approved if k.origin == 'llm'],
+                                         human_axes, weighting=metadata['weighting'], bk=bk))
         value = {'status': 'connected', 'humanQueries': human, 'humanAxes': human_axes, **report}
-    except Unconnected:
-        value = {'status': 'unconnected'}
-    except store.StoreError:
-        raise
+    except _JobSuperseded:
+        return
+    except naver_autocomplete.AutocompleteUnavailable:
+        value = {'status': 'unavailable', 'error': {'kind': 'autocomplete_unavailable'}}
     except Exception:
         value = {'status': 'failed', 'error': {'kind': 'request_failed'}}
-    def patch(current):
-        keywords = current.get('keywords', [])
-        ids = value.get('llm_only_ids', [])
-        keywords = [{**k, 'badges': [b for b in k.get('badges', []) if b != 'llm_only'] + (['llm_only'] if k['id'] in ids else [])} for k in keywords]
-        return {'coverage': _Replacement(value), 'keywords': keywords}
-    mutate(sid, patch, version=version)
-    return value
+    finally:
+        stopped.set()
+        worker.join()
+    value.update(metadata)
+    value.update(phase='done', updatedAt=store.now())
+    def finish(current):
+        saved = current.get('coverage') or {}
+        if saved.get('status') != 'loading' or saved.get('startedAt') != started_at:
+            raise _JobSuperseded('작업이 변경되었습니다')
+        if value['status'] == 'connected':
+            value.update(_recompute_coverage(current, value))
+        return _coverage_patch(current, value)
+    try:
+        mutate(sid, finish, version=version)
+    except store.StoreError:
+        # A superseding request/version owns its own result; never overwrite it.
+        return
+    except Exception:
+        logger.error('Could not persist coverage for session %s', sid)
 
 
 class Duplicate(store.StoreError):

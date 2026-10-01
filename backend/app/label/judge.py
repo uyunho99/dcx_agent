@@ -8,6 +8,7 @@ import time
 
 from app.config import settings
 from app.context import versions
+from app.context.stale import judge_done
 from app.label import gpt
 from app.label.jev import get_jev_client as JevClient, JevError, build_state
 from app.label.questions import QVER, jev_questions
@@ -94,25 +95,27 @@ def run_worker(ctx):
                     docs[doc['doc_id']] = doc
     changed = not (root / 'votes.sqlite').exists() and any(root.parent.glob('*/votes.sqlite'))
     cache = VoteCache(root)
-    cache.seed(docs)
-    from app.label.route import sync
-    from app.label.store import LabelStore
-    labels = LabelStore(versions.version_dir(ctx.sid, ctx.version))
-    caches = {name: VoteCache(cache_root(ctx.sid, ref['prepKey'], name, one_liner))
-              for name in ('jev', 'gpt')}
-    # Bootstrap cached results on restart, even if there is no work to lease.
-    sync(labels, caches['jev'], caches['gpt'])
-    ctx_key = context_key(one_liner, labeler)
-    recent = deque([(time.monotonic(), cache.counts()['done'])])
-    message = '판정 맥락이 바뀌어 다시 판정합니다' if changed else None
-    batch_size = 50 if labeler == 'jev' else settings.label_batch_size
-    if batch_size <= 0:
-        raise ValueError('Batch size must be positive')
-    total_estimate = estimate(list(docs.values()), one_liner, labeler)
-    client = JevClient(settings.jev_api_keys, settings.jev_model) if labeler == 'jev' else None
-    transient_failures = 0
-    lease_waits = 0
+    ctx._heartbeat_callback = lambda: cache.refresh(ctx.run_id)
+    client = None
     try:
+        cache.seed(docs)
+        from app.label.route import sync
+        from app.label.store import LabelStore
+        labels = LabelStore(versions.version_dir(ctx.sid, ctx.version))
+        caches = {name: VoteCache(cache_root(ctx.sid, ref['prepKey'], name, one_liner))
+                  for name in ('jev', 'gpt')}
+        # Bootstrap cached results on restart, even if there is no work to lease.
+        sync(labels, caches['jev'], caches['gpt'])
+        ctx_key = context_key(one_liner, labeler)
+        recent = deque([(time.monotonic(), cache.counts()['done'])])
+        message = '판정 맥락이 바뀌어 다시 판정합니다' if changed else None
+        batch_size = 50 if labeler == 'jev' else settings.label_batch_size
+        if batch_size <= 0:
+            raise ValueError('Batch size must be positive')
+        total_estimate = estimate(list(docs.values()), one_liner, labeler)
+        client = JevClient(settings.jev_api_keys, settings.jev_model) if labeler == 'jev' else None
+        transient_failures = 0
+        lease_waits = 0
         while True:
             counts = cache.counts()
             progress = (counts['done'] + counts['bad']) / len(docs) if docs else 1
@@ -141,6 +144,7 @@ def run_worker(ctx):
                         return
                     time.sleep(.1)
                     continue
+                judge_done(ctx)
                 return
             lease_waits = 0
             batch = [docs[i] for i in ids]
@@ -190,6 +194,7 @@ def run_worker(ctx):
             while len(recent) > 1 and recent[0][0] < time.monotonic() - 600:
                 recent.popleft()
     finally:
+        ctx._heartbeat_callback = None
         cache.release()
         if client is not None:
             client.close()

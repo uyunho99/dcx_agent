@@ -86,6 +86,12 @@ class VoteCache:
             db.executemany('UPDATE votes SET run_id=?, at=? WHERE doc_id=?', ((run_id, time.time(), i) for i in ids))
             return ids
 
+    def refresh(self, run_id):
+        """Renew this run's pending leases using a thread-local connection."""
+        with self._db() as db:
+            db.execute("UPDATE votes SET at=? WHERE run_id=? AND status='pending'",
+                       (time.time(), run_id))
+
     def put(self, doc_id, payload):
         raw = json.dumps(payload, ensure_ascii=False, allow_nan=False)
         with self._db() as db:

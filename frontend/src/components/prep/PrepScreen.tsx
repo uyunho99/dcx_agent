@@ -20,7 +20,7 @@ import { RestartVersion } from '@/components/versions/StageVersion';
 import { embedderLabel } from '@/lib/logic/browserQa';
 
 export function PrepScreen({ sid }: { sid: string }) {
-  const { version, readonly } = useVersion();
+  const { version, readonly, refreshSessionAfterStage } = useVersion();
   const router = useRouter();
   const { register, confirmNavigation } = useDirty();
   const [editLock, setEditLock] = useState<string | null>(null);
@@ -77,6 +77,7 @@ export function PrepScreen({ sid }: { sid: string }) {
         const fresh = await getPrepStatus(sid, version);
         if (cancelled) return;
         setStatus(fresh); setPollError('');
+        if (fresh.status === 'done') await refreshSessionAfterStage().catch(() => {});
         if (fresh.status !== 'running' && fresh.status !== 'paused') return;
       } catch (cause) {
         if (cancelled) return;
@@ -86,7 +87,7 @@ export function PrepScreen({ sid }: { sid: string }) {
     }
     void poll();
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [sid, version, view.running, paused, readonly, pollRetry]);
+  }, [sid, version, view.running, paused, readonly, pollRetry, refreshSessionAfterStage]);
 
   const act = useCallback(async (task: () => Promise<void>) => {
     if (lock.current || readonly) return;
@@ -114,6 +115,7 @@ export function PrepScreen({ sid }: { sid: string }) {
         });
         if (!mounted.current) return;
         setStatus(result.status); setDirty(false); setPollError('');
+        if (result.status.status === 'done') await refreshSessionAfterStage().catch(() => {});
         if (!result.draftCleared) setNotice('전처리는 시작했지만 임시 설정을 정리하지 못했습니다. 임시 저장으로 현재 설정을 다시 저장하세요.');
       } catch (cause) {
         // PUT config invalidates the previous result even if POST run fails.
