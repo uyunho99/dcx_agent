@@ -6,7 +6,8 @@ export type Keyword = Destination & { id: string; kw: string; round: number; ori
 export type Decision = { id: string; status: 'approved' | 'rejected'; reject?: Rejection | null };
 export type Job = { status: 'running' | 'done' | 'failed'; round: number; gen: number; startedAt: string; error?: { kind: string; message?: string } | null };
 export type Round = { needsRegeneration?: boolean; round: number; gen: number; job: Job; committed: boolean; keywords: Keyword[]; below_min?: { got: number; min: number } | null };
-export type Coverage = { status?: string; m1?: number | null; m2?: (number | null)[]; m6?: number | null; m7?: number | null; missing_top?: [string, number][]; humanQueries?: unknown[] };
+import type { Coverage } from '@/lib/types';
+export type { Coverage } from '@/lib/types';
 export type KeywordState = { keywords: Keyword[]; keywordRounds: Record<string, Round>; coverage: Coverage; feedback_md: string };
 export type Draft = { round: number; gen: number; decisions: Decision[]; groups?: Destination[]; direction?: string };
 export class KeywordApiError extends Error {
@@ -28,4 +29,4 @@ export type ReviewEvent = { round: number; type: 'direction' | 'approve' | 'reje
 export const postEvent = (sid: string, event: ReviewEvent, version?: string) => request<{ feedback_md: string }>(sid, '/events', 'POST', event, version);
 export const addKeyword = (sid: string, kw: string, to: Destination, origin: 'manual' | 'suggested', version?: string) => request<Keyword>(sid, '/manual', 'POST', { kw, ...to, origin }, version);
 export const suggestWords = (sid: string, to: Destination, version?: string) => request<{ words: { word: string; type: string }[] }>(sid, '/suggest-words', 'POST', to, version);
-export const getCoverage = (sid: string, version?: string) => request<Coverage>(sid, '/coverage', 'POST', undefined, version);
+export const getCoverage = (sid: string, version?: string) => request<Coverage>(sid, '/coverage?refresh=true', 'POST', undefined, version);
