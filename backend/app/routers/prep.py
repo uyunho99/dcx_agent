@@ -7,6 +7,7 @@ from pydantic import ConfigDict
 
 from app.config import settings
 from app.context import store, versions
+from app.context.stale import clear_stale
 from app.prep.config import PrepConfig
 from app.prep.guards import assert_ready
 from app.routers.context import ContextRoute
@@ -109,6 +110,7 @@ def run(sid: str, version: str | None = None):
                 and (root / 'stage_3.json').exists()
                 and (Path(settings.local_data_dir) / manifest['compatRef']).exists()):
             _save(sid, config=cfg.model_dump(), derivedRef=ref, status='done', runId=None, reused=True)
+            clear_stale(sid, data['version'], 'stage3', already_locked=True)
             return {**_view(sid, store.load_session(sid)), 'reused': True}
         work = runner.start(sid, data['version'], 'prep', {'config': cfg.model_dump()})
         _save(sid, config=cfg.model_dump(), derivedRef=ref, status=work['state'], runId=work['runId'], reused=False)
