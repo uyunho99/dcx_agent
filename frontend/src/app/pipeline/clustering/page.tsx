@@ -3,12 +3,15 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSessionStore } from "@/stores/useSessionStore";
 import { startCluster, getClusterStatus, clusterRefine, saveSession } from "@/lib/api";
+import { useVersion } from "@/components/versions/VersionProvider";
+import { useStageCompletionRefresh } from "@/components/versions/useStageCompletionRefresh";
 import { usePolling } from "@/lib/usePolling";
 import ProgressBar from "@/components/ProgressBar";
 import Spinner from "@/components/Spinner";
 
 export default function ClusteringPage() {
   const router = useRouter();
+  const {readonly} = useVersion();
   const store = useSessionStore();
   const { sid, sd } = store;
 
@@ -18,14 +21,16 @@ export default function ClusteringPage() {
 
   const fetcher = useCallback(() => getClusterStatus(sid!), [sid]);
   const shouldStop = useCallback((d: Record<string, unknown>) => d.status === "done" || d.status === "error", []);
-  const { data } = usePolling({ fetcher, interval: 4000, enabled: started && !!sid, shouldStop });
+  const { data } = usePolling({ fetcher, interval: 4000, enabled: started && !!sid && !readonly, shouldStop });
 
   const status = (data?.status as string) || "";
+  useStageCompletionRefresh(status === "done" ? "clusters" : null);
   const progress = (data?.progress as number) || 0;
   const numClusters = (data?.num_clusters as number) || 0;
   const clusters = (data?.clusters as Record<string, { size: number; keywords: string[]; samples?: { title: string; desc: string; cafe: string; kw?: string }[] }>) || {};
 
   const handleStart = async () => {
+    if (readonly) return;
     await startCluster({ sid });
     setStarted(true);
   };
@@ -46,6 +51,7 @@ export default function ClusteringPage() {
   };
 
   const handleRefine = async () => {
+    if (readonly) return;
     await clusterRefine({ sid, keepClusters: Array.from(keepClusters).join(","), mergeClusters: mergeInput });
     const updated = { ...sd!, step: "persona" };
     store.setSession({ sd: updated, step: "persona" });

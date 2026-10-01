@@ -7,8 +7,10 @@ vi.mock('react', async () => ({...await vi.importActual('react'),
   useEffect: (effect: () => any, deps: any[]) => {const i=hooks.cursor++; const old=hooks.slots[i]; if (!old || deps.some((d,j)=>d!==old.deps[j])) hooks.effects.push(()=>{old?.cleanup?.(); hooks.slots[i]={deps,cleanup:effect()};});},
 }));
 vi.mock('next/navigation', () => ({useRouter: () => ({push: vi.fn()})}));
-vi.mock('@/stores/useSessionStore', () => ({useSessionStore: (select: any) => select({sid:'s'})}));
-vi.mock('@/components/versions/VersionProvider', () => ({useVersion: () => ({version:'v1',readonly:false})}));
+vi.mock('@/stores/useSessionStore', () => ({useSessionStore: Object.assign((select: any) => select({sid:'s'}),{getState:()=>({setSession:vi.fn()})})}));
+const refreshSessionAfterStage=vi.hoisted(()=>vi.fn().mockResolvedValue(undefined));
+vi.mock('@/components/versions/VersionProvider', () => ({useVersion: () => ({version:'v1',readonly:false,refreshSessionAfterStage})}));
+vi.mock('@/lib/api/context',()=>({patchSession:vi.fn().mockResolvedValue({})}));
 vi.mock('@/components/ds', () => ({Banner:'Banner',Button:'Button',Card:'Card',ProgressBar:'ProgressBar'}));
 vi.mock('@/components/label/LevelBadge', () => ({LevelBadge:'LevelBadge'}));
 vi.mock('@/components/train/ModelRepository', () => ({ModelRepository:'ModelRepository'}));
@@ -16,7 +18,7 @@ vi.mock('@/components/train/TrainingResult', () => ({TrainingResult:'TrainingRes
 vi.mock('@/lib/api/train', () => ({getTrainingStatus:vi.fn(),getModels:vi.fn().mockResolvedValue({models:[]}),startTraining:vi.fn(),exportTraining:vi.fn()}));
 vi.mock('@/lib/api/label', () => ({getLabelOverview:vi.fn()}));
 import TrainingPage from './page';
-import { getTrainingStatus, getModels, startTraining } from '@/lib/api/train';
+import { getTrainingStatus, getModels, startTraining, exportTraining } from '@/lib/api/train';
 import { getLabelOverview } from '@/lib/api/label';
 function nodes(node: any): any[] {return !node || typeof node!=='object' ? [] : Array.isArray(node) ? node.flatMap(nodes) : [node,...nodes(node.props?.children)];}
 function render() {
@@ -77,4 +79,16 @@ it('enables fresh and additional training for 40 human-only labels', async () =>
   expect(tree.find(n=>n.props?.children==='학습 시작').props.disabled).toBe(false);
   expect(tree.find(n=>n.type==='ModelRepository').props.disabled).toBe(false);
   expect(tree.some(n=>Array.isArray(n.props?.children) && n.props.children[0]==='학습할 라벨 ' && n.props.children[1]==='40')).toBe(true);
+});
+
+it('refreshes after exportRef is returned even without a model', async () => {
+ vi.useFakeTimers();
+ vi.mocked(getTrainingStatus).mockResolvedValue({training:{}});
+ vi.mocked(getLabelOverview).mockResolvedValue({accepted:0,queue:{total:0}} as any);
+ vi.mocked(exportTraining).mockResolvedValue({exportRef:'out.jsonl',allRef:'all.jsonl',total:0,relevant:0,stage5:{}});
+ render();await vi.advanceTimersByTimeAsync(0);
+ render().find(n=>n.props?.children==='모델 없이 내보내기').props.onClick();
+ await vi.advanceTimersByTimeAsync(0);
+ expect(refreshSessionAfterStage).toHaveBeenCalledTimes(1);
+ expect(exportTraining).toHaveBeenCalledWith('s',true,'v1');
 });

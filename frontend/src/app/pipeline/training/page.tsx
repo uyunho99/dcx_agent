@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Banner, Button, Card, ProgressBar } from '@/components/ds';
 import { useVersion } from '@/components/versions/VersionProvider';
+import { useStageCompletionRefresh } from '@/components/versions/useStageCompletionRefresh';
 import { LevelBadge } from '@/components/label/LevelBadge';
 import { ModelRepository } from '@/components/train/ModelRepository';
 import { TrainingResult } from '@/components/train/TrainingResult';
@@ -23,7 +24,9 @@ export default function TrainingPage() {
 
 function TrainingScreen({ sid, version, readonly }: { sid: string; version?: string; readonly: boolean }) {
   const router = useRouter();
+  const {refreshSessionAfterStage} = useVersion();
   const [status, setStatus] = useState<TrainingStatus | null>(null);
+  useStageCompletionRefresh(typeof status?.training.exportRef === 'string' ? status.training.exportRef : null);
   const [models, setModels] = useState<ModelMetadata[]>([]);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [error, setError] = useState('');
@@ -78,7 +81,11 @@ function TrainingScreen({ sid, version, readonly }: { sid: string; version?: str
     if (blocked || lock.current || (!withoutModel && !state.ready)) return;
     lock.current = true; generation.current++; setBusy(true); setError('');
     try {
-      await exportAndAdvance(() => exportTraining(sid, withoutModel, version), () => patchSession(sid, {step: 'clustering'}, version), () => {
+      await exportAndAdvance(async () => {
+        const result = await exportTraining(sid, withoutModel, version);
+        if (result.exportRef && mounted.current) await refreshSessionAfterStage();
+        return result;
+      }, () => patchSession(sid, {step: 'clustering'}, version), () => {
         if (!mounted.current) return;
         const store = useSessionStore.getState();
         store.setSession({step: 'clustering', ...(store.sd ? {sd: {...store.sd, step: 'clustering'}} : {})});
