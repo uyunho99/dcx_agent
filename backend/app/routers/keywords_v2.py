@@ -103,8 +103,8 @@ def suggest_words(sid: str, body: SuggestRequest, version: str | None = None):
 
 
 @router.post('/{sid}/coverage')
-def coverage(sid: str, version: str | None = None):
-    return rounds.compute_coverage(sid, version=version)
+def coverage(sid: str, version: str | None = None, refresh: bool = False):
+    return rounds.compute_coverage(sid, version=version, refresh=refresh)
 
 
 @router.get('/{sid}')
@@ -115,6 +115,7 @@ def keywords(sid: str, version: str | None = None):
     data = store.read_json(path / 'session.json')
     if data is None:
         raise store.StoreError('세션이 없습니다', 404, 'not_found')
+    data['coverage'] = rounds.coverage_status(data.get('coverage') or {})
     feedback = path / 'keyword_feedback.md'
     return {key: data.get(key, {} if key != 'keywords' else []) for key in ('keywords', 'keywordRounds', 'coverage')} | {
         'feedback_md': feedback.read_text(encoding='utf-8') if feedback.exists() else ''}

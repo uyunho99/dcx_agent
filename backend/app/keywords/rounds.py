@@ -1,6 +1,7 @@
 """Persistent keyword jobs. IDs are k_r{round}g{generation}_{1-based index:04d}."""
 from copy import deepcopy
 from dataclasses import asdict
+from datetime import datetime
 import json
 import logging
 from pathlib import Path
@@ -11,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from app.config import settings
 from app.context import store
-from app.external import naver_searchad
+from app.external import naver_autocomplete, naver_searchad
 from app.external.base import Unconnected
 from app.keywords import coverage
 from app.keywords.events import KeywordEvent, append_event, load_events
@@ -184,11 +185,11 @@ def _inputs(sid, data, n):
     feedback = write_feedback_md(sid)
     rejected = [k for k in _keywords(data) if k.status == 'rejected']
     signals = '\n'.join(f'{k.kw}: {json.dumps(k.reject, ensure_ascii=False)}' for k in rejected) or None
-    cov = data.get('coverage') or {}
+    cov = coverage_status(data.get('coverage') or {})
     coverage_text = ''
     if cov.get('status') in ('connected', 'ok'):
         coverage_text = json.dumps(cov['missing_top'], ensure_ascii=False) if cov.get('missing_top') else '부족 축 없음'
-    elif cov.get('status') == 'failed':
+    elif cov.get('status') in ('failed', 'unavailable'):
         coverage_text = '커버리지 계산 실패 — 축 분포 균형에 집중'
     project_type = ctx.get('projectType', {'choice': 'renewal'})
     return RoundInputs(
@@ -336,21 +337,63 @@ class HumanAxes(BaseModel):
     axes: dict[str, str]
 
 
-def compute_coverage(sid, version=None):
-    with store.locked(sid):
-        data = store.assert_writable(sid, version)
-        version = data.get("version")
-        directory = store.session_dir(sid)
+def coverage_status(saved):
+    """Interpret abandoned background work without fetching or mutating on reads."""
+    if saved.get('status') == 'loading':
+        try:
+            age = (datetime.fromisoformat(store.now()) -
+                   datetime.fromisoformat(saved['startedAt'])).total_seconds()
+        except (KeyError, TypeError, ValueError):
+            age = 121
+        if age > 120:
+            return {**saved, 'status': 'unavailable', 'error': {'kind': 'interrupted'}}
+    return saved
+
+
+def compute_coverage(sid, version=None, refresh=False):
+    """Return cached coverage, or persist loading before dispatching a fetch."""
+    created = False
+    def begin(data):
+        nonlocal created
+        saved = coverage_status(data.get('coverage') or {})
+        if saved and (not refresh or saved.get('status') == 'loading'):
+            return {}
+        created = True
+        return {'coverage': _Replacement({**saved, 'status': 'loading', 'startedAt': store.now()})}
+    data = mutate(sid, begin, version=version)
+    value = coverage_status(data.get('coverage') or {})
+    if created:
+        # Capture the active version and context before returning to the caller.
+        with store.locked(sid):
+            store.assert_writable(sid, data.get('version'))
+            directory = store.session_dir(sid)
+        execute(lambda: _run_coverage(sid, data, directory))
+    return value
+
+
+def _run_coverage(sid, data, directory):
+    version = data.get('version')
+    started_at = data['coverage']['startedAt']
     approved = [k for k in _keywords(data) if k.status == 'approved']
-    saved = data.get('coverage') or {}
+    metadata = {'source': 'searchad', 'weighting': 'volume'}
     try:
-        human = saved.get('humanQueries')
-        if human is None:
-            top = sorted(approved, key=lambda k: (k.volume or {}).get('monthly') or 0, reverse=True)[:4]
-            hints = [data.get('projectContext', {}).get('bk', '')] + [k.kw for k in top]
-            human = naver_searchad.related_queries([h for h in hints if h])
-        human_axes = saved.get('humanAxes')
-        if human and human_axes is None:
+        top = sorted(approved, key=lambda k: (k.volume or {}).get('monthly') or 0, reverse=True)[:4]
+        bk = data.get('projectContext', {}).get('bk', '')
+        hints = [h for h in [bk] + [k.kw for k in top] if h]
+        metadata.update(seeds=len(hints), failedSeeds=0)
+        try:
+            human = naver_searchad.related_queries(hints)
+        except Unconnected:
+            # Stable round sorting retains generation/display order within a round.
+            llm = sorted((k for k in approved if k.origin == 'llm'), key=lambda k: k.round)
+            seeds = [bk] + [k.kw for k in llm[:20]]
+            metadata = {'source': 'autocomplete', 'weighting': 'rank',
+                        'seeds': len(seeds), 'failedSeeds': len(seeds)}
+            result = naver_autocomplete.suggestions(seeds)
+            human = result.queries
+            metadata.update(seeds=result.total, failedSeeds=result.failed)
+        human_axes = None
+        if human:
             context_md = (directory / 'project_context.md').read_text(encoding='utf-8')
             classification = run_task(LLMTask(task='kw_axis_classify', sid=sid,
                 instructions='각 검색어를 physical, psychological, behavioral 중 하나로 분류하세요. axes는 검색어→축 매핑입니다.\n'
@@ -358,21 +401,29 @@ def compute_coverage(sid, version=None):
                 attachments=[Attachment(title='project_context.md', body=context_md)], output_schema=HumanAxes))
             if classification.ok:
                 human_axes = classification.data.axes
-        report = asdict(coverage.compute(human, [k for k in approved if k.origin == 'llm'], human_axes))
+        report = asdict(coverage.compute(human, [k for k in approved if k.origin == 'llm'],
+                                         human_axes, weighting=metadata['weighting']))
         value = {'status': 'connected', 'humanQueries': human, 'humanAxes': human_axes, **report}
-    except Unconnected:
-        value = {'status': 'unconnected'}
-    except store.StoreError:
-        raise
+    except naver_autocomplete.AutocompleteUnavailable:
+        value = {'status': 'unavailable', 'error': {'kind': 'autocomplete_unavailable'}}
     except Exception:
         value = {'status': 'failed', 'error': {'kind': 'request_failed'}}
-    def patch(current):
+    value.update(metadata)
+    def finish(current):
+        saved = current.get('coverage') or {}
+        if saved.get('status') != 'loading' or saved.get('startedAt') != started_at:
+            raise _JobSuperseded('작업이 변경되었습니다')
         keywords = current.get('keywords', [])
         ids = value.get('llm_only_ids', [])
         keywords = [{**k, 'badges': [b for b in k.get('badges', []) if b != 'llm_only'] + (['llm_only'] if k['id'] in ids else [])} for k in keywords]
         return {'coverage': _Replacement(value), 'keywords': keywords}
-    mutate(sid, patch, version=version)
-    return value
+    try:
+        mutate(sid, finish, version=version)
+    except store.StoreError:
+        # A superseding request/version owns its own result; never overwrite it.
+        return
+    except Exception:
+        logger.error('Could not persist coverage for session %s', sid)
 
 
 class Duplicate(store.StoreError):

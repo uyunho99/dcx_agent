@@ -1,5 +1,7 @@
 """Offline T09 contracts, including real threaded concurrency."""
 import json
+import socket
+from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier, Event
 
@@ -8,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.config import settings
 from app.context import store
+from app.external import naver_autocomplete
 from app.keywords import rounds
 from app.keywords.events import load_events
 from app.llm import registry
@@ -22,6 +25,10 @@ THREADED_EXECUTE = rounds.execute
 def data_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, 'local_data_dir', str(tmp_path))
     monkeypatch.setattr(settings, 'searchad_api_key', '')
+    monkeypatch.setattr(settings, 'autocomplete_backend', 'fake')
+    def no_network(*args, **kwargs):
+        raise AssertionError('Network access is forbidden')
+    monkeypatch.setattr(socket.socket, 'connect', no_network)
     monkeypatch.setattr(rounds, 'execute', lambda fn: fn())
     store.update_session('test', {'schemaVersion': 2, 'keywords': []})
     (store.session_dir('test') / 'project_context.md').write_text('원문 맥락\n- 리서치 질문: 냉방 경험은?')
@@ -105,14 +112,14 @@ def test_partial_count_flag(client):
 
 def test_r2_commit_triggers_coverage(client):
     through(client, 2)
-    assert store.load_session('test')['coverage'] == {'status': 'unconnected'}
+    assert store.load_session('test')['coverage']['source'] == 'autocomplete'
 
 
 def test_r3_inputs_recorded(client, backend):
     through(client, 2)
     start(client, 3)
     inputs = store.load_session('test')['keywordRounds']['3']['inputs']
-    assert inputs == {'rejection': 'empty:no_rejections', 'coverage': 'empty:searchad_unconnected',
+    assert inputs == {'rejection': 'empty:no_rejections', 'coverage': 'ok',
                       'prior_session': 'empty:no_prior_session', 'promptVersion': 'r3.v1'}
     assert [a.title for a in backend.calls[-1].attachments] == ['project_context.md', 'keyword_feedback.md']
     assert backend.calls[-1].attachments[0].body.startswith('원문 맥락')
@@ -289,10 +296,12 @@ def test_startup_recovers_interrupted(client):
         assert restarted.get('/keywords/test/rounds/1').json()['error']['kind'] == 'interrupted'
 
 
-def test_unconnected_coverage_replaces_old_failure(client):
+def test_coverage_preserves_old_failure_until_refresh(client):
     store.update_session('test', {'coverage': {'status': 'failed', 'error': {'kind': 'request_failed'}}})
-    assert client.post('/keywords/test/coverage').json() == {'status': 'unconnected'}
-    assert store.load_session('test')['coverage'] == {'status': 'unconnected'}
+    assert client.post('/keywords/test/coverage').json() == {
+        'status': 'failed', 'error': {'kind': 'request_failed'}}
+    assert client.post('/keywords/test/coverage?refresh=true').status_code == 200
+    assert store.load_session('test')['coverage']['status'] == 'connected'
 
 
 @pytest.fixture
@@ -480,3 +489,194 @@ def test_r4_explicit_regenerate_preserves_committed_keywords(client):
     assert response.status_code == 200 and response.json()['gen'] == 2
     assert client.get('/keywords/test/rounds/4').json()['status'] == 'done'
     assert store.load_session('test')['keywords'] == before
+
+
+@pytest.fixture
+def autocomplete_calls(monkeypatch):
+    calls = []
+    def suggestions(seeds):
+        calls.append(seeds)
+        return naver_autocomplete.AutocompleteResult(
+            [('냉방1단어0', 1), ('누락상위', 2), ('누락하위', 8)], 3, len(seeds))
+    monkeypatch.setattr(naver_autocomplete, 'suggestions', suggestions)
+    return calls
+
+
+def test_coverage_uses_searchad_when_connected(client, monkeypatch, autocomplete_calls):
+    monkeypatch.setattr(rounds.naver_searchad, 'related_queries',
+                        lambda hints: [('냉방1단어0', 100), ('누락', 20)])
+    through(client, 2)
+    saved = client.get('/keywords/test').json()['coverage']
+    assert saved['source'] == 'searchad' and saved['weighting'] == 'volume'
+    assert saved['m1'] == pytest.approx(100 / 120)
+    assert saved['m2_bands'] is None and saved['m7_reason'] is None
+    assert not autocomplete_calls
+
+
+def test_coverage_falls_back_to_autocomplete_when_unconnected(client, autocomplete_calls):
+    through(client, 1)
+    # Seed order follows displayed generation order, excluding manual/rejected items.
+    data = store.load_session('test')
+    kws = data['keywords']
+    kws[0]['status'] = 'rejected'
+    kws[1]['origin'] = 'manual'
+    data.update(keywords=kws, projectContext={'bk': '에어컨'})
+    store.write_json(store.session_dir('test') / 'session.json', data)
+    state = start(client, 2)
+    assert commit(client, 2, state).status_code == 200
+    saved = client.get('/keywords/test').json()['coverage']
+    expected = [k['kw'] for k in kws if k['status'] == 'approved' and k['origin'] == 'llm'][:20]
+    assert autocomplete_calls == [['에어컨'] + expected]
+    assert saved['source'] == 'autocomplete' and saved['weighting'] == 'rank'
+    assert saved['seeds'] == 21 and saved['failedSeeds'] == 3
+    assert saved['humanQueries'] == [['냉방1단어0', 1], ['누락상위', 2], ['누락하위', 8]]
+    assert saved['m2'] is None and len(saved['m2_bands']) == 3
+    assert saved['m7'] is None and saved['m7_reason'] == 'no_volume'
+
+
+def test_coverage_autocomplete_unavailable_status(client, monkeypatch):
+    def unavailable(seeds):
+        raise naver_autocomplete.AutocompleteUnavailable('private failure detail')
+    monkeypatch.setattr(naver_autocomplete, 'suggestions', unavailable)
+    through(client, 2)
+    saved = client.get('/keywords/test').json()['coverage']
+    assert saved['status'] == 'unavailable'
+    assert saved['source'] == 'autocomplete' and saved['weighting'] == 'rank'
+    assert saved['failedSeeds'] == saved['seeds'] == 21
+    assert 'private failure detail' not in json.dumps(saved)
+    assert start(client, 3)['status'] == 'done'
+    assert commit(client, 3).status_code == 200
+
+
+def test_coverage_cached_once_refresh_refetches(client, autocomplete_calls):
+    through(client, 2)
+    before = client.get('/keywords/test').json()['coverage']
+    for _ in range(2):
+        assert client.post('/keywords/test/coverage').json() == before
+    assert len(autocomplete_calls) == 1
+    assert client.post('/keywords/test/coverage?refresh=true').status_code == 200
+    assert len(autocomplete_calls) == 2
+
+
+def test_missing_top_feeds_r3_inputs(client, backend, monkeypatch):
+    human = [(f'누락검색어{i:02}', 10 - i % 10) for i in range(25)]
+    monkeypatch.setattr(naver_autocomplete, 'suggestions', lambda seeds:
+                        naver_autocomplete.AutocompleteResult(human, 0, len(seeds)))
+    through(client, 2)
+    missing = sorted(human, key=lambda row: row[1])[:20]
+    assert client.get('/keywords/test').json()['coverage']['missing_top'] == [list(row) for row in missing]
+    assert start(client, 3)['inputs']['coverage'] == 'ok'
+    assert json.dumps(missing, ensure_ascii=False) in backend.calls[-1].instructions
+
+
+def test_r2_commit_returns_before_autocomplete_finishes(client, monkeypatch, autocomplete_calls):
+    through(client, 1)
+    state = start(client, 2)
+    queued = []
+    def execute(fn):
+        saved = store.load_session('test')
+        assert saved['keywordRounds']['2']['committed']
+        assert saved['coverage']['status'] == 'loading'
+        assert saved['coverage']['startedAt']
+        queued.append(fn)
+    monkeypatch.setattr(rounds, 'execute', execute)
+    assert commit(client, 2, state).status_code == 200
+    assert not autocomplete_calls
+    assert client.get('/keywords/test').json()['coverage']['status'] == 'loading'
+    assert len(queued) == 1
+    queued[0]()
+    assert client.get('/keywords/test').json()['coverage']['status'] == 'connected'
+
+
+@pytest.mark.parametrize('age,status', [(119, 'loading'), (121, 'unavailable')])
+def test_stale_loading_over_2min_reads_unavailable(client, monkeypatch, autocomplete_calls, age, status):
+    now = datetime(2026, 10, 1, tzinfo=timezone.utc)
+    monkeypatch.setattr(store, 'now', lambda: now.isoformat())
+    saved = {'status': 'loading', 'startedAt': (now - timedelta(seconds=age)).isoformat()}
+    store.update_session('test', {'coverage': saved})
+    assert client.get('/keywords/test').json()['coverage']['status'] == status
+    assert client.post('/keywords/test/coverage').json()['status'] == status
+    assert not autocomplete_calls
+
+
+def test_refresh_param_refetches_only_when_true(client, monkeypatch, autocomplete_calls):
+    through(client, 2)
+    before = client.get('/keywords/test').json()['coverage']
+    assert client.post('/keywords/test/coverage?refresh=false').json() == before
+    assert client.post('/keywords/test/coverage?refresh=invalid').status_code == 422
+    assert len(autocomplete_calls) == 1
+    queued = []
+    monkeypatch.setattr(rounds, 'execute', queued.append)
+    refreshed = client.post('/keywords/test/coverage?refresh=true').json()
+    assert refreshed['status'] == 'loading' and refreshed['startedAt']
+    assert len(queued) == 1 and len(autocomplete_calls) == 1
+    assert client.post('/keywords/test/coverage').json()['status'] == 'loading'
+    assert len(queued) == 1
+    queued[0]()
+    assert len(autocomplete_calls) == 2
+
+
+
+def test_coverage_real_worker_does_not_block_commit(client, monkeypatch):
+    through(client, 1)
+    state = start(client, 2)
+    entered, release = Event(), Event()
+    workers = []
+    def suggestions(seeds):
+        entered.set()
+        assert release.wait(5)
+        return naver_autocomplete.AutocompleteResult([('누락', 1)], 0, len(seeds))
+    def execute(fn):
+        workers.append(THREADED_EXECUTE(fn))
+    monkeypatch.setattr(naver_autocomplete, 'suggestions', suggestions)
+    monkeypatch.setattr(rounds, 'execute', execute)
+    try:
+        assert commit(client, 2, state).status_code == 200
+        assert entered.wait(2)
+        assert client.get('/keywords/test').json()['coverage']['status'] == 'loading'
+    finally:
+        release.set()
+        for worker in workers:
+            worker.join(5)
+            assert not worker.is_alive()
+    assert client.get('/keywords/test').json()['coverage']['status'] == 'connected'
+
+
+def test_coverage_refresh_discards_queries_and_axes(client, backend, monkeypatch, autocomplete_calls):
+    through(client, 2)
+    classified = []
+    original = backend.run
+    def classify(task):
+        if task.task == 'kw_axis_classify':
+            classified.append(task.instructions)
+            return FakeBackend({task.task: json.dumps({'axes': {'새검색어': 'physical'}})}).run(task)
+        return original(task)
+    monkeypatch.setattr(backend, 'run', classify)
+    monkeypatch.setattr(naver_autocomplete, 'suggestions', lambda seeds:
+                        naver_autocomplete.AutocompleteResult([('새검색어', 4)], 0, len(seeds)))
+    client.post('/keywords/test/coverage?refresh=true')
+    saved = client.get('/keywords/test').json()['coverage']
+    assert saved['humanQueries'] == [['새검색어', 4]]
+    assert saved['humanAxes'] == {'새검색어': 'physical'}
+    assert len(classified) == 1 and '새검색어' in classified[0]
+
+
+def test_loading_coverage_deduplicates_refresh(client, monkeypatch, autocomplete_calls):
+    through(client, 2)
+    queued = []
+    monkeypatch.setattr(rounds, 'execute', queued.append)
+    first = client.post('/keywords/test/coverage?refresh=true').json()
+    assert client.post('/keywords/test/coverage?refresh=true').json() == first
+    assert len(queued) == 1 and len(autocomplete_calls) == 1
+    queued[0]()
+    assert len(autocomplete_calls) == 2
+
+
+def test_superseded_coverage_worker_preserves_new_result(client, monkeypatch, autocomplete_calls):
+    queued = []
+    monkeypatch.setattr(rounds, 'execute', queued.append)
+    client.post('/keywords/test/coverage')
+    replacement = {'status': 'connected', 'source': 'searchad', 'humanQueries': [['replacement', 10]]}
+    store.update_session('test', {'coverage': rounds._Replacement(replacement)})
+    queued[0]()
+    assert client.get('/keywords/test').json()['coverage'] == replacement
