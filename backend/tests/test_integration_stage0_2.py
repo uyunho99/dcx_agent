@@ -132,6 +132,7 @@ def test_no_api_keys_full_run(client, offline):
     assert response.status_code == 200
     responses.append(response.json())
     assert response.json() == [entry.model_dump() for entry in integration_status()]
+    assert [entry['name'] for entry in response.json()] == ['openai', 'claude']
     assert all(not entry['connected'] for entry in response.json())
 
 
@@ -189,6 +190,7 @@ def test_integrations_never_exposes_configured_secrets(client, offline, monkeypa
     response = client.get('/integrations')
     assert calls == [True, True]
     assert response.json() == [entry.model_dump() for entry in integration_status()]
+    assert [entry['name'] for entry in response.json()] == ['openai', 'claude']
     assert all(getattr(settings, name) not in response.text for name in KEY_FIELDS)
 
 

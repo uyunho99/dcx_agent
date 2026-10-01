@@ -97,7 +97,7 @@ def test_integrations_no_values(client, monkeypatch):
     monkeypatch.setattr(settings, 'openai_api_key', 'secret-value')
     r = client.get('/integrations')
     assert 'secret-value' not in r.text
-    assert {entry['name'] for entry in r.json()} == {'naver_shopping', 'naver_searchad', 'openai', 'claude'}
+    assert {entry['name'] for entry in r.json()} == {'openai', 'claude'}
 
 
 def test_new_api_validation_error_envelope(client):

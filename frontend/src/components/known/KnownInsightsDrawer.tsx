@@ -1,12 +1,29 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Button } from '../ds/Button';
 import { Badge } from '../ds/Badge';
 import { addKnownInsight, deleteKnownInsight, getKnownInsights } from '@/lib/api/known';
 import { displayError } from '@/lib/api/errors';
 import type { KnownInsight } from '@/lib/types';
+import styles from './KnownInsightsDrawer.module.css';
 export type KnownInsightsDrawerProps = {sid: string; version?: string; open: boolean; onClose: () => void; onChange?: (items: KnownInsight[]) => void; readonly?: boolean};
 const origins = {stage0:'프로젝트 정의',drawer:'직접 입력',rag:'근거 원문',prev_session:'이전 세션'};
+export function KnownInsightCard({item, disabled, onDelete}: {item: KnownInsight; disabled: boolean; onDelete: () => void}) {
+ const [expanded, setExpanded] = useState(false);
+ const bodyId = useId();
+ return <li className={`ds-card ds-sm ${styles.card}`}>
+  <div className={styles.badges}><Badge>{item.type === 'statement' ? '문장' : '원문'}</Badge><Badge>{origins[item.from]}</Badge></div>
+  <div>
+   <p id={bodyId} className={`${styles.body} ${item.type === 'doc' && !expanded ? styles.clamped : ''}`}>{item.text || '근거 원문'}</p>
+   {item.type === 'doc' && <Button variant="quiet" size="sm" aria-expanded={expanded} aria-controls={bodyId} onClick={() => setExpanded(value => !value)}>{expanded ? '접기' : '펼치기'}</Button>}
+  </div>
+  {item.warning && <p className={`ds-t-caption ${styles.warning}`} role="status">유사도 제외는 임베딩 연결 후 적용됩니다</p>}
+  <footer className={styles.footer}>
+   {item.createdAt && <time className="ds-t-caption" dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleDateString('ko-KR')}</time>}
+   <Button className={styles.delete} variant="quiet" size="sm" disabled={disabled} aria-label={`${item.text || '근거 원문'} 삭제`} onClick={onDelete}>삭제</Button>
+  </footer>
+ </li>;
+}
 export function KnownInsightsDrawer(props: KnownInsightsDrawerProps) {
  return props.open ? <Drawer key={`${props.sid}:${props.version}`} {...props}/> : null;
 }
@@ -24,7 +41,7 @@ function Drawer({sid, version, onClose, onChange, readonly = false}: KnownInsigh
   <header className="ds-actions"><h2 className="ds-t-card">Known Insight · {items.length}</h2><Button onClick={onClose}>닫기</Button></header>
   {loading ? <p role="status">처리 중…</p> : items.length === 0 && !error ? <p>아직 Known Insight가 없습니다. 근거 원문에서 추가하거나 한 문장으로 적으세요.</p> : null}
   {error && <div role="alert"><p>{error}</p><Button onClick={() => {setError('');setLoading(true);setRetry(n => n+1);}}>목록 다시 불러오기</Button></div>}
-  <ul>{items.map(item => <li key={item.id} style={{marginBlock:16}}><Badge>{item.type === 'statement' ? '문장' : '원문'}</Badge> <Badge>{origins[item.from]}</Badge><p>{item.text || '근거 원문'}</p>{item.createdAt && <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleDateString('ko-KR')}</time>}{item.warning && <p role="status">유사도 제외는 임베딩 연결 후 적용됩니다</p>}<Button disabled={busy || readonly} aria-label={`${item.text || '근거 원문'} 삭제`} onClick={() => void mutate(async () => {await deleteKnownInsight(sid,item.id,version);return items.filter(row => row.id !== item.id);})}>삭제</Button></li>)}</ul>
+  <ul className={styles.list}>{items.map(item => <KnownInsightCard key={item.id} item={item} disabled={busy || readonly} onDelete={() => void mutate(async () => {await deleteKnownInsight(sid,item.id,version);return items.filter(row => row.id !== item.id);})}/>)}</ul>
   <form onSubmit={e => {e.preventDefault();if(!text.trim() || loading) return;void mutate(async () => {const added = await addKnownInsight(sid,{type:'statement',text:text.trim()},version);setText('');return [...items.filter(row => row.id !== added.id),added];});}}>
    <label className="ds-field"><span className="ds-lab">새 문장</span><textarea className="ds-inp" rows={4} ref={input} value={text} disabled={readonly || busy} onChange={e => setText(e.target.value)}/></label><div className="ds-actions"><Button type="submit" loading={busy} disabled={readonly || loading || !text.trim()}>추가</Button></div>
   </form>

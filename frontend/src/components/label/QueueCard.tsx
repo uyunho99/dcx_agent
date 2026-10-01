@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '../ds/Button';
 import { Card } from '../ds/Card';
 import { Table } from '../ds/Table';
+import { Select } from '../ds/Select';
+import './queueCard.css';
 import { queueReasonLabel } from './queueView';
 import { TagToggle } from './TagToggle';
 import { LevelBadge, levelNames } from './LevelBadge';
@@ -61,11 +63,27 @@ function JudgingCard({sid, version, item, mode = 'escalate', labeler, focusZone 
   </div>
   {item.document?.comments?.map((comment,index) => <p key={index}>{comment.text}</p>)}
   <p className="ds-t-caption">{item.document?.channel}</p>
-  <TagToggle label="대상 경험" shortcut="A" pressed={tags.anchor} disabled={disabled} onChange={anchor => change({...tags,anchor})}/>
-  <div role="group" aria-label="경험 6차원">{semantics.map(([key,label],index) => <TagToggle key={key} label={label} shortcut={String(index+1)} pressed={!!tags.sem[key]} disabled={disabled} onChange={() => toggleSem(index)}/>)}</div>
-  <TagToggle label="상황 보임" shortcut="S" pressed={tags.situation} disabled={disabled} onChange={situation => change({...tags,situation})}/>
-  <label>신호 <select value={tags.signal ?? ''} disabled={disabled} onChange={e => change({...tags,signal:(e.target.value || null) as LabelTags['signal']})}><option value="">선택하세요</option>{Object.entries({pain:'불편',unmet:'미충족',workaround:'우회',delight:'만족',none:'없음'}).map(([v,t]) => <option key={v} value={v}>{t}</option>)}</select></label>
-  {level === 'non' && <label>Non 사유 <select value={tags.reason_code ?? ''} disabled={disabled} onChange={e => change({...tags,reason_code:(e.target.value || null) as LabelTags['reason_code']})}><option value="">선택하세요</option>{Object.entries({ad:'광고',no_needs:'니즈 없음',pure_criticism:'단순 비난',other:'기타'}).map(([v,t]) => <option key={v} value={v}>{t}</option>)}</select></label>}
+  <div className="queue-card-controls">
+   <div className="queue-card-row" role="group" aria-label="대상 경험">
+    <span className="queue-card-row-label">대상 경험</span>
+    <div className="queue-card-toggles"><TagToggle label="대상 경험" shortcut="A" pressed={tags.anchor} disabled={disabled} onChange={anchor => change({...tags,anchor})}/></div>
+   </div>
+   <div className="queue-card-row" role="group" aria-label="경험 6차원">
+    <span className="queue-card-row-label">6차원</span>
+    <div className="queue-card-toggles">{semantics.map(([key,label],index) => <TagToggle key={key} label={label} shortcut={String(index+1)} pressed={!!tags.sem[key]} disabled={disabled} onChange={() => toggleSem(index)}/>)}</div>
+   </div>
+   <div className="queue-card-row" role="group" aria-label="상황">
+    <span className="queue-card-row-label">상황</span>
+    <div className="queue-card-toggles"><TagToggle label="상황 보임" shortcut="S" pressed={tags.situation} disabled={disabled} onChange={situation => change({...tags,situation})}/></div>
+   </div>
+   <div className="queue-card-row" role="group" aria-label="신호 · Non 사유">
+    <span className="queue-card-row-label">신호 · Non 사유</span>
+    <div className="queue-card-selects">
+     <Select label="신호" value={tags.signal ?? ''} disabled={disabled} onChange={e => change({...tags,signal:(e.target.value || null) as LabelTags['signal']})}><option value="">선택하세요</option>{Object.entries({pain:'불편',unmet:'미충족',workaround:'우회',delight:'만족',none:'없음'}).map(([v,t]) => <option key={v} value={v}>{t}</option>)}</Select>
+     <Select label="Non 사유" value={tags.reason_code ?? ''} disabled={disabled || level !== 'non'} onChange={e => change({...tags,reason_code:(e.target.value || null) as LabelTags['reason_code']})}><option value="">선택하세요</option>{Object.entries({ad:'광고',no_needs:'니즈 없음',pure_criticism:'단순 비난',other:'기타'}).map(([v,t]) => <option key={v} value={v}>{t}</option>)}</Select>
+    </div>
+   </div>
+  </div>
   <div aria-live="polite">{level ? <><LevelBadge level={level}/> 등급 {levelNames[level]}으로 바뀜</> : previewError || '처리 중…'}</div>
   {previewError && <Button onClick={() => {setPreviewError('');setRetry(n => n+1);}}>등급 다시 계산</Button>}
   {error && <p role="alert">{error}</p>}
