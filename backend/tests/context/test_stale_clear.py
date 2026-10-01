@@ -82,22 +82,27 @@ def test_judge_waits_for_both_workers(setup_judge, monkeypatch, other_state):
         add_run('gpt', other_state)
     execute(add_run('jev'))
     assert_stale('session', 'v2')
+    assert versions._data('session', 'v2').get('labeling', {}).get('status') != 'done'
     execute(add_run('gpt', run_id='gpt-retry'))
     assert_stale('session', 'v2', 'stage4')
+    assert versions._data('session', 'v2')['labeling']['status'] == 'done'
     with transaction('session') as db:
         assert db.execute("SELECT state FROM runs WHERE run_id='gpt-retry'").fetchone()[0] == 'done'
 
 
-def test_stopped_judge_preserves_stale(setup_judge, monkeypatch):
+@pytest.mark.parametrize('action', ['stop', 'pause'])
+def test_stopped_judge_preserves_stale(setup_judge, monkeypatch, action):
     setup_judge.prepare(version='v2')
     monkeypatch.setattr(settings, 'label_gpt_backend', 'fake')
     mark('session', 'v2')
     add_run('jev', 'done')
     ctx = add_run('gpt')
     with transaction('session') as db:
-        db.execute("UPDATE runs SET action='stop' WHERE run_id='gpt'")
-    execute(ctx)
+        db.execute("UPDATE runs SET action=? WHERE run_id='gpt'", (action,))
+    from app.context.stale import judge_done
+    judge_done(ctx)
     assert_stale('session', 'v2')
+    assert versions._data('session', 'v2').get('labeling', {}).get('status') != 'done'
 
 
 def test_export_clears_only_stage5(data_dir):

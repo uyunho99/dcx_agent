@@ -45,4 +45,9 @@ def judge_done(ctx):
                 latest.setdefault(row['labeler'], row['state'])
             complete = all(latest.get(name) == 'done' for name in ('jev', 'gpt'))
         if complete:
-            clear_stale(ctx.sid, ctx.version, 'stage4', already_locked=True)
+            path = versions.version_dir(ctx.sid, ctx.version) / 'session.json'
+            data = store.read_json(path)
+            if data is not None:
+                data.setdefault('labeling', {})['status'] = 'done'
+                data.get('stale', {}).pop('stage4', None)
+                store.write_json(path, data)

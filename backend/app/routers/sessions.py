@@ -1,4 +1,6 @@
 import shutil
+import sqlite3
+from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -14,6 +16,44 @@ from app.models.schemas import SessionSaveRequest
 router = APIRouter()
 
 
+def _completion(sid, data, version=None):
+    """Project durable local evidence without refreshing runs or writing state."""
+    from app.crawl.control import phase_state
+    from app.work.status import database_path
+
+    collection = data.get("collectionId")
+    crawl_done = bool(collection and phase_state(sid, collection) == "done")
+    labeling_done = data.get("labeling", {}).get("status") == "done"
+    selected = version or data.get("version")
+    if not selected:
+        selected = (store.read_json(store.root_dir(sid) / "meta.json") or {}).get("activeVersion")
+    path = database_path(sid)
+    if not labeling_done and selected and path.exists():
+        latest = {}
+        with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as db:
+            for labeler, state in db.execute("""SELECT labeler, state FROM runs
+                    WHERE version=? AND kind='judge'
+                    ORDER BY started_at DESC, rowid DESC""", (selected,)):
+                latest.setdefault(labeler, state)
+        labeling_done = all(latest.get(name) == "done" for name in ("jev", "gpt"))
+
+    # Clustering currently stores session-scoped results, not version artifacts.
+    job = job_manager.get("cluster", sid)
+    clusters_done = job.get("status") == "done" and bool(job.get("clusters"))
+    if not clusters_done:
+        root = Path(settings.local_data_dir)
+        clusters_done = any(
+            p.is_file() and p.stat().st_size > 0
+            for folder, pattern in (("clusters", "cluster_*.jsonl"), ("clusters_refined", "data_*.jsonl"))
+            for p in (root / folder / sid).glob(pattern)
+        )
+    export_ref = data.get("training", {}).get("exportRef")
+    return dict(crawlDone=crawl_done, prepDone=data.get("prep", {}).get("status") == "done",
+                labelingDone=labeling_done,
+                exportDone=isinstance(export_ref, str) and bool(export_ref.strip()),
+                clustersDone=clusters_done)
+
+
 @router.post("/save-session")
 def save_session(req: SessionSaveRequest, version: str | None = None):
     try:
@@ -22,7 +62,7 @@ def save_session(req: SessionSaveRequest, version: str | None = None):
             if (existing and not store.is_legacy(existing)) or req.data.get("schemaVersion") == 2:
                 owned = {"projectContext", "knownInsights", "keywords", "keywordRounds", "coverage",
                          "crawlConfig", "collectionId", "drafts", "schemaVersion", "sid",
-                         "prep", "labeling", "training",
+                         "prep", "labeling", "training", "completion",
                          "parentVersion", "restartFrom", "stale", "updatedAt",
                          "bk", "pd", "problemDef", "allKw", "_pendingKw", "ages", "ar", "gens"}
                 patch = {k: v for k, v in req.data.items() if k not in owned and not k.startswith("version")}
@@ -44,6 +84,8 @@ def save_session(req: SessionSaveRequest, version: str | None = None):
 def get_session(sid: str, version: str | None = None):
     try:
         data = versions._data(sid, version) if version else store.load_session(sid) or load_json(f"sessions/{sid}/session.json")
+        if data and not store.is_legacy(data):
+            data = {**data, "completion": _completion(sid, data, version)}
     except store.StoreError as exc:
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=exc.status, content={"status": "error", "error": {"kind": exc.kind, "message": str(exc)}})

@@ -61,3 +61,22 @@ it('keeps legacy callers working without session data', () => {
   expect(sidebar('train-check')).toContain('라벨링 완료');
   expect(sidebar('start')).not.toContain('완료');
 });
+
+const completion = { crawlDone: false, prepDone: false, labelingDone: false, exportDone: false, clustersDone: false };
+it.each([
+  ['crawlDone', 2], ['prepDone', 3], ['labelingDone', 4], ['exportDone', 5], ['clustersDone', 6],
+])('uses the session payload completion.%s', (signal, expected) => {
+  const session = { schemaVersion: 2, version: 'v1', collectionId: 'c1', step: 'crawl-detail',
+    labeling: { judgeRuns: { jev: 'run1', gpt: 'run2' } },
+    completion: { ...completion, [signal]: true } };
+  expect(completedThrough(session)).toBe(expected);
+});
+it('treats explicit server false as authoritative over old heuristics', () => {
+  expect(completedThrough({ step: 'crawl-done', prep: { status: 'done' },
+    labeling: { status: 'done' }, training: { exportRef: 'old.jsonl' },
+    clusters: { '0': { size: 3 } }, completion })).toBe(0);
+});
+it('checks crawl when preprocess is opened without crawl polling', () => {
+  expect(sidebar('crawl-detail', { collectionId: 'c1', step: 'crawl-detail',
+    completion: { ...completion, crawlDone: true } })).toContain('크롤링 완료');
+});
