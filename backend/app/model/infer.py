@@ -220,6 +220,6 @@ def run_worker(ctx):
         if data.get('labeling', {}).get('mode') == 'model' and settings.monitor_rate > 0:
             from app.work import runner
             work = runner.start(ctx.sid, ctx.version, 'monitor', {'modelId': model_id})
-            store._update_locked(ctx.sid, {'training': {'monitorRunId': work['runId']}})
+            store._update_locked(ctx.sid, {'training': {'monitorRunId': work['runId'], 'monitor': None}})
     ctx.heartbeat(1, {'phase': 'done', 'modelId': model_id, 'n': len(docs),
                       'done': completed, 'total': len(docs)})

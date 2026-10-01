@@ -61,12 +61,10 @@ class Context:
                 if row is None or row['state'] not in ACTIVE or row['action'] == 'stop':
                     return
                 paused = row['action'] == 'pause'
-                updated = db.execute('''UPDATE runs SET state=?,progress=?,detail=?,heartbeat_at=?
+                db.execute('''UPDATE runs SET state=?,progress=?,detail=?,heartbeat_at=?
                     WHERE run_id=? AND pid=?''',
                            ('paused' if paused else 'running', progress, json.dumps(detail),
                             time.time(), self.run_id, os.getpid()))
-            if updated.rowcount:
-                self._refresh_leases()
             if not paused:
                 return
             time.sleep(.1)
@@ -78,15 +76,8 @@ def _prep(context: Context):
 
 
 def _judge(context: Context):
-    from app.context import versions
-    from app.label.judge import cache_root, run_worker
-    from app.label.votes import VoteCache
+    from app.label.judge import run_worker
 
-    session = versions._data(context.sid, context.version)
-    root = cache_root(context.sid, session['prep']['derivedRef']['prepKey'],
-                      context.args['labeler'], session['projectContext']['oneLiner'])
-    cache = VoteCache(root)
-    context._heartbeat_callback = lambda: cache.refresh(context.run_id)
     try:
         run_worker(context)
     finally:

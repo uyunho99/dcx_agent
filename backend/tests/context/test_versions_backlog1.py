@@ -101,3 +101,21 @@ def test_failed_creation_does_not_stop_workers(client, monkeypatch):
     assert store.load_session(sid)['version'] == 'v1'
     assert not versions.version_dir(sid, 'v2').exists()
     assert [dict(context._row()) for context in contexts] == before
+
+
+def test_worker_stop_failure_does_not_fail_committed_version(client, monkeypatch, caplog):
+    import sqlite3
+    sid = create(client)
+    ctx = add_run(sid, 'judge', 'paused')
+    def fail_stop(*args):
+        raise sqlite3.OperationalError('sensitive detail')
+    monkeypatch.setattr(versions, '_stop_readonly_workers', fail_stop)
+    response = client.post(f'/sessions/{sid}/versions', json={
+        'from': 'v1', 'restartFrom': 'stage4'})
+    assert response.status_code == 201
+    assert store.load_session(sid)['version'] == 'v2'
+    assert versions._meta(sid)['activeVersion'] == 'v2'
+    assert versions._meta(sid)['versions'][0]['readonly']
+    assert ctx._row()['state'] == 'paused'
+    assert 'OperationalError' in caplog.text
+    assert 'sensitive detail' not in caplog.text

@@ -2,6 +2,7 @@
 from collections import Counter
 from contextlib import closing
 import hashlib
+import logging
 import os
 import re
 import shutil
@@ -11,6 +12,9 @@ import uuid
 
 from app.context.store import (StoreError, root_dir, read_json, write_json, locked,
                                now, session_activities, assert_writable)
+
+
+logger = logging.getLogger(__name__)
 
 
 def version_dir(sid, version):
@@ -198,7 +202,12 @@ def create_version(sid, from_v, restart_from, note, version=None) -> str:
                 shutil.rmtree(target)
             raise
         # Stop only after activation commits, outside its rollback boundary.
-        _stop_readonly_workers(sid, previous_active)
+        try:
+            _stop_readonly_workers(sid, previous_active)
+        except Exception as exc:
+            # Activation is committed; cleanup failure must not imply rollback.
+            logger.warning('Could not stop read-only workers for %s/%s (%s)',
+                           sid, previous_active, type(exc).__name__)
         return v
 
 

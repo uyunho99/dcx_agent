@@ -38,6 +38,8 @@ def lease_env(data_dir, monkeypatch):
         db.execute("UPDATE votes SET status='done' WHERE doc_id='b'")
         db.execute("UPDATE votes SET status='bad' WHERE doc_id='c'")
     assert cache.lease(1, 'other') == ['d']
+    # Unit tests install the callback; the real judge wiring is covered in test_judge.
+    ctx._heartbeat_callback = lambda: cache.refresh(ctx.run_id)
     return ctx, cache, now
 
 
@@ -47,7 +49,7 @@ def rows(cache):
 
 
 @pytest.mark.parametrize('pulse', [True, False], ids=['background', 'checkpoint'])
-def test_heartbeat_refreshes_only_own_pending_lease(lease_env, monkeypatch, pulse):
+def test_only_pulse_refreshes_own_pending_lease(lease_env, monkeypatch, pulse):
     ctx, cache, now = lease_env
 
     def judge_work(context):
@@ -57,7 +59,7 @@ def test_heartbeat_refreshes_only_own_pending_lease(lease_env, monkeypatch, puls
         else:
             context.heartbeat(.5, {})
         snapshot = rows(cache)
-        assert snapshot['a']['at'] == now[0]
+        assert snapshot['a']['at'] == (now[0] if pulse else 1000.0)
         assert {key: snapshot[key]['at'] for key in ('b', 'c', 'd')} == {
             'b': 1000.0, 'c': 1000.0, 'd': 1000.0}
 
@@ -66,7 +68,7 @@ def test_heartbeat_refreshes_only_own_pending_lease(lease_env, monkeypatch, puls
     # Registration must end when the judge exits.
     now[0] += 10
     ctx._pulse()
-    assert rows(cache)['a']['at'] == 1010.0
+    assert rows(cache)['a']['at'] == (1010.0 if pulse else 1000.0)
 
 
 @pytest.mark.parametrize('state', ['running', 'paused'])
@@ -121,3 +123,25 @@ def test_refresh_failure_is_logged_and_retried(lease_env, monkeypatch, caplog):
     assert attempts == ['first', 'first']
     assert 'OperationalError' in caplog.text
     assert 'sensitive provider detail' not in caplog.text
+
+
+def test_paused_checkpoints_refresh_only_from_pulse(lease_env, monkeypatch):
+    ctx, cache, now = lease_env
+    refreshes = []
+    ctx._heartbeat_callback = lambda: refreshes.append(now[0])
+    with transaction(ctx.sid) as db:
+        db.execute("UPDATE runs SET action='pause' WHERE run_id=?", (ctx.run_id,))
+    sleeps = []
+    def sleep(delay):
+        sleeps.append(delay)
+        now[0] += delay
+        if len(sleeps) == 5:
+            ctx._pulse()
+        if len(sleeps) == 20:
+            with transaction(ctx.sid) as db:
+                db.execute("UPDATE runs SET action=NULL WHERE run_id=?", (ctx.run_id,))
+    monkeypatch.setattr(worker.time, 'sleep', sleep)
+    ctx.heartbeat(.5, {})
+    assert len(sleeps) == 20
+    assert len(refreshes) == 1
+    assert ctx._row()['state'] == 'running'

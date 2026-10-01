@@ -56,3 +56,23 @@ def test_monitor_without_run_keeps_saved_reason(data_dir, monkeypatch):
     monkeypatch.setattr(training_v2.runner, 'status', lambda sid: [])
 
     assert training_v2.status('monitor-session')['monitor'] == monitor
+
+
+def test_new_monitor_clears_previous_reason(client, data_dir, monkeypatch):
+    from app.config import settings
+    from app.context import store
+    from app.model import infer
+    from .test_model_mode import prepared, context
+    from .test_registry import save_model
+    sid, _ = prepared(data_dir)
+    store.update_session(sid, {'labeling': {'mode': 'model', 'modelId': save_model()},
+        'training': {'monitorRunId': 'old', 'monitor': {'reason': 'old reason', 'sampled': 2}}})
+    monkeypatch.setattr(settings, 'monitor_rate', .01)
+    monkeypatch.setattr(training_v2.runner, 'start', lambda *a: {'runId': 'new'})
+    infer.run_worker(context(sid))
+    monkeypatch.setattr(training_v2.runner, 'status', lambda sid: [
+        {'runId': 'new', 'kind': 'monitor', 'state': 'failed', 'detail': {}, 'error': 'ValueError'}])
+    result = client.get(f'/train/{sid}/status').json()['monitor']
+    assert result['reason'] == '감시 중 오류가 났습니다(ValueError).'
+    assert 'sampled' not in result
+    assert store.load_session(sid)['training']['monitorRunId'] == 'new'
