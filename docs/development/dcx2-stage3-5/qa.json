@@ -1,10 +1,10 @@
 {
   "verdict": "PASS",
-  "head": "ca102fb45d77b1df1445070bdcabbe0843e1eab7",
-  "fingerprint": "5bf0ce7c3de8f72124b4601578ab8e8b9a95109e5ea5fd011a705afbc3ef10bc",
+  "head": "1a4853b0e3dadaf5f1dc808efa01f105171c4b82",
+  "fingerprint": "499f04072c4cc4acdb84291980dc6f887bcb218098e83daa89febe1f66ce8170",
   "commands": [
     {
-      "command": "browser QA via Claude built-in browser (gstack qa-only), 2 rounds",
+      "command": "browser QA via Claude built-in browser (gstack qa-only), 3 rounds",
       "exitCode": 0
     }
   ],
@@ -74,6 +74,30 @@
       "url": "http://localhost:3310/pipeline/labeling",
       "result": "PASS",
       "evidence": "docs/development/dcx2-stage3-5/qa/qa-report-2026-09-30.md (1회차 표 + 2회차 표, screenshots/)"
+    },
+    {
+      "id": "UAT-U1",
+      "url": "http://localhost:3310/pipeline/keywords",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage3-5/qa/qa-report-2026-09-30.md (3회차)"
+    },
+    {
+      "id": "UAT-U2",
+      "url": "http://localhost:3310/pipeline/labeling",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage3-5/qa/qa-report-2026-09-30.md (3회차), screenshots/uat-u2-queuecard.jpg"
+    },
+    {
+      "id": "UAT-U3",
+      "url": "http://localhost:3310/pipeline/labeling",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage3-5/qa/qa-report-2026-09-30.md (3회차), screenshots/uat-u3-known.jpg"
+    },
+    {
+      "id": "UAT-U4",
+      "url": "http://localhost:3310/pipeline/labeling",
+      "result": "PASS",
+      "evidence": "docs/development/dcx2-stage3-5/qa/qa-report-2026-09-30.md (3회차)"
     }
   ],
   "partial": [
