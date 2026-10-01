@@ -492,7 +492,7 @@ def test_r4_explicit_regenerate_preserves_committed_keywords(client):
 @pytest.fixture
 def autocomplete_calls(monkeypatch):
     calls = []
-    def suggestions(seeds):
+    def suggestions(seeds, on_progress=None):
         calls.append(seeds)
         return naver_autocomplete.AutocompleteResult(
             [('냉방1단어0', 1), ('누락상위', 2), ('누락하위', 8)], 3, len(seeds))
@@ -533,7 +533,7 @@ def test_coverage_falls_back_to_autocomplete_when_unconnected(client, autocomple
 
 
 def test_coverage_autocomplete_unavailable_status(client, monkeypatch):
-    def unavailable(seeds):
+    def unavailable(seeds, on_progress=None):
         raise naver_autocomplete.AutocompleteUnavailable('private failure detail')
     monkeypatch.setattr(naver_autocomplete, 'suggestions', unavailable)
     through(client, 2)
@@ -558,7 +558,7 @@ def test_coverage_cached_once_refresh_refetches(client, autocomplete_calls):
 
 def test_missing_top_feeds_r3_inputs(client, backend, monkeypatch):
     human = [(f'누락검색어{i:02}', 10 - i % 10) for i in range(25)]
-    monkeypatch.setattr(naver_autocomplete, 'suggestions', lambda seeds:
+    monkeypatch.setattr(naver_autocomplete, 'suggestions', lambda seeds, on_progress=None:
                         naver_autocomplete.AutocompleteResult(human, 0, len(seeds)))
     through(client, 2)
     missing = sorted(human, key=lambda row: row[1])[:20]
@@ -620,7 +620,7 @@ def test_coverage_real_worker_does_not_block_commit(client, monkeypatch):
     state = start(client, 2)
     entered, release = Event(), Event()
     workers = []
-    def suggestions(seeds):
+    def suggestions(seeds, on_progress=None):
         entered.set()
         assert release.wait(5)
         return naver_autocomplete.AutocompleteResult([('누락', 1)], 0, len(seeds))
@@ -650,7 +650,7 @@ def test_coverage_refresh_discards_queries_and_axes(client, backend, monkeypatch
             return FakeBackend({task.task: json.dumps({'axes': {'새검색어': 'physical'}})}).run(task)
         return original(task)
     monkeypatch.setattr(backend, 'run', classify)
-    monkeypatch.setattr(naver_autocomplete, 'suggestions', lambda seeds:
+    monkeypatch.setattr(naver_autocomplete, 'suggestions', lambda seeds, on_progress=None:
                         naver_autocomplete.AutocompleteResult([('새검색어', 4)], 0, len(seeds)))
     client.post('/keywords/test/coverage?refresh=true')
     saved = client.get('/keywords/test').json()['coverage']
@@ -686,7 +686,7 @@ def test_r2_recommit_recomputes_cached_queries(client, monkeypatch, source):
     if source == 'searchad':
         monkeypatch.setattr(rounds.naver_searchad, 'related_queries', lambda hints: human)
     else:
-        monkeypatch.setattr(naver_autocomplete, 'suggestions', lambda seeds:
+        monkeypatch.setattr(naver_autocomplete, 'suggestions', lambda seeds, on_progress=None:
                             naver_autocomplete.AutocompleteResult(human, 0, len(seeds)))
     through(client, 2)
     before = store.load_session('test')['coverage']
@@ -711,7 +711,7 @@ def test_r2_recommit_recomputes_cached_queries(client, monkeypatch, source):
 def test_classifying_persists_queries_and_uses_recent_update(client, monkeypatch):
     now = datetime(2026, 10, 1, tzinfo=timezone.utc)
     monkeypatch.setattr(store, 'now', lambda: now.isoformat())
-    def suggestions(seeds):
+    def suggestions(seeds, on_progress=None):
         nonlocal now
         now += timedelta(seconds=121)
         return naver_autocomplete.AutocompleteResult([('검색어', 1)], 0, len(seeds))
@@ -742,7 +742,7 @@ def test_r3_coverage_numbers_have_source_label(client, source, label):
 def test_slow_classification_heartbeat_keeps_loading(client, monkeypatch):
     now = datetime(2026, 10, 1, tzinfo=timezone.utc)
     monkeypatch.setattr(store, 'now', lambda: now.isoformat())
-    monkeypatch.setattr(naver_autocomplete, 'suggestions', lambda seeds:
+    monkeypatch.setattr(naver_autocomplete, 'suggestions', lambda seeds, on_progress=None:
                         naver_autocomplete.AutocompleteResult([('검색어', 1)], 0, len(seeds)))
     callbacks = []
     class ControlledThread:
@@ -777,4 +777,129 @@ def test_slow_classification_heartbeat_keeps_loading(client, monkeypatch):
         return FakeBackend().run(task)
     monkeypatch.setattr(rounds, 'run_task', classify)
     client.post('/keywords/test/coverage')
+    assert store.load_session('test')['coverage']['status'] == 'connected'
+
+
+@pytest.mark.parametrize('regenerate', [False, True])
+def test_review_r3_loading_gate(client, monkeypatch, regenerate):
+    through(client, 2)
+    if regenerate:
+        start(client, 3)
+    queued = []
+    monkeypatch.setattr(rounds, 'execute', queued.append)
+    client.post('/keywords/test/coverage?refresh=true')
+    response = client.post(f'/keywords/test/rounds/3?regenerate={str(regenerate).lower()}')
+    assert response.status_code == 409
+    assert '커버리지를 받는 중입니다. 끝나면 R3를 만들 수 있습니다.' in response.text
+    assert len(queued) == 1
+
+
+@pytest.mark.parametrize('status', ['connected', 'unavailable', 'unconnected', 'stale'])
+@pytest.mark.parametrize('regenerate', [False, True])
+def test_review_r3_terminal_snapshot(client, monkeypatch, status, regenerate):
+    through(client, 2)
+    if regenerate:
+        start(client, 3)
+    cov = {'status': status, 'source': 'autocomplete', 'missing_top': [['admitted', 1]]}
+    if status == 'stale':
+        cov.update(status='loading', updatedAt='2000-01-01T00:00:00+00:00')
+    store.update_session('test', {'coverage': rounds._Replacement(cov)})
+    input_data = store.load_session('test')
+    input_data.get('keywordRounds', {}).get('3', {}).pop('coverageSnapshot', None)
+    expected = rounds._inputs('test', input_data, 3).coverage_signals
+    queued, captured = [], []
+    original = rounds._inputs
+    def capture(sid, data, n):
+        state = original(sid, data, n)
+        captured.append(state.coverage_signals)
+        return state
+    monkeypatch.setattr(rounds, '_inputs', capture)
+    monkeypatch.setattr(rounds, 'execute', queued.append)
+    assert client.post(f'/keywords/test/rounds/3?regenerate={str(regenerate).lower()}').status_code == 200
+    store.update_session('test', {'coverage': rounds._Replacement(
+        {'status': 'connected', 'missing_top': [['later refresh', 9]]})})
+    queued[0]()
+    assert captured == [expected]
+
+
+def test_review_stale_refresh_recommit_never_reuses_previous(client, monkeypatch):
+    through(client, 2)
+    old = store.load_session('test')['coverage']
+    queued = []
+    monkeypatch.setattr(rounds, 'execute', queued.append)
+    loading = client.post('/keywords/test/coverage?refresh=true').json()
+    fields = {'humanQueries', 'humanAxes', 'source', 'weighting', *rounds.coverage.CoverageReport.__dataclass_fields__}
+    assert not fields.intersection(loading)
+    assert loading['previous'] == {key: old[key] for key in fields if key in old}
+    now = datetime.fromisoformat(loading['updatedAt']) + timedelta(seconds=121)
+    monkeypatch.setattr(store, 'now', lambda: now.isoformat())
+    store.update_session('test', {'keywordRounds': {'2': {'committed': False}}})
+    assert commit(client, 2).status_code == 200
+    assert client.get('/keywords/test').json()['coverage']['status'] == 'unavailable'
+    assert len(queued) == 1
+    queued[0]()
+    assert client.get('/keywords/test').json()['coverage']['status'] == 'connected'
+
+
+def test_review_slow_autocomplete_fetch_keeps_loading(client, monkeypatch):
+    import httpx
+    through(client, 2)
+    now = datetime(2026, 10, 1, tzinfo=timezone.utc)
+    monkeypatch.setattr(store, 'now', lambda: now.isoformat())
+    data = store.load_session('test')
+    data['projectContext'] = {'bk': 'product'}
+    store.write_json(store.session_dir('test') / 'session.json', data)
+    monkeypatch.setattr(settings, 'autocomplete_backend', 'http')
+    observed = []
+    def advance(seconds):
+        nonlocal now
+        now += timedelta(seconds=seconds)
+        observed.append(client.get('/keywords/test').json()['coverage']['status'])
+    def response(request):
+        advance(9)
+        return httpx.Response(200, json={'items': [[['query']]]})
+    original = naver_autocomplete.suggestions
+    with httpx.Client(transport=httpx.MockTransport(response)) as http:
+        monkeypatch.setattr(naver_autocomplete, 'suggestions',
+            lambda seeds, **kwargs: original(seeds, client=http, sleep=advance, **kwargs))
+        client.post('/keywords/test/coverage?refresh=true')
+    assert len(observed) == 41  # 21 seeds and 20 one-second delays
+    assert set(observed) == {'loading'}
+    assert client.get('/keywords/test').json()['coverage']['status'] == 'connected'
+
+
+def test_review_searchad_fetch_heartbeat(client, monkeypatch):
+    now = datetime(2026, 10, 1, tzinfo=timezone.utc)
+    monkeypatch.setattr(store, 'now', lambda: now.isoformat())
+    callbacks, stopped = [], []
+    class ControlledThread:
+        def __init__(self, target, **kwargs):
+            callbacks.append(target)
+        def start(self):
+            pass
+        def join(self):
+            pass
+    class ControlledEvent:
+        ticks = 0
+        def wait(self, seconds):
+            nonlocal now
+            assert seconds == 30
+            self.ticks += 1
+            if self.ticks > 5:
+                return True
+            now += timedelta(seconds=seconds)
+            assert client.get('/keywords/test').json()['coverage']['status'] == 'loading'
+            return False
+        def set(self):
+            stopped.append(True)
+    monkeypatch.setattr(rounds, 'Thread', ControlledThread)
+    monkeypatch.setattr(rounds, 'Event', ControlledEvent)
+    def fetch(hints):
+        assert callbacks, 'heartbeat must start before SearchAd fetch'
+        callbacks[0]()
+        assert store.load_session('test')['coverage']['updatedAt'] == now.isoformat()
+        return []
+    monkeypatch.setattr(rounds.naver_searchad, 'related_queries', fetch)
+    client.post('/keywords/test/coverage')
+    assert stopped
     assert store.load_session('test')['coverage']['status'] == 'connected'

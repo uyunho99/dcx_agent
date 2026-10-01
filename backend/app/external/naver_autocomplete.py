@@ -58,7 +58,8 @@ def _load(seed: str, client: httpx.Client | None, fake: bool):
 
 
 def suggestions(seeds: list[str], client: httpx.Client | None = None,
-                sleep: Callable[[float], None] = time.sleep) -> AutocompleteResult:
+                sleep: Callable[[float], None] = time.sleep,
+                on_progress: Callable[[], None] | None = None) -> AutocompleteResult:
     """Keep each normalized query's best rank, in first-seen query order.
 
     Failed seeds count once; invalid responses contribute no partial rows.
@@ -78,11 +79,13 @@ def suggestions(seeds: list[str], client: httpx.Client | None = None,
                 received = _parse(_load(seed, client, fake))
             except (httpx.HTTPError, ValueError, OSError):
                 failed += 1
-                continue
-            for query, rank in received:
-                key = norm_key(query)
-                if key not in queries or rank < queries[key][1]:
-                    queries[key] = (query, rank)
+            else:
+                for query, rank in received:
+                    key = norm_key(query)
+                    if key not in queries or rank < queries[key][1]:
+                        queries[key] = (query, rank)
+            if on_progress is not None:
+                on_progress()
     finally:
         if owned:
             client.close()

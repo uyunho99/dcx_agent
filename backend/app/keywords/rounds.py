@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from app.config import settings
 from app.context import store
 from app.external import naver_autocomplete, naver_searchad
-from app.external.base import Unconnected, configured
+from app.external.base import Unconnected
 from app.keywords import coverage
 from app.keywords.events import KeywordEvent, append_event, load_events
 from app.keywords.feedback import write_feedback_md
@@ -114,6 +114,9 @@ def start_round(sid, n, regenerate: bool = False, version=None) -> RoundJob:
     def patch(data):
         nonlocal created
         _order(data, n)
+        cov = deepcopy(coverage_status(data.get('coverage') or {})) if n == 3 else None
+        if cov is not None and cov.get('status') == 'loading':
+            raise store.StoreError('커버리지를 받는 중입니다. 끝나면 R3를 만들 수 있습니다.', 409)
         rounds = data.get('keywordRounds', {})
         previous = rounds.get(str(n), {})
         if (previous.get('job') or {}).get('status') == 'running':
@@ -134,6 +137,7 @@ def start_round(sid, n, regenerate: bool = False, version=None) -> RoundJob:
             'replacing': restarting or previous.get('replacing', False),
             'needsRegeneration': False,
             'keywords': previous.get('keywords', []) if regenerate and not previous.get('committed') else [],
+            **({'coverageSnapshot': _Replacement(cov)} if n == 3 else {}),
             'inputs': {}, 'below_min': None, 'promptVersion': PROMPT_VERSION[n],
             'job': job.model_dump()}}}
     data = mutate(sid, patch, version=version)
@@ -185,7 +189,9 @@ def _inputs(sid, data, n):
     feedback = write_feedback_md(sid)
     rejected = [k for k in _keywords(data) if k.status == 'rejected']
     signals = '\n'.join(f'{k.kw}: {json.dumps(k.reject, ensure_ascii=False)}' for k in rejected) or None
-    cov = coverage_status(data.get('coverage') or {})
+    admitted = data.get('keywordRounds', {}).get(str(n), {})
+    cov = (admitted['coverageSnapshot'] if n == 3 and 'coverageSnapshot' in admitted
+           else coverage_status(data.get('coverage') or {}))
     coverage_text = ''
     if cov.get('status') in ('connected', 'ok'):
         label = '자동완성 순위' if cov.get('source') == 'autocomplete' else '월간 검색수'
@@ -378,10 +384,13 @@ def compute_coverage(sid, version=None, refresh=False):
         if not refresh and (saved.get('error') or {}).get('kind') == 'interrupted':
             return {}
         created = True
-        source = 'searchad' if all(configured(name) for name in
-            ('SEARCHAD_API_KEY', 'SEARCHAD_SECRET', 'SEARCHAD_CUSTOMER_ID')) else 'autocomplete'
+        fields = {'humanQueries', 'humanAxes', 'source', 'weighting',
+                  *coverage.CoverageReport.__dataclass_fields__}
+        previous = ({key: saved[key] for key in fields if key in saved}
+                    if 'humanQueries' in saved else saved.get('previous'))
         now = store.now()
-        return {'coverage': _Replacement({**saved, 'status': 'loading', 'source': source,
+        return {'coverage': _Replacement({'status': 'loading',
+            **({'previous': previous} if previous is not None else {}),
             'phase': 'fetching', 'startedAt': now, 'updatedAt': now})}
     data = mutate(sid, begin, version=version)
     value = coverage_status(data.get('coverage') or {})
@@ -406,6 +415,17 @@ def _run_coverage(sid, data, directory):
                 raise _JobSuperseded('작업이 변경되었습니다')
             return {'coverage': _Replacement({**saved, **values, 'updatedAt': store.now()})}
         mutate(sid, patch, version=version)
+    # Cover fetching as well as classification; per-seed callbacks also stop
+    # superseded autocomplete work at the next bounded request boundary.
+    stopped = Event()
+    def heartbeat():
+        while not stopped.wait(30):
+            try:
+                progress({})
+            except Exception:
+                return
+    worker = Thread(target=heartbeat, daemon=True, name='coverage-heartbeat')
+    worker.start()
     try:
         top = sorted(approved, key=lambda k: (k.volume or {}).get('monthly') or 0, reverse=True)[:4]
         bk = data.get('projectContext', {}).get('bk', '')
@@ -419,41 +439,31 @@ def _run_coverage(sid, data, directory):
             seeds = ([bk] if bk and bk.strip() else []) + [k.kw for k in llm[:20]]
             metadata = {'source': 'autocomplete', 'weighting': 'rank',
                         'seeds': len(seeds), 'failedSeeds': len(seeds)}
-            result = naver_autocomplete.suggestions(seeds)
+            result = naver_autocomplete.suggestions(seeds, on_progress=lambda: progress({}))
             human = result.queries
             metadata.update(seeds=result.total, failedSeeds=result.failed)
         human_axes = None
         progress({**metadata, 'humanQueries': human, 'humanAxes': None, 'phase': 'classifying'})
         if human:
-            # Classification may run for up to the LLM timeout. Keep its lease
-            # alive, but let an abandoned process expire normally on reads.
-            stopped = Event()
-            def heartbeat():
-                while not stopped.wait(30):
-                    try:
-                        progress({})
-                    except Exception:
-                        return
-            worker = Thread(target=heartbeat, daemon=True, name='coverage-heartbeat')
-            worker.start()
-            try:
-                context_md = (directory / 'project_context.md').read_text(encoding='utf-8')
-                classification = run_task(LLMTask(task='kw_axis_classify', sid=sid,
-                    instructions='각 검색어를 physical, psychological, behavioral 중 하나로 분류하세요. axes는 검색어→축 매핑입니다.\n'
-                                 + json.dumps(human, ensure_ascii=False),
-                    attachments=[Attachment(title='project_context.md', body=context_md)], output_schema=HumanAxes))
-                if classification.ok:
-                    human_axes = classification.data.axes
-            finally:
-                stopped.set()
-                worker.join()
+            context_md = (directory / 'project_context.md').read_text(encoding='utf-8')
+            classification = run_task(LLMTask(task='kw_axis_classify', sid=sid,
+                instructions='각 검색어를 physical, psychological, behavioral 중 하나로 분류하세요. axes는 검색어→축 매핑입니다.\n'
+                             + json.dumps(human, ensure_ascii=False),
+                attachments=[Attachment(title='project_context.md', body=context_md)], output_schema=HumanAxes))
+            if classification.ok:
+                human_axes = classification.data.axes
         report = asdict(coverage.compute(human, [k for k in approved if k.origin == 'llm'],
                                          human_axes, weighting=metadata['weighting']))
         value = {'status': 'connected', 'humanQueries': human, 'humanAxes': human_axes, **report}
+    except _JobSuperseded:
+        return
     except naver_autocomplete.AutocompleteUnavailable:
         value = {'status': 'unavailable', 'error': {'kind': 'autocomplete_unavailable'}}
     except Exception:
         value = {'status': 'failed', 'error': {'kind': 'request_failed'}}
+    finally:
+        stopped.set()
+        worker.join()
     value.update(metadata)
     value.update(phase='done', updatedAt=store.now())
     def finish(current):

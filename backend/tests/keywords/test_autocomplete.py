@@ -129,3 +129,29 @@ def test_limits_ranks_to_ten(adapter):
     with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, json=body))) as client:
         result = adapter.suggestions(['seed'], client=client)
     assert result.queries == [(str(i), i + 1) for i in range(10)]
+
+
+def test_review_progress_after_success_and_failure(adapter, payload):
+    progress = []
+    def handler(request):
+        return httpx.Response(200, json=payload if request.url.params['q'] == 'good' else {})
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        result = adapter.suggestions(['bad', 'good', 'bad'], client=client,
+            sleep=lambda _: None, on_progress=lambda: progress.append(True))
+    assert len(progress) == 3
+    assert result.failed == 2
+
+
+def test_review_progress_can_stop_superseded_fetch(adapter, payload, monkeypatch):
+    requested = []
+    def handler(request):
+        requested.append(request.url.params['q'])
+        return httpx.Response(200, json=payload)
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    monkeypatch.setattr(adapter, 'client_factory', lambda: client)
+    def superseded():
+        raise RuntimeError('superseded')
+    with pytest.raises(RuntimeError, match='superseded'):
+        adapter.suggestions(['first', 'never'], sleep=lambda _: None, on_progress=superseded)
+    assert requested == ['first']
+    assert client.is_closed
