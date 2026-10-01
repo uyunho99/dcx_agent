@@ -829,7 +829,8 @@ def test_review_stale_refresh_recommit_never_reuses_previous(client, monkeypatch
     monkeypatch.setattr(rounds, 'execute', queued.append)
     loading = client.post('/keywords/test/coverage?refresh=true').json()
     fields = {'humanQueries', 'humanAxes', 'source', 'weighting', *rounds.coverage.CoverageReport.__dataclass_fields__}
-    assert not fields.intersection(loading)
+    assert not (fields - {'source'}).intersection(loading)
+    assert loading['source'] == 'autocomplete'
     assert loading['previous'] == {key: old[key] for key in fields if key in old}
     now = datetime.fromisoformat(loading['updatedAt']) + timedelta(seconds=121)
     monkeypatch.setattr(store, 'now', lambda: now.isoformat())
@@ -903,3 +904,75 @@ def test_review_searchad_fetch_heartbeat(client, monkeypatch):
     client.post('/keywords/test/coverage')
     assert stopped
     assert store.load_session('test')['coverage']['status'] == 'connected'
+
+
+@pytest.mark.parametrize('missing', [None, 'searchad_api_key', 'searchad_secret', 'searchad_customer_id'])
+def test_review2_loading_source_matches_credentials(client, monkeypatch, missing):
+    for name in ('searchad_api_key', 'searchad_secret', 'searchad_customer_id'):
+        monkeypatch.setattr(settings, name, '' if name == missing else 'test-credential')
+    queued = []
+    monkeypatch.setattr(rounds, 'execute', queued.append)
+    # A refresh must choose the expected source anew, not inherit its previous source.
+    store.update_session('test', {'coverage': {'status': 'connected',
+        'source': 'autocomplete' if missing is None else 'searchad', 'humanQueries': []}})
+    response = client.post('/keywords/test/coverage?refresh=true')
+    assert response.status_code == 200
+    loading = response.json()
+    assert loading['status'] == 'loading'
+    assert loading['source'] == ('searchad' if missing is None else 'autocomplete')
+    assert client.get('/keywords/test').json()['coverage'] == loading
+    assert len(queued) == 1
+
+
+@pytest.mark.parametrize('regenerate', [False, True])
+def test_review2_running_r3_survives_loading_gate(client, monkeypatch, regenerate):
+    through(client, 2)
+    queued = []
+    monkeypatch.setattr(rounds, 'execute', queued.append)
+    first = client.post('/keywords/test/rounds/3')
+    assert first.status_code == 200
+    snapshot = store.load_session('test')['keywordRounds']['3']['coverageSnapshot']
+    assert client.post('/keywords/test/coverage?refresh=true').json()['status'] == 'loading'
+    repeat = client.post(f'/keywords/test/rounds/3?regenerate={str(regenerate).lower()}')
+    assert repeat.status_code == 200
+    assert repeat.json() == first.json()
+    assert repeat.json()['status'] == 'running'
+    assert store.load_session('test')['keywordRounds']['3']['coverageSnapshot'] == snapshot
+    assert len(queued) == 2
+
+
+@pytest.mark.parametrize('error', [OSError('write failed'), store.StoreError('write failed')])
+def test_review2_progress_write_error_does_not_abort_fetch(client, monkeypatch, caplog, error):
+    progressed = []
+    def suggestions(seeds, on_progress=None):
+        def fail_write(*args, **kwargs):
+            raise error
+        with monkeypatch.context() as patch:
+            patch.setattr(rounds, 'mutate', fail_write)
+            on_progress()
+        progressed.append(True)
+        on_progress()
+        return naver_autocomplete.AutocompleteResult([('검색어', 1)], 0, len(seeds))
+    monkeypatch.setattr(naver_autocomplete, 'suggestions', suggestions)
+    client.post('/keywords/test/coverage')
+    assert progressed == [True]
+    saved = store.load_session('test')['coverage']
+    assert saved['status'] == 'connected'
+    assert saved['humanQueries'] == [['검색어', 1]]
+    assert any(record.name == rounds.__name__ and record.levelname in ('WARNING', 'ERROR')
+               for record in caplog.records)
+
+
+def test_review2_progress_supersession_still_stops_fetch(client, monkeypatch, backend):
+    replacement = {'status': 'connected', 'source': 'searchad', 'humanQueries': [['new', 10]]}
+    progressed = []
+    def suggestions(seeds, on_progress=None):
+        store.update_session('test', {'coverage': rounds._Replacement(replacement)})
+        on_progress()
+        progressed.append(True)
+        return naver_autocomplete.AutocompleteResult([('old', 1)], 0, len(seeds))
+    monkeypatch.setattr(naver_autocomplete, 'suggestions', suggestions)
+    client.post('/keywords/test/coverage')
+    assert not progressed
+    assert not backend.calls
+    assert store.load_session('test')['coverage'] == replacement

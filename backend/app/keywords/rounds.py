@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from app.config import settings
 from app.context import store
 from app.external import naver_autocomplete, naver_searchad
-from app.external.base import Unconnected
+from app.external.base import Unconnected, configured
 from app.keywords import coverage
 from app.keywords.events import KeywordEvent, append_event, load_events
 from app.keywords.feedback import write_feedback_md
@@ -114,13 +114,13 @@ def start_round(sid, n, regenerate: bool = False, version=None) -> RoundJob:
     def patch(data):
         nonlocal created
         _order(data, n)
-        cov = deepcopy(coverage_status(data.get('coverage') or {})) if n == 3 else None
-        if cov is not None and cov.get('status') == 'loading':
-            raise store.StoreError('커버리지를 받는 중입니다. 끝나면 R3를 만들 수 있습니다.', 409)
         rounds = data.get('keywordRounds', {})
         previous = rounds.get(str(n), {})
         if (previous.get('job') or {}).get('status') == 'running':
             return {}
+        cov = deepcopy(coverage_status(data.get('coverage') or {})) if n == 3 else None
+        if cov is not None and cov.get('status') == 'loading':
+            raise store.StoreError('커버리지를 받는 중입니다. 끝나면 R3를 만들 수 있습니다.', 409)
         restarting = previous.get('needsRegeneration', False) or (
             bool(data.get('stale', {}).get('stage1')) and previous.get('committed', False))
         if previous.get('committed') and n != 4 and not restarting:
@@ -390,6 +390,8 @@ def compute_coverage(sid, version=None, refresh=False):
                     if 'humanQueries' in saved else saved.get('previous'))
         now = store.now()
         return {'coverage': _Replacement({'status': 'loading',
+            'source': 'searchad' if all(configured(name) for name in
+                ('SEARCHAD_API_KEY', 'SEARCHAD_SECRET', 'SEARCHAD_CUSTOMER_ID')) else 'autocomplete',
             **({'previous': previous} if previous is not None else {}),
             'phase': 'fetching', 'startedAt': now, 'updatedAt': now})}
     data = mutate(sid, begin, version=version)
@@ -414,7 +416,12 @@ def _run_coverage(sid, data, directory):
             if saved.get('status') != 'loading' or saved.get('startedAt') != started_at:
                 raise _JobSuperseded('작업이 변경되었습니다')
             return {'coverage': _Replacement({**saved, **values, 'updatedAt': store.now()})}
-        mutate(sid, patch, version=version)
+        try:
+            mutate(sid, patch, version=version)
+        except _JobSuperseded:
+            raise
+        except Exception:
+            logger.warning('Could not persist coverage progress for session %s', sid)
     # Cover fetching as well as classification; per-seed callbacks also stop
     # superseded autocomplete work at the next bounded request boundary.
     stopped = Event()
