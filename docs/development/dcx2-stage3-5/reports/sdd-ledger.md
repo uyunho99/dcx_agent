@@ -127,3 +127,6 @@ Review fix 2 re-review Approved. Review phase clean.
 Browser QA 1: 4 Medium + 8 Low → harness retry. R-112. Fix dispatch qa-fix1.md / qa-fix1-fe.md.
 QA fix 1 committed (backend 1279, vitest 230, lint, build ok). Re-review dispatched.
 QA fix 1 re-review Approved (Q8 backend unreproduced, Q12 partial → verify in QA round 2).
+Verification PASS; harness at uat-gate.
+UAT feedback 1 → retry (R-114 U1-U4). Dispatch uat-fix1.md.
+UAT fix 1 committed 5af814c (backend 1279, vitest 242, lint, build ok).
