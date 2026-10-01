@@ -70,3 +70,16 @@ it('explicit recalculation sends refresh=true and keeps the version', async () =
   expect(fetch.mock.calls[0][0]).toContain('/keywords/session/coverage?refresh=true&version=v1');
   expect(fetch.mock.calls[0][1].method).toBe('POST');
 });
+
+
+it.each(['autocomplete', 'searchad'] as const)('shows source-aware first loading state for %s', source => {
+  const html = render({ status: 'loading', source });
+  expect(html).toContain('커버리지를 계산하는 중입니다');
+  expect(html).toContain(source === 'autocomplete' ? '네이버 자동완성에서 사람 검색어를 받는 중입니다(약 20초).' : '네이버 검색광고에서 사람 검색어를 받는 중입니다.');
+  expect(html).not.toContain('커버리지 계산 불가');
+});
+it.each(['autocomplete', 'searchad'] as const)('hides retained unavailable metrics for %s', source => {
+  const html = render({ ...autocomplete, source, status: 'unavailable', m2: [.7], m7: .8 });
+  for (const stale of ['62%', '70%', '80%', '0.12']) expect(html).not.toContain(stale);
+  expect(html).toContain('계산 불가');
+});

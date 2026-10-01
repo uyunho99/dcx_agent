@@ -157,7 +157,7 @@ function KeywordScreen({ sid }: { sid: string }) {
     {INTERNAL_TOOLS && <Card><details><summary>keyword_feedback.md 미리보기 <Badge>내부용</Badge></summary><pre style={{color:"var(--ink)"}} className="ds-t-caption">{data.feedback_md || '아직 기록된 피드백이 없습니다.'}</pre></details></Card>}</aside></div>
     {data.keywordRounds['2']?.committed && <section className="mt-6" aria-label="커버리지 검사"><CoveragePanel beforeR3={!data.keywordRounds['3'] && !data.keywordRounds['4']} coverage={data.coverage} busy={busy || running} onRefresh={() => void action(async () => { await getCoverage(sid, version); await reload(); })} /></section>}
     <p className="ds-t-caption" aria-live="polite">승인 예정 {approved.length} · 거절 {all.length - approved.length}</p>
-    {coverageLoading && <p role="status" aria-live="polite">커버리지를 받는 중입니다. 끝나면 R3를 만들 수 있습니다.</p>}
+    {(round === 2 || round === 3) && coverageLoading && <p role="status" aria-live="polite">커버리지를 받는 중입니다. 끝나면 R3를 만들 수 있습니다.</p>}
     <SaveBar dirty={dirty || direction !== savedDirection} valid={ui.canCommit && !busy} saving={busy} onDraft={() => void draft()} onSave={() => void commit()} primary={<>{ui.showRegenerate && <Button disabled={busy || r3Blocked || !ui.canRegenerate} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}<Button disabled={!ui.canStart || busy || r3Blocked || (dirty && !!current)} onClick={() => void generate(round)}>{ui.final ? '추가 생성하기' : current?.job.status === 'failed' ? '다시 생성하기' : '생성하기'}</Button>{(round === 4 || !nextRound || ui.canNext) && <Button variant="primary" disabled={!ui.canNext || busy || dirty || (round === 2 && coverageLoading)} onClick={() => void next()}>{round === 4 ? '크롤링 설정하기' : '다음 라운드 생성'}</Button>}</>} />
   </div>;
 }
