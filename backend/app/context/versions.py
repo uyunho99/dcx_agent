@@ -69,8 +69,25 @@ def _data(sid, v):
 
 def _idle(sid, data):
     running = any((r.get('job') or {}).get('status') == 'running' for r in data.get('keywordRounds', {}).values())
-    if running or any(a['status'] == 'running' for a in session_activities(sid, data)):
+    if running or any(a['status'] == 'running' and a['kind'] != 'monitor'
+                      for a in session_activities(sid, data)):
         raise StoreError('진행 중인 작업이 끝난 뒤 다시 시도하세요')
+
+
+def _stop_readonly_workers(sid, version):
+    from app.work.status import database_path, transaction
+
+    if not database_path(sid).exists():
+        return
+    with transaction(sid) as db:
+        # Publish both the durable terminal state and the cooperative stop
+        # request atomically; workers must not resume against this snapshot.
+        db.execute('''UPDATE runs SET action='stop', state='interrupted'
+            WHERE version=? AND kind IN ('judge','infer') AND state='paused' ''',
+            (version,))
+        db.execute('''UPDATE runs SET action='stop'
+            WHERE version=? AND kind='monitor' AND state IN ('running','paused')''',
+            (version,))
 
 
 CRAWL_UNFINISHED_MESSAGE = '크롤링 수집을 끝낸 뒤 새 버전을 만드세요.'
@@ -180,6 +197,8 @@ def create_version(sid, from_v, restart_from, note, version=None) -> str:
             if target.exists():
                 shutil.rmtree(target)
             raise
+        # Stop only after activation commits, outside its rollback boundary.
+        _stop_readonly_workers(sid, previous_active)
         return v
 
 
