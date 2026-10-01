@@ -83,7 +83,7 @@ function TrainingScreen({ sid, version, readonly }: { sid: string; version?: str
     try {
       await exportAndAdvance(async () => {
         const result = await exportTraining(sid, withoutModel, version);
-        if (result.exportRef && mounted.current) await refreshSessionAfterStage();
+        if (result.exportRef && mounted.current) await refreshSessionAfterStage().catch(() => {});
         return result;
       }, () => patchSession(sid, {step: 'clustering'}, version), () => {
         if (!mounted.current) return;

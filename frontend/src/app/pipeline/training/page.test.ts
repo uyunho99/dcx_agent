@@ -6,7 +6,8 @@ vi.mock('react', async () => ({...await vi.importActual('react'),
   useRef: (initial: any) => {const i=hooks.cursor++; if (!(i in hooks.slots)) hooks.slots[i]={current:initial}; return hooks.slots[i];},
   useEffect: (effect: () => any, deps: any[]) => {const i=hooks.cursor++; const old=hooks.slots[i]; if (!old || deps.some((d,j)=>d!==old.deps[j])) hooks.effects.push(()=>{old?.cleanup?.(); hooks.slots[i]={deps,cleanup:effect()};});},
 }));
-vi.mock('next/navigation', () => ({useRouter: () => ({push: vi.fn()})}));
+const push = vi.hoisted(() => vi.fn());
+vi.mock('next/navigation', () => ({useRouter: () => ({push})}));
 vi.mock('@/stores/useSessionStore', () => ({useSessionStore: Object.assign((select: any) => select({sid:'s'}),{getState:()=>({setSession:vi.fn()})})}));
 const refreshSessionAfterStage=vi.hoisted(()=>vi.fn().mockResolvedValue(undefined));
 vi.mock('@/components/versions/VersionProvider', () => ({useVersion: () => ({version:'v1',readonly:false,refreshSessionAfterStage})}));
@@ -18,6 +19,7 @@ vi.mock('@/components/train/TrainingResult', () => ({TrainingResult:'TrainingRes
 vi.mock('@/lib/api/train', () => ({getTrainingStatus:vi.fn(),getModels:vi.fn().mockResolvedValue({models:[]}),startTraining:vi.fn(),exportTraining:vi.fn()}));
 vi.mock('@/lib/api/label', () => ({getLabelOverview:vi.fn()}));
 import TrainingPage from './page';
+import { patchSession } from '@/lib/api/context';
 import { getTrainingStatus, getModels, startTraining, exportTraining } from '@/lib/api/train';
 import { getLabelOverview } from '@/lib/api/label';
 function nodes(node: any): any[] {return !node || typeof node!=='object' ? [] : Array.isArray(node) ? node.flatMap(nodes) : [node,...nodes(node.props?.children)];}
@@ -91,4 +93,24 @@ it('refreshes after exportRef is returned even without a model', async () => {
  await vi.advanceTimersByTimeAsync(0);
  expect(refreshSessionAfterStage).toHaveBeenCalledTimes(1);
  expect(exportTraining).toHaveBeenCalledWith('s',true,'v1');
+});
+
+it.each([true, false])('advances after successful export despite refresh failure (withoutModel=%s)', async withoutModel => {
+ vi.useFakeTimers();
+ vi.mocked(getModels).mockResolvedValue({models:[{modelId:'m',kind:'ensemble'}]});
+ vi.mocked(getTrainingStatus).mockResolvedValue({training:{modelId:'m',inferStatus:'done'}});
+ vi.mocked(getLabelOverview).mockResolvedValue({accepted:12,queue:{total:0}} as any);
+ vi.mocked(exportTraining).mockResolvedValue({exportRef:'out.jsonl',allRef:'all.jsonl',total:12,relevant:12,stage5:{}});
+ refreshSessionAfterStage.mockRejectedValueOnce(new Error('refresh unavailable'));
+ render(); await vi.advanceTimersByTimeAsync(0);
+ const tree=render();
+ if (withoutModel) tree.find(n=>n.props?.children==='모델 없이 내보내기').props.onClick();
+ else tree.find(n=>n.type==='TrainingResult').props.onExport();
+ await vi.advanceTimersByTimeAsync(0);
+ expect(patchSession).toHaveBeenCalledWith('s',{step:'clustering'},'v1');
+ expect(push).toHaveBeenCalledWith('/pipeline/clustering');
+ expect(render().filter(n=>n.type==='Banner' && n.props.tone==='danger')).toEqual([]);
+ await vi.advanceTimersByTimeAsync(15000);render();
+ expect(exportTraining).toHaveBeenCalledTimes(1);
+ expect(refreshSessionAfterStage).toHaveBeenCalledTimes(1);
 });

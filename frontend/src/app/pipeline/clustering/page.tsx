@@ -21,7 +21,7 @@ export default function ClusteringPage() {
 
   const fetcher = useCallback(() => getClusterStatus(sid!), [sid]);
   const shouldStop = useCallback((d: Record<string, unknown>) => d.status === "done" || d.status === "error", []);
-  const { data } = usePolling({ fetcher, interval: 4000, enabled: started && !!sid && !readonly, shouldStop });
+  const { data } = usePolling({ fetcher, interval: 4000, enabled: started && !!sid, shouldStop });
 
   const status = (data?.status as string) || "";
   useStageCompletionRefresh(status === "done" ? "clusters" : null);

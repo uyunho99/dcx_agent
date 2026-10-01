@@ -76,3 +76,31 @@ it('does not refresh or run for a historical version', async () => {
  expect(runPrep).not.toHaveBeenCalled();
  expect(view.refreshSessionAfterStage).not.toHaveBeenCalled();
 });
+
+it('keeps an immediate done result when session refresh fails, without save error or status recovery', async () => {
+ const tree=await load();
+ view.refreshSessionAfterStage.mockRejectedValueOnce(new Error('refresh unavailable'));
+ vi.mocked(runPrep).mockResolvedValue({status:'done',runId:'r',progress:1});
+ const reads=vi.mocked(getPrepStatus).mock.calls.length;
+ tree.find(n=>n.props?.children==='전처리 실행').props.onClick();
+ await vi.advanceTimersByTimeAsync(0);
+ const result=render();
+ expect(getPrepStatus).toHaveBeenCalledTimes(reads);
+ expect(result.filter(n=>n.type==='Banner' && n.props.tone==='danger')).toEqual([]);
+ expect(result.some(n=>n.props?.children==='완료된 결과를 불러오지 못했습니다. 다시 확인하거나 실행하세요.')).toBe(true);
+ await vi.advanceTimersByTimeAsync(9000);render();
+ expect(runPrep).toHaveBeenCalledTimes(1);
+ expect(view.refreshSessionAfterStage).toHaveBeenCalledTimes(1);
+});
+it('stops polling on done even when session refresh fails', async () => {
+ await load('running');
+ view.refreshSessionAfterStage.mockRejectedValueOnce(new Error('refresh unavailable'));
+ vi.mocked(getPrepStatus).mockResolvedValue({status:'done',runId:'r',progress:1});
+ await vi.advanceTimersByTimeAsync(3000);
+ const reads=vi.mocked(getPrepStatus).mock.calls.length;
+ // A failed optional refresh must not schedule another status request.
+ await vi.advanceTimersByTimeAsync(3000);
+ expect(getPrepStatus).toHaveBeenCalledTimes(reads);
+ expect(render().some(n=>n.type==='Banner' && n.props.children==='refresh unavailable')).toBe(false);
+ expect(view.refreshSessionAfterStage).toHaveBeenCalledTimes(1);
+});
