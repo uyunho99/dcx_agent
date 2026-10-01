@@ -1,0 +1,97 @@
+{
+  "verdict": "PASS",
+  "head": "13b2ea1e6dfc36a7eb4dc2684d0caab1f8fb9052",
+  "fingerprint": "ac97590fb66f748b9f750f9469fe0c23f041af3a9e6cd3cf6a9fd3404b9aa00b",
+  "commands": [
+    {
+      "command": "backend/.venv/bin/python -m pytest backend/tests -q  (1447 passed; external connects 0)",
+      "exitCode": 0
+    },
+    {
+      "command": "npm --prefix frontend test -- --run  (288 passed)",
+      "exitCode": 0
+    },
+    {
+      "command": "npm --prefix frontend run lint",
+      "exitCode": 0
+    },
+    {
+      "command": "npm --prefix frontend run build",
+      "exitCode": 0
+    }
+  ],
+  "findings": [],
+  "reviews": [
+    {
+      "scope": "task reviews (coverage/stability/display groups)",
+      "result": "Needs fixes → fix1 → Approved",
+      "evidence": "docs/development/dcx2-backlog-1/reports/review-coverage-1.md; docs/development/dcx2-backlog-1/reports/review-stability-1.md; docs/development/dcx2-backlog-1/reports/review-display-1.md; docs/development/dcx2-backlog-1/reports/review-fix1-rereview.md"
+    },
+    {
+      "scope": "gstack /review read-only (40ca7fe..675760a)",
+      "result": "3 P2 findings, all fixed",
+      "evidence": "docs/development/dcx2-backlog-1/reports/gstack-review1.md"
+    },
+    {
+      "scope": "Codex read-only branch review",
+      "result": "0 Critical, 2 Important, 2 Minor; all fixed",
+      "evidence": "docs/development/dcx2-backlog-1/reports/codex-branch-review1.md"
+    },
+    {
+      "scope": "review-phase fixes + round 2",
+      "result": "re-review Approved",
+      "evidence": "docs/development/dcx2-backlog-1/reports/rfix-coverage-report.md; docs/development/dcx2-backlog-1/reports/rfix-completion-report.md; docs/development/dcx2-backlog-1/reports/review-rfix-rereview.md; docs/development/dcx2-backlog-1/reports/rfix2-cluster-report.md; docs/development/dcx2-backlog-1/reports/rfix2-coverage-report.md; docs/development/dcx2-backlog-1/reports/review-rfix2-rereview.md"
+    }
+  ],
+  "resolvedFindings": [
+    {
+      "id": "CX1",
+      "status": "fixed"
+    },
+    {
+      "id": "CX2",
+      "status": "fixed"
+    },
+    {
+      "id": "CX3",
+      "status": "fixed"
+    },
+    {
+      "id": "CX4",
+      "status": "fixed"
+    },
+    {
+      "id": "GS1",
+      "status": "fixed"
+    },
+    {
+      "id": "GS2",
+      "status": "fixed"
+    },
+    {
+      "id": "GS3",
+      "status": "fixed"
+    },
+    {
+      "id": "RR-I1",
+      "status": "fixed"
+    },
+    {
+      "id": "RR-M3",
+      "status": "fixed"
+    },
+    {
+      "id": "RR-M4",
+      "status": "fixed"
+    },
+    {
+      "id": "RR-M5",
+      "status": "fixed"
+    },
+    {
+      "id": "RR-M6",
+      "status": "fixed"
+    }
+  ],
+  "deferred": "parked minors in reports/sdd-ledger.md → backlog at UAT"
+}
