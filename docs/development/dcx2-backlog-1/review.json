@@ -1,14 +1,14 @@
 {
   "verdict": "PASS",
-  "head": "13b2ea1e6dfc36a7eb4dc2684d0caab1f8fb9052",
-  "fingerprint": "ac97590fb66f748b9f750f9469fe0c23f041af3a9e6cd3cf6a9fd3404b9aa00b",
+  "head": "6806e8b035c6702771343dc648719bfaf2b9cb3c",
+  "fingerprint": "0db1471d93430361740b677c0f9a919d6b3ac1c91ab38ca5b365b077101f3790",
   "commands": [
     {
-      "command": "backend/.venv/bin/python -m pytest backend/tests -q  (1447 passed; external connects 0)",
+      "command": "backend/.venv/bin/python -m pytest backend/tests -q  (1458 passed; external connects 0)",
       "exitCode": 0
     },
     {
-      "command": "npm --prefix frontend test -- --run  (288 passed)",
+      "command": "npm --prefix frontend test -- --run  (294 passed)",
       "exitCode": 0
     },
     {
@@ -41,6 +41,11 @@
       "scope": "review-phase fixes + round 2",
       "result": "re-review Approved",
       "evidence": "docs/development/dcx2-backlog-1/reports/rfix-coverage-report.md; docs/development/dcx2-backlog-1/reports/rfix-completion-report.md; docs/development/dcx2-backlog-1/reports/review-rfix-rereview.md; docs/development/dcx2-backlog-1/reports/rfix2-cluster-report.md; docs/development/dcx2-backlog-1/reports/rfix2-coverage-report.md; docs/development/dcx2-backlog-1/reports/review-rfix2-rereview.md"
+    },
+    {
+      "scope": "browser QA round 1 fixes (b95e927..ad032f1)",
+      "result": "scoped re-review Approved (0 Critical, 0 Important, 4 Minor parked)",
+      "evidence": "docs/development/dcx2-backlog-1/reports/review-qfix-rereview.md; docs/development/dcx2-backlog-1/reports/qfix-coverage-report.md; docs/development/dcx2-backlog-1/reports/qfix-prep-report.md; docs/development/dcx2-backlog-1/reports/qfix-fe-report.md"
     }
   ],
   "resolvedFindings": [
@@ -90,6 +95,22 @@
     },
     {
       "id": "RR-M6",
+      "status": "fixed"
+    },
+    {
+      "id": "QA-Q1",
+      "status": "fixed"
+    },
+    {
+      "id": "QA-Q2",
+      "status": "fixed"
+    },
+    {
+      "id": "QA-Q3",
+      "status": "fixed"
+    },
+    {
+      "id": "QA-Q4",
       "status": "fixed"
     }
   ],
