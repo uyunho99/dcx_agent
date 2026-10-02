@@ -87,9 +87,33 @@ def _number(n):
         raise store.StoreError('라운드는 1~4입니다', 422, 'validation')
 
 
+def locked(n: int) -> bool:
+    return n in settings.keyword_locked_rounds
+
+
+def previous_round(n: int) -> int | None:
+    return next((i for i in range(n - 1, 0, -1) if not locked(i)), None)
+
+
+def visible_rounds(rounds_map: dict) -> dict:
+    return {number: {**deepcopy(value), **({'needsRegeneration': False} if locked(int(number)) else {})}
+            for number, value in rounds_map.items()
+            if not locked(int(number)) or value.get('committed')}
+
+
+def _check_locked(n):
+    if locked(n):
+        previous = previous_round(n)
+        following = n + 1
+        while locked(following):
+            following += 1
+        guidance = f'R{previous} 다음은 R{following}입니다' if previous is not None else f'R{following}부터 시작하세요'
+        raise store.StoreError(f'R{n}는 사용하지 않습니다. {guidance}', 409, 'round_locked')
+
+
 def _order(data, n):
     if any(not data.get('keywordRounds', {}).get(str(i), {}).get('committed')
-           or data.get('keywordRounds', {}).get(str(i), {}).get('needsRegeneration') for i in range(1, n)):
+           or data.get('keywordRounds', {}).get(str(i), {}).get('needsRegeneration') for i in range(1, n) if not locked(i)):
         raise store.StoreError('이전 라운드를 먼저 확정하세요')
 
 
@@ -101,7 +125,7 @@ def _all_keywords(data, exclude_round=None):
     replacing = data.get('keywordRounds', {}).get(str(exclude_round), {}).get('replacing', False)
     by_id = {k.id: k for k in _keywords(data) if not (replacing and k.round == exclude_round and k.origin == 'llm')}
     for number, value in data.get('keywordRounds', {}).items():
-        if number == str(exclude_round):
+        if number == str(exclude_round) or (locked(int(number)) and not value.get('committed')):
             continue
         for item in value.get('keywords', []):
             by_id.setdefault(item['id'], Keyword.model_validate(item))
@@ -110,6 +134,7 @@ def _all_keywords(data, exclude_round=None):
 
 def start_round(sid, n, regenerate: bool = False, version=None) -> RoundJob:
     _number(n)
+    _check_locked(n)
     created = False
     def patch(data):
         nonlocal created
@@ -291,6 +316,7 @@ def recover_interrupted():
 
 def commit_round(sid, n, decisions: list, gen: int | None = None, version=None) -> None:
     _number(n)
+    _check_locked(n)
     events = []
     def patch(data):
         _order(data, n)
@@ -337,7 +363,7 @@ def commit_round(sid, n, decisions: list, gen: int | None = None, version=None) 
             append_event(sid, event, directory=directory)
         store._update_locked(sid, values, confirm_stage='stage1')
         write_feedback_md(sid, directory=directory)
-    if n == 2:
+    if n == previous_round(3):
         compute_coverage(sid, version=pinned_version)
 
 
@@ -512,7 +538,8 @@ def add_manual(sid, kw, axis, sub, origin='manual', version=None):
         duplicate = next((k for k in _all_keywords(data) if norm_key(k.kw) == norm_key(kw)), None)
         if duplicate:
             raise Duplicate(duplicate.id)
-        keyword.round = max((int(n) for n in data.get('keywordRounds', {})), default=1)
+        keyword.round = max((int(n) for n, state in data.get('keywordRounds', {}).items()
+                             if not locked(int(n)) or state.get('committed')), default=1)
         return {'keywords': data.get('keywords', []) + [keyword.model_dump()]}
     with store.locked(sid):
         data = store.assert_writable(sid, version)

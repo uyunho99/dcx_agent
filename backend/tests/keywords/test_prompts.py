@@ -23,7 +23,7 @@ def state():
 
 
 def test_four_distinct_templates(state):
-    assert PROMPT_VERSION == {1: "r1.v3", 2: "r2.v2", 3: "r3.v2", 4: "r4.v2"}
+    assert PROMPT_VERSION == {1: "r1.v3", 2: "r2.v2", 3: "r3.v3", 4: "r4.v3"}
     assert MIN_COUNT == {1: 70, 2: 100, 3: 60, 4: 60}
     tasks = [build_round_task("sid", n, state) for n in range(1, 5)]
     assert len({task.instructions for task in tasks}) == 4
@@ -40,6 +40,43 @@ def test_four_distinct_templates(state):
         for axis, subs in AXES.items():
             assert axis in task.instructions
             assert all(sub in task.instructions for sub in subs)
+
+
+def test_r3_v3_converges_with_light_balance(state):
+    text = build_round_task("sid", 3, state).instructions
+    for phrase in (
+        "주제 묶음", "약 7할", "약 3할", "가장 적은 축", "맥락어만 바꾼 변형",
+        "커버리지가 없으면 검색량을 추정하지 않는다",
+        "거절 사유에 해당하는 표현과 과거 0건 키워드의 반복을 피한다",
+    ):
+        assert phrase in text
+    assert "부족한 축을 보완하며 수렴·균형을 맞춘다" not in text
+
+
+def test_r4_v3_final_divergence(state):
+    state = replace(
+        state, rejection_signals="거절X: 사유",
+        distribution={"physical": 0.5, "psychological": 0.3, "behavioral": 0.2},
+    )
+    text = build_round_task("sid", 4, state).instructions
+    for phrase in (
+        "대체 · 결합 · 응용", "역발상", "제거", "극단 사용자", "인접어",
+        "맥락어만 바꾼 변형", "세 축에 고르게",
+    ):
+        assert phrase in text
+    assert "축 분포:\n- physical: 0.5\n- psychological: 0.3\n- behavioral: 0.2" in text
+    assert "거절 신호:\n거절X: 사유" in text
+    assert text.index("축 분포:") < text.index("거절 신호:") < text.index("기존 승인 키워드(중복 제외):")
+
+
+@pytest.mark.parametrize("round_number", [3, 4])
+def test_v3_keeps_shared_sections(round_number):
+    templates = Path(build_round_task.__globals__["__file__"]).with_name("prompts")
+    marker = "## 키워드 형태 규칙".encode("utf-8")
+    old = (templates / f"r{round_number}.v2.md").read_bytes()
+    new = (templates / f"r{round_number}.v3.md").read_bytes()
+    assert marker in old and marker in new
+    assert new[new.index(marker):] == old[old.index(marker):]
 
 
 def test_no_role_sentence_no_domain_examples(state):

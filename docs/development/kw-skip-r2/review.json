@@ -1,0 +1,62 @@
+{
+ "verdict": "PASS",
+ "head": "91c8ac7713db372d635a6bf8d40ac40244aa70e2",
+ "fingerprint": "9fb68d45673c81ff8c1b9198e46a635b6e3f0d0b7fb5a1555b9fa94225018e7b",
+ "commands": [
+  {
+   "command": "git diff 6d9f3bc...e44e3d2 — codex:codex-rescue 읽기 전용 브랜치 리뷰(리뷰 집중 지점 7개)",
+   "exitCode": 0
+  },
+  {
+   "command": "git diff e44e3d2...HEAD — Main Claude 읽기 전용 diff 검토(T5 · T6)",
+   "exitCode": 0
+  }
+ ],
+ "resolved": [
+  {
+   "id": "R1",
+   "severity": "P1",
+   "source": "codex branch review + QA5",
+   "file": "frontend/src/app/pipeline/keywords/page.tsx:48",
+   "summary": "nextRound(4)=4 때문에 R4 확정 후 크롤링 설정하기 버튼 비활성",
+   "status": "fixed",
+   "fix": "91adacc (T5, followingRound)"
+  },
+  {
+   "id": "R2",
+   "severity": "P2",
+   "source": "codex branch review",
+   "file": "backend/app/keywords/feedback.py:105",
+   "summary": "미확정 R2 후보의 거절 · 이동 기록이 R3/R4 지시문 첨부(keyword_feedback.md)에 남음 — 세라젬 세션에 실제 1건(시골집개구리소리)",
+   "status": "fixed",
+   "fix": "91c8ac7 (T6)"
+  },
+  {
+   "id": "R3",
+   "severity": "P3",
+   "source": "codex branch review",
+   "file": "backend/app/keywords/rounds.py:541",
+   "summary": "미확정 R2가 있으면 R1에서 직접 추가한 키워드가 round=2로 기록",
+   "status": "fixed",
+   "fix": "91c8ac7 (T6)"
+  },
+  {
+   "id": "R4",
+   "severity": "P1",
+   "source": "T1 Codex 보고",
+   "file": "backend/app/routers/keywords_v2.py:147",
+   "summary": "미확정 R2가 있는 세션에서 승인 · 거절 · 이동 이벤트가 KeyError",
+   "status": "fixed",
+   "fix": "e44e3d2 (T4)"
+  },
+  {
+   "id": "R5",
+   "severity": "P3",
+   "source": "codex branch review",
+   "file": "backend/app/routers/sessions.py",
+   "summary": "/session/{sid} · /pipeline-status/{sid} · /rounds/2 는 저장된 미확정 R2를 그대로 반환(설계상 허용, 화면은 사용 안 함)",
+   "status": "accepted"
+  }
+ ],
+ "findings": []
+}

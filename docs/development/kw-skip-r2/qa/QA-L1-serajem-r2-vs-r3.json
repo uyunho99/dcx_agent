@@ -1,0 +1,443 @@
+{
+ "session": "s89d92341bdb340b0bd7a5943a1c86dc7",
+ "model_backend": "사용자 .env(LLM_BACKEND/OPENAI_MODEL)",
+ "r3_prompt": "r3.v3",
+ "r2_pending": [
+  "시골집외풍",
+  "전원바닥냉기",
+  "농가난방편차",
+  "주말집예열",
+  "전원보일러소음",
+  "농가등유냄새",
+  "시골집난방비",
+  "농촌등유배달",
+  "전원전기장판",
+  "농가온수대기",
+  "시골집동파",
+  "주말집물빼기",
+  "전원수도녹물",
+  "농가지하수",
+  "시골집석회물",
+  "귀촌수질검사",
+  "농가생수운반",
+  "시골집단수",
+  "전원저수통",
+  "농가배수냄새",
+  "전원정화조냄새",
+  "시골집욕실미끄럼",
+  "농가젖은장화",
+  "전원작업복냄새",
+  "농가세탁물적체",
+  "시골집빨래습기",
+  "전원이불눅눅함",
+  "주말집침구보관",
+  "농가빨래먼지",
+  "전원빨래벌레",
+  "시골집환기갈등",
+  "농가환기시간",
+  "전원방충망청소",
+  "시골집모기장",
+  "전원살충제냄새",
+  "농가날파리",
+  "시골집개미",
+  "전원쥐흔적",
+  "농가천장소리",
+  "시골집뱀출몰",
+  "귀촌진드기",
+  "농가피부가려움",
+  "전원벌레물림",
+  "마당피부검사",
+  "농가작업복분리",
+  "시골집개구리소리",
+  "전원매미소리",
+  "농촌방송소리",
+  "농가건조기소음",
+  "전원빗소리",
+  "시골집풍절음",
+  "농촌퇴비냄새",
+  "전원소각연기",
+  "시골집가로등",
+  "전원센서등",
+  "농가암막커튼",
+  "전원새벽각성",
+  "귀촌낮잠증가",
+  "농가야간화장실",
+  "시골집계단통증",
+  "마당허리굽힘",
+  "텃밭무릎부담",
+  "농가손목피로",
+  "전원햇빛노출",
+  "귀촌갈증",
+  "농가물통휴대",
+  "전원땀냉각",
+  "귀촌목욕빈도",
+  "농가발씻기",
+  "전원휴식방",
+  "귀촌수면일지",
+  "주말집온습도계",
+  "전원원격난방",
+  "농가정전알림",
+  "주말집냉장고",
+  "농가식품변질",
+  "귀촌대량구매",
+  "전원냉동실포화",
+  "농가식재료나눔",
+  "귀촌반찬소진",
+  "시골집혼밥",
+  "귀촌밀키트",
+  "농촌이동장터",
+  "귀촌식사시간",
+  "농가농번기식사",
+  "귀촌카페작업",
+  "전원통신백업",
+  "농촌공유오피스",
+  "귀촌회의시간",
+  "주말집퇴실정리",
+  "전원풀베기",
+  "주말집잡초",
+  "농가낙엽청소",
+  "전원눈치우기",
+  "농가장작운반",
+  "전원난로재",
+  "농가관리대행",
+  "귀촌텃밭축소",
+  "전원화분재배",
+  "귀촌난방전환",
+  "주말집겨울폐쇄",
+  "귀촌집축소",
+  "귀촌읍내이주",
+  "전원장마체험",
+  "귀촌여름체류",
+  "시골집밤체험",
+  "귀촌임대살이",
+  "귀촌회복조급증",
+  "전원날씨무력감",
+  "귀촌관리피로",
+  "주말집철수안도",
+  "전원침입불안",
+  "농가수질불안",
+  "귀촌혼자낙상",
+  "전원난로중독",
+  "귀촌자급신념",
+  "전원숙면기대",
+  "귀촌저비용믿음",
+  "전원넓은집로망",
+  "귀촌작은집선호",
+  "전원관리최소화",
+  "귀촌수면자율",
+  "귀촌생활분리",
+  "귀촌소농정체성",
+  "귀촌임차인",
+  "전원세입자관리",
+  "귀촌반려묘",
+  "전원고양이방충망",
+  "농가개털청소",
+  "귀촌공황",
+  "귀촌아토피",
+  "귀촌교대근무",
+  "귀촌낮수면",
+  "귀촌생활기록"
+ ],
+ "r3": [
+  {
+   "kw": "시골집외풍",
+   "axis": "physical",
+   "sub": "space"
+  },
+  {
+   "kw": "전원수도동파",
+   "axis": "physical",
+   "sub": "product_physical"
+  },
+  {
+   "kw": "농가누수",
+   "axis": "physical",
+   "sub": "space"
+  },
+  {
+   "kw": "시골집녹물",
+   "axis": "physical",
+   "sub": "sense"
+  },
+  {
+   "kw": "전원라돈",
+   "axis": "physical",
+   "sub": "space"
+  },
+  {
+   "kw": "농가일산화탄소",
+   "axis": "physical",
+   "sub": "product_physical"
+  },
+  {
+   "kw": "시골집쥐",
+   "axis": "physical",
+   "sub": "sense"
+  },
+  {
+   "kw": "마당진드기",
+   "axis": "physical",
+   "sub": "body"
+  },
+  {
+   "kw": "텃밭뱀",
+   "axis": "physical",
+   "sub": "space"
+  },
+  {
+   "kw": "전원예초기소음",
+   "axis": "physical",
+   "sub": "sense"
+  },
+  {
+   "kw": "마을방송",
+   "axis": "physical",
+   "sub": "time"
+  },
+  {
+   "kw": "농가습진",
+   "axis": "physical",
+   "sub": "body"
+  },
+  {
+   "kw": "시골집낙상",
+   "axis": "physical",
+   "sub": "body"
+  },
+  {
+   "kw": "전원가로등",
+   "axis": "physical",
+   "sub": "sense"
+  },
+  {
+   "kw": "농가보일러",
+   "axis": "physical",
+   "sub": "product_physical"
+  },
+  {
+   "kw": "전원장마",
+   "axis": "physical",
+   "sub": "time"
+  },
+  {
+   "kw": "마당배수",
+   "axis": "physical",
+   "sub": "space"
+  },
+  {
+   "kw": "농가온수",
+   "axis": "physical",
+   "sub": "product_physical"
+  },
+  {
+   "kw": "전원벌레공포",
+   "axis": "psychological",
+   "sub": "perceived_risk"
+  },
+  {
+   "kw": "귀촌응급불안",
+   "axis": "psychological",
+   "sub": "perceived_risk"
+  },
+  {
+   "kw": "귀촌방범불안",
+   "axis": "psychological",
+   "sub": "perceived_risk"
+  },
+  {
+   "kw": "마을눈치",
+   "axis": "psychological",
+   "sub": "emotion"
+  },
+  {
+   "kw": "귀촌텃세",
+   "axis": "psychological",
+   "sub": "perceived_risk"
+  },
+  {
+   "kw": "주말집피로감",
+   "axis": "psychological",
+   "sub": "emotion"
+  },
+  {
+   "kw": "전원적막",
+   "axis": "psychological",
+   "sub": "emotion"
+  },
+  {
+   "kw": "귀촌외로움",
+   "axis": "psychological",
+   "sub": "emotion"
+  },
+  {
+   "kw": "귀촌해방감",
+   "axis": "psychological",
+   "sub": "emotion"
+  },
+  {
+   "kw": "귀촌자연치유",
+   "axis": "psychological",
+   "sub": "belief"
+  },
+  {
+   "kw": "전원자급자족",
+   "axis": "psychological",
+   "sub": "belief"
+  },
+  {
+   "kw": "귀촌느린생활",
+   "axis": "psychological",
+   "sub": "goal_ladder"
+  },
+  {
+   "kw": "전원숙면",
+   "axis": "psychological",
+   "sub": "goal_ladder"
+  },
+  {
+   "kw": "귀촌정착의지",
+   "axis": "psychological",
+   "sub": "goal_ladder"
+  },
+  {
+   "kw": "귀촌반려생활",
+   "axis": "psychological",
+   "sub": "goal_ladder"
+  },
+  {
+   "kw": "귀촌마을소속감",
+   "axis": "psychological",
+   "sub": "identity"
+  },
+  {
+   "kw": "귀촌독거인",
+   "axis": "psychological",
+   "sub": "identity"
+  },
+  {
+   "kw": "귀촌자연인",
+   "axis": "psychological",
+   "sub": "identity"
+  },
+  {
+   "kw": "주말집환기",
+   "axis": "behavioral",
+   "sub": "coping"
+  },
+  {
+   "kw": "농가방충망",
+   "axis": "behavioral",
+   "sub": "coping"
+  },
+  {
+   "kw": "전원모기장",
+   "axis": "behavioral",
+   "sub": "coping"
+  },
+  {
+   "kw": "마당풀베기",
+   "axis": "behavioral",
+   "sub": "coping"
+  },
+  {
+   "kw": "시골집해충방제",
+   "axis": "behavioral",
+   "sub": "coping"
+  },
+  {
+   "kw": "농가장작쌓기",
+   "axis": "behavioral",
+   "sub": "coping"
+  },
+  {
+   "kw": "주말집수도잠금",
+   "axis": "behavioral",
+   "sub": "coping"
+  },
+  {
+   "kw": "전원동파방지",
+   "axis": "behavioral",
+   "sub": "coping"
+  },
+  {
+   "kw": "농가빨래건조",
+   "axis": "behavioral",
+   "sub": "constraint"
+  },
+  {
+   "kw": "시골집수리기사",
+   "axis": "behavioral",
+   "sub": "constraint"
+  },
+  {
+   "kw": "농촌생필품비축",
+   "axis": "behavioral",
+   "sub": "coping"
+  },
+  {
+   "kw": "농촌제설",
+   "axis": "behavioral",
+   "sub": "constraint"
+  },
+  {
+   "kw": "시골집연료배달",
+   "axis": "behavioral",
+   "sub": "constraint"
+  },
+  {
+   "kw": "귀촌택시호출",
+   "axis": "behavioral",
+   "sub": "constraint"
+  },
+  {
+   "kw": "전원난방비",
+   "axis": "behavioral",
+   "sub": "constraint"
+  },
+  {
+   "kw": "귀촌건강검진",
+   "axis": "behavioral",
+   "sub": "trigger"
+  },
+  {
+   "kw": "귀촌수술회복",
+   "axis": "behavioral",
+   "sub": "trigger"
+  },
+  {
+   "kw": "귀촌불면",
+   "axis": "behavioral",
+   "sub": "trigger"
+  },
+  {
+   "kw": "귀촌퇴직",
+   "axis": "behavioral",
+   "sub": "trigger"
+  },
+  {
+   "kw": "시골집밤답사",
+   "axis": "behavioral",
+   "sub": "info_search"
+  },
+  {
+   "kw": "전원수질검사",
+   "axis": "behavioral",
+   "sub": "info_search"
+  },
+  {
+   "kw": "귀촌단기임대",
+   "axis": "behavioral",
+   "sub": "info_search"
+  },
+  {
+   "kw": "주말집매각",
+   "axis": "behavioral",
+   "sub": "switching"
+  },
+  {
+   "kw": "귀촌읍내이사",
+   "axis": "behavioral",
+   "sub": "switching"
+  }
+ ]
+}

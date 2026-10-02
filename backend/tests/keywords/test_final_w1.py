@@ -34,6 +34,8 @@ def commit(client, n, state):
 def test_shipped_fake_rounds_and_corpus(fake_session, tmp_path):
     words = []
     for n in range(1, 5):
+        if rounds.locked(n):
+            continue
         state = generate(fake_session, n)
         words.extend(k['kw'] for k in state['keywords'])
         assert commit(fake_session, n, state).status_code == 200
@@ -48,16 +50,20 @@ def test_shipped_fake_rounds_and_corpus(fake_session, tmp_path):
 @pytest.mark.parametrize('regenerate', ['', '?regenerate=true'])
 def test_restart_round_order_and_replacement(fake_session, regenerate):
     for n in range(1, 5):
+        if rounds.locked(n):
+            continue
         assert commit(fake_session, n, generate(fake_session, n)).status_code == 200
     versions.create_version('w1', 'v1', 'stage0', '')
-    assert fake_session.post('/keywords/w1/rounds/2').status_code == 409
+    assert fake_session.post('/keywords/w1/rounds/3').status_code == 409
     for n in range(1, 5):
+        if rounds.locked(n):
+            continue
         state = generate(fake_session, n, regenerate)
         assert state['gen'] == 2
         assert commit(fake_session, n, state).status_code == 200
         data = store.load_session('w1')
         assert 'stage1' not in data['stale']
-        assert all(not data['keywordRounds'][str(i)]['committed'] for i in range(n + 1, 5))
+        assert all(not data['keywordRounds'][str(i)]['committed'] for i in range(n + 1, 5) if not rounds.locked(i))
     assert all('g2_' in k['id'] for k in store.load_session('w1')['keywords'])
 
 @pytest.mark.parametrize('endpoint,body', [
@@ -136,9 +142,13 @@ def test_version_checked_after_lock_acquired(fake_session, monkeypatch, endpoint
 
 def test_restart_r4_then_extra_generation_preserves_committed(fake_session):
     for n in range(1, 5):
+        if rounds.locked(n):
+            continue
         assert commit(fake_session, n, generate(fake_session, n)).status_code == 200
     versions.create_version('w1', 'v1', 'stage1', '')
     for n in range(1, 5):
+        if rounds.locked(n):
+            continue
         assert commit(fake_session, n, generate(fake_session, n)).status_code == 200
     before = store.load_session('w1')['keywords']
     assert fake_session.post('/keywords/w1/rounds/4').status_code == 200
