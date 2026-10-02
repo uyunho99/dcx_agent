@@ -159,8 +159,9 @@ def _source_docs(sid, session, wanted):
             if line.strip():
                 doc = json.loads(line)
                 if doc['doc_id'] in result:
+                    # Preserve explicit null: it marks an unavailable model head.
                     result[doc['doc_id']]['tagProbs'] = doc.get('tagProbs', {})
-                    result[doc['doc_id']]['sem'] = doc.get('sem', {})
+                    result[doc['doc_id']]['sem'] = (doc.get('sem') or {})
     return result
 
 
@@ -232,15 +233,20 @@ def _summary(ids, raw, coded, codes, docs):
                               key=lambda row: (-row['count'], row['label']))[:3]
     constraints = summary['resource_constraint']
     empty = sum(not raw[i]['task_goal'] or not raw[i]['resource_constraint'] for i in successful)
-    mismatch = 0
+    mismatch = unknown = 0
     for i in successful:
         doc = docs.get(i, {})
-        probs = doc.get('tagProbs', {})
-        act = probs.get('act', probs.get('sem', {}).get('act', doc.get('sem', {}).get('act', 0)))
+        probs = (doc.get('tagProbs') or {})
+        # Original semantic labels cannot stand in for unavailable probabilities.
+        act = None if doc.get('tagProbs', {}) is None else probs.get(
+            'act', (probs.get('sem') or {}).get('act', (doc.get('sem') or {}).get('act')))
+        if act is None:
+            unknown += 1
+            continue
         mismatch += (float(act or 0) >= .5) != bool(raw[i]['activity_response'])
     return dict(sampled=len(ids), extracted=len(successful), dominant_constraint=constraints[0]['label'] if constraints else None,
                 dims_summary=summary, empty_goal_or_constraint=empty / len(successful) if successful else 0.0,
-                act_mismatch=mismatch)
+                act_mismatch=mismatch, act_unknown=unknown)
 
 
 def extract_sample(sid, version, store) -> dict:
@@ -298,7 +304,7 @@ def extract_sample(sid, version, store) -> dict:
             db.execute('UPDATE contexts SET dominant_constraint=?, dims_summary_json=? WHERE context_id=?',
                        (summary['dominant_constraint'], json.dumps(summary['dims_summary'], ensure_ascii=False), context))
     return dict(sampled=len(ids), extracted=len(raw), dims_failed=failed, phrase_too_long=too_long,
-                empty_goal_or_constraint=total['empty_goal_or_constraint'], act_mismatch=total['act_mismatch'],
+                empty_goal_or_constraint=total['empty_goal_or_constraint'], act_mismatch=total['act_mismatch'], act_unknown=total['act_unknown'],
                 codes={dim: [row for row in codes if row['dim'] == dim] for dim in DIMENSIONS},
                 contexts=summaries, coverage={doc_id: dict(filled=sum(row[d] is not None for d in DIMENSIONS),
                     has_goal=row['task_goal'] is not None, has_constraint=row['resource_constraint'] is not None)

@@ -360,3 +360,22 @@ def test_draft_cache_retries_failures(tmp_path, monkeypatch, legacy_cache):
     assert pipeline._Calls(tmp_path, lambda: None).run_task(task).ok
     assert pipeline._Calls(tmp_path, lambda: None).run_task(task).ok
     assert len(requests) == 2
+
+
+def test_nullable_core_export_runs_and_resumes(setup, data_dir):
+    fixture, _ = setup(docs_per_context=4)
+    session = sessions.read_json(version_dir(fixture.sid, 'v1') / 'session.json')
+    path = data_dir / session['training']['exportRef']
+    exported = [json.loads(line) for line in path.read_text().splitlines()]
+    for index, doc in enumerate(exported):
+        if index % 2 == 0:
+            doc.update(tagProbs=None, pred_entropy=None)
+    path.write_text(''.join(json.dumps(doc) + '\n' for doc in exported))
+    pipeline.run(Context(fixture.sid, stop_after='quality'))
+    pipeline.run(Context(fixture.sid))
+    result = report(fixture.sid)
+    assert result['dims']['act_unknown'] > 0
+    rows = SegmentStore.open(fixture.sid, 'v1').docs(limit=10000)
+    assert any(row['evidence_level'] == 'core' and row['pred_entropy'] is None for row in rows)
+    pipeline.run(Context(fixture.sid))
+    assert report(fixture.sid)['dims'] == result['dims']

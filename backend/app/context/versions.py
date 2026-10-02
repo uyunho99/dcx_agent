@@ -297,6 +297,42 @@ def compare(sid, a, b, stage) -> dict:
             result = {name: {'before': metrics(before, a, name), 'after': metrics(after, b, name)} for name in names}
             result['same'] = all(value['before'] == value['after'] for value in result.values())
             return result
+        if stage == 'stage6':
+            def segment_summary(v):
+                import json
+                base = version_dir(sid, v) / 'segment'
+                report = read_json(base / 'stage_6.json')
+                result = {'report': None, 'reportHash': None}
+                if report is not None:
+                    result['reportHash'] = hashlib.sha256(json.dumps(report, sort_keys=True).encode()).hexdigest()
+                    result['report'] = {key: report[key] for key in ('run', 'at', 'input', 'bands') if key in report}
+                    result['report']['k'] = report.get('L1', {}).get('k')
+                    result['report']['dims'] = {key: value for key, value in report.get('dims', {}).items()
+                                                if key not in ('coverage', 'codes', 'contexts')}
+                    result['report']['warnings'] = len(report.get('warnings', []))
+                fields = {'clusters': ('cluster_id', 'name'),
+                          'personas': ('persona_id', 'name', 'desire', 'goals_json'),
+                          'contexts': ('context_id', 'name', 'action')}
+                for layer in fields:
+                    result[layer] = dict(confirmed=0, total=0, items=[])
+                path = base / 'segment.sqlite'
+                if path.is_file():
+                    with closing(sqlite3.connect(f'{path.as_uri()}?mode=ro', uri=True)) as db:
+                        db.row_factory = sqlite3.Row
+                        db.execute('BEGIN')
+                        for layer, columns in fields.items():
+                            rows = db.execute(f"SELECT {', '.join(columns)}, confirmed_at FROM {layer} ORDER BY {columns[0]}").fetchall()
+                            items = []
+                            for row in rows:
+                                item = {key: row[key] for key in columns if key != 'goals_json'}
+                                if 'goals_json' in columns:
+                                    item['goals'] = json.loads(row['goals_json'] or '[]')
+                                item['confirmed'] = bool(row['confirmed_at'])
+                                items.append(item)
+                            result[layer] = dict(confirmed=sum(item['confirmed'] for item in items), total=len(items), items=items)
+                return result
+            left, right = segment_summary(a), segment_summary(b)
+            return dict(same=left == right, before=left, after=right)
         if not re.fullmatch(r'stage[0-9]+', stage):
             raise StoreError('Invalid stage', 400, 'validation')
         def files(v):

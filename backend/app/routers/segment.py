@@ -77,9 +77,23 @@ class ConfirmationStore(SegmentStore):
     in SQLite independently. This instance is private to one HTTP request.
     """
     expected_run = None
+    read_connection = None
+
+    @contextmanager
+    def snapshot(self):
+        with super()._db() as db:
+            db.execute('BEGIN')
+            self.read_connection = db
+            try:
+                yield self.get_run()
+            finally:
+                self.read_connection = None
 
     @contextmanager
     def _db(self, *, write=False):
+        if not write and self.read_connection is not None:
+            yield self.read_connection
+            return
         with super()._db(write=write) as db:
             if write and self.expected_run is not None:
                 row = db.execute("SELECT value FROM meta WHERE key='run'").fetchone()
@@ -199,36 +213,39 @@ def status(sid: str, version: str | None = None):
 @router.get('/clusters')
 def clusters(sid: str, version: str | None = None):
     data, store = _open(sid, version)
-    return dict(run=store.get_run(), clusters=_rows(store, 'clusters'),
-                kSuggest=(_report(sid, data) or {}).get('L1'))
+    with store.snapshot() as run:
+        return dict(run=run, clusters=_rows(store, 'clusters'),
+                    kSuggest=(_report(sid, data) or {}).get('L1'))
 
 
 @router.get('/personas')
 def personas(sid: str, cluster: str | None = None, version: str | None = None):
     data, store = _open(sid, version)
-    _gate(store, 'personas')
-    rows = _rows(store, 'personas', cluster)
-    scope = data.get('projectContext', {}).get('targetScope')
-    def summarize(value):
-        if isinstance(value, dict):
-            return ' · '.join(filter(None, (summarize(v) for v in value.values())))
-        if isinstance(value, list):
-            return ', '.join(filter(None, (summarize(v) for v in value)))
-        return str(value).strip() if value else ''
-    summary = summarize(scope)[:300]
-    if summary:
-        for row in rows:
-            row['hint'] = '초안 힌트: 0단계 대상 선언 · ' + summary
-    return dict(run=store.get_run(), personas=rows)
+    with store.snapshot() as run:
+        _gate(store, 'personas')
+        rows = _rows(store, 'personas', cluster)
+        scope = data.get('projectContext', {}).get('targetScope')
+        def summarize(value):
+            if isinstance(value, dict):
+                return ' · '.join(filter(None, (summarize(v) for v in value.values())))
+            if isinstance(value, list):
+                return ', '.join(filter(None, (summarize(v) for v in value)))
+            return str(value).strip() if value else ''
+        summary = summarize(scope)[:300]
+        if summary:
+            for row in rows:
+                row['hint'] = '초안 힌트: 0단계 대상 선언 · ' + summary
+        return dict(run=run, personas=rows)
 
 
 @router.get('/contexts')
 def contexts(sid: str, persona: str | None = None, version: str | None = None):
     data, store = _open(sid, version)
-    _gate(store, 'contexts')
-    dims = (_report(sid, data) or {}).get('dims', {})
-    return dict(run=store.get_run(), contexts=_rows(store, 'contexts', persona),
-                emptyGoalConstraintRatio=dims.get('empty_goal_or_constraint', 0))
+    with store.snapshot() as run:
+        _gate(store, 'contexts')
+        dims = (_report(sid, data) or {}).get('dims', {})
+        return dict(run=run, contexts=_rows(store, 'contexts', persona),
+                    emptyGoalConstraintRatio=dims.get('empty_goal_or_constraint', 0))
 
 
 @contextmanager
@@ -288,17 +305,15 @@ def docs(sid: str, context: str | None = None, band: Literal['core', 'fringe', '
          offset: int = Query(default=0, ge=0), limit: int = Query(default=100, ge=1, le=1000),
          version: str | None = None):
     data, store = _open(sid, version)
-    # Capture before reading: a concurrent reset must never label old rows with
-    # the new generation, which would let an old page submit valid confirmations.
-    run = store.get_run()
-    rows = store.docs(context_id=context, band=band, limit=limit, offset=offset)
-    filters, values = [], []
-    for key, value in (('context_id', context), ('band', band)):
-        if value is not None:
-            filters.append(f'{key}=?')
-            values.append(value)
-    with store._db() as db:
-        total = db.execute('SELECT count(*) FROM docs' + (' WHERE ' + ' AND '.join(filters) if filters else ''), values).fetchone()[0]
+    with store.snapshot() as run:
+        rows = store.docs(context_id=context, band=band, limit=limit, offset=offset)
+        filters, values = [], []
+        for key, value in (('context_id', context), ('band', band)):
+            if value is not None:
+                filters.append(f'{key}=?')
+                values.append(value)
+        with store._db() as db:
+            total = db.execute('SELECT count(*) FROM docs' + (' WHERE ' + ' AND '.join(filters) if filters else ''), values).fetchone()[0]
     # Read only the requested originals into memory, preserving collection source.
     wanted = {r['doc_id'] for r in rows}
     originals = {}

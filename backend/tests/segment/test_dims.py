@@ -210,3 +210,18 @@ def test_two_pairs_use_max_and_frozen_scale(monkeypatch):
     scores = dims.combo_rarity(raw, codes, combos)
     assert scores == {'0': 0., '1': 0., '2': 0., '3': 1.}
     assert dims.combo_rarity({'lazy': raw['3']}, codes, combos) == {'lazy': 1.}
+
+
+@pytest.mark.parametrize('sem', [None, {'act': 0}])
+def test_nullable_export_probabilities_resume(setup, calls, data_dir, sem):
+    store, _ = setup(4)
+    path = data_dir / 'classified/s/v1/relevant.jsonl'
+    docs = [json.loads(line) for line in path.read_text().splitlines()]
+    docs[0].update(tagProbs=None, pred_entropy=None, sem=sem)
+    docs[1].update(tagProbs={'sem': None}, pred_entropy=None, sem=None)
+    path.write_text(''.join(json.dumps(doc) + '\n' for doc in docs))
+    first = dims.extract_sample('s', 'v1', store)
+    assert first['act_unknown'] == 2
+    assert first['act_mismatch'] == 0
+    assert first['contexts']['C0']['act_unknown'] == 2
+    assert dims.extract_sample('s', 'v1', store) == first

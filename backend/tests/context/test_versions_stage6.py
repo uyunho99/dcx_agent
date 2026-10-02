@@ -140,3 +140,35 @@ def test_segment_worker_blocks_new_version(completed):
     with pytest.raises(store.StoreError) as error:
         versions.create_version(completed, 'v1', 'stage6', '')
     assert error.value.status == 409
+
+
+def test_compare_stage6_reports_confirmations_and_reset(completed):
+    sid = completed
+    root = versions.version_dir(sid, 'v1')
+    store.write_json(root / 'segment/stage_6.json', {'dims': {'act_unknown': 2}})
+    versions.create_version(sid, 'v1', 'stage7', '')
+    assert versions.compare(sid, 'v1', 'v2', 'stage6')['same']
+    # Report-only changes must be detected even outside the displayed summary.
+    report_path = versions.version_dir(sid, 'v2') / 'segment/stage_6.json'
+    store.write_json(report_path, {'dims': {'act_unknown': 2, 'coverage': {'doc': {'filled': 3}}}})
+    report_diff = versions.compare(sid, 'v1', 'v2', 'stage6')
+    assert not report_diff['same']
+    assert report_diff['before']['report'] == report_diff['after']['report']
+    store.write_json(report_path, {'dims': {'act_unknown': 2}})
+    segment = SegmentStore.open(sid, 'v2')
+    segment.confirm('personas', 'CL0-P0', {'name': 'new', 'desire': 'rest', 'goals': ['sleep']})
+    segment.confirm('contexts', 'CL0-P0-C1', {'name': 'night', 'action': 'reserve'})
+    diff = versions.compare(sid, 'v1', 'v2', 'stage6')
+    assert not diff['same']
+    assert diff['after']['personas']['items'][0]['name'] == 'new'
+    assert diff['after']['personas']['items'][0]['desire'] == 'rest'
+    assert diff['after']['personas']['items'][0]['goals'] == ['sleep']
+    assert diff['after']['contexts']['items'][0]['action'] == 'reserve'
+    assert diff['after']['clusters']['confirmed'] == 1
+    store.write_json(versions.version_dir(sid, 'v2') / 'segment/stage_6.json', {'dims': {'act_unknown': 3}})
+    assert versions.compare(sid, 'v1', 'v2', 'stage6')['after']['report']['dims']['act_unknown'] == 3
+    versions.create_version(sid, 'v2', 'stage6', '')
+    reset = versions.compare(sid, 'v2', 'v3', 'stage6')
+    assert not reset['same'] and reset['after']['report'] is None
+    assert reset['after']['personas'] == {'confirmed': 0, 'total': 0, 'items': []}
+    assert not (versions.version_dir(sid, 'v3') / 'segment').exists()

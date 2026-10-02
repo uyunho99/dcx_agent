@@ -386,3 +386,52 @@ def test_api_caps_legacy_representatives(api, layer):
         personas=[{'persona_id': 'CL0-P0', 'cluster_id': 'CL0', 'reps': [{'text': 'y'*1000}]}])
     rows = ok(api.client.get(api.base + '/' + layer))[layer]
     assert len(rows[0]['reps'][0]['text']) == 300
+
+
+@pytest.mark.parametrize('layer', ['clusters', 'personas', 'contexts', 'docs'])
+def test_rows_and_generation_share_snapshot(data_dir, monkeypatch, layer):
+    from app.routers import segment as routes
+    reader = routes.ConfirmationStore.open('snapshot', 'v1')
+    writer = SegmentStore.open('snapshot', 'v1')
+    reader.write_layers(clusters=[dict(cluster_id='old', confirmed_at='yes')],
+                        personas=[dict(persona_id='old', confirmed_at='yes')],
+                        contexts=[dict(context_id='old')])
+    reader.set_run('old')
+    monkeypatch.setattr(routes, '_open', lambda *a: ({}, reader))
+    original = reader.get_run
+    def interleave():
+        run = original()
+        with writer._db(write=True) as db:
+            db.execute("UPDATE meta SET value='new' WHERE key='run'")
+            for table, key in routes.LAYERS.items():
+                db.execute(f"UPDATE {table} SET {key}='new'")
+            db.execute("INSERT INTO docs(doc_id) VALUES ('new')")
+        return run
+    monkeypatch.setattr(reader, 'get_run', interleave)
+    monkeypatch.setattr(routes, '_report', lambda *a: {})
+    monkeypatch.setattr(routes, 'prepared_root', lambda *a: data_dir)
+    result = getattr(routes, layer)('snapshot', **({'offset': 0, 'limit': 100} if layer == 'docs' else {}))
+    assert result['run'] == 'old'
+    if layer == 'docs':
+        assert result['docs'] == [] and result['total'] == 0
+    else:
+        assert [row['id'] for row in result[layer]] == ['old']
+
+
+def test_personas_reset_after_rows(data_dir, monkeypatch):
+    from app.routers import segment as routes
+    reader = routes.ConfirmationStore.open('snapshot', 'v1')
+    writer = SegmentStore.open('snapshot', 'v1')
+    reader.write_layers(clusters=[dict(cluster_id='old', confirmed_at='yes')],
+                        personas=[dict(persona_id='old')])
+    reader.set_run('old')
+    monkeypatch.setattr(routes, '_open', lambda *a: ({}, reader))
+    original = routes._rows
+    def interleave(*args):
+        rows = original(*args)
+        writer.set_run('new')
+        writer.write_layers(personas=[dict(persona_id='new')])
+        return rows
+    monkeypatch.setattr(routes, '_rows', interleave)
+    result = routes.personas('snapshot')
+    assert result['run'] == result['personas'][0]['id'] == 'old'
