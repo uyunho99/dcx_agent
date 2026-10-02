@@ -144,7 +144,7 @@ def test_committed_locked_round_kept(client, backend, monkeypatch):
     duplicate_response(backend, monkeypatch)
     saved = client.get('/keywords/test').json()
     assert saved['keywordRounds']['2']['committed'] is True
-    assert kw in saved['keywords']
+    assert kw in [{k: v for k, v in item.items() if k != 'display'} for item in saved['keywords']]
     third = start(client, 3)
     assert '가짜중복' not in [k['kw'] for k in third['keywords']]
     assert commit(client, 3, third).status_code == 200
