@@ -109,8 +109,13 @@ def _persona(context: Context):
     run(context)
 
 
+def _insight(context: Context):
+    from app.persona.insight_pipeline import run
+    run(context)
+
+
 KINDS: dict[str, Callable[[Context], None]] = {
-    'prep': _prep, 'judge': _judge, 'train': _train, 'infer': _infer, 'monitor': _monitor, 'segment': _segment, 'persona': _persona}
+    'prep': _prep, 'judge': _judge, 'train': _train, 'infer': _infer, 'monitor': _monitor, 'segment': _segment, 'persona': _persona, 'insight': _insight}
 
 
 def execute(context: Context):

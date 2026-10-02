@@ -99,6 +99,15 @@ def derive(sid, version, *, run_task=None, embedder) -> int:
         payload['retry'] = '인사이트를 3~8개 생성하고 고유 ID와 입력에 있는 Context ID만 사용하세요.'
     if items is None:
         raise InsightError()
+    recompute(sid, version, items, package=package, embedder=embedder)
+    # PersonaStore owns its lock. Never surround this mutation with sessions.locked.
+    return store.new_revision('insights', items, by='generate', message=None)
+
+
+def recompute(sid, version, items, *, package=None, embedder):
+    """Hydrate validated text with version-local, code-owned metrics in place."""
+    package = package or load_package(sid, version)
+    contexts = {c.context_id: c for b in package.personas for c in b.context_evidence}
     try:
         selected = {cid for item in items for cid in item['context_ids']}
         centroids = _centroids(sid, version, selected)
@@ -118,8 +127,7 @@ def derive(sid, version, *, run_task=None, embedder) -> int:
                                      if item['known_ki_id'] is not None else None))
     except (ValueError, TypeError, KeyError, sqlite3.Error) as exc:
         raise InsightError() from exc
-    # PersonaStore owns its lock. Never surround this mutation with sessions.locked.
-    return store.new_revision('insights', items, by='generate', message=None)
+    return items
 
 
 def confirm(sid, version, ids) -> list[str]:
