@@ -16,3 +16,5 @@ openai
 kiwipiepy
 torch
 scipy
+gensim>=4.4
+networkx>=3.3
