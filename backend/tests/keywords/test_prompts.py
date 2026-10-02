@@ -23,7 +23,7 @@ def state():
 
 
 def test_four_distinct_templates(state):
-    assert PROMPT_VERSION == {1: "r1.v1", 2: "r2.v1", 3: "r3.v1", 4: "r4.v1"}
+    assert PROMPT_VERSION == {1: "r1.v2", 2: "r2.v1", 3: "r3.v1", 4: "r4.v1"}
     assert MIN_COUNT == {1: 70, 2: 100, 3: 60, 4: 60}
     tasks = [build_round_task("sid", n, state) for n in range(1, 5)]
     assert len({task.instructions for task in tasks}) == 4
@@ -155,7 +155,7 @@ def test_templates_loaded_at_call_time_and_strict(state, monkeypatch):
     original = Path.read_text
 
     def read(path, *args, **kwargs):
-        if path.name == "r1.v1.md":
+        if path.name == "r1.v2.md":
             return "{unknown_placeholder}"
         return original(path, *args, **kwargs)
 

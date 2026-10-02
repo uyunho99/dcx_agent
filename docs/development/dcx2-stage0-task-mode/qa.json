@@ -1,0 +1,29 @@
+{
+  "verdict": "PASS",
+  "head": "50dd62c1710d84bb5b249c6210bec75a4b60c075",
+  "fingerprint": "b6d294e8ac252ec2a61f8f3cd46dd0171acbef83f79d4614a0d67a9b25abc4c3",
+  "commands": [
+    { "command": "backend: env STORAGE=local LOCAL_DATA_DIR=/private/tmp/dcx-stage0-qa LLM_BACKEND=fake EMBED_BACKEND=fake JEV_BACKEND=fake LABEL_GPT_BACKEND=fake AUTOCOMPLETE_BACKEND=fake CORS_ORIGINS=http://localhost:3312 .venv/bin/uvicorn app.main:app --port 8312", "exitCode": 0 },
+    { "command": "frontend: env NEXT_PUBLIC_API_URL=http://localhost:8312 NEXT_PUBLIC_INTERNAL_TOOLS=true npx next dev -p 3312", "exitCode": 0 }
+  ],
+  "findings": [],
+  "notes": [
+    "Round 1 ISSUE-001 (Medium, failed save did not scroll/focus first invalid field) fixed in 7529ac2, rechecked PASS in round 2",
+    "Residual Low ISSUE-002: persona 추가하기 button bottom edge 20px lower than the input at 1360px (same row now)",
+    "Out of scope Low ISSUE-003: version compare shows task mode values as codes (explore/metric), existing compare display rule",
+    "QA-L1 (real LLM R1 comparison) not run: no LLM key .env in this worktree; handed to UAT"
+  ],
+  "scenarios": [
+    { "id": "QA-S1", "url": "http://localhost:3312/pipeline/start", "result": "PASS", "evidence": "docs/development/dcx2-stage0-task-mode/qa/qa-report-round1.md QA-S1 (aria-checked/tabIndex, summary text, no 분석 목적, 성격 above 질문)" },
+    { "id": "QA-S2", "url": "http://localhost:3312/pipeline/start", "result": "PASS", "evidence": "qa-report-round1.md QA-S2; saved project_context.md of session s5487e9b… matches design section 3" },
+    { "id": "QA-S3", "url": "http://localhost:3312/pipeline/start", "result": "PASS", "evidence": "qa-report-round1.md ISSUE-001 (FAIL) → qa-report-round2.md (fieldset top 349/900, focused, both 저장 and 키워드 생성 시작하기)" },
+    { "id": "QA-S4", "url": "http://localhost:3312/pipeline/start", "result": "PASS", "evidence": "qa-report-round1.md QA-S4; md lines 가격 포지셔닝: 중상가 · 구독형 / 시장 포지셔닝: 신규 진입자" },
+    { "id": "QA-S5", "url": "http://localhost:3312/pipeline/start", "result": "PASS", "evidence": "qa-report-round1.md QA-S5" },
+    { "id": "QA-S6", "url": "http://localhost:3312/pipeline/start", "result": "PASS", "evidence": "qa-report-round1.md QA-S6 (blank/duplicate ignored, 20 limit notice, input disabled)" },
+    { "id": "QA-S7", "url": "http://localhost:3312/pipeline/start", "result": "PASS", "evidence": "qa-report-round1.md QA-S7 (legacy banner text, mode-aware text, cleared after save, md keeps 분석 목표)" },
+    { "id": "QA-S8", "url": "http://localhost:3312/pipeline/keywords", "result": "PASS", "evidence": "qa-report-round1.md QA-S8 (R1 70 keywords with fake LLM, promptVersion r1.v2)" },
+    { "id": "QA-S9", "url": "http://localhost:3312/pipeline/compare?a=v1&b=v2", "result": "PASS", "evidence": "qa-report-round1.md QA-S9 (field name 과제 유형 shown; value codes noted as ISSUE-003)" },
+    { "id": "QA-S10", "url": "http://localhost:3312/pipeline/start", "result": "PASS", "evidence": "qa-report-round1.md QA-S10 (R1-after banner exact text; none on same-value save)" },
+    { "id": "QA-R", "url": "http://localhost:3312/pipeline/start", "result": "PASS", "evidence": "qa-report-round1.md QA-R (375×812 scrollWidth 375, cards 1 column, metric inputs stacked, chip height 36px, arrow-key navigation)" }
+  ]
+}

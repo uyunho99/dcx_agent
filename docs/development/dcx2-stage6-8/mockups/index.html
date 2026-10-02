@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DCX 6~8단계 목업</title>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+@font-face{font-family:Pretendard;font-weight:400;font-display:swap;src:url("assets/fonts/Pretendard-Regular.otf") format("opentype")}
+@font-face{font-family:Pretendard;font-weight:600;font-display:swap;src:url("assets/fonts/Pretendard-SemiBold.otf") format("opentype")}
+@font-face{font-family:Pretendard;font-weight:700;font-display:swap;src:url("assets/fonts/Pretendard-Bold.otf") format("opentype")}
+@font-face{font-family:Pretendard;font-weight:800;font-display:swap;src:url("assets/fonts/Pretendard-ExtraBold.otf") format("opentype")}
+
+/* ── 토큰: 수정본(BI) 색·레이아웃 + core 컴포넌트 액션 ── */
+:root{
+  --blue:#38B6F9; --blue-deep:#168FCC; --blue-soft:#EAF8FF; --blue-tint:#DDF4FE;
+  --ink:#676668; --ink-strong:#1c1e22; --sub:#8A8A8C; /* 키트 값 유지 (리뷰 8B) */
+  --line:#E7EAEE; --line-strong:#7f838b; --paper:#FFFFFF; --soft:#F8FCFF; --sunken:#F3F4F6;
+  --action:#0a73b5; --action-hover:#085d93; --action-soft:#e8f4fc;
+  --success:#1b7446; --success-soft:#e6f6ec; --warning:#9a5b00; --warning-soft:#fff3dc; --danger:#c62828; --danger-soft:#fdeaea;
+  --r-input:6px; --r-button:10px; --r-card:14px; --r-overlay:18px; --r-full:999px;
+  --shadow-overlay:0 8px 24px rgba(28,30,34,.12),0 1px 2px rgba(28,30,34,.06);
+  --font:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",system-ui,sans-serif;
+  --mono:"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font:400 15px/24px var(--font);letter-spacing:-.01em;color:var(--ink);background:var(--soft);-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--action);outline-offset:2px}
+/* 브라우저 기본 요소 테마 (리뷰 5A) */
+html{accent-color:var(--action);caret-color:var(--action);scrollbar-color:var(--line-strong) transparent;scrollbar-width:thin}
+::selection{background:var(--blue-tint);color:var(--ink-strong)}
+input[type=checkbox]{width:16px;height:16px;margin:0;vertical-align:middle}
+select.inp{appearance:none;padding-right:32px;background:var(--paper) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23676668' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center}
+table,.stat .v,.kv dd,.bar .v{font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* 시맨틱 스케일 */
+.t-insight{font:800 40px/52px var(--font);letter-spacing:-.04em;color:var(--ink-strong);margin:0}
+.t-screen{font:800 30px/40px var(--font);letter-spacing:-.035em;color:var(--ink-strong);margin:0}
+.t-section{font:700 24px/34px var(--font);letter-spacing:-.03em;color:var(--ink-strong);margin:0}
+.t-card{font:700 18px/27px var(--font);letter-spacing:-.02em;color:var(--ink-strong);margin:0}
+.t-body{font:400 15px/24px var(--font);letter-spacing:-.01em}
+.t-label{font:600 13px/19px var(--font);letter-spacing:-.005em}
+.t-caption{font:400 12px/18px var(--font);color:var(--sub)}
+.eyebrow{font:700 12px/18px var(--font);letter-spacing:.06em;color:var(--ink)}
+.num{font-variant-numeric:tabular-nums}
+.mono{font:400 12px/18px var(--mono)}
+
+/* 목업 전환 바 (제품 UI 아님) */
+.mockbar{position:sticky;top:0;z-index:50;display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:8px 16px;background:#1c1e22;color:#fff}
+.mockbar b{font:600 12px/18px var(--font);margin-right:8px;opacity:.8}
+.mockbar button{font:600 12px/18px var(--font);color:#fff;background:transparent;border:1px solid #55585f;border-radius:6px;padding:4px 10px;cursor:pointer}
+.mockbar button[aria-pressed=true]{background:#fff;color:#1c1e22;border-color:#fff}
+
+/* 셸 */
+.shell{display:flex;min-height:calc(100vh - 38px)}
+.side{width:224px;flex:none;background:var(--soft);border-right:1px solid var(--line);padding:28px 20px;display:flex;flex-direction:column;gap:28px}
+.side img{width:104px;height:auto}
+.side .grp{font:700 12px/18px var(--font);letter-spacing:.08em;color:var(--sub);margin:0 8px 8px}
+.nav{display:grid;gap:2px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;text-decoration:none;font:500 13px/19px var(--font);color:var(--sub)}
+.nav a .n{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font:700 11px/1 var(--font);background:var(--sunken);color:var(--sub)}
+.nav a.done .n{background:var(--success-soft);color:var(--success)}
+.nav a.on{background:var(--paper);color:var(--ink-strong);font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.nav a.on .n{background:var(--blue);color:var(--ink-strong)}
+.nav a small{margin-left:auto;font:400 11px/16px var(--font);color:var(--sub)}
+.side .foot{margin-top:auto}
+main{flex:1;min-width:0;padding:32px 32px 64px}
+.wrap{max-width:1200px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:24px;align-items:start}
+.s12{grid-column:span 12}.s3{grid-column:span 3}.s9{grid-column:span 9}.s8{grid-column:span 8}.s6{grid-column:span 6}.s4{grid-column:span 4}
+@media (max-width:1100px){.s8,.s6,.s4,.s3,.s9{grid-column:span 12}.side{width:72px;padding:20px 10px}.side img,.side .grp,.nav a span,.nav a small,.side .foot{display:none}}
+
+/* 페이지 헤더 */
+.ph{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:32px}
+.ph .eyebrow{margin-bottom:8px}
+.ph p{margin:12px 0 0;max-width:720px}
+.actions{display:flex;gap:8px;justify-content:flex-end;align-items:center}
+
+/* 카드 */
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-card);padding:24px;min-width:0}
+.card.sm{padding:16px}
+.card-h{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:24px}
+.card-h p{margin:4px 0 0}
+.card-f{display:flex;justify-content:flex-end;gap:8px;margin-top:24px;padding-top:16px;border-top:1px solid var(--line)}
+.sticky{position:sticky;top:62px}
+
+/* 버튼 */
+.btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:var(--r-button);font:600 13px/19px var(--font);cursor:pointer;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink-strong);transition:background 150ms ease-out;white-space:nowrap}
+.btn:hover{background:var(--action-soft)}
+.btn.primary{background:var(--action);color:#fff;border-color:transparent}
+.btn.primary:hover{background:var(--action-hover)}
+.btn.quiet{border-color:transparent;background:transparent;color:var(--action)}
+.btn.quiet:hover{background:var(--action-soft)}
+.btn.sm{height:28px;padding:0 10px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn svg,.ic svg{width:16px;height:16px;stroke-width:1.5}
+
+/* 폼 */
+.field{display:grid;gap:6px;margin-bottom:20px;align-content:start}
+.field:last-child{margin-bottom:0}
+.field label,.field .lab{font:600 13px/19px var(--font);color:var(--ink-strong)}
+.field .req{color:var(--danger);margin-left:2px}
+.field .hint{font:400 12px/18px var(--font);color:var(--sub)}
+.field .err{font:400 12px/18px var(--font);color:var(--danger);display:flex;gap:4px;align-items:center}
+.inp,textarea.inp{width:100%;min-height:36px;padding:7px 12px;border:1px solid var(--line-strong);border-radius:var(--r-input);font:400 14px/20px var(--font);color:var(--ink-strong);background:var(--paper)}
+textarea.inp{resize:vertical}
+.inp.error{border-color:var(--danger)}
+.inp::placeholder{color:var(--sub)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px;align-items:start}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;align-items:start}
+.row2>.field,.row3>.field{margin-bottom:0}
+.field .row2,.field .row3{margin-bottom:0}
+.card>:last-child{margin-bottom:0}
+/* 나란히 놓인 카드는 높이를 맞추고, 다음 행동은 카드 바닥에 붙인다 */
+.grid.eq{align-items:stretch}
+.card.insight{display:flex;flex-direction:column}
+.card.insight .meta{margin-bottom:20px}
+.card.insight .nextact{margin-top:auto}
+
+/* 선택 칩 (button + aria-pressed) */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{height:32px;padding:0 12px;border-radius:var(--r-button);border:1px solid var(--line);background:var(--paper);color:var(--ink);font:600 13px/19px var(--font);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed=true]{border-color:var(--blue);background:var(--blue-soft);color:var(--blue-deep)}
+.chip .x{opacity:.7}
+
+/* 배지 (분류는 Neutral) */
+.badge{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:6px;font:600 12px/18px var(--font);background:var(--sunken);color:var(--ink);white-space:nowrap}
+.badge.pill{border-radius:999px}
+.badge.success{background:var(--success-soft);color:var(--success)}
+.badge.warning{background:var(--warning-soft);color:var(--warning)}
+.badge.danger{background:var(--danger-soft);color:var(--danger)}
+.badge.info{background:var(--action-soft);color:var(--action)}
+.badge .dot{width:6px;height:6px;border-radius:999px;background:currentColor}
+
+/* 목록 입력 */
+.listin{display:grid;gap:6px}
+.listin .item{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 12px;border:1px solid var(--line);border-radius:var(--r-input);background:var(--paper);font:400 14px/20px var(--font);color:var(--ink-strong)}
+.listin .item .btn{margin-left:auto}
+.listin .add{display:flex;gap:8px;align-items:center}
+
+/* 세그먼트 */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r-button);overflow:hidden}
+.seg button{border:0;border-right:1px solid var(--line);background:var(--paper);height:32px;padding:0 14px;font:600 13px/19px var(--font);color:var(--ink);cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:var(--blue-soft);color:var(--blue-deep)}
+
+/* 토글 */
+.toggle{display:flex;align-items:flex-start;gap:12px}
+.sw{width:36px;height:20px;border-radius:999px;background:var(--line-strong);position:relative;flex:none;margin-top:2px;border:0;cursor:pointer}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:999px;background:#fff}
+.sw[aria-checked=true]{background:var(--action)}.sw[aria-checked=true]::after{left:18px}
+
+/* 라운드 스테퍼 */
+.stepper{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:24px}
+.stp{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--paper)}
+.stp .k{font:700 12px/18px var(--font);color:var(--sub)}
+.stp .v{font:600 13px/19px var(--font);color:var(--ink-strong)}
+.stp .c{font:400 12px/18px var(--font);color:var(--sub)}
+.stp.done .k{color:var(--success)}
+.stp.on{border-color:var(--blue);background:var(--blue-soft)}
+.stp.on .k{color:var(--blue-deep)}
+
+/* 탭 */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:20px}
+.tab{border:0;background:transparent;padding:10px 12px;font:600 13px/19px var(--font);color:var(--sub);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab[aria-selected=true]{color:var(--ink-strong);border-bottom-color:var(--action)}
+.tab .num{margin-left:4px;color:var(--sub);font-weight:400}
+
+/* 키워드 그룹 · 칩 */
+.kgroup{border:1px solid var(--line);border-radius:10px;margin-bottom:12px;background:var(--paper)}
+.kgroup-h{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.kgroup-h .t-label{color:var(--ink-strong)}
+.kgroup-h .btn{margin-left:auto}
+.kgroup-b{display:flex;flex-wrap:wrap;gap:8px;padding:14px;position:relative}
+.kw{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 6px 0 12px;border-radius:var(--r-button);border:1px solid var(--line);background:var(--paper);font:600 13px/19px var(--font);color:var(--ink-strong);cursor:grab}
+.kw .v{font:400 12px/18px var(--font);color:var(--sub)}
+.kw .more{border:0;background:transparent;color:var(--sub);cursor:pointer;padding:4px;display:inline-flex;min-width:24px;min-height:24px;align-items:center;justify-content:center;border-radius:6px}
+.kw .more:hover{background:var(--action-soft)}
+.listin .item .btn.quiet{min-width:24px;min-height:24px;padding:0 4px;justify-content:center}
+.kw.rej{background:var(--sunken);color:var(--sub);text-decoration:line-through;border-style:dashed}
+.kw.rej .badge{text-decoration:none}
+.kw.manual{border-color:var(--line-strong)}
+.kw.dragging{box-shadow:0 1px 2px rgba(28,30,34,.06);border-color:var(--line-strong)}
+.dropzone{border:1px dashed var(--blue);background:var(--blue-soft)}
+
+/* 팝오버 */
+.pop{position:absolute;z-index:10;width:300px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-overlay);box-shadow:var(--shadow-overlay);padding:16px}
+.pop h4{margin:0 0 4px;font:700 14px/20px var(--font);color:var(--ink-strong)}
+.pop .chips{margin:12px 0}
+.pop .kbd{font:400 11px/16px var(--mono);border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--sub)}
+
+/* 막대 */
+.bars{display:grid;gap:12px}
+.bar{display:grid;grid-template-columns:48px 1fr 44px;align-items:center;gap:10px}
+.bar .track{height:8px;background:var(--sunken);border-radius:999px;overflow:hidden}
+.bar .fill{height:100%;background:var(--ink);border-radius:999px}
+.bar .fill.hi{background:var(--blue)}
+.bar .v{text-align:right}
+
+/* 표 */
+.tbl{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper)}
+.tbl th{background:var(--sunken);text-align:left;font:600 12px/18px var(--font);color:var(--ink);padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--line);font:400 14px/20px var(--font);color:var(--ink-strong);vertical-align:middle;white-space:nowrap}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tbody tr:hover td{background:var(--soft)}
+.tbl tr.sel td{background:var(--blue-soft)}
+.tbl .r{text-align:right}
+.tbl caption{caption-side:bottom;text-align:left;padding:10px 12px;font:400 12px/18px var(--font);color:var(--sub)}
+.tbl .dim{color:var(--sub)}
+
+/* 증거 · 메타 */
+.meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font:400 12px/18px var(--font);color:var(--sub)}
+.meta .sep{width:3px;height:3px;border-radius:999px;background:var(--line-strong)}
+.nextact{margin-top:20px;padding-top:16px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.nextact .t-label{color:var(--ink-strong)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:10px 16px;margin:0}
+.kv dt{font:600 13px/19px var(--font);color:var(--ink)}
+.kv dd{margin:0;font:400 14px/20px var(--font);color:var(--ink-strong);text-align:right}
+.stat{display:grid;gap:2px}
+.stat .v{font:700 24px/34px var(--font);letter-spacing:-.03em;color:var(--ink-strong)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.progress{height:10px;background:var(--sunken);border-radius:999px;overflow:hidden}
+.progress>div{height:100%;background:var(--blue)}
+
+/* 알림 */
+.note{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:10px;background:var(--sunken);font:400 14px/20px var(--font);color:var(--ink-strong)}
+.note.warn{background:var(--warning-soft)}
+.note.warn .ic{color:var(--warning)}
+.note .ic{color:var(--ink);margin-top:2px}
+.note .actions{margin-left:auto}
+
+pre.md{margin:0;padding:14px;background:var(--soft);border:1px solid var(--line);border-radius:10px;font:400 12px/19px var(--mono);color:var(--ink-strong);white-space:pre-wrap;max-height:420px;overflow:auto}
+details summary{cursor:pointer;font:600 13px/19px var(--font);color:var(--ink-strong);list-style:none;display:flex;align-items:center;gap:6px}
+details summary::-webkit-details-marker{display:none}
+.screen{display:none}.screen.on{display:block}
+.divider{height:1px;background:var(--line);margin:20px 0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+/* 게이트 표 (리뷰 13A) */
+.chbars{display:inline-grid;grid-template-columns:repeat(4,28px);gap:4px;align-items:end;height:18px;vertical-align:middle}
+.chbars i{display:block;background:var(--ink);border-radius:2px;min-height:2px}
+.chbars i.zero{background:transparent;border:1px dashed var(--line-strong);height:16px!important}
+.tbl.sticky-h thead th{position:sticky;top:38px;z-index:2}
+.tbl.sticky-h{overflow:visible}
+.tbl tr.exp td{background:var(--soft);white-space:normal}
+.expd{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:4px 0}
+.expd .t-label{color:var(--ink-strong)}
+.tbl .tog{border:0;background:transparent;cursor:pointer;color:var(--sub);padding:2px;display:inline-flex;vertical-align:middle;min-width:24px;min-height:24px;align-items:center;justify-content:center;border-radius:6px}
+/* 상태 */
+.skel{background:var(--sunken);border-radius:6px;height:12px}
+.skel.chip{width:84px;height:32px;border-radius:10px;border:0}
+.state-label{font:700 12px/18px var(--font);letter-spacing:.06em;color:var(--sub);margin-bottom:12px}
+.empty{display:grid;justify-items:start;gap:12px;padding:8px 0}
+.empty .t-card{margin:0}
+.banner{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:10px;border:1px solid var(--line);background:var(--paper)}
+.banner.danger{background:var(--danger-soft);border-color:transparent}
+.banner.danger .ic{color:var(--danger)}
+.banner.warn{background:var(--warning-soft);border-color:transparent}
+.banner.warn .ic{color:var(--warning)}
+.banner .actions{margin-left:auto}
+.banner .ic{margin-top:2px}
+
+.tagrow{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.tagrow>.t-label{width:88px;flex:none}
+.chip .kbd{margin-right:4px}
+.lvl{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:var(--r-full);font:700 12px/18px var(--font);border:1px solid var(--line-strong);color:var(--ink-strong);background:var(--paper)}
+.lvl.core{border-color:var(--blue);background:var(--blue-soft);color:var(--blue-deep)}
+.lvl.sup{background:var(--sunken)}
+.src{display:grid;grid-template-columns:1fr auto;gap:6px 16px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-card);background:var(--paper);margin-bottom:8px}
+.src .meta{grid-column:1}.src .btn{grid-row:1/3;grid-column:2}
+.src.done{background:var(--sunken)}
+.drawer{box-shadow:var(--shadow-overlay);border-radius:var(--r-overlay)}
+.kilist{list-style:none;margin:0;padding:0}
+.kilist li{display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:center;padding:10px 0;border-top:1px solid var(--line);font:400 14px/20px var(--font);color:var(--ink-strong)}
+.kilist li .t-caption{grid-column:2}
+.note.error{background:var(--danger-soft)}.note.error .ic{color:var(--danger)}
+
+/* ── 6~8단계 추가 ── */
+.layers{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:24px}
+.layer{border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:var(--paper);text-align:left;cursor:pointer;font:inherit}
+.layer .k{font:700 12px/18px var(--font);color:var(--sub)}
+.layer .v{font:700 14px/20px var(--font);color:var(--ink-strong)}
+.layer .c{font:400 12px/18px var(--font);color:var(--sub)}
+.layer.done .k{color:var(--success)}
+.layer[aria-current=step]{border-color:var(--blue);background:var(--blue-soft)}
+.layer[aria-disabled=true]{background:var(--sunken);cursor:not-allowed}
+.layer[aria-disabled=true] .v{color:var(--sub)}
+.clrow{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px;padding:20px 0;border-top:1px solid var(--line)}
+.clrow:first-of-type{border-top:0;padding-top:0}
+.clid{font:700 12px/18px var(--mono);color:var(--sub)}
+.namefield{display:flex;gap:8px;align-items:center;margin:4px 0 10px}
+.namefield .inp{max-width:360px;font-weight:600}
+.qrow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chanbar{display:flex;height:8px;border-radius:999px;overflow:hidden;background:var(--sunken);margin:6px 0 4px}
+.chanbar i{display:block;height:100%}
+.chanbar i:nth-child(1){background:#1c1e22}.chanbar i:nth-child(2){background:#7f838b}.chanbar i:nth-child(3){background:#b9bcc2}.chanbar i:nth-child(4){background:#dfe1e5}
+.quote{font:400 14px/22px var(--font);color:var(--ink-strong);margin:0}
+.quote mark{background:var(--blue-tint);color:inherit;border-radius:3px;padding:0 2px}
+.mini{width:100%;height:auto;display:block}
+.net{background:var(--soft);border:1px solid var(--line);border-radius:10px}
+.persona-edit{border:1px solid var(--line);border-radius:var(--r-card);padding:20px;background:var(--paper);margin-bottom:16px}
+.persona-edit.confirmed{background:var(--soft)}
+.goal{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.goal .n{font:700 13px/19px var(--font);color:var(--sub);width:16px}
+.ctxcard{border:1px solid var(--line);border-radius:var(--r-card);padding:16px 20px;background:var(--paper);margin-bottom:12px}
+.ctxcard.counter{border-color:#f0c9c9}
+.ev{display:grid;grid-template-columns:28px 1fr auto;gap:4px 12px;padding:14px 0;border-top:1px solid var(--line)}
+.ev .no{font:700 13px/22px var(--font);color:var(--sub)}
+.ev .meta{grid-column:2}
+.ev .btn{grid-row:1/3;grid-column:3;align-self:start}
+.ctxlist{display:grid;gap:4px}
+.ctxlist button{display:grid;grid-template-columns:1fr auto;gap:2px 8px;text-align:left;border:1px solid transparent;border-radius:10px;background:transparent;padding:10px 12px;cursor:pointer;font:inherit}
+.ctxlist button[aria-current=true]{background:var(--paper);border-color:var(--line)}
+.ctxlist .t{font:600 13px/19px var(--font);color:var(--ink-strong)}
+.ctxlist .c{grid-column:1/3;font:400 12px/18px var(--font);color:var(--sub)}
+/* 인식론 등급: 글자 + 모양, 색만으로 구분하지 않음 */
+.gr{display:inline-flex;align-items:center;gap:4px;font:600 11px/16px var(--font);padding:1px 6px;border-radius:6px;white-space:nowrap;vertical-align:1px}
+.gr::before{content:"";width:8px;height:8px;flex:none}
+.gr.obs{background:var(--success-soft);color:var(--success)}.gr.obs::before{border-radius:999px;background:currentColor}
+.gr.inf{background:var(--warning-soft);color:var(--warning)}.gr.inf::before{transform:rotate(45deg);background:currentColor;width:7px;height:7px}
+.gr.gue{background:var(--danger-soft);color:var(--danger)}.gr.gue::before{border:1.5px solid currentColor;border-radius:999px;width:6px;height:6px}
+.ccm{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper)}
+.ccm th,.ccm td{padding:10px 12px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);vertical-align:top;font:400 13px/20px var(--font);color:var(--ink-strong);text-align:left}
+.ccm th{background:var(--sunken);font:600 12px/18px var(--font);color:var(--ink)}
+.ccm th .t{display:block;font:700 13px/19px var(--font);color:var(--ink-strong)}
+.ccm td.rl{width:104px;background:var(--soft);font:600 12px/18px var(--font);color:var(--ink)}
+.ccm tr:last-child td{border-bottom:0}.ccm th:last-child,.ccm td:last-child{border-right:0}
+.ccm .cx{display:block;margin-bottom:6px}
+.ccm .counter{background:#fffafa}
+.ccm th.counter{background:var(--danger-soft)}
+.ccm td.cell{cursor:pointer}
+.ccm td.cell:hover{background:var(--action-soft)}
+.ccm td.open{outline:2px solid var(--action);outline-offset:-2px}
+.zone{font:700 12px/18px var(--font)}
+.prov{display:inline-flex;height:18px;padding:0 6px;border-radius:5px;border:1px dashed var(--line-strong);font:600 11px/16px var(--font);color:var(--sub);align-items:center}
+.ins{border:1px solid var(--line);border-radius:var(--r-card);padding:18px 20px;background:var(--paper);display:grid;grid-template-columns:1fr 120px;gap:12px;margin-bottom:12px;cursor:pointer}
+.ins[aria-current=true]{border-color:var(--blue);box-shadow:inset 3px 0 0 var(--blue)}
+.ins .ids{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.idchip{font:600 11px/16px var(--mono);padding:2px 6px;border-radius:5px;background:var(--sunken);color:var(--ink)}
+.obar{display:grid;grid-template-columns:150px 1fr 40px;gap:10px;align-items:center;margin-bottom:8px}
+.obar .track{position:relative;height:10px;background:var(--sunken);border-radius:999px}
+.obar .fill{height:100%;border-radius:999px;background:var(--ink)}
+.obar .fill.hi{background:var(--blue)}
+.obar .avg{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--danger)}
+.jt{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;table-layout:fixed}
+.jt th,.jt td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;font:400 13px/20px var(--font);color:var(--ink-strong);text-align:left}
+.jt th{background:var(--sunken);font:600 12px/18px var(--font);color:var(--ink)}
+.jt td.tb{background:var(--soft)}
+.jt tr:last-child td{border-bottom:0}
+.chat{display:flex;flex-direction:column;gap:12px;height:100%}
+.msg{padding:10px 12px;border-radius:10px;font:400 13px/20px var(--font);color:var(--ink-strong)}
+.msg.me{background:var(--blue-soft);margin-left:24px}
+.msg.ai{background:var(--sunken);margin-right:24px}
+.rev{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--line);font:400 13px/19px var(--font)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font:400 12px/18px var(--font);color:var(--sub)}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.sw-dot{width:10px;height:10px;border-radius:999px;display:inline-block}
+</style>
+</head>
+<body>
+<div class="mockbar" role="toolbar" aria-label="목업 화면 전환">
+  <b>DCX 6~8단계 목업</b>
+  <button data-go="s1" aria-pressed="true">6-A · Cluster</button>
+  <button data-go="s2" aria-pressed="false">6-B · Persona</button>
+  <button data-go="s3" aria-pressed="false">6-C · Context</button>
+  <button data-go="s4" aria-pressed="false">7 · 근거 탐색</button>
+  <button data-go="s6" aria-pressed="false">8 · 전체 맵</button>
+  <button data-go="s5" aria-pressed="false">8 · Persona 카드</button>
+  <button data-go="s7" aria-pressed="false">8-E·F · 인사이트</button>
+  <button data-go="s8" aria-pressed="false">상태 모음</button>
+</div>
+<div class="shell">
+<aside class="side" aria-label="파이프라인">
+  <img src="assets/person-a-logo.png" alt="Person A">
+  <div>
+    <div class="grp">파이프라인</div>
+    <nav class="nav" id="nav">
+      <a href="#"><i class="n">1</i><span>시작</span></a>
+      <a href="#"><i class="n">2</i><span>키워드</span></a>
+      <a href="#"><i class="n">3</i><span>크롤링</span></a>
+      <a href="#"><i class="n">4</i><span>전처리</span></a>
+      <a href="#"><i class="n">5</i><span>라벨링</span></a>
+      <a href="#"><i class="n">6</i><span>학습</span></a>
+      <a href="#"><i class="n">7</i><span>클러스터링</span></a>
+      <a href="#"><i class="n">8</i><span>근거 탐색</span></a>
+      <a href="#"><i class="n">9</i><span>페르소나</span></a>
+      <a href="#"><i class="n">10</i><span>인사이트</span></a>
+    </nav>
+  </div>
+  <div class="foot">
+    <div class="t-label" style="color:var(--ink-strong)">LG 휘센 에어컨</div>
+    <button class="btn quiet sm" style="padding:0 6px;margin:2px 0 2px -6px"><i data-lucide="git-branch"></i>v2 · 활성<i data-lucide="chevron-down"></i></button>
+    <button class="btn quiet sm" style="margin-top:8px;padding:0 6px;margin-left:-6px"><i data-lucide="lightbulb"></i>Known Insight · 5</button>
+  </div>
+</aside>
+<main><div class="wrap">
+
+<template id="layerhead">
+  <div class="ph">
+    <div><div class="eyebrow">6단계 · 클러스터링</div><h1 class="t-screen">HEAD</h1>
+      <p class="t-body">문서 93,210건 · 1.0 방법(Ward → K-means · 어휘 네트워크 · LDA). 층마다 이름을 확정해야 다음 층이 열립니다.</p></div>
+    <div class="actions"><button class="btn"><i data-lucide="save"></i>임시 저장</button></div>
+  </div>
+  <div class="layers" role="tablist" aria-label="층">
+    <button class="layer" role="tab" data-tab="s1"><div class="k">6-A · Cluster</div><div class="v">클러스터 이름</div><div class="c">CA</div></button>
+    <button class="layer" role="tab" data-tab="s2"><div class="k">6-B · Persona</div><div class="v">Desire · Goal</div><div class="c">CB</div></button>
+    <button class="layer" role="tab" data-tab="s3"><div class="k">6-C · Context</div><div class="v">Context 이름 · 행동</div><div class="c">CC</div></button>
+  </div>
+</template>
+
+<!-- ═════════════ S1 · 6-A Cluster ═════════════ -->
+<section class="screen on" id="s1" data-head="Touch Point 5개를 확정합니다" data-ca="3/5 확정" data-cb="잠김 · 6-A 확정 후" data-cc="잠김">
+  <div class="grid">
+    <div class="s8">
+      <div class="card">
+        <div class="card-h"><div><h2 class="t-card">클러스터 5개</h2><p class="t-caption">이름은 초안입니다. 대표 원문을 보고 고친 뒤 확정하세요.</p></div>
+          <div class="actions"><label class="t-label" for="k">k</label><select class="inp" id="k" style="width:72px"><option>5</option></select><button class="btn sm">다시 나누기</button></div></div>
+
+        <div class="clrow">
+          <div>
+            <div class="clid">CL0 · 문서 24,310</div>
+            <div class="namefield"><input class="inp" value="야간 소음 · 수면" aria-label="CL0 이름"><span class="badge success"><i data-lucide="check" style="width:14px;height:14px"></i>확정됨</span></div>
+            <div class="qrow"><span class="badge">응집 0.71</span><span class="badge">경계 9%</span><span class="badge">안정 0.78</span></div>
+            <p class="quote">“밤에 <mark>윙윙거려서</mark> 애가 깨요. 취침 모드 해도 실외기가…”</p>
+            <div class="meta" style="margin-top:4px"><span>네이버 카페 · 본문</span><span class="sep"></span><button class="btn quiet sm" style="height:22px;padding:0 4px">대표 원문 5건</button></div>
+          </div>
+          <div>
+            <div class="t-label" style="color:var(--ink-strong)">키워드</div>
+            <p class="t-caption" style="margin:2px 0 10px">#소음 #수면 #실외기 #취침 #아기 #저소음 …</p>
+            <div class="t-label" style="color:var(--ink-strong)">채널</div>
+            <div class="chanbar"><i style="width:52%"></i><i style="width:31%"></i><i style="width:17%"></i></div>
+            <p class="t-caption" style="margin:0">카페 52 · 블로그 31 · 뽐뿌 17</p>
+          </div>
+        </div>
+
+        <div class="clrow">
+          <div>
+            <div class="clid">CL1 · 문서 19,880</div>
+            <div class="namefield"><input class="inp" value="전기요금 걱정" aria-label="CL1 이름"><span class="badge success"><i data-lucide="check" style="width:14px;height:14px"></i>확정됨</span></div>
+            <div class="qrow"><span class="badge">응집 0.68</span><span class="badge">경계 12%</span><span class="badge">안정 0.81</span></div>
+            <p class="quote">“인버터라 켜두는 게 낫다는데 <mark>누진세</mark> 구간 넘을까 봐…”</p>
+          </div>
+          <div>
+            <div class="t-label" style="color:var(--ink-strong)">채널</div>
+            <div class="chanbar"><i style="width:44%"></i><i style="width:40%"></i><i style="width:16%"></i></div>
+            <p class="t-caption" style="margin:0">카페 44 · 블로그 40 · 클리앙 16</p>
+          </div>
+        </div>
+
+        <div class="clrow">
+          <div>
+            <div class="clid">CL2 · 문서 21,450</div>
+            <div class="namefield"><input class="inp" value="필터 · 곰팡이 냄새" aria-label="CL2 이름"><button class="btn primary sm">확정</button></div>
+            <div class="qrow"><span class="badge warning">응집 0.54 · 분리 검토</span><span class="badge">경계 14%</span><span class="badge">안정 0.72</span></div>
+            <p class="quote">“틀자마자 <mark>쉰내</mark>가 나서 송풍 30분 돌려요”</p>
+            <div class="meta" style="margin-top:4px"><span>유튜브 · 댓글 4</span><span class="sep"></span><button class="btn quiet sm" style="height:22px;padding:0 4px">분리 요청 남기기</button></div>
+          </div>
+          <div>
+            <div class="t-label" style="color:var(--ink-strong)">채널</div>
+            <div class="chanbar"><i style="width:38%"></i><i style="width:35%"></i><i style="width:27%"></i></div>
+            <p class="t-caption" style="margin:0">유튜브 38 · 카페 35 · 블로그 27</p>
+          </div>
+        </div>
+
+        <div class="clrow">
+          <div>
+            <div class="clid">CL3 · 문서 15,920</div>
+            <div class="namefield"><input class="inp" value="설치 · 실외기 위치" aria-label="CL3 이름"><button class="btn primary sm">확정</button></div>
+            <div class="qrow"><span class="badge">응집 0.66</span><span class="badge">경계 10%</span><span class="badge">안정 0.75</span></div>
+          </div>
+          <div>
+            <div class="t-label" style="color:var(--ink-strong)">채널</div>
+            <div class="chanbar"><i style="width:86%"></i><i style="width:14%"></i></div>
+            <p class="t-caption" style="margin:0"><span class="badge warning">한 채널 편중</span> 카페 86 · 블로그 14</p>
+          </div>
+        </div>
+        <div class="card-f" style="justify-content:space-between;align-items:center"><span class="t-label">이름 3/5 확정 · CL4 아래에 1개 더</span><button class="btn" disabled>6-B Persona로</button></div>
+      </div>
+    </div>
+    <div class="s4 sticky">
+      <div class="card">
+        <h3 class="t-card">k = 5를 제안한 근거</h3>
+        <p class="t-caption" style="margin:4px 0 16px">표본 20,000건 · 실루엣 최대</p>
+        <svg class="mini" viewBox="0 0 280 120" role="img" aria-label="k 3~8 실루엣: 3은 0.06, 4는 0.07, 5는 0.09로 최대, 6은 0.08, 7은 0.07, 8은 0.06">
+          <line x1="20" y1="100" x2="270" y2="100" stroke="#E7EAEE"/>
+          <polyline fill="none" stroke="#676668" stroke-width="2" points="30,70 75,58 120,34 165,46 210,60 255,72"/>
+          <circle cx="120" cy="34" r="5" fill="#38B6F9"/>
+          <g font-size="11" fill="#8A8A8C" text-anchor="middle"><text x="30" y="115">3</text><text x="75" y="115">4</text><text x="120" y="115">5</text><text x="165" y="115">6</text><text x="210" y="115">7</text><text x="255" y="115">8</text></g>
+          <text x="128" y="28" font-size="11" fill="#1c1e22">0.09</text>
+        </svg>
+        <dl class="kv" style="margin-top:16px">
+          <dt>Elbow 꺾임</dt><dd>k = 5</dd><dt>덴드로그램</dt><dd><button class="btn quiet sm" style="height:22px">보기</button></dd>
+          <dt>0벡터 제외</dt><dd>12건</dd><dt>본문 길어 댓글 잘림</dt><dd>18,044건</dd>
+        </dl>
+        <div class="divider"></div>
+        <p class="t-caption" style="margin:0">지표는 진단만 합니다. 분리 · 병합은 요청으로만 남고 이번에 실행하지 않습니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ S2 · 6-B Persona ═════════════ -->
+<section class="screen" id="s2" data-head="Persona의 Desire를 확정합니다" data-ca="5/5 확정" data-cb="5/12 확정" data-cc="잠김 · 6-B 확정 후">
+  <div class="grid">
+    <div class="s4">
+      <div class="card sm">
+        <div class="t-label" style="color:var(--ink-strong);margin-bottom:8px">클러스터</div>
+        <div class="ctxlist">
+          <button aria-current="false"><span class="t">CL0 야간 소음 · 수면</span><span class="badge success">3/3</span></button>
+          <button aria-current="true"><span class="t">CL1 전기요금 걱정</span><span class="badge">1/2</span></button>
+          <button><span class="t">CL2 필터 · 곰팡이 냄새</span><span class="badge success">2/2</span></button>
+          <button><span class="t">CL3 설치 · 실외기 위치</span><span class="badge">0/3</span></button>
+          <button><span class="t">CL4 반려동물 · 낮 냉방</span><span class="badge">0/2</span></button>
+        </div>
+      </div>
+      <div class="card sm" style="margin-top:16px">
+        <div class="t-label" style="color:var(--ink-strong)">CL1 어휘 네트워크</div>
+        <p class="t-caption" style="margin:2px 0 8px">명사 동시출현 상위 60 · 색 = Persona</p>
+        <svg class="mini net" viewBox="0 0 300 200" role="img" aria-label="두 공동체: P1 누진세 중심, P2 인버터 중심">
+          <g stroke="#E7EAEE"><line x1="80" y1="70" x2="120" y2="110"/><line x1="80" y1="70" x2="50" y2="120"/><line x1="120" y1="110" x2="60" y2="160"/><line x1="80" y1="70" x2="140" y2="50"/><line x1="200" y1="90" x2="240" y2="60"/><line x1="200" y1="90" x2="250" y2="130"/><line x1="200" y1="90" x2="170" y2="150"/><line x1="120" y1="110" x2="200" y2="90"/></g>
+          <g fill="#1c1e22"><circle cx="80" cy="70" r="11"/><circle cx="120" cy="110" r="8"/><circle cx="50" cy="120" r="6"/><circle cx="60" cy="160" r="5"/><circle cx="140" cy="50" r="6"/></g>
+          <g fill="#38B6F9"><circle cx="200" cy="90" r="11"/><circle cx="240" cy="60" r="7"/><circle cx="250" cy="130" r="6"/><circle cx="170" cy="150" r="5"/></g>
+          <g font-size="11" fill="#1c1e22"><text x="64" y="56">누진세</text><text x="128" y="114">고지서</text><text x="186" y="76">인버터</text><text x="244" y="56">제습</text></g>
+        </svg>
+      </div>
+    </div>
+    <div class="s8">
+      <div class="persona-edit">
+        <div class="card-h" style="margin-bottom:12px"><div><div class="clid">CL1-P1 · 근거 8,420건 · 작성자 5,120명</div><input class="inp" value="고지서 보고 놀라는 맞벌이 가구" aria-label="Persona 이름" style="font-weight:700;max-width:420px;margin-top:4px"></div><span class="badge info">초안</span></div>
+        <div class="field"><label for="d1">Desire <span class="t-caption">한 문장</span></label><textarea class="inp" id="d1" rows="2">여름 내내 켜두고 싶지만 전기요금이 얼마나 나올지 미리 알고 싶다</textarea>
+          <span class="hint">Desire가 드러나는 어휘 · 누진세 1.00 · 고지서 0.91 · 켜두다 0.84 · 한전 0.80 · 아깝다 0.77 …</span></div>
+        <div class="field"><div class="lab">Goal</div>
+          <div class="goal"><span class="n">1</span><input class="inp" value="냉방을 줄이지 않고 이번 달 예상 요금을 확인한다"></div>
+          <div class="goal"><span class="n">2</span><input class="inp" value="누진 구간을 넘기 전에 알림을 받는다"></div>
+          <button class="btn quiet sm"><i data-lucide="plus"></i>Goal 추가</button></div>
+        <details><summary><i data-lucide="chevron-right"></i>대표 원문 3건</summary>
+          <p class="quote" style="margin-top:8px">“7월 고지서 보고 <mark>기절</mark>할 뻔… 낮엔 집에 아무도 없는데”<br><span class="t-caption">네이버 카페 · 본문</span></p></details>
+        <div class="note" style="margin-top:16px"><i data-lucide="info" class="ic"></i><div class="t-caption" style="color:var(--ink-strong)">초안 힌트: 0단계 대상 선언(30~40대 · 맞벌이). 확정하면 이 문장이 8단계 카드에 그대로 쓰입니다.</div></div>
+        <div class="card-f"><button class="btn primary">Desire · Goal 확정</button></div>
+      </div>
+      <div class="persona-edit confirmed">
+        <div class="card-h" style="margin-bottom:8px"><div><div class="clid">CL1-P2 · 근거 6,310건</div><div class="t-card">켜놓고 나가는 인버터 신봉자</div></div><span class="badge success">확정됨</span></div>
+        <p class="t-body" style="margin:0"><b>Desire</b> 끄고 켜는 손해 없이 집을 늘 시원하게 두고 싶다</p>
+        <div class="note warn" style="margin-top:12px"><i data-lucide="git-compare" class="ic"></i><div class="t-caption" style="color:var(--ink-strong)">CL4-P1 “집을 비워도 반려동물이 덥지 않게”와 Desire가 비슷합니다(0.86). 클러스터가 달라 합치지 않고 기록만 남깁니다.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ S3 · 6-C Context ═════════════ -->
+<section class="screen" id="s3" data-head="Context 이름과 행동을 확정합니다" data-ca="5/5 확정" data-cb="12/12 확정" data-cc="18/31 확정">
+  <div class="grid">
+    <div class="s4">
+      <div class="card sm">
+        <div class="t-label" style="color:var(--ink-strong);margin-bottom:8px">Persona</div>
+        <div class="ctxlist">
+          <button aria-current="true"><span class="t">CL0-P1 아기 재우는 부모</span><span class="badge">2/4</span><span class="c">Context 4 · 문서 9,870</span></button>
+          <button><span class="t">CL0-P2 열대야 혼자 자는 직장인</span><span class="badge success">3/3</span></button>
+          <button><span class="t">CL0-P3 층간 · 실외기 갈등</span><span class="badge">0/1</span><span class="c">⚠ 문서 부족 · Context 1개</span></button>
+        </div>
+      </div>
+      <div class="card sm" style="margin-top:16px">
+        <dl class="kv"><dt>Core 중 목적 · 제약 빈 비율</dt><dd>18%</dd><dt>표본 추출(6.5)</dt><dd>Context당 100건</dd></dl>
+      </div>
+    </div>
+    <div class="s8">
+      <div class="ctxcard">
+        <div class="card-h" style="margin-bottom:8px"><div class="clid">CL0-P1-C1 · 문서 3,120 · NPMI 0.14</div><span class="badge success">확정됨</span></div>
+        <div class="t-card">새벽 냉방 전환 때 깨는 아기</div>
+        <dl class="kv" style="margin-top:8px"><dt>행동</dt><dd style="text-align:left">취침 모드로 바꾸고도 새벽에 수동으로 껐다 켠다</dd><dt>주된 제약</dt><dd style="text-align:left">실외기 소음 · 방문 닫으면 덥다</dd></dl>
+      </div>
+      <div class="ctxcard">
+        <div class="card-h" style="margin-bottom:8px"><div class="clid">CL0-P1-C2 · 문서 2,540</div><span class="badge info">초안</span></div>
+        <div class="row2"><div class="field"><label>Context 이름</label><input class="inp" value="찬바람 직접 닿을까 걱정"></div>
+          <div class="field"><label>행동 요약 <span class="t-caption">한 문장</span></label><input class="inp" value="바람 방향을 벽으로 돌리고 아기 침대 위치를 옮긴다"></div></div>
+        <p class="t-caption" style="margin:0 0 12px">LDA 상위 어휘 · 바람 · 직접 · 감기 · 방향 · 침대 · 주된 제약 · 방 구조상 위치 고정</p>
+        <div class="actions"><button class="btn primary sm">확정</button></div>
+      </div>
+      <div class="ctxcard counter">
+        <div class="card-h" style="margin-bottom:8px"><div class="clid">CL0-P1-C3 · 문서 410</div><span class="badge danger">반례</span></div>
+        <div class="row2"><div class="field"><label>Context 이름</label><input class="inp" value="취침 모드 효과 불신"></div>
+          <div class="field"><label>행동 요약</label><input class="inp" value="취침 모드를 끄고 선풍기를 따로 쓴다"></div></div>
+        <p class="t-caption" style="margin:0 0 12px">Persona 평균보다 감성이 낮고 문서가 적습니다. 다른 Context의 기대를 반박하는 담론으로 남깁니다.</p>
+        <div class="actions"><button class="btn primary sm">확정</button></div>
+      </div>
+      <div class="note"><i data-lucide="sparkles" class="ic"></i><div><b>새 Context 후보</b> · 7단계에서 C1의 가장자리 원문 3건이 같은 방향으로 모였습니다(“아기 체온계 연동”). 이번에는 만들지 않고 표시만 합니다. <button class="btn quiet sm">원문 3건</button></div></div>
+      <div class="actions" style="justify-content:flex-start;gap:12px;margin:4px 0 16px"><button class="btn">이 Persona의 Context 모두 확정</button><span class="badge danger">반례 1개 포함</span></div>
+      <div class="card-f" style="justify-content:space-between;align-items:center;border-top:0"><span class="t-label">31개 중 18개 확정 · 예상 근거 탐색 LLM 호출 약 420회</span><button class="btn primary" disabled>근거 탐색 실행</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ S4 · 7 근거 탐색 ═════════════ -->
+<section class="screen" id="s4" aria-labelledby="s4t">
+  <div class="ph"><div><div class="eyebrow">7단계 · 근거 탐색</div><h1 class="t-screen" id="s4t">아직 모르는 근거를 찾습니다</h1>
+    <p class="t-body">Context마다 소비자 말투의 가설 문장 8개로 그 Context 안에서만 찾고, 10건을 고릅니다.</p></div>
+    <div class="actions"><button class="btn primary" disabled title="모든 Context가 끝나야 합니다">페르소나 만들기</button></div></div>
+  <div class="grid">
+    <div class="s4">
+      <div class="card sm" style="margin-bottom:16px"><div class="t-label" style="color:var(--ink-strong);margin-bottom:8px">Persona</div><div class="ctxlist">
+          <div class="t-caption" style="padding:4px 12px 0">CL0 야간 소음 · 수면</div>
+          <button aria-current="true"><span class="t">P1 아기 재우는 부모</span><span class="badge warning">FUTURE</span></button>
+          <button><span class="t">P2 열대야 혼자 자는 직장인</span><span class="badge success">완료</span></button>
+          <div class="t-caption" style="padding:4px 12px 0">CL1 전기요금 걱정</div>
+          <button><span class="t">P1 고지서 보고 놀라는 가구</span><span class="badge info">진행 중</span></button>
+          <button><span class="t">P2 켜놓고 나가는 인버터 신봉자</span><span class="badge">대기</span></button>
+          <div class="t-caption" style="padding:4px 12px 8px">… 8개 더</div></div></div>
+      <div class="note" style="margin-bottom:12px"><i data-lucide="loader" class="ic"></i><div class="t-caption" style="color:var(--ink-strong)">근거 탐색 중 · Context 12/31. 끝난 Context부터 열어 볼 수 있습니다.</div></div>
+      <div class="card sm">
+        <div class="ctxlist">
+          <button aria-current="true"><span class="t">C1 새벽 냉방 전환 때 깨는 아기</span><span class="badge">새 8</span><span class="c">경험 차원 5/6 · rare 2</span></button>
+          <button><span class="t">C2 찬바람 직접 닿을까 걱정</span><span class="badge">새 10</span><span class="c">경험 차원 6/6</span></button>
+          <button><span class="t">C3 취침 모드 효과 불신</span><span class="badge danger">반례</span><span class="c">경험 차원 4/6</span></button>
+          <button><span class="t">C4 아기 방 온습도 맞추기</span><span class="badge info">진행 중</span><span class="c">후보 태깅 32/50</span></button>
+        </div>
+      </div>
+      <details class="card sm" style="margin-top:16px"><summary><i data-lucide="chevron-right"></i>C1 검색 문장 8개</summary>
+        <ul class="t-caption" style="margin:8px 0 0;padding-left:16px;color:var(--ink-strong)"><li>감각 · 새벽에 실외기 웅 소리가 커진다</li><li>감정 · 겨우 재웠는데 또 깰까 조마조마</li><li>행동 · 새벽 3시에 리모컨 들고 껐다 켠다</li><li>반례 · 취침 모드 켜도 전혀 조용하지 않다</li><li>잔여 · 다들 새벽에 에어컨 어떻게 하세요?</li><li class="t-caption">… 3개 더</li></ul></details>
+    </div>
+    <div class="s8">
+      <div class="card">
+        <div class="card-h" style="margin-bottom:12px"><div><div class="clid">CL0-P1-C1</div><h2 class="t-card">새벽 냉방 전환 때 깨는 아기</h2></div>
+          <div class="tabs" role="tablist" style="margin:0;border:0"><button class="tab" role="tab" aria-selected="false">전체 <span class="num">10</span></button><button class="tab" role="tab" aria-selected="true">새 발견 <span class="num">8</span></button></div></div>
+        <div class="note" style="margin-bottom:4px"><i data-lucide="filter" class="ic"></i><div>Known Insight와 같은 내용이라 7건이 빠졌습니다.</div><div class="actions"><button class="btn quiet sm">전체 탭에서 보기</button></div></div>
+        <div class="ev"><span class="no">1</span><p class="quote">“취침 모드로 바꾸는 순간 <mark>덜컥 소리</mark>가 나요. 그 소리에 애가 깨는 거였어요”</p>
+          <div class="meta"><span class="badge">더쿠 · 댓글 3</span><span class="badge">감각</span><span class="badge">가장자리 원문</span><span class="badge info">새로움 높음</span></div><button class="btn sm">Known Insight에 추가</button></div>
+        <div class="ev"><span class="no">2</span><p class="quote">“타이머로 2시에 끄면 4시에 <mark>더워서</mark> 깨고, 안 끄면 추워서 깨고”</p>
+          <div class="meta"><span class="badge">네이버 카페 · 본문</span><span class="badge">행동</span><span class="badge">결과</span></div><button class="btn sm">Known Insight에 추가</button></div>
+        <div class="ev"><span class="no">3</span><p class="quote">“실외기가 안방 창문 바로 밑이라 <mark>밤에만</mark> 거슬려요”</p>
+          <div class="meta"><span class="badge">블로그 · 본문</span><span class="badge">환경</span><span class="badge info">새로움 높음</span></div><button class="btn sm">Known Insight에 추가</button></div>
+        <p class="t-caption" style="margin:12px 0 0">… 5건 더</p>
+        <div class="divider"></div>
+        <details><summary><i data-lucide="chevron-right"></i>반례 2 · 희소 3</summary></details>
+        <details style="margin-top:8px"><summary><i data-lucide="chevron-right"></i>Persona 근거 · Desire 검증 5 · 쓰는 제품 · 수단</summary></details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ S5 · 8 페르소나 카드 ═════════════ -->
+<section class="screen" id="s5" aria-labelledby="s5t">
+  <div class="ph"><div><div class="eyebrow">8단계 · 페르소나</div><h1 class="t-screen" id="s5t">아기 재우는 부모</h1>
+    <div class="meta" style="margin-top:8px"><span class="badge warning">FUTURE · 0단계 선언 밖</span><span class="clid">CL0-P1</span><span>근거 9,870건 · 작성자 6,240명 · Context 4개 · 신뢰도 中</span></div></div>
+    <div class="actions"><button class="btn primary">인사이트 도출</button></div></div>
+  <div class="grid"><div class="s3"><div class="card sm" style=""><div class="t-label" style="color:var(--ink-strong);margin-bottom:8px">Persona</div><div class="ctxlist">
+          <div class="t-caption" style="padding:4px 12px 0">CL0 야간 소음 · 수면</div>
+          <button aria-current="true"><span class="t">P1 아기 재우는 부모</span><span class="badge warning">FUTURE</span></button>
+          <button><span class="t">P2 열대야 혼자 자는 직장인</span><span class="badge success">완료</span></button>
+          <div class="t-caption" style="padding:4px 12px 0">CL1 전기요금 걱정</div>
+          <button><span class="t">P1 고지서 보고 놀라는 가구</span><span class="badge info">진행 중</span></button>
+          <button><span class="t">P2 켜놓고 나가는 인버터 신봉자</span><span class="badge">대기</span></button>
+          <div class="t-caption" style="padding:4px 12px 8px">… 8개 더</div></div></div>
+      </div><div class="s9"><div class="seg" role="radiogroup" aria-label="보기" style="margin-bottom:20px"><button data-tabgo="s6" aria-pressed="false">전체 맵</button><button data-tabgo="s5" aria-pressed="true">Persona 카드</button></div>
+  <div class="grid eq" style="margin-bottom:24px">
+    <div class="s6"><div class="card sm" style="height:100%"><div class="eyebrow">DESIRE · 6-B 확정</div><p class="t-card" style="margin-top:6px">아기가 깨지 않게 밤새 조용하고 일정한 냉방을 원한다</p></div></div>
+    <div class="s6"><div class="card sm" style="height:100%"><div class="eyebrow">GOAL</div><ol class="t-body" style="margin:6px 0 0;padding-left:18px;color:var(--ink-strong)"><li>새벽에 리모컨을 들지 않는다</li><li>바람이 아기에게 직접 닿지 않게 한다</li></ol></div></div>
+  </div>
+  <div class="tabs" role="tablist"><button class="tab" role="tab" aria-selected="true">Customer Context Map</button><button class="tab" role="tab" aria-selected="false">의도 수렴</button><button class="tab" role="tab" aria-selected="false">속성</button><button class="tab" role="tab" aria-selected="false">처방</button><button class="tab" role="tab" aria-selected="false">구조</button></div>
+  <div class="legend" style="margin-bottom:12px"><span><span class="gr obs">관측</span>원문 인용 확인</span><span><span class="gr inf">추론</span>원문에서 유도</span><span><span class="gr gue">추측</span>인용 없음</span><span>각 칸은 개인이 아니라 그 Context에서 관측되는 담론입니다. 칸을 누르면 근거 원문이 펼쳐집니다.</span></div>
+  <table class="ccm">
+    <thead><tr><th style="width:104px"></th>
+      <th><span class="t">C1 새벽 냉방 전환 때 깨는 아기</span>근거 3,120 · 작성자 2,210</th>
+      <th><span class="t">C2 찬바람 직접 닿을까 걱정</span>근거 2,540 · 작성자 1,830</th>
+      <th class="counter"><span class="t">C3 취침 모드 효과 불신 · 반례</span>근거 410 · 작성자 330</th>
+      <th><span class="t">C4 아기 방 온습도 맞추기</span>근거 3,800 · 작성자 2,600</th></tr></thead>
+    <tbody>
+      <tr><td class="rl">행동</td><td>취침 모드 후 새벽에 수동으로 껐다 켬</td><td>바람 방향을 벽으로, 침대 위치 이동</td><td class="counter">취침 모드 끄고 선풍기 병행</td><td>온습도계 보며 설정 온도를 수시로 조정</td></tr>
+      <tr><td class="rl">상황<br><span class="t-caption">상태 → 감정 → 장벽</span></td>
+        <td class="cell open"><span class="cx"><span class="gr obs">관측</span> 새벽 모드 전환 때 소리가 남</span><span class="cx"><span class="gr inf">추론</span> 다시 깰까 조마조마</span><span class="cx"><span class="gr obs">관측</span> 실외기가 침실 창 아래</span></td>
+        <td class="cell"><span class="cx"><span class="gr obs">관측</span> 아기 침대가 바람 길</span><span class="cx"><span class="gr inf">추론</span> 감기 걱정</span><span class="cx"><span class="gr inf">추론</span> 방 구조상 위치 고정</span></td>
+        <td class="cell counter"><span class="cx"><span class="gr obs">관측</span> 취침 모드도 시끄럽다는 경험</span><span class="cx"><span class="gr inf">추론</span> 기능에 대한 회의</span><span class="cx"><span class="gr gue">추측</span> 사전 불신이 기능 사용을 막음</span></td>
+        <td class="cell"><span class="cx"><span class="gr obs">관측</span> 습도 60% 넘으면 땀띠</span><span class="cx"><span class="gr inf">추론</span> 숫자를 계속 확인하는 피로</span><span class="cx"><span class="gr inf">추론</span> 제습 · 냉방 따로 조작</span></td></tr>
+      <tr><td class="rl">키워드</td><td>#새벽 #소리 #취침모드</td><td>#바람 #직접 #감기</td><td class="counter">#효과없음 #선풍기</td><td>#습도 #땀띠 #온도계</td></tr>
+      <tr><td class="rl">쓰는 제품 · 수단</td><td>타이머 · 백색소음기</td><td>윈드프리 · 바람막이</td><td class="counter">선풍기</td><td>온습도계 · 제습기</td></tr>
+      <tr><td class="rl">만족도</td><td class="num">0.18</td><td class="num">0.42</td><td class="counter num">0.12</td><td class="num">0.35</td></tr>
+      <tr><td class="rl">기회 <span class="prov">잠정</span></td><td><span class="num">1.48</span> · <span class="zone" style="color:var(--danger)">F 위험</span></td><td><span class="num">0.96</span> · <span class="zone" style="color:var(--warning)">C 경쟁</span></td><td class="counter"><span class="num">0.07</span> · <span class="zone">E 방치</span></td><td><span class="num">1.21</span> · <span class="zone" style="color:var(--danger)">F 위험</span></td></tr>
+    </tbody>
+  </table>
+  <div class="card" style="margin-top:16px">
+    <div class="card-h" style="margin-bottom:8px"><h3 class="t-card">C1 · 상태 “새벽 모드 전환 때 소리가 남”의 근거</h3><button class="btn quiet sm" aria-label="닫기"><i data-lucide="x"></i></button></div>
+    <div class="ev"><span class="no">E3</span><p class="quote">“취침 모드로 바꾸는 순간 <mark>덜컥 소리</mark>가 나요”</p><div class="meta"><span class="badge">더쿠 · 댓글 3</span><span class="gr obs">관측 · 인용 확인</span></div><button class="btn sm">Known Insight에 추가</button></div>
+    <div class="ev"><span class="no">E7</span><p class="quote">“새벽 2시쯤 <mark>모드 바뀌는 소리</mark>에 같이 깨요”</p><div class="meta"><span class="badge">네이버 카페 · 본문</span></div><button class="btn sm">Known Insight에 추가</button></div>
+  </div>
+</div></div>
+</section>
+
+<!-- ═════════════ S6 · Opportunity Map ═════════════ -->
+<section class="screen" id="s6" aria-labelledby="s6t">
+  <div class="ph"><div><div class="eyebrow">8단계 · 페르소나</div><h1 class="t-screen" id="s6t">세션 전체에서 어느 Context가 기회인가</h1>
+    <p class="t-body">점 하나 = Context 31개 · 색 = Persona 12개. 점을 누르면 그 Persona 카드로 갑니다. 1.0 장표 수치와 절댓값은 비교하지 않습니다.</p></div><div class="actions"><button class="btn primary">인사이트 도출</button></div></div>
+  <div class="seg" role="radiogroup" aria-label="보기" style="margin-bottom:20px"><button data-tabgo="s6" aria-pressed="true">전체 맵</button><button data-tabgo="s5" aria-pressed="false">Persona 카드</button></div>
+  <div class="grid">
+    <div class="s8"><div class="card">
+      <svg class="mini" viewBox="0 0 560 400" role="img" aria-label="Opportunity Map. 위험 구역에 C1과 C4, 경쟁 구역에 C2, 방치 구역에 반례 C3. 별표는 C1.">
+        <rect x="60" y="20" width="480" height="320" fill="#F8FCFF"/>
+        <polygon points="276,340 540,340 540,20" fill="#fdeaea" opacity=".6"/>
+        <line x1="60" y1="340" x2="540" y2="340" stroke="#7f838b"/><line x1="60" y1="340" x2="60" y2="20" stroke="#7f838b"/>
+        <line x1="60" y1="180" x2="540" y2="180" stroke="#168FCC" stroke-dasharray="4 4"/>
+        <line x1="60" y1="244" x2="540" y2="20" stroke="#168FCC" stroke-dasharray="4 4"/>
+        <line x1="276" y1="340" x2="540" y2="20" stroke="#c62828" stroke-dasharray="4 4"/>
+        <g font-size="12" font-weight="700"><text x="80" y="60" fill="#168FCC">A 흥미</text><text x="250" y="160" fill="#168FCC">B 경험</text><text x="460" y="150" fill="#9a5b00">C 경쟁</text><text x="70" y="205" fill="#676668">D 용인</text><text x="110" y="320" fill="#676668">E 방치</text><text x="420" y="320" fill="#c62828">F 위험</text></g>
+        <g fill="#c0c4cc"><circle cx="150" cy="80" r="5"/><circle cx="230" cy="110" r="5"/><circle cx="120" cy="260" r="5"/></g><g fill="#1c1e22"><rect x="323" y="133" width="14" height="14"/><rect x="493" y="293" width="14" height="14"/></g><g fill="#676668"><rect x="353" y="263" width="14" height="14"/></g>
+        <circle cx="470" cy="290" r="8" fill="#38B6F9"/><text x="480" y="286" font-size="13" font-weight="700" fill="#1c1e22">C1</text>
+        <text x="460" y="276" font-size="16" fill="#1c1e22">★</text>
+        <circle cx="440" cy="170" r="8" fill="#38B6F9"/><text x="452" y="168" font-size="13" font-weight="700" fill="#1c1e22">C2</text>
+        <circle cx="90" cy="300" r="8" fill="none" stroke="#38B6F9" stroke-width="2.5"/><text x="102" y="298" font-size="13" font-weight="700" fill="#1c1e22">C3 반례</text>
+        <circle cx="400" cy="240" r="8" fill="#38B6F9"/><text x="412" y="238" font-size="13" font-weight="700" fill="#1c1e22">C4</text>
+        <text x="300" y="370" font-size="12" fill="#8A8A8C" text-anchor="middle">중요도 — Context 소속 확률 합 ÷ 문서 수</text>
+        <text x="20" y="180" font-size="12" fill="#8A8A8C" text-anchor="middle" transform="rotate(-90 20 180)">만족도 — 감성사전</text>
+      </svg>
+      <div class="legend" style="margin-top:8px"><button class="chip" aria-pressed="true"><span class="sw-dot" style="background:#38B6F9"></span>CL0 야간 소음 (원) · P1 선택됨</button><button class="chip" aria-pressed="true"><span class="sw-dot" style="background:#1c1e22;border-radius:2px"></span>CL1 전기요금 (사각) · P1 진하게 · P2 중간</button><button class="chip" aria-pressed="false"><span class="sw-dot" style="background:#c0c4cc"></span>그 밖 10개</button><span><span class="sw-dot" style="border:2px solid #38B6F9"></span>반례 Context</span><span>★ 새로움 높은 근거 2건 이상 · 기회 평균 이상</span></div>
+      <table class="tbl" style="margin-top:20px"><caption>Context 31개 · 기회 순 · 행을 고르면 맵의 점이 강조됩니다</caption>
+        <thead><tr><th>Context</th><th>Persona</th><th class="r">중요도</th><th class="r">만족도</th><th class="r">기회 <span class="prov">잠정</span></th><th>구역</th><th></th></tr></thead>
+        <tbody><tr class="sel"><td>★ CL0-P1-C1 새벽 냉방 전환 때 깨는 아기</td><td class="dim">CL0-P1</td><td class="r">0.82</td><td class="r">0.18</td><td class="r">1.46</td><td>F 위험</td><td><button class="btn quiet sm">카드 열기</button></td></tr>
+        <tr><td>CL1-P1-C1 누진 구간 직전의 불안</td><td class="dim">CL1-P1</td><td class="r">0.78</td><td class="r">0.22</td><td class="r">1.34</td><td>F 위험</td><td><button class="btn quiet sm">카드 열기</button></td></tr>
+        <tr><td>CL0-P1-C4 아기 방 온습도 맞추기</td><td class="dim">CL0-P1</td><td class="r">0.70</td><td class="r">0.35</td><td class="r">1.05</td><td>F 위험</td><td><button class="btn quiet sm">카드 열기</button></td></tr></tbody></table>
+    </div></div>
+    <div class="s4"><div class="card">
+      <h3 class="t-card">C1 새벽 냉방 전환 때 깨는 아기</h3>
+      <dl class="kv" style="margin-top:12px"><dt>중요도</dt><dd>0.82</dd><dt>만족도</dt><dd>0.18</dd><dt>기회 <span class="prov">잠정</span></dt><dd>1.46</dd><dt>구역</dt><dd>F 위험</dd><dt>새로움 높은 근거</dt><dd>3건</dd></dl>
+      <div class="divider"></div>
+      <p class="t-caption" style="margin:0">기회 점수 = 중요도 + max(중요도 − 만족도, 0). 1.0 장표 산식이 확인되면 바뀝니다. 구역은 기준선으로 정해져 바뀌지 않습니다.</p>
+      <div class="nextact"><span class="t-label">CL0-P1 아기 재우는 부모</span><button class="btn sm">Persona 카드 열기</button></div>
+    </div></div>
+  </div>
+</section>
+
+<!-- ═════════════ S7 · 인사이트 ═════════════ -->
+<section class="screen" id="s7" aria-labelledby="s7t">
+  <div class="ph"><div><div class="eyebrow">8단계 · 인사이트</div><h1 class="t-screen" id="s7t">페르소나를 가로지르는 인사이트 6개</h1>
+    <p class="t-body">기회 평균선 위 3개를 경험 디자인 컨셉으로 만들었습니다. 오른쪽 채팅으로 고치면 새 판으로 저장됩니다.</p></div>
+    <div class="actions"><button class="btn">다시 만들기</button><button class="btn primary">확정 2개 저장</button></div></div>
+  <div class="grid">
+    <div class="s8">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-h" style="margin-bottom:12px"><h2 class="t-card">기회 순위 <span class="prov">잠정</span></h2><span class="t-caption">빨간 선 = 평균 1.02 · 위쪽만 컨셉 기본 대상</span></div>
+        <div class="obar"><span class="t-label" style="color:var(--ink-strong)">1 소리 없는 새벽</span><div class="track"><div class="fill hi" style="width:88%"></div><span class="avg" style="left:56%"></span></div><span class="num">1.42</span></div>
+        <div class="obar"><span class="t-label" style="color:var(--ink-strong)">2 고지서 전에 아는 요금</span><div class="track"><div class="fill hi" style="width:76%"></div><span class="avg" style="left:56%"></span></div><span class="num">1.25</span></div>
+        <div class="obar"><span class="t-label" style="color:var(--ink-strong)">3 냄새 나기 전 관리</span><div class="track"><div class="fill hi" style="width:64%"></div><span class="avg" style="left:56%"></span></div><span class="num">1.10</span></div>
+        <div class="obar"><span class="t-label">4 실외기 이웃 갈등</span><div class="track"><div class="fill" style="width:48%"></div><span class="avg" style="left:56%"></span></div><span class="num">0.88</span></div>
+      </div>
+      <div class="ins" aria-current="true">
+        <div><div class="meta"><input type="checkbox" checked aria-label="확정"><span class="badge info">새 발견</span></div>
+          <h3 class="t-card" style="margin-top:6px">1 소리 없는 새벽</h3>
+          <p class="t-body" style="margin:4px 0 0">아이를 재우는 집은 소음 크기가 아니라 <b>모드가 바뀌는 순간의 소리</b>에 깬다. 취침 모드가 오히려 깨우는 계기가 되고, 부모는 새벽에 수동 조작으로 버틴다.</p>
+          <div class="ids"><span class="idchip">CL0-P1-C1</span><span class="idchip">CL0-P1-C3</span><span class="idchip">CL0-P2-C2</span></div></div>
+        <svg viewBox="0 0 120 110" role="img" aria-label="레이더: 맞춤 0.41, 실시간 0.22, 함께 0.08"><polygon points="60,10 108,92 12,92" fill="none" stroke="#E7EAEE"/><polygon points="60,34 82,78 50,86" fill="#38B6F9" fill-opacity=".25" stroke="#168FCC"/><g font-size="9" fill="#8A8A8C" text-anchor="middle"><text x="60" y="8">맞춤</text><text x="112" y="104">실시간</text><text x="10" y="104">함께</text></g></svg>
+      </div>
+      <div class="ins">
+        <div><div class="meta"><input type="checkbox" checked aria-label="확정"><span class="badge">Known Insight #2와 같은 내용</span></div>
+          <h3 class="t-card" style="margin-top:6px">2 고지서 전에 아는 요금</h3>
+          <div class="ids"><span class="idchip">CL1-P1-C1</span><span class="idchip">CL1-P2-C2</span></div></div>
+        <svg viewBox="0 0 120 110" aria-hidden="true"><polygon points="60,10 108,92 12,92" fill="none" stroke="#E7EAEE"/><polygon points="60,40 96,86 40,80" fill="#38B6F9" fill-opacity=".25" stroke="#168FCC"/></svg>
+      </div>
+      <div class="card">
+        <div class="card-h" style="margin-bottom:12px"><h2 class="t-card">경험 디자인 컨셉 · 1 소리 없는 새벽</h2><span class="t-caption">판 3 · 채팅으로 수정됨</span></div>
+        <div class="row2">
+          <div><div class="eyebrow">01 PERSONA</div><p class="t-body" style="margin:6px 0 0;color:var(--ink-strong)">지민, 34세 · 돌 지난 아이와 안방 취침 <span class="gr gue">추측 · 합성값</span></p><p class="t-caption" style="margin:4px 0 0">근거 9,870건 · 작성자 6,240명에서 종합. 실제 한 사람이 아닙니다.</p></div>
+          <div><div class="eyebrow">02 PAIN POINTS</div><p class="quote" style="margin-top:6px">“모드 바뀌는 소리에 같이 깨요” <span class="badge">네이버 카페 · 본문</span> <span class="idchip">CL0-P1-C1</span></p><p class="quote" style="margin-top:6px">“취침 모드 켜도 전혀 조용하지 않아요” <span class="badge">클리앙 · 본문</span> <span class="idchip">CL0-P1-C3</span> <span class="badge danger">반례</span></p></div>
+        </div>
+        <div class="eyebrow" style="margin:16px 0 8px">03 JOURNEY</div>
+        <table class="jt">
+          <thead><tr><th>지금 상황</th><th>행동</th><th>느낌</th><th>제안 서비스 <span class="t-caption">처방</span></th><th>바뀐 행동</th></tr></thead>
+          <tbody>
+            <tr><td>새벽 모드 전환 <span class="idchip">C1</span></td><td>리모컨으로 껐다 켬</td><td>조마조마</td><td class="tb"><b>무음 전환</b> <span class="badge">물리적</span></td><td class="tb">밤새 조작 없이 잔다</td></tr>
+            <tr><td>취침 모드 불신 <span class="idchip">C3</span></td><td>선풍기 병행</td><td>반신반의</td><td class="tb"><b>밤사이 소음 기록 리포트</b> <span class="badge">정신적</span></td><td class="tb">아침에 몇 dB였는지 확인</td></tr>
+          </tbody>
+        </table>
+        <div class="meta" style="margin-top:12px"><span>네 경험 분포 · 정신적 1 · 물리적 1 · 문화적 0 · 시스템 0</span><span class="sep"></span><span class="badge success">사내 제약 · 의료 표현 없음</span><span class="badge warning">소음 수치 표기 근거 검토</span></div>
+      </div>
+    </div>
+    <div class="s4 sticky">
+      <div class="card" style="min-height:560px">
+        <div class="card-h" style="margin-bottom:12px"><h3 class="t-card">수정 채팅</h3><select class="inp" style="width:150px" aria-label="수정 대상"><option>컨셉 1</option><option>인사이트 목록</option></select></div>
+        <div class="chat">
+          <div class="msg me">JOURNEY에 반례 행 하나 추가해줘</div>
+          <div class="msg ai">C3 “취침 모드 불신” 행을 추가했습니다. 판 3으로 저장했습니다.</div>
+          <textarea class="inp" rows="3" placeholder="예: 인사이트 2를 두 개로 나눠줘"></textarea>
+          <div class="actions"><button class="btn sm">보내기</button></div>
+        </div>
+        <div class="divider"></div>
+        <div class="t-label" style="color:var(--ink-strong)">판 목록</div>
+        <div class="rev"><span>판 3 · 채팅 · 방금</span><span class="badge info">현재</span></div>
+        <div class="rev"><span>판 2 · 채팅 · 10분 전</span><button class="btn quiet sm" style="height:22px">이 판으로</button></div>
+        <div class="rev"><span>판 1 · 생성 · 14:02</span><button class="btn quiet sm" style="height:22px">이 판으로</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ S8 · 상태 모음 ═════════════ -->
+<section class="screen" id="s8" aria-labelledby="s8t">
+  <div class="ph"><div><div class="eyebrow">참고 시트</div><h1 class="t-screen" id="s8t">6~8단계 상태 모음</h1></div></div>
+  <div class="grid">
+    <div class="s6"><div class="state-label">6단계 · 실행 중</div><div class="card"><div class="stepper" style="grid-template-columns:repeat(4,1fr);margin-bottom:12px"><div class="stp done"><div class="k">완료</div><div class="v">Cluster</div></div><div class="stp done"><div class="k">완료</div><div class="v">Persona</div></div><div class="stp on"><div class="k">진행 중</div><div class="v">Context</div><div class="c">7/12</div></div><div class="stp"><div class="k">대기</div><div class="v">초안</div></div></div><div class="progress"><div style="width:58%"></div></div><p class="t-caption" style="margin:8px 0 0">약 6분 남음 · 화면을 닫아도 계속됩니다</p></div></div>
+    <div class="s6"><div class="state-label">7단계 · Context별 진행</div><div class="card"><div class="progress"><div style="width:39%"></div></div><p class="t-caption" style="margin:8px 0 12px">Context 12/31 · 캐시 적중 1,820건 · LLM 호출 164회</p><div class="note error"><i data-lucide="x-circle" class="ic"></i><div>CL3-P2-C1에서 근거로 쓸 원문을 찾지 못했습니다.</div><div class="actions"><button class="btn sm">다시 시도</button></div></div></div></div>
+    <div class="s6"><div class="state-label">6-B · 공동체 1개</div><div class="note"><i data-lucide="info" class="ic"></i><div>어휘 네트워크가 하나로 묶여 Persona를 나누지 않았습니다. CL4는 Persona 1개입니다.</div></div></div>
+    <div class="s6"><div class="state-label">6-C · 초안 실패</div><div class="note warn"><i data-lucide="alert-triangle" class="ic"></i><div>초안을 만들지 못했습니다. 직접 입력하세요.</div></div></div>
+    <div class="s6"><div class="state-label">7 · 새 발견 0건</div><div class="card empty"><p class="t-body" style="margin:0">Known Insight를 빼니 남는 원문이 없습니다.</p><button class="btn sm">전체 탭에서 보기</button></div></div>
+    <div class="s6"><div class="state-label">7 · 자동 검색 문장 실패</div><div class="note"><i data-lucide="info" class="ic"></i><div>자동 검색 문장을 만들지 못해 Context 이름과 키워드로 검색했습니다.</div></div></div>
+    <div class="s6"><div class="state-label">8 · 처방 차단</div><div class="note warn"><i data-lucide="shield-alert" class="ic"></i><div>사내 제약 ‘의료적 효과 표현 금지’를 지키는 처방을 만들지 못했습니다. 이유: “아기 호흡기 보호” 표현.</div></div></div>
+    <div class="s6"><div class="state-label">8 · 인용 미확인</div><div class="card sm"><span class="gr inf">추론</span> <span class="t-caption">인용 문장을 원문에서 찾지 못해 관측에서 추론으로 낮췄습니다.</span></div></div>
+    <div class="s6"><div class="state-label">8 · 카드 일부 실패</div><div class="note error"><i data-lucide="x-circle" class="ic"></i><div>CL3-P1 카드를 만들지 못했습니다. 다른 카드 11개는 완료.</div><div class="actions"><button class="btn sm">다시 만들기</button></div></div></div>
+    <div class="s6"><div class="state-label">8-E · 채팅 수정 실패</div><div class="note error"><i data-lucide="x-circle" class="ic"></i><div>요청을 반영하지 못했습니다. 다르게 말해 주세요. 현재 판은 그대로입니다.</div></div></div>
+  </div>
+</section>
+
+</div></main>
+</div>
+
+<script>
+const stepOf={s1:6,s2:6,s3:6,s4:7,s5:8,s6:8,s7:9,s8:6};
+const tpl=document.getElementById('layerhead').innerHTML;
+document.querySelectorAll('section[data-head]').forEach(s=>{
+  s.insertAdjacentHTML('afterbegin',tpl.replace('HEAD',s.dataset.head).replace('CA',s.dataset.ca).replace('CB',s.dataset.cb).replace('CC',s.dataset.cc));
+  s.querySelectorAll('[data-tab]').forEach(b=>{const cur=b.dataset.tab===s.id;const locked=/잠김/.test(b.querySelector('.c').textContent);
+    if(cur)b.setAttribute('aria-current','step');if(locked)b.setAttribute('aria-disabled','true');if(/5\/5|12\/12/.test(b.querySelector('.c').textContent))b.classList.add('done');
+    b.setAttribute('aria-selected',cur);b.onclick=()=>{if(!locked)go(b.dataset.tab)}});
+});
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));
+  document.querySelectorAll('.mockbar button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.go===id));
+  document.querySelectorAll('#nav a').forEach((a,i)=>{a.classList.toggle('on',i===stepOf[id]);a.classList.toggle('done',i<stepOf[id]);a.querySelector('.n').textContent=i<stepOf[id]?'✓':i+1});
+  history.replaceState(null,'','#'+id); window.scrollTo(0,0);
+}
+document.querySelectorAll('.mockbar button').forEach(b=>b.onclick=()=>go(b.dataset.go));
+document.querySelectorAll('[data-tabgo]').forEach(b=>b.onclick=()=>go(b.dataset.tabgo));
+go(location.hash.slice(1)||'s1');
+if(window.lucide) lucide.createIcons();
+</script>
+</body>
+</html>
