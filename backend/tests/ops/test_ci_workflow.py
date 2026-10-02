@@ -31,7 +31,7 @@ def test_backend_job(workflow):
     commands = [s["run"] for s in job["steps"] if "run" in s]
     install = next(c for c in commands if "pip install -r backend/requirements.txt -r backend/requirements-dev.txt" in c)
     assert "-c backend/constraints.txt" in install
-    assert "python -m pytest backend/tests -q -p no:cacheprovider" in commands
+    assert "python -m pytest backend/tests -q -p no:cacheprovider -n auto" in commands
 
 
 def test_frontend_job(workflow):

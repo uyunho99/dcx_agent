@@ -27,7 +27,7 @@ jobs:
             backend/requirements-dev.txt
             backend/constraints.txt
       - run: pip install -r backend/requirements.txt -r backend/requirements-dev.txt -c backend/constraints.txt
-      - run: python -m pytest backend/tests -q -p no:cacheprovider
+      - run: python -m pytest backend/tests -q -p no:cacheprovider -n auto
 
   frontend:
     runs-on: ubuntu-latest
