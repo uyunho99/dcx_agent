@@ -36,9 +36,20 @@ describe('completedThrough', () => {
   });
 });
 
-function sidebar(currentStep: string, session?: Record<string, unknown>) {
+function sidebar(currentStep: unknown, session?: Record<string, unknown>) {
   return renderToStaticMarkup(createElement(StepBar, { currentStep, session }));
 }
+
+it.each([undefined, null, 42, false, {}, []].map(step => [step]))('defaults invalid step %j to zero', step => {
+  expect(stepIndex(step)).toBe(0);
+});
+it.each([undefined, null, 42, false, {}, []].map(step => [step]))('renders invalid step %j using server completion', step => {
+  expect(sidebar(step)).not.toContain('완료');
+  const html = sidebar(step, { completion: { segmentDone: true } });
+  expect(html).toContain('클러스터링 완료');
+  expect(html).not.toContain('근거 탐색 완료');
+  expect(html).not.toContain('페르소나 완료');
+});
 
 it('checks the completed stage itself even when the saved step lags', () => {
   const html = sidebar('r4', { prep: { status: 'done' } });

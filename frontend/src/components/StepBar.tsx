@@ -34,7 +34,8 @@ export const STEP_MAP: Record<string, number> = {
   "embed-start": 8, "embed-check": 8, done: 8,
 };
 
-export function stepIndex(step: string) {
+export function stepIndex(step: unknown) {
+  if (typeof step !== "string") return 0;
   if (step.startsWith("prep-")) return 3;
   if (step.startsWith("label-")) return 4;
   if (step.startsWith("train-")) return 5;
@@ -45,7 +46,7 @@ export function stepIndex(step: string) {
   return STEP_MAP[step] ?? 0;
 }
 
-export default function StepBar({ currentStep, session }: { currentStep: string; session?: Record<string, unknown> | null }) {
+export default function StepBar({ currentStep, session }: { currentStep: unknown; session?: Record<string, unknown> | null }) {
   const { confirmNavigation } = useDirty();
   // Saved step is exclusive; server completion includes the completed stage itself.
   const completed = completedThrough(session);
