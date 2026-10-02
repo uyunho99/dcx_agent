@@ -1,0 +1,29 @@
+{
+  "verdict": "PASS",
+  "head": "50dd62c1710d84bb5b249c6210bec75a4b60c075",
+  "fingerprint": "b6d294e8ac252ec2a61f8f3cd46dd0171acbef83f79d4614a0d67a9b25abc4c3",
+  "commands": [
+    { "command": "backend/.venv/bin/python -m pytest backend/tests -q -p no:cacheprovider  (1507 passed, 1 deselected)", "exitCode": 0 },
+    { "command": "npm --prefix frontend test  (356 passed)", "exitCode": 0 },
+    { "command": "npm --prefix frontend run lint", "exitCode": 0 },
+    { "command": "npm --prefix frontend run build", "exitCode": 0 }
+  ],
+  "findings": [],
+  "reviews": [
+    {
+      "scope": "task reviews T1 · T3 · T4 · T5 · T6 (Claude reviewers, read-only)",
+      "result": "T1 · T3 · T4 Approved; T5 Important 1 resolved by contract ruling; T6 Important 1 -> fix round 1 -> ADDRESSED",
+      "evidence": "docs/development/dcx2-stage0-task-mode/reports/review-summary.md; docs/development/dcx2-stage0-task-mode/reports/sdd-ledger.md"
+    },
+    {
+      "scope": "final whole-branch review 4ec7719..2de57e9 (Claude opus, read-only)",
+      "result": "With fixes: Important 1 + Minor 1 fixed by Codex (b428144), scoped re-review all ADDRESSED; 18 deferred minors accepted",
+      "evidence": "docs/development/dcx2-stage0-task-mode/reports/review-summary.md; docs/development/dcx2-stage0-task-mode/reports/final-fix-report.md"
+    },
+    {
+      "scope": "QA fix round 1 (e247a65..7529ac2, Claude sonnet, read-only)",
+      "result": "ISSUE-001 · ISSUE-002 ADDRESSED; no new breakage (valid forms, drafts, double submit checked)",
+      "evidence": "docs/development/dcx2-stage0-task-mode/reports/qa-fix1-report.md; docs/development/dcx2-stage0-task-mode/qa/qa-report-round2.md"
+    }
+  ]
+}

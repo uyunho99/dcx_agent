@@ -1,7 +1,7 @@
 {
   "verdict": "PASS",
-  "head": "b4281442d4081edca10380e8480ad56900f00a2a",
-  "fingerprint": "dd728f443129934faa524cfa163c951a1aaeba5394e9f32e19ab7279982cde55",
+  "head": "50dd62c1710d84bb5b249c6210bec75a4b60c075",
+  "fingerprint": "b6d294e8ac252ec2a61f8f3cd46dd0171acbef83f79d4614a0d67a9b25abc4c3",
   "commands": [
     { "command": "backend/.venv/bin/python -m pytest backend/tests -q -p no:cacheprovider  (1507 passed, 1 deselected; baseline 1458)", "exitCode": 0 },
     { "command": "npm --prefix frontend run lint", "exitCode": 0 },
@@ -57,6 +57,14 @@
       "red": "docs/development/dcx2-stage0-task-mode/reports/final-fix-report.md RED",
       "green": "docs/development/dcx2-stage0-task-mode/reports/final-fix-report.md GREEN (backend context 210, frontend 356, lint, webpack build)",
       "review": "final whole-branch review (Claude opus, read-only) With fixes -> scoped re-review: both findings ADDRESSED"
+    },
+    {
+      "id": "QA-FIX-1",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent a58990496a29d2d66 (--wait --fresh --write) after harness retry from browser-qa; commit 7529ac2 by controller",
+      "red": "docs/development/dcx2-stage0-task-mode/qa/qa-report-round1.md ISSUE-001 (browser repro: fieldset top -1003, focus body)",
+      "green": "docs/development/dcx2-stage0-task-mode/reports/qa-fix1-report.md (lint, 356 tests, webpack build) + qa/qa-report-round2.md browser recheck",
+      "review": "scoped re-review (Claude sonnet, read-only): ISSUE-001 · ISSUE-002 ADDRESSED, no new breakage"
     }
   ],
   "scenarios": []
