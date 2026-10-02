@@ -1,6 +1,17 @@
 type RoundState = { status?: 'running' | 'done' | 'failed'; committed?: boolean; needsRegeneration?: boolean };
 const regenerable = (state: RoundState) => state.status !== 'running' && ((state.status === 'done' && !state.committed) || !!state.needsRegeneration);
-export const directionRound = (round: number) => Math.min(round + 1, 4);
+export const LOCKED_ROUNDS: readonly number[] = [2];
+export function nextRound(round: number): number {
+  let next = Math.min(round + 1, 4);
+  while (next < 4 && LOCKED_ROUNDS.includes(next)) next += 1;
+  return next;
+}
+export function prevRound(round: number): number {
+  let previous = round - 1;
+  while (previous >= 1 && LOCKED_ROUNDS.includes(previous)) previous -= 1;
+  return previous >= 1 ? previous : round;
+}
+export const directionRound = (round: number) => nextRound(round);
 export function roundUi(state: RoundState & { round: number; nextRound?: RoundState; gen?: number; jobGen?: number; dirty?: boolean }) {
   const running = state.status === 'running';
   const canEdit = !running && state.status !== 'failed' && state.gen === state.jobGen;

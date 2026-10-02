@@ -1,5 +1,16 @@
 import { expect, it } from 'vitest';
-import { roundUi, directionRound } from './roundUi';
+import { roundUi, directionRound, nextRound, prevRound, LOCKED_ROUNDS } from './roundUi';
+it('skips locked R2 when advancing', () => {
+  expect(nextRound(1)).toBe(3);
+  expect(nextRound(3)).toBe(4);
+  expect(nextRound(4)).toBe(4);
+  expect(prevRound(3)).toBe(1);
+  expect(prevRound(4)).toBe(3);
+  expect(prevRound(1)).toBe(1);
+  expect(directionRound(1)).toBe(3);
+  expect(directionRound(4)).toBe(4);
+  expect(LOCKED_ROUNDS).toEqual([2]);
+});
 it('allows initial start and disables every mutation during running', () => {
   expect(roundUi({ round: 1 }).canStart).toBe(true);
   expect(roundUi({ round: 2, status: 'running' })).toMatchObject({ canStart: false, canCommit: false, canNext: false, canEdit: false });
@@ -42,5 +53,5 @@ it('permits restart regeneration and protects existing next rounds',()=>{
  expect(roundUi({round:1,status:'done',committed:true,nextRound:{status:'running'}}).canNext).toBe(false);
 });
 it('tags directions saved at commit with the upcoming generation',()=>{
- expect([1,2,3,4].map(directionRound)).toEqual([2,3,4,4]);
+ expect([1,2,3,4].map(directionRound)).toEqual([3,3,4,4]);
 });
