@@ -208,7 +208,8 @@ def _inputs(sid, data, n):
         past_zero_kws=_past_zero_keywords(sid, data),
         project_type=project_type.get('choice', 'renewal') if isinstance(project_type, dict) else project_type,
         channels=ctx.get('channels', []), target_scope_text=json.dumps(ctx.get('targetScope'), ensure_ascii=False),
-        product_category=json.dumps(ctx.get('productCategory', {}), ensure_ascii=False))
+        product_category=json.dumps(ctx.get('productCategory', {}), ensure_ascii=False),
+        task_mode=ctx.get('taskMode'))
 
 
 def volumes(kws):
