@@ -9,6 +9,7 @@ run generation without discarding successful Contexts on resume.
 from collections import Counter
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError as FutureTimeout
 from contextlib import closing, nullcontext
+import fcntl
 import hashlib
 import json
 from queue import Empty, Queue
@@ -188,14 +189,14 @@ def run(context):
     root = ev.path.parent
     run_id = str(uuid.uuid4())
     fresh = context.args.get('fresh', False) or ev.get_run() is None or session.get('evidence', {}).get('status') == 'stale'
-    fresh = fresh or generation.read(sid, version) != captured
+    fresh = fresh or not generation.equivalent(generation.read(sid, version), captured)
     checkpoint = {} if fresh else sessions.read_json(root / 'checkpoint.json') or {}
     all_params = {name: getattr(params, name) for name in vars(params) if name.isupper()}
     all_params['CONCURRENCY'] = concurrency
     with sessions.locked(sid):
         current_session = sessions.assert_writable(sid, version)
         if (captured['segmentRun'] != source['seg'].get_run() or
-                captured['prepKey'] != current_session.get('prep', {}).get('derivedRef', {}).get('prepKey')):
+                generation.input_refs(captured) != generation.input_refs(current_session)):
             raise sessions.StoreError('Evidence input generation changed', 409, 'stale_run')
         if fresh:
             ev.reset(run_id, all_params)
@@ -480,6 +481,8 @@ def run(context):
                         ev.set_context(cid, row['persona_id'], 'done', error=None,
                                        coverage=result['coverage'], counts=result['counts'])
                 except Exception as exc:
+                    if isinstance(exc, sessions.StoreError) and exc.kind == 'stale_run':
+                        raise
                     with sessions.locked(sid):
                         generation.check(sid, version, ev, run_id)
                         ev.set_context(cid, row['persona_id'], 'failed', error=str(exc))
@@ -496,6 +499,15 @@ def run(context):
     except (_Stopped, _LLMUnavailable) as exc:
         save()
         _session(sid, version, dict(status='interrupted', reason=LLM_REASON if isinstance(exc, _LLMUnavailable) else None))
+        raise
+    except sessions.StoreError as exc:
+        if exc.kind == 'stale_run':
+            with sessions.locked(sid):
+                if ev.get_run() == run_id:
+                    _session(sid, version, dict(status='interrupted',
+                             reason='근거 입력이 바뀌었습니다. 이어서 진행을 눌러 다시 계산하세요.'), already_locked=True)
+        else:
+            _session(sid, version, dict(status='failed', reason=str(exc)))
         raise
     except Exception as exc:
         _session(sid, version, dict(status='failed', reason=str(exc)))
@@ -564,7 +576,43 @@ def _load_context(sid, version, ev, context_id, known):
 
 
 def refresh_new(sid: str, version: str | None, context_id: str, run: str) -> dict:
-    """Judge missing statement pairs outside the publication lock, then recheck."""
+    """Serialize refreshes across HTTP threads/processes without blocking heartbeats.
+
+    A separate advisory lock avoids SQLite lock interactions. Always acquire
+    it outside the session lock, then revalidate before reading or publishing.
+    """
+    with sessions.locked(sid):
+        version, ev, _ = _action(sid, version, context_id, run)
+        refresh_lock = (ev.path.parent / '.refresh.lock').open('a')
+    with refresh_lock:
+        fcntl.flock(refresh_lock, fcntl.LOCK_EX)
+        try:
+            return _refresh_new(sid, version, context_id, run)
+        finally:
+            fcntl.flock(refresh_lock, fcntl.LOCK_UN)
+
+
+class _PendingKnown:
+    """Stage pair judgments in memory until the writable publication check."""
+    def __init__(self, cache):
+        self.cache = cache
+        self.writes = []
+
+    def get_tags(self, ids):
+        return self.cache.get_tags(ids)
+
+    def get_known(self, ids, keys):
+        return self.cache.get_known(ids, keys)
+
+    def put_known(self, pairs, model):
+        self.writes.append((pairs, model))
+
+    def publish(self):
+        for pairs, model in self.writes:
+            self.cache.put_known(pairs, model)
+
+
+def _refresh_new(sid, version, context_id, run):
     with sessions.locked(sid):
         version, ev, row = _action(sid, version, context_id, run)
         if row['status'] != 'done':
@@ -572,16 +620,22 @@ def refresh_new(sid: str, version: str | None, context_id: str, run: str) -> dic
         generation.check_prompts(sid, version)
         known = _known(sid, version)
         source = _load_context(sid, version, ev, context_id, known)
-        ev.patch_counts(context_id, knownChanged=True)
-    calls = 0
+    pending = _PendingKnown(source['cache'])
+    calls, call_lock = 0, Lock()
+
     def call(task):
         nonlocal calls
-        calls += 1
+        with call_lock:
+            calls += 1
         return registry.run_task(task)
+
     tagging.judge_known(sid, list(source['docs']), [i['id'] for i in known],
-                        cache=source['cache'], known_items=known, run_task=call, concurrency=1)
+                        cache=pending, known_items=known, run_task=call,
+                        concurrency=settings.evidence_llm_concurrency)
     with sessions.locked(sid):
         version, ev, row = _action(sid, version, context_id, run)
+        generation.check_prompts(sid, version)
+        pending.publish()
         current = _known(sid, version)
         _refresh_cached(sid, version, ev, source, row, current)
         if known_snapshot(current) != known_snapshot(known):
@@ -590,24 +644,9 @@ def refresh_new(sid: str, version: str | None, context_id: str, run: str) -> dic
         totals = sessions.read_json(root / 'llm_calls.json') or {}
         totals['evidence.tag'] = totals.get('evidence.tag', 0) + calls
         sessions.write_json(root / 'llm_calls.json', totals)
-        report = sessions.read_json(root / 'stage_7.json') or {}
-        report.update(tag_calls=totals['evidence.tag'], llm_calls=sum(totals.values()))
-        sessions.write_json(root / 'stage_7.json', report)
-        # Recompute only this Context's candidate flag; full package assembly is lazy.
-        pool = ev.candidates(context_id)
-        tags = _project(source['cache'], source['docs'], current)
-        rare = assemble._rare_candidates(pool, tags, source['docs'])
-        escalation = assemble.undifferentiated_candidate(rare, source['vectors'])
-        assemble.append_context_flag(source['seg'], context_id, 'undifferentiated_candidate', present=bool(escalation))
-        ev.patch_counts(context_id, undifferentiated=escalation)
-        snapshot = ev.snapshot()
-        report['per_tab_counts'] = {tab:sum(r['tab']==tab for r in snapshot.selected) for tab in ('all','new')}
-        report['novelty_distribution'] = dict(Counter(r['novelty'] for r in snapshot.selected if r.get('novelty')))
-        report.setdefault('escalation_candidates', {}).pop(context_id, None)
-        if escalation:
-            report['escalation_candidates'][context_id] = escalation
-        sessions.write_json(root / 'stage_7.json', report)
-        sessions.write_json(root / 'package_dirty.json', {'run':run})
+        # Stage 8 reads this file directly: publish it before releasing the
+        # same lock that guards version writability and selected evidence.
+        _assemble(sid, version)
         return _context_response(ev, source, context_id, current)
 
 

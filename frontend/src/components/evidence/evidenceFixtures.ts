@@ -9,7 +9,7 @@ export const stage7Fixture = {
   per_tab_counts:{all:10,new:8}, params:{},
 };
 export const evidenceStatusFixture: EvidenceStatus = {
-  status:'running', run:'generation', progress:1/3, stage7:stage7Fixture,
+  status:'running', run:'generation', progress:1/3, tagCalls:84,
   contexts:[{id:'C1',personaId:'P',name:'상황',status:'done',coverage:5,
     counts:{all:10,new:8},error:null,knownChanged:false}],
 };

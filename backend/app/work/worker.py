@@ -131,7 +131,9 @@ def execute(context: Context):
             state = 'interrupted'
     except BaseException as exc:
         # Exception messages may contain provider credentials or document text.
-        state, error = 'failed' if isinstance(exc, Exception) else 'interrupted', type(exc).__name__
+        from app.context.store import StoreError
+        stale_evidence = context.kind == 'evidence' and isinstance(exc, StoreError) and exc.kind == 'stale_run'
+        state, error = ('interrupted' if stale_evidence or not isinstance(exc, Exception) else 'failed'), type(exc).__name__
         if not isinstance(exc, Exception):
             raise
     finally:

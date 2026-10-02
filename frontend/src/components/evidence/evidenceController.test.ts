@@ -103,3 +103,16 @@ it('starts stale evidence fresh on automatic entry',async()=>{
  await load('stale');await vi.advanceTimersByTimeAsync(0);render();
  expect(api.startEvidence).toHaveBeenCalledExactlyOnceWith('s',{fresh:true},'v2');
 });
+
+it.each(['done','partial','interrupted','failed'] as const)('does not auto-start existing %s evidence',async state=>{
+ vi.stubGlobal('window',{location:{search:'?start=1'}});
+ await load(state);await vi.advanceTimersByTimeAsync(0);render();
+ expect(api.startEvidence).not.toHaveBeenCalled();
+ expect(replace).toHaveBeenCalledWith('/pipeline/evidence',{scroll:false});
+});
+it('does not reload Known Insights on unchanged-run status polling',async()=>{
+ await load();const count=vi.mocked(getKnownInsights).mock.calls.length;
+ vi.mocked(api.getEvidenceStatus).mockResolvedValue({...evidenceStatusFixture,run:'gen',tagCalls:90,contexts:[row('C1'),row('C2')]});
+ await vi.advanceTimersByTimeAsync(3000);render();await vi.advanceTimersByTimeAsync(0);
+ expect(getKnownInsights).toHaveBeenCalledTimes(count);
+});

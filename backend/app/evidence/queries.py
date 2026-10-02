@@ -104,7 +104,8 @@ def generate_queries(sid: str, persona: dict, contexts: list[dict], one_liner: s
     """Generate rows without mutating inputs; at most two run_task invocations.
 
     Missing anchors or invalid Context text affect only the corresponding
-    Context. Unusable responses and Persona-wide violations affect all Contexts.
+    Context. Unusable responses affect all Contexts; Persona query violations
+    replace only the Persona queries.
     Fallback uses up to three surviving keywords (never pads with stopwords).
     """
     context_ids = [context['context_id'] for context in contexts]

@@ -14,7 +14,7 @@ const session = vi.hoisted(() => ({sid:'s',sd:{prep:{}} as Record<string, unknow
 vi.mock('@/stores/useSessionStore', () => ({useSessionStore: () => session}));
 vi.mock('../versions/VersionProvider', () => ({useVersion: () => ({readonly:false,version:'v2'})}));
 const row = (id: string, status: EvidenceStatus['contexts'][number]['status']) => ({id,personaId:'P',name:id,status,coverage:5,counts:{all:10,new:8},error:null,knownChanged:false});
-const status: EvidenceStatus = {status:'running',run:'generation',progress:40,tagCalls:84,contexts:[row('C1','done'),row('C2','queued'),row('C3','failed')],stage7:stage7Fixture};
+const status: EvidenceStatus = {status:'running',run:'generation',progress:40,tagCalls:84,contexts:[row('C1','done'),row('C2','queued'),row('C3','failed')]};
 const detail: EvidenceContextResponse = {...evidenceContextFixture,items:[]};
 const props = () => ({status,personas:[{id:'P',clusterId:'CL0',name:'부모',flags:[]}],selectedPersona:'P',selectedContext:'C1',tab:'new' as const,detail,personaEvidence:null,ready:true,readonly:false,busy:false,error:'',onPersona:vi.fn(),onContext:vi.fn(),onTab:vi.fn(),onStart:vi.fn(),onRetry:vi.fn(),onSkip:vi.fn(),onRefresh:vi.fn(),onAdded:vi.fn(),onNext:vi.fn(),sid:'s',version:'v2'});
 // Resolve stateless view components so handlers can be exercised without a DOM dependency.
@@ -108,7 +108,8 @@ it('renders Context completion progress without assuming API percentage units', 
  const item={...evidenceItemFixture,quoteSource:{field,idx:field==='comment'?2:null,text:'😀 인용 끝'}};
  const html=renderToStaticMarkup(createElement(EvidenceCard,{item,readonly:false,onAdd:vi.fn()}));
  expect(html).toContain('<mark>인용</mark>');
- expect(html).toContain('<p class="whitespace-pre-wrap">별개의 본문 미리보기</p>');
+ if(field === 'body') expect(html).not.toContain('별개의 본문 미리보기');
+ else expect(html).toContain('<p class="whitespace-pre-wrap">별개의 본문 미리보기</p>');
  expect(html).toContain(field==='title'?'제목':field==='body'?'본문':'댓글 3');
  });
  it.each(['none','low','high','very_high'])('obeys noveltyShown rather than novelty value %s', novelty => {
@@ -144,4 +145,15 @@ it('renders live status tagCalls before a stage7 report exists and ignores stale
   const html=renderToStaticMarkup(createElement(EvidenceScreenView,{...props(),status:wire}));
   expect(html).toContain('Context 1/3 · 태깅 호출 17회');
  }
+});
+
+it.each([null,{text:'고유본문',start:0,end:4,verified:true}])('renders body only once with or without a quote',quote=>{
+ const item={...evidenceItemFixture,text:'고유본문',quoteSource:{field:'body' as const,idx:null,text:'고유본문'},quote};
+ const html=renderToStaticMarkup(createElement(EvidenceCard,{item,readonly:false,onAdd:vi.fn()}));
+ expect(html.split('고유본문').length-1).toBe(1);
+});
+it('offers resume after a prompt upgrade on a completed screen',()=>{
+ const p={...props(),status:{...status,status:'done' as const},error:'근거 프롬프트가 바뀌었습니다. 이어서 진행을 눌러 다시 계산하세요.'};
+ const resume=button(EvidenceScreenView(p),'이어서 진행');
+ expect(resume).toBeDefined();(resume.props.onClick as ()=>void)();expect(p.onStart).toHaveBeenCalledOnce();
 });

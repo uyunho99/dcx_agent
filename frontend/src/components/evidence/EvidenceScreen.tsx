@@ -54,7 +54,7 @@ export function EvidenceScreenView(p:ViewProps) {
     {!p.ready && <Banner>{prerequisites}</Banner>}
     {status?.status === 'stale' && status.run !== null && <Banner tone="warning">{staleCopy}</Banner>}
     {status?.status === 'partial' && <Banner tone="warning">일부 Context의 근거를 찾지 못했습니다. 실패한 Context를 다시 시도하거나 건너뛰고 진행하세요.</Banner>}
-    {p.error && <Banner tone="danger" actions={<Button onClick={p.onReload}>새로고침</Button>}>{p.error}</Banner>}
+    {p.error && <Banner tone="danger" actions={<><Button onClick={p.onReload}>새로고침</Button>{status?.status === 'done' && <Button disabled={disabled || !p.ready} onClick={p.onStart}>이어서 진행</Button>}</>}>{p.error}</Banner>}
     {status?.reason && <Banner tone="warning">{status.reason}</Banner>}
     {status && ['interrupted','failed'].includes(status.status) && <Banner actions={<Button disabled={disabled || !p.ready} onClick={p.onStart}>이어서 진행</Button>}>근거 탐색이 중단되었습니다.</Banner>}
     {status?.status === 'running' && <div role="status"><p>Context {completedCount}/{rows.length} · 태깅 호출 {status.tagCalls ?? 0}회</p><ProgressBar label="근거 탐색 진행" value={rows.length ? completedCount : undefined} max={rows.length}/><p>끝난 Context부터 열어 볼 수 있습니다.</p></div>}
@@ -156,7 +156,7 @@ export function EvidenceScreen({sid,version,readonly = false}: {sid:string;versi
       if(!cancelled) setKnownNumbers(Object.fromEntries(items.map((item,i) => [item.id,i+1])));
     }).catch(() => {if(!cancelled) setKnownNumbers({});});
     return () => {cancelled = true;};
-  },[sid,version,revision,status]);
+  },[sid,version,revision,status?.run]);
   useStageCompletionRefresh(status?.status === 'done' ? status.run : null);
   const mutate = useCallback(async (work:()=>Promise<unknown>) => {
     if(blocked || lock.current) return;
@@ -185,7 +185,7 @@ export function EvidenceScreen({sid,version,readonly = false}: {sid:string;versi
     if(new URLSearchParams(window.location.search).get('start') !== '1') return;
     autoStarted.current = true;
     router.replace('/pipeline/evidence',{scroll:false});
-    if(!blocked) start();
+    if(!blocked && ['none','stale'].includes(status.status)) start();
   },[status,ready,blocked,router,start]);
   return <>{readonly && <Banner>{version} · 읽기 전용</Banner>}<StaleBanner stage="stage7" session={view.session}/><EvidenceScreenView sid={sid} version={version} status={status} personas={personas} flags={flags} selectedPersona={selectedPersona} selectedContext={chosen?.id ?? ''} tab={tab} detail={detail} personaEvidence={personaEvidence} ready={ready} readonly={blocked} busy={busy} error={error} added={added} knownNumbers={knownNumbers}
     onPersona={id => {setDetail(null);setPersonaEvidence(null);setPersona(id);setContext('');setTab('new');}} onContext={id => {setDetail(null);setContext(id);setTab('new');}} onTab={next => {setDetail(null);setTab(next);}} onStart={start}

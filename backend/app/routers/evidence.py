@@ -189,10 +189,6 @@ def package(sid: str, version: str | None = None):
     data, store = _open(sid, version)
     snapshot = store.snapshot()
     generation.check_read(sid, data['version'], data)
-    if _report(sid, data, 'package_dirty.json'):
-        with sessions.locked(sid):
-            generation.check(sid, data['version'], store, snapshot.run)
-            pipeline._assemble(sid, data['version'])
     result = _report(sid, data, 'package.json')
     if data.get('evidence', {}).get('status') != 'done' or not snapshot.contexts or any(r['status'] not in ('done', 'skipped') for r in snapshot.contexts) or result is None:
         raise sessions.StoreError('Evidence package not ready', 409, 'not_ready')

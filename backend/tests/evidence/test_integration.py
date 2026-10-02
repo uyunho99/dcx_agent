@@ -109,8 +109,8 @@ def run_and_poll(client, fixture, *, fresh=False):
         state = ok(client.get(base + '/status', params={'version': fixture.version}))
         if state['status'] == 'done':
             break
-        # Stage six invalidates evidence; stale can remain until worker load completes.
-        assert state['status'] in ('none', 'stale', 'running'), state
+        # A first stage-six run leaves evidence at none until its worker starts.
+        assert state['status'] in ('none', 'running'), state
         time.sleep(.02)
     else:
         pytest.fail(f'Evidence did not complete: {state}')
@@ -143,6 +143,7 @@ def test_stage5_to_stage7_offline(client, data_dir, monkeypatch, offline_worker)
     source, calls = bind_backend(monkeypatch, fixture)
     contexts = source['seg'].contexts()
     assert contexts and all(c['confirmed_at'] for c in contexts)
+    assert ok(client.get(f'/evidence/{fixture.sid}/status'))['status'] == 'none'
     state = run_and_poll(client, fixture)
     assert set(calls) == {'evidence.queries', 'evidence.tag', 'evidence.novelty'}
     ev = EvidenceStore.open(fixture.sid, fixture.version)
@@ -204,6 +205,11 @@ def test_stage5_to_stage7_offline(client, data_dir, monkeypatch, offline_worker)
     refreshed = ok(client.post(base + f'/contexts/{cid}/refresh-new', json={'run': fresh['run']}))
     assert refreshed['tab'] == 'new' and refreshed['excludedKnown'] >= 1
     assert doc_id not in [r['docId'] for r in refreshed['items']]
+    with (ev.path.parent / 'package.json').open() as stream:
+        disk_package = EvidencePackage.model_validate(json.load(stream))
+    disk_context = next(c for p in disk_package.personas for c in p.context_evidence if c.context_id == cid)
+    disk_item = next(i for i in disk_context.evidence if i.doc_id == doc_id)
+    assert disk_item.tab == ['all'] and disk_item.novelty is None
     after_all = ok(client.get(base + f'/contexts/{cid}', params={'tab': 'all'}))['items']
     assert [i['docId'] for i in after_all] == [i['docId'] for i in details[cid, 'all']['items']]
     removed = next(i for i in after_all if i['docId'] == doc_id)

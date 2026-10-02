@@ -298,7 +298,7 @@ def test_d263_package_read_rejects_changed_segment(setup):
 def test_d263_refresh_prompt_upgrade_refused(setup, monkeypatch):
     pipeline.run(setup.ctx)
     monkeypatch.setattr(pipeline.generation, 'prompt_version', lambda name:'a'*12)
-    with pytest.raises(sessions.StoreError, match='prompt'):
+    with pytest.raises(sessions.StoreError, match='프롬프트'):
         pipeline.refresh_new(setup.sid,'v1','c0',setup.ev.get_run())
 
 
