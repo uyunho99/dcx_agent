@@ -1,0 +1,9 @@
+{
+  "constraints": [
+    {
+      "constraint": "의료적 효과 표현 금지",
+      "verdict": "violates",
+      "reason": "의료적 효과를 단정함"
+    }
+  ]
+}
