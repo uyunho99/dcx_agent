@@ -20,6 +20,8 @@ const STEPS = [
   { name: "인사이트", path: null },
 ];
 
+export const STEP_NAMES = STEPS.map(step => step.name);
+
 export const STEP_MAP: Record<string, number> = {
   start: 0,
   r4: 1, "kw-final": 1, r1: 1, r2: 1, r3: 1, "r3-expand": 1, final: 1,

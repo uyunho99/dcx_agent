@@ -2,7 +2,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { completedThrough } from './completedThrough';
-import StepBar, { STEP_MAP, stepIndex } from '@/components/StepBar';
+import StepBar, { STEP_MAP, STEP_NAMES, stepIndex } from '@/components/StepBar';
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/pipeline/preprocess' }));
 vi.mock('@/components/DirtyProvider', () => ({ useDirty: () => ({ confirmNavigation: () => true }) }));
@@ -102,6 +102,18 @@ describe('T15 stage completion', () => {
     [{ completion: { segmentDone: 'true' } }, 0],
   ])('preserves the legacy fallback for %j → %i', (session, expected) => {
     expect(completedThrough(session)).toBe(expected);
+  });
+});
+
+describe('T15 chat context step names', () => {
+  it.each([
+    ['persona-start', '페르소나'],
+    ['evidence', '근거 탐색'],
+    ['done', '페르소나'],
+    ['clustering', '클러스터링'],
+    ['start', '시작'],
+  ])('maps %s to %s for chat context', (step, expected) => {
+    expect(STEP_NAMES[Math.max(0, stepIndex(step))] || '시작').toBe(expected);
   });
 });
 
