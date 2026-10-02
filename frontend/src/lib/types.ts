@@ -223,3 +223,87 @@ export type SegmentDocument = {
 export type SegmentDocsResponse = { run: string | null; docs: SegmentDocument[]; total: number; offset: number; limit: number };
 export type SegmentDraft = { run: string; [key: string]: unknown };
 export type SegmentErrorKind = 'locked' | 'confirm_required' | 'stale_run' | 'validation';
+
+// Stage 8 contracts (task-T12-brief.md). `run` is a generation; `runId` is a worker.
+export type PersonaGrade = 'observed' | 'inferred' | 'speculated';
+export type PersonaGradeLabel =
+  | { text: '관측'; shape: 'circle' }
+  | { text: '추론'; shape: 'triangle' }
+  | { text: '추측'; shape: 'cross' }
+  | { text: '근거 부족'; shape: null };
+export type PersonaZone = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+export type PersonaState = WorkerState | 'pending' | 'stale';
+export type PersonaErrorKind = 'evidence_required' | 'running' | 'locked' | 'not_ready' | 'stale_run';
+export type PersonaRunRequest = { fresh?: boolean; personas?: string[] };
+export type PersonaRunResponse = { runId: string };
+export type PersonaRetryRequest = { run: string };
+export type PersonaStatus = {
+  status: PersonaState; run: string | null; progress: number;
+  personas: { id: string; status: PersonaState; error: unknown | null }[];
+  stage8?: Record<string, unknown> | null;
+};
+export type PersonaField = { text: string; cite: string[] };
+export type PersonaConstraint = { constraint: string; verdict: 'ok' | 'violates' | 'review'; reason: string };
+export type PersonaPrescription = {
+  direction: string; target_metric: string; contribution: string; journey_hypothesis: string;
+  constraint: PersonaConstraint[]; blocked: boolean; represcribed: boolean;
+};
+export type PersonaScope = { verdict: 'in' | 'outside'; reason: string };
+// Nested card/trace serialization is not specified by the API table. Keep those
+// payloads open instead of asserting a router-specific layout before T11 lands.
+export type PersonaCard = {
+  status: PersonaState; card: Record<string, unknown> | null;
+  grades?: Record<string, Record<string, PersonaGrade | null>>;
+  trace?: Record<string, unknown>[]; prescription?: PersonaPrescription | null;
+  constraint?: PersonaConstraint[]; scope?: PersonaScope | null; error?: unknown;
+  [key: string]: unknown;
+};
+export type PersonaCardsResponse = { run: string | null; personas: Record<string, PersonaCard>; package_run?: string };
+export type PersonaMapPoint = {
+  context_id: string; persona_id: string; cluster_id: string;
+  i: number; s: number; odi: number; zone: PersonaZone; star: boolean; counter: boolean;
+  shape: string; tone: string | number;
+};
+export type PersonaMap = {
+  points: PersonaMapPoint[];
+  base: { s_line: number; diag1: [[number, number], [number, number]]; diag2: [[number, number], [number, number]] };
+  legend: unknown;
+};
+// The tree's node/link envelope is deliberately opaque in the published contract.
+export type PersonaTree = Record<string, unknown>;
+export type PersonaContextRow = PersonaMapPoint & { name?: string; persona_name?: string };
+export type PersonaSortDirection = 'asc' | 'desc';
+
+export type InsightErrorKind = 'persona_required' | 'not_found';
+export type InsightRunRequest = { mode: 'derive' | 'concept'; target?: string };
+export type InsightRunResponse = { runId: string };
+export type InsightTarget = 'insights' | `concept:${string}`;
+export type InsightChatRequest = { target: InsightTarget; message: string };
+export type InsightChatResponse =
+  | { ok: true; revision: number }
+  | { ok: false; message: '요청을 반영하지 못했습니다. 다르게 말해 주세요.' };
+export type InsightRevertRequest = { target: InsightTarget; revision: number };
+export type InsightRevertResponse = { revision: number };
+export type InsightConfirmRequest = { ids: string[] };
+export type InsightConfirmResponse = { confirmed: string[] };
+export type InsightItem = { id: string; title: string; pain_point: string; context_ids: string[]; known_ki_id: string | null };
+export type InsightCxDimension = '정신적' | '물리적' | '문화적' | '시스템';
+export type InsightJourneyRow = {
+  context_id: string; action: string; feeling: string; service: string; service_action: string; cx_4d: InsightCxDimension;
+};
+export type InsightConcept = {
+  persona_profile: unknown; basis: string; pain_points: Record<string, unknown>[];
+  journey: InsightJourneyRow[]; constraint_check: PersonaConstraint[];
+  [key: string]: unknown;
+};
+// The brief fixes the revision envelope, but not history entry or metric layout.
+export type InsightRevision<T> = { revision: number; items: T[]; history: Record<string, unknown>[] };
+export type InsightBars = { bars: unknown; mean: number | null; targets: string[] };
+export type InsightRadar = Record<string, unknown>;
+export type InsightResponse = {
+  insights: InsightRevision<InsightItem>; concepts: InsightRevision<InsightConcept>;
+  bars: InsightBars | null; radar: InsightRadar | null;
+};
+export type InsightSuggestion = { sessionId: string; insightId: string; title: string; painPoint: string };
+export type InsightSuggestionsResponse = { items: InsightSuggestion[] };
+export type InsightSuggestedKnownRequest = { type: 'statement'; text: string };
