@@ -185,6 +185,17 @@ def _report(store, rows, opportunity, calls, run_id):
         provisional=list(params.PROVISIONAL))
 
 
+def refresh_report(sid, version):
+    """Refresh downstream totals after a durable insight publication."""
+    store = PersonaStore.open(sid, version)
+    report = store.read('stage_8')
+    if report is None:
+        return
+    cards = store.read('cards') or {}
+    store.write('stage_8', _report(store, cards.get('personas', {}),
+        store.read('map'), _Calls(store.path, lambda: None), report['run']))
+
+
 def run(context):
     sid, version = context.sid, context.version
     root = version_dir(sid, version) / 'persona'

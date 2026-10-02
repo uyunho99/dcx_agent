@@ -30,10 +30,12 @@ def _concept_draft(item):
 
 
 def edit(sid, version, target: str, message: str, *, run_task=None) -> dict:
-    run_task = registry.run_task if run_task is None else run_task
     with serialized(sid):
         sessions.assert_writable(sid, version)
         store = PersonaStore.open(sid, version)
+        if run_task is None:
+            from app.persona.pipeline import _Calls
+            run_task = _Calls(store.path, lambda: None).run_task
         try:
             name, insight_id = _target(target)
             current = store.read(name)

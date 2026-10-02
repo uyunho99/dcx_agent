@@ -45,6 +45,9 @@ def publish_status(sid, version, status, **values):
             if state['revision'] and 'stage8' not in data.get('stale', {}):
                 data.setdefault('completion', {})['insightDone'] = True
         sessions.write_json(path, data)
+    if status == 'done':
+        from app.persona.pipeline import refresh_report
+        refresh_report(sid, version)
 
 
 class _Stopped(BaseException):
@@ -82,10 +85,13 @@ def run(context):
                 raise _Stopped()
             sessions.assert_writable(sid, version)
 
+        from app.persona.pipeline import _Calls
+        calls = _Calls(store.path, lambda: None)
+
         def call(task):
             pulse()
             try:
-                result = registry.run_task(task)
+                result = calls.run_task(task)
             except (TimeoutError, ConnectionError) as exc:
                 raise _Unavailable() from exc
             pulse()

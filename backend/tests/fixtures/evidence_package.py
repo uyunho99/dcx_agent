@@ -6,6 +6,7 @@ intentional, not random. ``seed`` selects the reproducible synthetic session.
 """
 from copy import deepcopy
 import json
+import sqlite3
 from pathlib import Path
 from unittest.mock import patch
 
@@ -15,6 +16,7 @@ from app.llm.fake import FakeBackend
 from app.persona.package import Package, evidence_index
 from app.segment.store import SegmentStore
 from app.services import s3
+from app.vectors.embedder import FakeEmbedder
 from tests.fixtures.segment_synth import CHANNELS, make_segment_session
 
 CONSTRAINT = '의료적 효과 표현 금지'
@@ -123,6 +125,15 @@ def write_session_with_package(local_data_dir, **kw):
         for c, confirmed in zip(b['context_evidence'], confirmed_contexts):
             c.update(context_name=confirmed['name'], action=confirmed['action'])
     store.set_run(f'fake-segment-{kw.get("seed", 42)}')
+    # The synthetic helper plants assignments without running segmentation.
+    # Supply its missing centroid outputs for downstream insight radar reads.
+    contexts = [c for b in blocks for c in b['context_evidence']]
+    with patch.object(settings, 'embed_dim', 1024):
+        centroids = FakeEmbedder().embed([c['context_name'] for c in contexts])
+    with sqlite3.connect(directory / 'segment/segment.sqlite') as db:
+        db.executemany('UPDATE contexts SET centroid=? WHERE context_id=?',
+                       [(vector.tobytes(), c['context_id'])
+                        for c, vector in zip(contexts, centroids)])
     with patch.multiple(settings, local_data_dir=str(base), storage='local'), \
             patch.multiple(s3, _USE_LOCAL=True, _DATA_DIR=base):
         sessions.update_session(session.sid, dict(bk='LG 에어컨', projectContext=deepcopy(PROJECT_CONTEXT),
