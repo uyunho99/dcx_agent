@@ -3,6 +3,7 @@ export * from "./Input";
 export * from "./Select";
 export * from "./Card";
 export * from "./Badge";
+export * from "./ProvisionalBadge";
 export * from "./Table";
 export * from "./Icon";
 export * from "./Checkbox";
