@@ -108,7 +108,7 @@ def test_concept_edit_hydrates_source_and_basis(ready):
     assert chat.edit(session.sid, session.version, 'concept:I1', '수정', run_task=backend.run)['ok']
     item = store.read('concepts')['items'][0]
     assert item['persona_profile']['text'] == '수정된 프로필'
-    assert item['basis'] == '근거 4건 · 작성자 0명에서 종합'
+    assert item['basis'] == '근거 4건 · 작성자 2명에서 종합'
     assert item['pain_points'][0]['quote']
     assert sum(item['cx_4d_distribution'].values()) == len(item['journey'])
 

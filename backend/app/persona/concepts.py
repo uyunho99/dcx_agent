@@ -88,8 +88,17 @@ def _inputs(package, insight):
     owners = {}
     for block in blocks:
         pid = block.persona_evidence.persona_id
-        for number, ref in evidence_index(block).items():
-            if ref.context_id is not None and ref.context_id not in selected:
+        index = evidence_index(block)
+        for number, ref in index.items():
+            if ref.context_id is None:
+                # Desire support is Persona-wide. Resolve only to a selected
+                # Context that actually contains this evidence document.
+                cid = next((r.context_id for r in index.values()
+                            if r.doc_id == ref.doc_id and r.context_id in selected), None)
+                if cid is None:
+                    continue
+                ref = ref.model_copy(update={'context_id': cid})
+            if ref.context_id not in selected:
                 continue
             key = number if len(blocks) == 1 else f'{pid}:{number}'
             refs[key] = ref

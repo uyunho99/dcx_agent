@@ -75,7 +75,7 @@ def test_basis_filled_by_code(case, monkeypatch):
     package['personas'][0]['context_evidence'][0]['metrics'].update(doc_count=45, author_count=26)
     sessions.write_json(path, package)
     run, _, _ = runner(case, monkeypatch)
-    assert generate(case, run)['basis'] == '근거 4건 · 작성자 0명에서 종합'
+    assert generate(case, run)['basis'] == '근거 4건 · 작성자 2명에서 종합'
 
 
 def test_pain_points_from_package(case, monkeypatch):
@@ -189,7 +189,7 @@ def test_multiple_personas_keep_evidence_namespaces(case, monkeypatch):
     refs = evidence_index(load_package(session.sid, session.version).personas[1])
     assert result['pain_points'][1]['doc_id'] == refs['E2'].doc_id
     assert result['pain_points'][1]['context_id'] == 'CL0-P1-C0'
-    assert result['basis'] == '근거 8건 · 작성자 0명에서 종합'
+    assert result['basis'] == '근거 8건 · 작성자 4명에서 종합'
 
 
 @pytest.mark.parametrize('mutation', ['cx_4d', 'profile_grade'])

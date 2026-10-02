@@ -133,3 +133,10 @@ it.each([0,1])('QA-F6 derives only without an existing revision (%s)',async revi
 it.each(['evidence_required','package'])('m3 hides evidence action in readonly %s guidance',key=>{
  h.data.status[key]=key==='package'?false:true;expect(button(draw(true),'근거 탐색으로')).toBeUndefined();
 });
+
+it('Q2 failed card keeps package counts with a null card',()=>{
+ h.data.cards.personas.P1={status:'failed',card:null,error:'qa',package_counts:{doc_count:16,author_count:8,context_count:2}};
+ h.data.status.personas[0].status='failed';
+ button(draw(),'Persona 카드').props.onClick();
+ expect(text(draw())).toContain('근거 16건 · 작성자 8명 · Context 2개');
+});

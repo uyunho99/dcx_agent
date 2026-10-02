@@ -91,7 +91,8 @@ export function PersonaScreen({sid, version, readonly = false}: Props) {
   const current = cards[chosen];
   const card = body(chosen);
   const contexts = rows(card.contexts);
-  const metrics = record(card.metrics);
+  const packageCounts = record(current?.package_counts);
+  const metrics = record(card.metrics ?? packageCounts);
   const state = status?.personas.find(p => p.id === chosen)?.status ?? current?.status;
   const openCard = (id: string, contextId?: string) => {setSelected(id);setHighlighted(contextId ?? null);setView('card');setTab('8-A CCM');};
   async function mutate(action: () => Promise<unknown>, waitForPoll = false) {
@@ -151,7 +152,7 @@ export function PersonaScreen({sid, version, readonly = false}: Props) {
         <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(160px,1fr)]"><OpportunityMap map={data.map} highlightedId={highlighted} selectedPersonaId={selected || null} onHighlight={setHighlighted} onOpenCard={openCard}/><aside className="ds-card" aria-label="선택 Context 상세">{highlightedRow ? <><h2>{highlightedRow.name}</h2><p>{highlightedRow.persona_name} · {zoneName(highlightedRow.zone)} · 기회 {formatMetric(highlightedRow.odi)}</p><Button onClick={() => openCard(highlightedRow.persona_id,highlightedRow.context_id)}>카드 열기</Button></> : <p>점을 가리키거나 아래 표에서 Context를 고르세요.</p>}</aside></div>
         <div className="overflow-x-auto"><ContextTable rows={contextRows} highlightedId={highlighted} onHighlight={setHighlighted} onOpenCard={openCard}/></div>
       </> : <p>페르소나를 만들면 전체 맵과 Context를 확인할 수 있습니다.</p> : !chosen ? <p>아직 페르소나 카드가 없습니다.</p> : <>
-        <header className="ds-card space-y-2"><h2 className="ds-t-card">{name(chosen)} {current?.scope?.verdict === 'outside' && <Badge title={current.scope.reason}>FUTURE</Badge>}</h2><p>{`근거 ${formatCount(Number(metrics.doc_count ?? identity(chosen)?.docs))}건 · 작성자 ${formatCount(Number(metrics.author_count ?? identity(chosen)?.authors))}명 · Context ${formatCount(contexts.length)}개`}</p><p>신뢰도 {confidence} · 처방 · 제약 {constraintSummary}</p><p>Desire · {label(identity(chosen)?.desire ?? card.desire)}</p><p>Goal · {label(identity(chosen)?.goals ?? card.goal)}</p></header>
+        <header className="ds-card space-y-2"><h2 className="ds-t-card">{name(chosen)} {current?.scope?.verdict === 'outside' && <Badge title={current.scope.reason}>FUTURE</Badge>}</h2><p>{`근거 ${formatCount(Number(metrics.doc_count ?? identity(chosen)?.docs))}건 · 작성자 ${formatCount(Number(metrics.author_count ?? identity(chosen)?.authors))}명 · Context ${formatCount(Number(packageCounts.context_count ?? contexts.length))}개`}</p><p>신뢰도 {confidence} · 처방 · 제약 {constraintSummary}</p><p>Desire · {label(identity(chosen)?.desire ?? card.desire)}</p><p>Goal · {label(identity(chosen)?.goals ?? card.goal)}</p></header>
         {state === 'failed' ? <div role="alert"><p>이 페르소나 카드를 만들지 못했습니다.</p><Button disabled={blocked || !status?.run} onClick={() => mutate(() => api.retryPersonaCard(sid,chosen,{run:status!.run!},version),true)}>다시 만들기</Button></div> : !current?.card ? <p role="status">{statusLabel(state)} · 카드가 준비되면 표시됩니다.</p> : <>
           <div role="tablist" aria-label="Persona 상세" className="flex flex-wrap gap-2">{tabs.map(item => <Button key={item} role="tab" id={`persona-tab-${tabs.indexOf(item)}`} aria-controls="persona-panel" aria-selected={tab === item} tabIndex={tab === item ? 0 : -1} onKeyDown={event => {
             const index = tabs.indexOf(item);

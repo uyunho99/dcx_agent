@@ -90,8 +90,20 @@ def _ready(store, name):
 
 def _cards(store):
     value = _ready(store, 'cards')
-    return {**value, 'personas': {pid: {'card': None, **row}
-                                for pid, row in value['personas'].items()}}
+    rows = {pid: {'card': None, **row} for pid, row in value['personas'].items()}
+    if any(row['status'] == 'failed' for row in rows.values()):
+        try:
+            package = load_package(store.sid, store.version)
+        except PackageMissing:
+            package = None
+        for block in package.personas if package else []:
+            persona = block.persona_evidence
+            row = rows.get(persona.persona_id)
+            if row and row['status'] == 'failed':
+                row['package_counts'] = dict(doc_count=persona.metrics.doc_count,
+                    author_count=persona.metrics.author_count,
+                    context_count=len(block.context_evidence))
+    return {**value, 'personas': rows}
 
 
 def _serialize_launch(function):

@@ -2,7 +2,7 @@
 
 Usage: backend/.venv/bin/python backend/tests/scripts/make_persona_qa.py LOCAL_DATA_DIR
 Use --big-persona for the ten-Context chunking case. Start the app with the same
-LOCAL_DATA_DIR and LLM_BACKEND=fake. Stage-eight UI/workers land in later tasks.
+LOCAL_DATA_DIR and LLM_BACKEND=fake. Use --second-session to create another session with the same bk and no stage-eight results.
 """
 import argparse
 import json
@@ -23,12 +23,17 @@ def main():
     parser.add_argument('local_data_dir', type=Path)
     parser.add_argument('--big-persona', action='store_true')
     parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--second-session', action='store_true', help='Create another same-product session without stage-eight results')
     args = parser.parse_args()
     session = write_session_with_package(args.local_data_dir, seed=args.seed, qa_failed_persona=3,
                                         big_persona_contexts=10 if args.big_persona else None)
-    print(json.dumps(dict(sid=session.sid, version=session.version,
+    output = dict(sid=session.sid, version=session.version,
         package=str(args.local_data_dir.resolve() / 'sessions' / session.sid /
-                    'versions' / session.version / 'evidence/package.json')), ensure_ascii=False))
+                    'versions' / session.version / 'evidence/package.json'))
+    if args.second_session:
+        second = write_session_with_package(args.local_data_dir, seed=args.seed + 1)
+        output['second_sid'] = second.sid
+    print(json.dumps(output, ensure_ascii=False))
 
 
 if __name__ == '__main__':

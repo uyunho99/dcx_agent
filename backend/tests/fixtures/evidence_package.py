@@ -6,6 +6,7 @@ intentional, not random. ``seed`` selects the reproducible synthetic session.
 """
 from copy import deepcopy
 import json
+import hashlib
 import sqlite3
 from pathlib import Path
 from unittest.mock import patch
@@ -112,7 +113,8 @@ def write_session_with_package(local_data_dir, **kw):
         personas=[dict(persona_id=b['persona_evidence']['persona_id'], cluster_id='CL0') for b in blocks],
         contexts=[dict(context_id=c['context_id'], persona_id=b['persona_evidence']['persona_id'],
                        flags=c['flags'], keywords=c['keywords']) for b in blocks for c in b['context_evidence']],
-        docs=[dict(doc_id=doc, cluster_id=a['cluster'], persona_id=a['persona'], context_id=a['context'])
+        docs=[dict(doc_id=doc, cluster_id=a['cluster'], persona_id=a['persona'], context_id=a['context'],
+                   author_hash=hashlib.sha256(f'author-{int(doc[1:]) // 2}'.encode()).hexdigest())
               for doc, a in session.expected['assignments'].items()])
     store.confirm('clusters', 'CL0', {'name': '실내 냉방'})
     for b in blocks:

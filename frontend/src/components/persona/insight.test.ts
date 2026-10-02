@@ -65,3 +65,15 @@ it('QA-F5 localizes revision sources and timestamps while retaining chat message
  for(const value of ['생성','채팅 수정','되돌리기','메시지 보존',new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(at))])expect(html).toContain(value);
  expect(html).not.toContain(at);expect(html).not.toContain('generate');
 });
+
+it('Q2 pain point sources localize real hydrated locations without raw offsets',()=>{
+ const html=renderToStaticMarkup(createElement(ConceptDetail,{concept:{outdated:false,persona_profile:{text:'프로필'},basis:'근거 4건',pain_points:[
+  {quote:'인용',channel:'naver_cafe',location:{field:'body',idx:null,start:0,end:29},context_id:'CL0-P0-C0'},
+  {quote:'제목 인용',channel:'youtube',location:{field:'title',idx:null,start:0,end:5},context_id:'CL0-P0-C1'},
+  {quote:'댓글 인용',channel:'naver_blog',location:{field:'comment',idx:2,start:0,end:5},context_id:'CL0-P0-C2'},
+ ],journey:[],constraint_check:[]}}));
+ expect(html).toContain('네이버 카페 · 본문 · Context CL0-P0-C0');
+ expect(html).toContain('유튜브 · 제목 · Context CL0-P0-C1');
+ expect(html).toContain('네이버 블로그 · 댓글 3 · Context CL0-P0-C2');
+ for(const raw of ['naver_cafe','시작:','끝:','번호:','위치 항목:']) expect(html).not.toContain(raw);
+});
