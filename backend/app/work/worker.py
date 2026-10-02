@@ -99,8 +99,13 @@ def _monitor(context: Context):
     run_worker(context)
 
 
+def _segment(context: Context):
+    from app.segment.pipeline import run
+    run(context)
+
+
 KINDS: dict[str, Callable[[Context], None]] = {
-    'prep': _prep, 'judge': _judge, 'train': _train, 'infer': _infer, 'monitor': _monitor}
+    'prep': _prep, 'judge': _judge, 'train': _train, 'infer': _infer, 'monitor': _monitor, 'segment': _segment}
 
 
 def execute(context: Context):

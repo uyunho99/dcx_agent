@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS clusters (
 CREATE TABLE IF NOT EXISTS personas (
     persona_id TEXT PRIMARY KEY, cluster_id TEXT, name_draft TEXT, name TEXT,
     desire_draft TEXT, desire TEXT, goals_draft_json TEXT, goals_json TEXT,
-    centrality_json TEXT, network_json TEXT, similar_json TEXT, reps_json TEXT,
+    centrality_json TEXT, network_json TEXT, similar_json TEXT, reps_json TEXT, flags_json TEXT DEFAULT '[]',
     confirmed_at TEXT);
 CREATE TABLE IF NOT EXISTS contexts (
     context_id TEXT PRIMARY KEY, persona_id TEXT, name_draft TEXT, name TEXT,
@@ -76,6 +76,8 @@ class SegmentStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._db() as db:
             db.executescript(_SCHEMA)
+            if 'flags_json' not in {row['name'] for row in db.execute('PRAGMA table_info(personas)')}:
+                db.execute("ALTER TABLE personas ADD COLUMN flags_json TEXT DEFAULT '[]'")
             self._columns = {table: {row['name'] for row in db.execute(f'PRAGMA table_info({table})')}
                              for table in (*_LAYERS, 'docs', 'codes', 'combos')}
 

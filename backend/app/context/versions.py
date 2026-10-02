@@ -150,6 +150,20 @@ def _restart(data, target, stage):
                 restartMessage=f"이 라벨은 {data['parentVersion']} 기준입니다. LLM 판정은 재사용하고 사람 검수만 다시 합니다.")
     if stage <= 5 and 'training' in data:
         data['training'] = {'status': 'stale'}
+    if stage <= 6:
+        shutil.rmtree(target / 'segment', ignore_errors=True)
+        data['segment'] = {'status': 'stale'}
+        data.get('completion', {}).pop('segmentDone', None)
+        data.get('drafts', {}).pop('segment', None)
+    if stage <= 7:
+        shutil.rmtree(target / 'evidence', ignore_errors=True)
+        if 'evidence' in data:
+            data['evidence'] = {'status': 'stale'}
+    if stage <= 8:
+        shutil.rmtree(target / 'persona', ignore_errors=True)
+        for key in ('persona', 'insight'):
+            if key in data:
+                data[key] = {'status': 'stale'}
 
 
 def create_version(sid, from_v, restart_from, note, version=None) -> str:
@@ -180,7 +194,7 @@ def create_version(sid, from_v, restart_from, note, version=None) -> str:
                     crawl_draft.pop('gate', None)
             data.update(version=v, parentVersion=from_v, restartFrom=restart_from, updatedAt=now())
             stale = data.setdefault('stale', {})
-            last_stage = max([6, int(restart_from[5:])] + [int(key[5:]) for key in stale.keys() | data.get('stageResults', {}).keys() if re.fullmatch(r'stage[0-9]+', key)])
+            last_stage = max([8, int(restart_from[5:])] + [int(key[5:]) for key in stale.keys() | data.get('stageResults', {}).keys() if re.fullmatch(r'stage[0-9]+', key)])
             for stage in range(int(restart_from[5:]), last_stage + 1):
                 stale[f'stage{stage}'] = f'{restart_from} changed in {v}'
             if int(restart_from[5:]) <= 1:
