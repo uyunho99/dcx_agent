@@ -8,7 +8,7 @@ from app.context import store
 from app.keywords import prompts, rounds
 from app.keywords.normalize import BANNED
 from app.keywords.taxonomy import AXES
-from test_prompts import state  # Reuse the existing RoundInputs fixture.
+from test_prompts import FORM_RULE_LINES, state  # Reuse the existing RoundInputs fixture.
 
 
 EXPECTED_FOCUS = {
@@ -54,7 +54,9 @@ def test_r1_no_mode_blank(state, mode):
     })
     tone_line = f"발산 톤: {prompts.TONE[state.project_type]}\n"
     assert tone_line + "\n" in text
-    assert text.replace(tone_line + "\n", tone_line, 1).replace("프롬프트 버전: r1.v2", "프롬프트 버전: r1.v1", 1) == expected
+    for line in FORM_RULE_LINES:  # r1.v3 adds only the short keyword form rule
+        text = text.replace(line, "", 1)
+    assert text.replace(tone_line + "\n", tone_line, 1).replace("프롬프트 버전: r1.v3", "프롬프트 버전: r1.v1", 1) == expected
 
 
 @pytest.mark.parametrize("n", [2, 3, 4])
