@@ -52,6 +52,12 @@ button:not(:disabled) { cursor:pointer; }
  .pipeline-chat { position:absolute; inset:0 0 0 auto; z-index:20; }
 }
 @media(max-width:600px) { .pipeline-main { padding:24px 16px; } }
+.ds-cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.ds-card-opt { display:grid; align-content:start; gap:4px; min-width:0; min-height:64px; padding:14px 16px; border:1px solid var(--line); border-radius:var(--r-card); background:var(--paper); color:var(--ink-strong); text-align:left; overflow-wrap:anywhere; }
+.ds-card-opt .ds-t-label { font-weight:700; }
+.ds-card-opt[aria-checked=true] { border-color:var(--action); background:var(--action-soft); }
+.ds-card-opt:focus-visible { outline:2px solid var(--action); outline-offset:2px; }
+@media(width < 768px) { .ds-cards { grid-template-columns:1fr; } }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none!important; animation:none!important; } }
 
 /* Glass utilities */

@@ -3,7 +3,7 @@
 from enum import Enum
 
 from .labels import LABELS
-from .models import ProjectContext, TargetScope
+from .models import KeyMetric, PersonaSeeds, ProjectContext, TargetScope
 
 
 def _label(group: str, choice: Enum) -> str:
@@ -18,6 +18,45 @@ def _items(values: list[str], empty: str = "없음") -> str:
     return ", ".join(values) if values else empty
 
 
+TASK_DESCRIPTIONS = {
+    "metric": "외부·사내 평가 지표를 올리는 과제. 지표가 떨어지는 순간을 우선 탐색",
+    "explore": "아직 드러나지 않은 맥락과 기회를 찾는 과제. 넓게 탐색",
+}
+
+
+def _metric(metric: KeyMetric) -> str:
+    details = []
+    if metric.source:
+        details.append(f"출처: {metric.source}")
+    if metric.item:
+        details.append(f"문항: {metric.item}")
+    return _with_note(metric.name, " · ".join(details))
+
+
+def _personas(seeds: PersonaSeeds) -> list[str]:
+    dimensions = LABELS["personaDimensions"]
+    lines = ["## 생각하는 페르소나 · 디멘션", ""]
+    lines.extend(
+        "- " + _with_note(seed.text, _label("personaDimensions", seed.dimension) if seed.dimension else "")
+        for seed in seeds.items
+    )
+    if not seeds.items:
+        lines.append("- 없음")
+    else:
+        tagged = {seed.dimension for seed in seeds.items}
+        missing = [label for code, label in dimensions.items() if code not in tagged]
+        if missing:
+            lines.append(f"- 아직 적지 않은 디멘션: {_items(missing)}")
+    lines.extend([
+        "",
+        "디멘션: " + " · ".join(dimensions.values()),
+        "예시는 출발점일 뿐이다. 네 디멘션 각각에서 예시와 비슷한 페르소나에 머물지 말고, 예시와 다른 페르소나와 맥락을 우선 발굴할 것"
+        if seeds.exploreBeyond else "예시는 참고 시드이며 제약이 아니다. 범위 밖 발견도 배제하지 말 것",
+        "",
+    ])
+    return lines
+
+
 def render_context_md(ctx: ProjectContext, known: list[str]) -> str:
     """Render session-level known insights from ``known``, without mutation."""
     category = ctx.productCategory
@@ -27,22 +66,36 @@ def render_context_md(ctx: ProjectContext, known: list[str]) -> str:
         "## 0-A 프로젝트 개요",
         "",
         f"- 제품명: {ctx.bk}",
+    ]
+    if ctx.taskMode is not None:
+        lines.append(f"- 과제 유형: {_label('taskMode', ctx.taskMode)} — {TASK_DESCRIPTIONS[ctx.taskMode.value]}")
+    lines.extend([
         f"- 한줄 정의: {ctx.oneLiner}",
         f"- 리서치 질문: {ctx.researchQuestion.text}",
-    ]
+    ])
     if ctx.researchQuestion.template:
         lines.append(f"- 질문 템플릿: {ctx.researchQuestion.template}")
+    lines.append(f"- 프로젝트 유형: {_with_note(_label('projectType', ctx.projectType.choice), ctx.projectType.note)}")
+    if ctx.analysisGoal is not None:
+        lines.append(f"- 분석 목표: {_with_note(_label('analysisGoal', ctx.analysisGoal.choice), ctx.analysisGoal.note)}")
     lines.extend([
-        f"- 프로젝트 유형: {_with_note(_label('projectType', ctx.projectType.choice), ctx.projectType.note)}",
-        f"- 분석 목표: {_with_note(_label('analysisGoal', ctx.analysisGoal.choice), ctx.analysisGoal.note)}",
-        f"- 핵심 지표 (방향 지시자, 측정값 아님): {_items(ctx.keyMetrics)}",
+        f"- 핵심 지표 (방향 지시자, 측정값 아님): {_items([_metric(metric) for metric in ctx.keyMetrics])}",
         f"- 사내 제약: {_items(ctx.constraints)}",
-        f"- 가격 포지셔닝: {_label('price', ctx.positioning.price)}",
-        f"- 시장 포지셔닝: {_label('market', ctx.positioning.market)}",
+    ])
+    for axis, title in (("price", "가격"), ("market", "시장")):
+        choice = getattr(ctx.positioning, axis)
+        value = _label(axis, choice) if choice is not None else getattr(ctx.positioning, axis + "Text")
+        if value:
+            lines.append(f"- {title} 포지셔닝: {value}")
+    lines.extend([
         f"- 수집 채널: {_items([_label('channels', code) for code in ctx.channels])}",
         f"- 제품 분류: {' > '.join(part for part in (category.l1, category.l2, category.l3) if part)}",
         f"- 제품 분류 출처: {_label('source', category.source)}",
         "",
+    ])
+    if ctx.personaSeeds is not None:
+        lines.extend(_personas(ctx.personaSeeds))
+    lines.extend([
         "## 0-B 분석 대상 · 초기 기준선",
         "",
         "분석 대상 초기 기준선 — 우선 탐색하되 범위 밖 발견도 배제하지 말 것, 해석을 조정하지 말 것",

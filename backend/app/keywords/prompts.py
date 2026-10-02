@@ -13,13 +13,21 @@ from .models import Keyword
 from .normalize import BANNED
 from .taxonomy import AXES
 
-PROMPT_VERSION = {1: "r1.v1", 2: "r2.v1", 3: "r3.v1", 4: "r4.v1"}
+PROMPT_VERSION = {1: "r1.v3", 2: "r2.v2", 3: "r3.v2", 4: "r4.v2"}
 MIN_COUNT = {1: 70, 2: 100, 3: 60, 4: 60}
 TONE = {
     "renewal": "기존 사용 중 불만 · 고장 · 관리 부담",
     "new": "아직 충족되지 않은 니즈 · 대체 행동",
     "branding": "인식 · 이미지 · 정체성 · 사회적 시선",
     "ux": "사용 과정의 단계별 불편 · 실수",
+}
+
+
+TASK_FOCUS = {
+    "metric": "과제 유형: 지표 개선형 — 첨부 맥락의 핵심 지표와 관련 문항이 떨어지는 순간을 겨냥한다. "
+              "이용 과정의 어느 단계 · 어느 순간에 막히고, 기다리고, 헷갈리고, 불안해지는지 그 순간의 사물·현상 단어를 우선 발산한다.",
+    "explore": "과제 유형: 탐색·기획형 — 아직 드러나지 않은 맥락을 겨냥한다. "
+               "기존 사용 장면 밖의 생활 상황 · 대체 행동 · 인접 니즈로 넓게 발산하고, 이미 아는 것과 비슷한 단어에 머물지 않는다.",
 }
 
 
@@ -43,6 +51,7 @@ class RoundInputs:
     channels: list[str]
     target_scope_text: str
     product_category: str
+    task_mode: str | None = None
 
 
 class RoundKeyword(BaseModel):
@@ -119,6 +128,7 @@ def build_round_task(sid: str, n: Literal[1, 2, 3, 4], state: RoundInputs) -> LL
         "research_question": _research_question(state.context_md),
         "product_category": state.product_category,
         "tone": TONE[state.project_type] if n == 1 else "",
+        "task_focus": TASK_FOCUS.get(state.task_mode or "", "") if n == 1 else "",
         "target_scope_text": state.target_scope_text,
         "channel_rules": channel_rules,
         "banned_words": " · ".join(sorted(BANNED)),

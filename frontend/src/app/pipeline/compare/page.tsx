@@ -14,7 +14,7 @@ import { contextLabels } from '@/lib/contextLabels';
 type CollectionDiff = {same: boolean; before?: string; after?: string; counts?: Record<string, Record<string, number>>};
 type FileDiff = {same: boolean; before: Record<string, {savedAt: number}>; after: Record<string, {savedAt: number}>};
 const tabs = ['0단계 입력 보기','1단계 키워드 보기','2단계 수집 보기','3단계 이후 보기'];
-const fieldNames: Record<string,string> = {bk:'제품명',oneLiner:'한줄 정의',researchQuestion:'리서치 질문',projectType:'프로젝트 성격',analysisGoal:'분석 목적',keyMetrics:'핵심 지표',constraints:'사내 제약',positioning:'브랜드 포지셔닝',channels:'수집 채널',knownInsights:'이미 아는 것',productCategory:'제품군',targetScope:'분석 대상',futureCustomer:'미래 고객'};
+const fieldNames: Record<string,string> = {taskMode:'과제 유형',personaSeeds:'생각하는 페르소나',bk:'제품명',oneLiner:'한줄 정의',researchQuestion:'리서치 질문',projectType:'프로젝트 성격',analysisGoal:'분석 목적',keyMetrics:'핵심 지표',constraints:'사내 제약',positioning:'브랜드 포지셔닝',channels:'수집 채널',knownInsights:'이미 아는 것',productCategory:'제품군',targetScope:'분석 대상',futureCustomer:'미래 고객'};
 export default function ComparePage() { return <Suspense fallback={<p role="status">처리 중…</p>}><CompareScreen /></Suspense>; }
 function CompareScreen() {
   const query = useSearchParams(); const view = useVersion(); const a = query.get('a') ?? ''; const b = query.get('b') ?? '';
