@@ -147,12 +147,12 @@ describe('T15 step keys (R3 critical regression)', () => {
   });
 });
 
-it('renders the ten stages in order with future stages disabled and personas navigable', () => {
+it('renders the ten stages in order with evidence disabled and personas and insights navigable', () => {
   const html = sidebar('start');
   const names = [...html.matchAll(/<span>([^<]+)<\/span>/g)].map(match => match[1]);
   expect(names).toEqual(['시작', '키워드', '크롤링', '전처리', '라벨링', '학습', '클러스터링', '근거 탐색', '페르소나', '인사이트']);
   expect(html).not.toContain('임베딩');
-  for (const name of ['근거 탐색', '인사이트']) {
+  for (const name of ['근거 탐색']) {
     const tag = html.match(new RegExp(`<([a-z]+)\\b([^>]*aria-label="[^"]*${name}[^"]*"[^>]*)>`));
     expect(tag).not.toBeNull();
     expect(tag![2]).toContain('aria-disabled="true"');
@@ -163,6 +163,6 @@ it('renders the ten stages in order with future stages disabled and personas nav
   expect(html).toMatch(/<a\b[^>]*aria-label="9\. 페르소나"[^>]*href="\/pipeline\/personas"/);
   expect([...html.matchAll(/\bhref="([^"]+)"/g)].map(match => match[1])).toEqual([
     '/pipeline/start', '/pipeline/keywords', '/pipeline/crawling', '/pipeline/preprocess',
-    '/pipeline/labeling', '/pipeline/training', '/pipeline/clustering', '/pipeline/personas',
+    '/pipeline/labeling', '/pipeline/training', '/pipeline/clustering', '/pipeline/personas', '/pipeline/insights',
   ]);
 });

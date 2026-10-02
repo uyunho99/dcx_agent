@@ -7,9 +7,19 @@ import { usePolling } from "@/lib/usePolling";
 import ProgressBar from "@/components/ProgressBar";
 import PersonaCard from "@/components/PersonaCard";
 import Spinner from "@/components/Spinner";
+import { PersonaScreen } from "@/components/persona/PersonaScreen";
+import { useVersion } from "@/components/versions/VersionProvider";
 import type { ClusterPersona } from "@/lib/types";
 
 export default function PersonasPage() {
+  const {sid, sd} = useSessionStore();
+  const view = useVersion();
+  const prep = sd?.prep as {derivedRef?: unknown} | undefined;
+  if (prep?.derivedRef && sid) return <PersonaScreen key={`${sid}:${view.version ?? ''}`} sid={sid} version={view.version} readonly={view.readonly || !!view.conflict} />;
+  return <LegacyPersonasPage />;
+}
+
+function LegacyPersonasPage() {
   const router = useRouter();
   const store = useSessionStore();
   const { sid, sd, projectContext } = store;

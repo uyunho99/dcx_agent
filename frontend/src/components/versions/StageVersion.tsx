@@ -65,6 +65,10 @@ function HistoricalCrawl() {
 // Later-stage endpoints only read active data. Never mount their live editors in history mode.
 export function VersionRouteBoundary({children}: {children: ReactNode}) {
   const pathname = usePathname(); const view = useVersion();
+  const {sd} = useSessionStore();
+  // Stage-eight Persona endpoints accept a version and provide their own readonly UI.
+  const prep = sd?.prep as {derivedRef?: unknown} | undefined;
+  if (pathname === '/pipeline/personas' && prep?.derivedRef) return children;
   const index = routes.indexOf(pathname.split('/').pop() ?? '');
   if (index < 3 || !view.meta) return children;
   const stage = `stage${index}` as Stage;

@@ -10,6 +10,8 @@ export function completedThrough(session?: Record<string, unknown> | null): numb
   const completion = record(session.completion);
   const done = (key: string, fallback: boolean) =>
     typeof completion[key] === 'boolean' ? completion[key] : fallback;
+  if (done('insightDone', false)) return 9;
+  if (done('personaDone', false)) return 8;
   const legacyClustersDone = done('clustersDone', Object.keys(record(session.clusters)).length > 0);
   if (done('segmentDone', legacyClustersDone)) return 6;
   const exportRef = record(session.training).exportRef;

@@ -17,7 +17,7 @@ const STEPS = [
   { name: "클러스터링", path: "/pipeline/clustering" },
   { name: "근거 탐색", path: null },
   { name: "페르소나", path: "/pipeline/personas" },
-  { name: "인사이트", path: null },
+  { name: "인사이트", path: "/pipeline/insights" },
 ];
 
 export const STEP_NAMES = STEPS.map(step => step.name);
