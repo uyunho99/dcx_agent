@@ -4,7 +4,9 @@ import { Button } from '../ds/Button';
 import { Badge } from '../ds/Badge';
 import { addKnownInsight, deleteKnownInsight, getKnownInsights } from '@/lib/api/known';
 import { displayError } from '@/lib/api/errors';
-import type { KnownInsight } from '@/lib/types';
+import { getKnownSuggestions, addSuggestedKnownInsight } from '@/lib/api/insight';
+import { PreviousSuggestions } from './PreviousSuggestions';
+import type { InsightSuggestion, KnownInsight } from '@/lib/types';
 import styles from './KnownInsightsDrawer.module.css';
 export type KnownInsightsDrawerProps = {sid: string; version?: string; open: boolean; onClose: () => void; onChange?: (items: KnownInsight[]) => void; readonly?: boolean};
 const origins = {stage0:'프로젝트 정의',drawer:'직접 입력',rag:'근거 원문',prev_session:'이전 세션'};
@@ -28,9 +30,12 @@ export function KnownInsightsDrawer(props: KnownInsightsDrawerProps) {
  return props.open ? <Drawer key={`${props.sid}:${props.version}`} {...props}/> : null;
 }
 function Drawer({sid, version, onClose, onChange, readonly = false}: KnownInsightsDrawerProps) {
+ const [suggestions,setSuggestions] = useState<InsightSuggestion[]>([]);
+ const [suggestionsError,setSuggestionsError] = useState('');
  const dialog = useRef<HTMLDialogElement>(null); const input = useRef<HTMLTextAreaElement>(null);
  const [items,setItems] = useState<KnownInsight[]>([]); const [text,setText] = useState('');
  const [loading,setLoading] = useState(true); const [busy,setBusy] = useState(false); const [error,setError] = useState(''); const [retry,setRetry] = useState(0); const lock = useRef(false);
+ useEffect(() => {let active = true; getKnownSuggestions(sid,version).then(data => {if(active) {setSuggestions(data.items);setSuggestionsError('');}}).catch(e => {if(active) setSuggestionsError(displayError(e));});return () => {active = false;};},[sid,version,retry]);
  useEffect(() => { const previous = document.activeElement as HTMLElement | null; const node = dialog.current; node?.showModal(); return () => { node?.close(); previous?.focus(); }; }, []);
  useEffect(() => { let active = true; getKnownInsights(sid, version).then(data => { if(active) {setItems(data.items);setLoading(false); if(!data.items.length) input.current?.focus();} }).catch(e => {if(active) {setError(displayError(e));setLoading(false);}}); return () => {active = false;}; }, [sid,version,retry]);
  async function mutate(action: () => Promise<KnownInsight[]>) {
@@ -42,6 +47,8 @@ function Drawer({sid, version, onClose, onChange, readonly = false}: KnownInsigh
   {loading ? <p role="status">처리 중…</p> : items.length === 0 && !error ? <p>아직 Known Insight가 없습니다. 근거 원문에서 추가하거나 한 문장으로 적으세요.</p> : null}
   {error && <div role="alert"><p>{error}</p><Button onClick={() => {setError('');setLoading(true);setRetry(n => n+1);}}>목록 다시 불러오기</Button></div>}
   <ul className={styles.list}>{items.map(item => <KnownInsightCard key={item.id} item={item} disabled={busy || readonly} onDelete={() => void mutate(async () => {await deleteKnownInsight(sid,item.id,version);return items.filter(row => row.id !== item.id);})}/>)}</ul>
+  {suggestionsError && <p role="alert">{suggestionsError}<Button onClick={() => setRetry(n => n+1)}>추천 다시 불러오기</Button></p>}
+  <PreviousSuggestions items={suggestions} disabled={readonly || busy || loading} onAdd={item => void mutate(async () => {const added = await addSuggestedKnownInsight(sid,{type:'statement',text:`${item.title}\n${item.painPoint}`},version);setSuggestions(rows => rows.filter(row => row.sessionId !== item.sessionId || row.insightId !== item.insightId));return [...items.filter(row => row.id !== added.id),added];})}/>
   <form onSubmit={e => {e.preventDefault();if(!text.trim() || loading) return;void mutate(async () => {const added = await addKnownInsight(sid,{type:'statement',text:text.trim()},version);setText('');return [...items.filter(row => row.id !== added.id),added];});}}>
    <label className="ds-field"><span className="ds-lab">새 문장</span><textarea className="ds-inp" rows={4} ref={input} value={text} disabled={readonly || busy} onChange={e => setText(e.target.value)}/></label><div className="ds-actions"><Button type="submit" loading={busy} disabled={readonly || loading || !text.trim()}>추가</Button></div>
   </form>

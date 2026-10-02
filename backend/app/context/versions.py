@@ -150,6 +150,29 @@ def _restart(data, target, stage):
                 restartMessage=f"이 라벨은 {data['parentVersion']} 기준입니다. LLM 판정은 재사용하고 사람 검수만 다시 합니다.")
     if stage <= 5 and 'training' in data:
         data['training'] = {'status': 'stale'}
+    if stage <= 6:
+        shutil.rmtree(target / 'segment', ignore_errors=True)
+        data['segment'] = {'status': 'stale'}
+        data.get('completion', {}).pop('segmentDone', None)
+        data.get('drafts', {}).pop('segment', None)
+    if stage <= 7:
+        data.get('completion', {}).pop('evidenceDone', None)
+        shutil.rmtree(target / 'evidence', ignore_errors=True)
+        if 'evidence' in data:
+            data['evidence'] = {'status': 'none'}
+        if (target / 'segment/segment.sqlite').exists():
+            from app.segment.store import SegmentStore
+            from app.evidence.assemble import append_context_flag
+            seg = SegmentStore(target)
+            for row in seg.contexts():
+                append_context_flag(seg, row['context_id'], 'undifferentiated_candidate', present=False)
+    if stage <= 8:
+        shutil.rmtree(target / 'persona', ignore_errors=True)
+        for key in ('personaDone', 'insightDone'):
+            data.get('completion', {}).pop(key, None)
+        for key in ('persona', 'insight'):
+            if key in data:
+                data[key] = {'status': 'stale'}
 
 
 def create_version(sid, from_v, restart_from, note, version=None) -> str:
@@ -180,7 +203,7 @@ def create_version(sid, from_v, restart_from, note, version=None) -> str:
                     crawl_draft.pop('gate', None)
             data.update(version=v, parentVersion=from_v, restartFrom=restart_from, updatedAt=now())
             stale = data.setdefault('stale', {})
-            last_stage = max([6, int(restart_from[5:])] + [int(key[5:]) for key in stale.keys() | data.get('stageResults', {}).keys() if re.fullmatch(r'stage[0-9]+', key)])
+            last_stage = max([8, int(restart_from[5:])] + [int(key[5:]) for key in stale.keys() | data.get('stageResults', {}).keys() if re.fullmatch(r'stage[0-9]+', key)])
             for stage in range(int(restart_from[5:]), last_stage + 1):
                 stale[f'stage{stage}'] = f'{restart_from} changed in {v}'
             if int(restart_from[5:]) <= 1:
@@ -283,6 +306,78 @@ def compare(sid, a, b, stage) -> dict:
             result = {name: {'before': metrics(before, a, name), 'after': metrics(after, b, name)} for name in names}
             result['same'] = all(value['before'] == value['after'] for value in result.values())
             return result
+        if stage == 'stage7':
+            def evidence_summary(v):
+                base = version_dir(sid, v) / 'evidence'
+                report = read_json(base / 'stage_7.json')
+                result = dict(report={k: value for k, value in report.items()
+                                      if k not in ('params', 'run', 'at')} if report is not None else None,
+                              contexts={})
+                path = base / 'evidence.sqlite'
+                if path.is_file():
+                    with closing(sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True)) as db:
+                        db.execute('BEGIN')
+                        result['contexts'] = {cid: dict(selectedAll=[], selectedNew=[])
+                                              for cid, in db.execute('SELECT context_id FROM contexts ORDER BY context_id')}
+                        for cid, tab, doc_id in db.execute("SELECT context_id, tab, doc_id FROM selected WHERE role='support' ORDER BY context_id, tab, rank, doc_id"):
+                            result['contexts'].setdefault(cid, dict(selectedAll=[], selectedNew=[]))[
+                                'selectedAll' if tab == 'all' else 'selectedNew'].append(doc_id)
+                return result
+            left, right = evidence_summary(a), evidence_summary(b)
+            return dict(same=left == right, before=left, after=right)
+        if stage == 'stage6':
+            def segment_summary(v):
+                import json
+                base = version_dir(sid, v) / 'segment'
+                report = read_json(base / 'stage_6.json')
+                result = {'report': None, 'reportHash': None}
+                if report is not None:
+                    result['reportHash'] = hashlib.sha256(json.dumps(report, sort_keys=True).encode()).hexdigest()
+                    result['report'] = {key: report[key] for key in ('run', 'at', 'input', 'bands') if key in report}
+                    result['report']['k'] = report.get('L1', {}).get('k')
+                    result['report']['dims'] = {key: value for key, value in report.get('dims', {}).items()
+                                                if key not in ('coverage', 'codes', 'contexts')}
+                    result['report']['warnings'] = len(report.get('warnings', []))
+                fields = {'clusters': ('cluster_id', 'name'),
+                          'personas': ('persona_id', 'name', 'desire', 'goals_json'),
+                          'contexts': ('context_id', 'name', 'action')}
+                for layer in fields:
+                    result[layer] = dict(confirmed=0, total=0, items=[])
+                path = base / 'segment.sqlite'
+                if path.is_file():
+                    with closing(sqlite3.connect(f'{path.as_uri()}?mode=ro', uri=True)) as db:
+                        db.row_factory = sqlite3.Row
+                        db.execute('BEGIN')
+                        for layer, columns in fields.items():
+                            rows = db.execute(f"SELECT {', '.join(columns)}, confirmed_at FROM {layer} ORDER BY {columns[0]}").fetchall()
+                            items = []
+                            for row in rows:
+                                item = {key: row[key] for key in columns if key != 'goals_json'}
+                                if 'goals_json' in columns:
+                                    item['goals'] = json.loads(row['goals_json'] or '[]')
+                                item['confirmed'] = bool(row['confirmed_at'])
+                                items.append(item)
+                            result[layer] = dict(confirmed=sum(item['confirmed'] for item in items), total=len(items), items=items)
+                return result
+            left, right = segment_summary(a), segment_summary(b)
+            return dict(same=left == right, before=left, after=right)
+        if stage == 'stage8':
+            def persona_summary(v):
+                import json
+                base = version_dir(sid, v) / 'persona'
+                artifacts = {name: read_json(base / f'{name}.json') for name in
+                             ('cards', 'map', 'tree', 'stage_8', 'insights', 'concepts')}
+                cards = artifacts['cards'] or {}
+                result = dict(report=artifacts['stage_8'], run=cards.get('run'),
+                    personas={pid: row.get('status') for pid, row in cards.get('personas', {}).items()},
+                    hashes={name: hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
+                            for name, value in artifacts.items() if value is not None})
+                for name in ('insights', 'concepts'):
+                    doc = artifacts[name] or {}
+                    result[name] = dict(revision=doc.get('revision', 0), count=len(doc.get('items', [])))
+                return result
+            left, right = persona_summary(a), persona_summary(b)
+            return dict(same=left == right, before=left, after=right)
         if not re.fullmatch(r'stage[0-9]+', stage):
             raise StoreError('Invalid stage', 400, 'validation')
         def files(v):

@@ -1,0 +1,6 @@
+{
+  "direction": "에어컨으로 질병을 치료한다고 안내한다",
+  "target_metric": "사용 만족도",
+  "contribution": "조절 부담을 줄인다",
+  "journey_hypothesis": "ENTRY 예약 안내 → EXPAND 사용 적응 → COMMIT 지속 사용"
+}

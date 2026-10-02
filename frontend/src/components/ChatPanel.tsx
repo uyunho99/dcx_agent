@@ -49,7 +49,7 @@ export default function ChatPanel({ initialMessage, onSend, sid, version, readon
 
   const send = async (query = input, filter = novel, retryIndex?: number) => {
     const msg = query.trim();
-    if (!msg || lock.current) return;
+    if (!msg || lock.current || readonly) return;
     lock.current = true;
     if (retryIndex === undefined) {
       setInput("");
@@ -87,8 +87,8 @@ export default function ChatPanel({ initialMessage, onSend, sid, version, readon
     </div>
     <form className="border-t border-line p-3 space-y-3" onSubmit={e => {e.preventDefault();void send();}}>
       {sid && <Switch label="새 발견 찾기" checked={novel} disabled={loading} onChange={setNovel} />}
-      <div className="flex gap-2"><input aria-label="메시지" className="min-w-0 flex-1 border border-line rounded-input px-3 py-2 bg-paper" placeholder="메시지를 입력하세요..." value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => {if(e.key === "Enter" && e.nativeEvent.isComposing) e.preventDefault();}} />
-        <Button type="submit" disabled={loading || !input.trim()}>전송</Button></div>
+      <div className="flex gap-2"><input disabled={readonly} aria-label="메시지" className="min-w-0 flex-1 border border-line rounded-input px-3 py-2 bg-paper" placeholder="메시지를 입력하세요..." value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => {if(e.key === "Enter" && e.nativeEvent.isComposing) e.preventDefault();}} />
+        <Button type="submit" disabled={readonly || loading || !input.trim()}>전송</Button></div>
     </form>
   </div>;
 }

@@ -1,6 +1,6 @@
 """Interchangeable production and deterministic offline embedders."""
 import hashlib
-from typing import Protocol
+from typing import Literal, Protocol
 
 import numpy as np
 
@@ -13,7 +13,7 @@ class Embedder(Protocol):
     model: str
     dim: int
 
-    def embed(self, texts: list[str]) -> np.ndarray:
+    def embed(self, texts: list[str], input_type: Literal['document', 'query'] = 'document') -> np.ndarray:
         """Return float32 [n, dim], with zero rows for failed embeddings."""
         ...
 
@@ -36,8 +36,8 @@ class VoyageEmbedder:
         self.model = settings.embed_model
         self.dim = settings.embed_dim
 
-    def embed(self, texts: list[str]) -> np.ndarray:
-        return np.asarray(get_embeddings(texts), dtype=np.float32).reshape(len(texts), self.dim)
+    def embed(self, texts: list[str], input_type: Literal['document', 'query'] = 'document') -> np.ndarray:
+        return np.asarray(get_embeddings(texts, input_type=input_type), dtype=np.float32).reshape(len(texts), self.dim)
 
 
 class FakeEmbedder:
@@ -47,7 +47,7 @@ class FakeEmbedder:
         self.model = settings.embed_model
         self.dim = settings.embed_dim
 
-    def embed(self, texts: list[str]) -> np.ndarray:
+    def embed(self, texts: list[str], input_type: Literal['document', 'query'] = 'document') -> np.ndarray:
         result = np.empty((len(texts), self.dim), dtype=np.float32)
         for row, text in enumerate(texts):
             seed = int.from_bytes(hashlib.sha256(text.encode('utf-8')).digest(), 'big')

@@ -3,9 +3,17 @@ import { refreshSessionAfterStage, labelCompletionKey } from './refreshSessionAf
 import { getVersionSession, type VersionSession } from './api/versions';
 import { useSessionStore } from '@/stores/useSessionStore';
 vi.mock('./api/versions', () => ({getVersionSession:vi.fn()}));
-vi.mock('@/stores/useSessionStore', () => ({useSessionStore:{getState:()=>({setSession})}}));
+vi.mock('@/stores/useSessionStore', () => ({useSessionStore:{getState:()=>({setSession,step:'cluster-check'})}}));
 const setSession = vi.fn();
 afterEach(() => vi.clearAllMocks());
+it.each([{}, {step:undefined}, {step:null}, {step:42}, {step:false}, {step:{}}, {step:[]}])('keeps the previous store step for invalid session step %j', async payload => {
+ const data = {...payload,completion:{segmentDone:true}} as unknown as VersionSession;
+ vi.mocked(getVersionSession).mockResolvedValue({data});
+ const apply = vi.fn();
+ await refreshSessionAfterStage('s','v2',apply,()=>true);
+ expect(apply).toHaveBeenCalledWith(data);
+ expect(setSession).toHaveBeenCalledWith({sd:data,step:'cluster-check'});
+});
 it('fetches the selected version and updates the banner session and sidebar together', async () => {
  const data = {step:'preprocess',stale:{},completion:{prepDone:true}} as unknown as VersionSession;
  vi.mocked(getVersionSession).mockResolvedValue({data});

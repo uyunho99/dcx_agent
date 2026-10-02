@@ -1,0 +1,25 @@
+{
+  "persona_profile": "편안한 실내 생활을 원하는 합성 사용자",
+  "pain_points": [
+    "E1",
+    "E2",
+    "E3"
+  ],
+  "journey": [
+    {
+      "context_id": "CL0-P0-C0",
+      "action": "온도를 조절한다",
+      "feeling": "번거롭다",
+      "service": "예약 조절 안내",
+      "service_action": "예약 방법을 안내한다",
+      "cx_4d": "시스템"
+    }
+  ],
+  "constraint_check": [
+    {
+      "constraint": "의료적 효과 표현 금지",
+      "verdict": "violates",
+      "reason": "의료적 효과를 단정함"
+    }
+  ]
+}

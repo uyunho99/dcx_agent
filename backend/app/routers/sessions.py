@@ -3,6 +3,7 @@ import sqlite3
 from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
+from functools import lru_cache
 
 from app.config import settings
 from app.context import stale, store, versions
@@ -14,6 +15,33 @@ from app.jobs.manager import job_manager
 from app.models.schemas import SessionSaveRequest
 
 router = APIRouter()
+
+
+def _file_stamp(path):
+    try:
+        stat = path.stat()
+        return (stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+    except FileNotFoundError:
+        return None
+
+
+@lru_cache(maxsize=128)
+def _persona_sources_match(sid, selected, root, stamps):
+    """Reuse expensive package hashing/SQLite reads only while source files match."""
+    from app.persona.store import PersonaStore
+    from app.persona.pipeline import _confirmed_matches, _digest
+    from app.persona.package import load_package, PackageMissing
+    cards = PersonaStore.open(sid, selected).read('cards')
+    if not cards:
+        return True
+    try:
+        package = load_package(sid, selected)
+    except PackageMissing:
+        return False
+    digest = _digest(package)
+    return (cards.get('package_run') == package.run and
+            cards.get('package_hash', digest) == digest and
+            _confirmed_matches(sid, selected, package))
 
 
 def _completion(sid, data, version=None):
@@ -49,6 +77,40 @@ def _completion(sid, data, version=None):
             return False
         return data.get("clustering", {}).get("status") == "done"
 
+    def segment_done():
+        if "stage6" in data.get("stale", {}):
+            return False
+        return data.get("segment", {}).get("status") == "done"
+
+    def persona_done():
+        if (data.get("persona", {}).get("status") != "done"
+                or "stage8" in data.get("stale", {})):
+            return False
+        selected = version or data.get('version')
+        if selected:
+            from app.persona.package import evidence_ready
+            if not evidence_ready(sid, selected):
+                return False
+            root = versions.version_dir(sid, selected)
+            from app.segment.store import SegmentStore
+            segment = SegmentStore.open(sid, selected).path
+            paths = (root / 'session.json', root / 'persona/cards.json', root / 'evidence/package.json',
+                     segment, Path(str(segment) + '-wal'), Path(str(segment) + '-journal'))
+            return _persona_sources_match(sid, selected, str(root), tuple(_file_stamp(p) for p in paths))
+        return True
+
+    def insight_done():
+        if "stage8" in data.get("stale", {}) or "stage9" in data.get("stale", {}):
+            return False
+        selected = version or data.get("version")
+        if not selected:
+            selected = (store.read_json(store.root_dir(sid) / "meta.json") or {}).get("activeVersion")
+        if not selected:
+            return False
+        from app.persona.store import PersonaStore
+        insights = PersonaStore.open(sid, selected).read('insights') or {}
+        return insights.get('revision', 0) >= 1
+
     def export_done():
         export_ref = data.get("training", {}).get("exportRef")
         return isinstance(export_ref, str) and bool(export_ref.strip())
@@ -60,6 +122,11 @@ def _completion(sid, data, version=None):
         ("labelingDone", labeling_done),
         ("exportDone", export_done),
         ("clustersDone", clusters_done),
+        ("segmentDone", segment_done),
+        ("personaDone", persona_done),
+        ("insightDone", insight_done),
+        ("evidenceDone", lambda: data.get("evidence", {}).get("status") == "done"
+         and "stage7" not in data.get("stale", {})),
     ):
         try:
             result[field] = compute()

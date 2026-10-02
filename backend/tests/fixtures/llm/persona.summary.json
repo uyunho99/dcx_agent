@@ -1,0 +1,35 @@
+{
+  "intent": {
+    "text": "쾌적한 생활을 원한다",
+    "basis_context_ids": [
+      "CL0-P0-C0",
+      "CL0-P0-C1",
+      "CL0-P0-C2"
+    ],
+    "reserved_context_ids": []
+  },
+  "usage_context": {
+    "text": "실내 냉방 사용",
+    "cite": [
+      "E1"
+    ]
+  },
+  "jtbd": {
+    "text": "편안하게 쉬기",
+    "cite": [
+      "E1"
+    ]
+  },
+  "journey": {
+    "pre_purchase": null,
+    "purchase": null,
+    "post_purchase": null
+  },
+  "sensitivity": {
+    "price": "상",
+    "brand": "중",
+    "feature": "상"
+  },
+  "values": null,
+  "decision_style": null
+}

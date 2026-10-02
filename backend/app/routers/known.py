@@ -2,7 +2,7 @@
 from typing import Literal
 
 from fastapi import APIRouter
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.known import store
 from app.routers.context import ContextRoute
@@ -15,6 +15,13 @@ class AddKnown(BaseModel):
     type: Literal['statement', 'doc']
     text: str = ''
     doc_id: str | None = None
+    origin: Literal['prev_session'] | None = Field(default=None, alias='from')
+
+    @model_validator(mode='after')
+    def suggestion_is_statement(self):
+        if self.origin is not None and self.type != 'statement':
+            raise ValueError('Suggestions must be statements')
+        return self
 
 
 class PatchKnown(BaseModel):
@@ -32,9 +39,14 @@ def list_known(sid: str, version: str | None = None):
     return {'items': [view(item) for item in store.list_known(sid, version)]}
 
 
+@router.get('/{sid}/suggestions')
+def suggestions(sid: str, version: str | None = None):
+    return {'items': store.suggestions(sid, version)}
+
+
 @router.post('/{sid}', status_code=201)
 def add_known(sid: str, body: AddKnown, version: str | None = None):
-    return view(store.add(sid, {**body.model_dump(), 'from': 'rag' if body.type == 'doc' else 'drawer'}, version))
+    return view(store.add(sid, {**body.model_dump(exclude={'origin'}), 'from': body.origin or ('rag' if body.type == 'doc' else 'drawer')}, version))
 
 
 @router.patch('/{sid}/{item_id}')

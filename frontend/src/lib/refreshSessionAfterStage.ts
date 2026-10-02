@@ -12,7 +12,8 @@ export async function refreshSessionAfterStage(
   const {data} = await getVersionSession(sid, version);
   if (!isCurrent()) return;
   apply(data);
-  useSessionStore.getState().setSession({sd: data, step: data.step});
+  const store = useSessionStore.getState();
+  store.setSession({sd: data, step: typeof data.step === 'string' ? data.step : store.step});
 }
 
 type LabelCompletion = {started?: boolean; mode?: string; progress?: Record<string, {state: string; runId?: string | null}>; legacy?: boolean};

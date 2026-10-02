@@ -47,7 +47,7 @@ def test_crawl_done_without_polling_is_readonly(client, data_dir, query):
     payload = client.get('/session/display' + query).json()['data']
     assert payload['step'] == 'crawl-detail'
     assert payload['completion'] == dict(crawlDone=True, prepDone=False,
-        labelingDone=False, exportDone=False, clustersDone=False)
+        labelingDone=False, exportDone=False, clustersDone=False, segmentDone=False, evidenceDone=False, personaDone=False, insightDone=False)
     assert {p: p.read_bytes() for p in data_dir.rglob('*') if p.is_file() and not p.name.endswith(('-wal', '-shm'))} == before
 
 
@@ -77,7 +77,24 @@ def test_cluster_result_and_session_milestones(client, data_dir, source):
         root.mkdir(parents=True)
         (root / ('cluster_0_123.jsonl' if source == 'clusters' else 'data_123.jsonl')).write_text('{"cluster":0}\n')
     result = client.get('/session/display').json()['data']['completion']
-    assert result == dict(crawlDone=False, prepDone=True, labelingDone=True, exportDone=True, clustersDone=source == 'persisted')
+    assert result == dict(crawlDone=False, prepDone=True, labelingDone=True, exportDone=True,
+        clustersDone=source == 'persisted', segmentDone=False, evidenceDone=False, personaDone=False, insightDone=False)
+
+
+@pytest.mark.parametrize('query', ['', '?version=v1'])
+@pytest.mark.parametrize('patch, expected', [
+    ({'segment': {'status': 'done'}}, True),
+    ({'segment': {'status': 'done'}, 'stale': {'stage6': True}}, False),
+    ({}, False),
+    ({'segment': {'status': 'running'}}, False),
+    ({'segment': {'status': 'done'}, 'stale': {'stage7': True}}, True),
+])
+def test_segment_completion_uses_durable_status_and_stage6_staleness(client, query, patch, expected):
+    seed()
+    store.update_session('display', patch)
+    result = client.get('/session/display' + query).json()['data']['completion']
+    assert result['segmentDone'] is expected
+    assert result['clustersDone'] is False
 
 
 def test_selected_version_does_not_use_active_milestones(client):
@@ -115,7 +132,7 @@ def test_completion_failure_is_isolated(client, query, failure):
     payload = response.json()
     assert payload['status'] == 'ok'
     assert payload['data']['completion'] == dict(crawlDone=False, prepDone=True,
-        labelingDone=failure == 'invalid_collection', exportDone=True, clustersDone=True)
+        labelingDone=failure == 'invalid_collection', exportDone=True, clustersDone=True, segmentDone=False, evidenceDone=False, personaDone=False, insightDone=False)
 
 
 @pytest.mark.parametrize('query', ['', '?version=v1'])
@@ -131,7 +148,7 @@ def test_missing_cluster_file_is_isolated(client, monkeypatch, query):
     response = client.get('/session/display' + query)
     assert response.status_code == 200
     assert response.json()['data']['completion'] == dict(crawlDone=False, prepDone=True,
-        labelingDone=True, exportDone=True, clustersDone=False)
+        labelingDone=True, exportDone=True, clustersDone=False, segmentDone=False, evidenceDone=False, personaDone=False, insightDone=False)
 
 
 @pytest.mark.parametrize('field, completion', [('prep', 'prepDone'),

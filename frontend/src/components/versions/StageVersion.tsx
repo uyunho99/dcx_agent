@@ -13,7 +13,7 @@ import { crawlBlocksVersion, prepareRestartVersion } from '@/lib/logic/restartVe
 import { useVersion } from './VersionProvider';
 import { useDirty } from "../DirtyProvider";
 import { restartLabelNotice } from '@/lib/logic/browserQa';
-const routes = ['start','keywords','crawling','preprocess','labeling','training','clustering','personas'];
+const routes = ['start','keywords','crawling','preprocess','labeling','training','clustering','evidence','personas'];
 export function RestartVersion({stage, from, label = '이 단계부터 다시', disabled = false, crawlStatus, contained = false}: {stage?: Stage; from?: string; label?: string; disabled?: boolean; crawlStatus?: CrawlStatus | null; contained?: boolean}) {
   const {confirmNavigation} = useDirty();
   const view = useVersion(); const router = useRouter(); const [open, setOpen] = useState(false); const [note, setNote] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const lock = useRef(false);
@@ -50,10 +50,10 @@ export function VersionBanner({stage}: {stage: Stage}) {
   const view = useVersion();
   return <>{view.readonly && <Banner>{view.version} · 읽기 전용 · <RestartVersion stage={stage} from={view.version} label="이 버전에서 새로 시작하기" /></Banner>}<StaleBanner stage={stage} session={view.session} /></>;
 }
-export function VersionStage({stage, children}: {stage: Stage; children: ReactNode}) {
+export function VersionStage({stage, children, showBanner = true}: {stage: Stage; children: ReactNode; showBanner?: boolean}) {
   const view = useVersion();
   const [openedReadonly] = useState(view.readonly);
-  return <div className="space-y-4"><VersionBanner stage={stage} /><fieldset disabled={view.readonly} className="min-w-0" onClickCapture={e => {if(view.readonly){e.preventDefault();e.stopPropagation();}}} onDragStartCapture={e => {if(view.readonly)e.preventDefault();}} onDropCapture={e => {if(view.readonly){e.preventDefault();e.stopPropagation();}}}>{stage === 'stage2' && openedReadonly ? <HistoricalCrawl /> : children}</fieldset></div>;
+  return <div className="space-y-4">{showBanner && <VersionBanner stage={stage} />}<fieldset disabled={view.readonly} className="min-w-0" onClickCapture={e => {if(view.readonly){e.preventDefault();e.stopPropagation();}}} onDragStartCapture={e => {if(view.readonly)e.preventDefault();}} onDropCapture={e => {if(view.readonly){e.preventDefault();e.stopPropagation();}}}>{stage === 'stage2' && openedReadonly ? <HistoricalCrawl /> : children}</fieldset></div>;
 }
 function HistoricalCrawl() {
   const {session} = useVersion();
@@ -65,6 +65,10 @@ function HistoricalCrawl() {
 // Later-stage endpoints only read active data. Never mount their live editors in history mode.
 export function VersionRouteBoundary({children}: {children: ReactNode}) {
   const pathname = usePathname(); const view = useVersion();
+  const {sd} = useSessionStore();
+  // Stage-eight Persona endpoints accept a version and provide their own readonly UI.
+  const prep = sd?.prep as {derivedRef?: unknown} | undefined;
+  if (pathname === '/pipeline/personas' && prep?.derivedRef) return children;
   const index = routes.indexOf(pathname.split('/').pop() ?? '');
   if (index < 3 || !view.meta) return children;
   const stage = `stage${index}` as Stage;

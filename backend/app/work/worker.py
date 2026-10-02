@@ -99,8 +99,28 @@ def _monitor(context: Context):
     run_worker(context)
 
 
+def _segment(context: Context):
+    from app.segment.pipeline import run
+    run(context)
+
+
+def _persona(context: Context):
+    from app.persona.pipeline import run
+    run(context)
+
+
+def _insight(context: Context):
+    from app.persona.insight_pipeline import run
+    run(context)
+
+
+def _evidence(context: Context):
+    from app.evidence.pipeline import run
+    run(context)
+
+
 KINDS: dict[str, Callable[[Context], None]] = {
-    'prep': _prep, 'judge': _judge, 'train': _train, 'infer': _infer, 'monitor': _monitor}
+    'prep': _prep, 'judge': _judge, 'train': _train, 'infer': _infer, 'monitor': _monitor, 'segment': _segment, 'evidence': _evidence, 'persona': _persona, 'insight': _insight}
 
 
 def execute(context: Context):
@@ -121,7 +141,9 @@ def execute(context: Context):
             state = 'interrupted'
     except BaseException as exc:
         # Exception messages may contain provider credentials or document text.
-        state, error = 'failed' if isinstance(exc, Exception) else 'interrupted', type(exc).__name__
+        from app.context.store import StoreError
+        stale_evidence = context.kind == 'evidence' and isinstance(exc, StoreError) and exc.kind == 'stale_run'
+        state, error = ('interrupted' if stale_evidence or not isinstance(exc, Exception) else 'failed'), type(exc).__name__
         if not isinstance(exc, Exception):
             raise
     finally:

@@ -21,14 +21,18 @@ def get_backend(task_name: str) -> LLMBackend:
 
 
 def run_task(task: LLMTask) -> LLMResult:
+    attempt = 0
     try:
         backend = get_backend(task.task)
-        for _ in range(2):
+        for attempt in range(1, 3):
             result = backend.run(task)
             if result.ok:
                 result = validate(task, result.raw) if result.raw is not None else failure('parse', 'Response has no JSON text')
+            result.attempts = attempt
             if result.ok or result.error.kind not in ('parse', 'schema'):
                 return result
         return result
     except Exception:
-        return failure('backend', 'LLM backend failed')
+        result = failure('backend', 'LLM backend failed')
+        result.attempts = attempt
+        return result

@@ -1,0 +1,67 @@
+{
+  "contexts": [
+    {
+      "context_id": "CL0-P0-C0",
+      "state": {
+        "text": "실내에서 냉방을 사용함",
+        "cite": [
+          "E2"
+        ]
+      },
+      "emotion": {
+        "text": "전기료가 걱정됨",
+        "cite": [
+          "E2"
+        ]
+      },
+      "barrier": {
+        "text": "조절이 번거로움",
+        "cite": [
+          "E2"
+        ]
+      }
+    },
+    {
+      "context_id": "CL0-P0-C1",
+      "state": {
+        "text": "실내에서 냉방을 사용함",
+        "cite": [
+          "E6"
+        ]
+      },
+      "emotion": {
+        "text": "전기료가 걱정됨",
+        "cite": [
+          "E6"
+        ]
+      },
+      "barrier": {
+        "text": "조절이 번거로움",
+        "cite": [
+          "E6"
+        ]
+      }
+    },
+    {
+      "context_id": "CL0-P0-C2",
+      "state": {
+        "text": "실내에서 냉방을 사용함",
+        "cite": [
+          "E10"
+        ]
+      },
+      "emotion": {
+        "text": "전기료가 걱정됨",
+        "cite": [
+          "E10"
+        ]
+      },
+      "barrier": {
+        "text": "조절이 번거로움",
+        "cite": [
+          "E10"
+        ]
+      }
+    }
+  ]
+}

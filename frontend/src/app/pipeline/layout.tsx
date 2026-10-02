@@ -13,7 +13,7 @@ import { VersionPicker } from "@/components/versions/VersionPicker";
 import { DirtyProvider } from "@/components/DirtyProvider";
 import { SidebarActivity } from "@/components/SessionList";
 import { SidebarAutoProvider, sidebarCollapsed } from "@/components/sidebarAuto";
-import StepBar, { stepIndex } from "@/components/StepBar";
+import StepBar, { STEP_NAMES, stepIndex } from "@/components/StepBar";
 import { KnownInsightsDrawer } from "@/components/known/KnownInsightsDrawer";
 import { getKnownInsights } from "@/lib/api/known";
 import type { KnownInsight } from "@/lib/types";
@@ -81,9 +81,8 @@ function PipelineShell({ children }: { children: React.ReactNode }) {
   const handleChat = useCallback(
     async (msg: string, novel: boolean) => {
       if (!sid) return "세션을 먼저 선택하세요.";
-      const STEPS = ["시작", "키워드", "크롤링", "전처리", "라벨링", "학습", "클러스터링", "페르소나"];
       const stepIdx = stepIndex(step);
-      const ctx = `제품:${bk || "미설정"}, 세션:${sid || "없음"}, 현재단계:${STEPS[Math.max(0, stepIdx)] || "시작"}, 키워드:${kw.length}개`;
+      const ctx = `제품:${bk || "미설정"}, 세션:${sid || "없음"}, 현재단계:${STEP_NAMES[Math.max(0, stepIdx)] || "시작"}, 키워드:${kw.length}개`;
       const d = await sendChat({ sid, query: msg, pipeline_context: ctx, novel });
       return d;
     },

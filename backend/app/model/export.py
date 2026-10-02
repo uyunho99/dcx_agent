@@ -1,5 +1,6 @@
 """Stage-five writer and exact-file exports consumed by subsequent stages."""
 import json
+import math
 import os
 from pathlib import Path
 from uuid import uuid4
@@ -11,6 +12,21 @@ from app.context import store
 from app.label import report, rule
 from app.label.overview import labels_for, session
 from app.model import infer, registry
+
+
+def _label_entropy(label):
+    if label['source'] != 'agreed':
+        return 0.
+    votes = json.loads(label['votes_json'] or '{}')
+    if not votes.get('jev') or not votes.get('gpt'):
+        return 0.
+    gpt = votes['gpt']
+    gpt_tags = dict(anchor=gpt['anchor'], situation=gpt['situation'], **gpt['sem'])
+    # D-130 soft labels retain uncertainty without changing exported tagProbs.
+    soft = {tag: (votes['jev']['probs'][tag] + gpt_tags[tag]) / 2
+            for tag in rule.GRADE_FIELDS}
+    grades = rule.grade_probs(soft)
+    return -sum(p * math.log(p) for p in grades.values() if p > 0)
 
 
 def write_stage5(sid, data, model=None, *, generation=None):
@@ -55,7 +71,7 @@ def write(sid, version=None, *, without_model=False):
                 probs = dict(anchor=float(tags['anchor']), situation=float(tags['situation']),
                              **{k: float(v) for k, v in tags['sem'].items()})
                 values = dict(evidence_level_pred=label['level'], confidence=label['confidence'],
-                    pred_entropy=0., relevance_score=float(label['level'] != 'non'), tagProbs=probs,
+                    pred_entropy=_label_entropy(label), relevance_score=float(label['level'] != 'non'), tagProbs=probs,
                     signal=label['signal'], source=label['source'])
                 if unavailable:
                     values.update(prediction='unavailable', pred_entropy=None,

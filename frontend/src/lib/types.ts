@@ -178,3 +178,196 @@ export type Coverage = {
   m7_reason?: string | null;
   missing_top?: [string, number][];
 };
+
+// Stage 6 wire contracts. `run` is the result generation, not the worker runId.
+export type SegmentLayer = 'clusters' | 'personas' | 'contexts';
+export type SegmentQuality = { cohesion?: number | null; boundary?: number | null; ari?: number | null; npmi?: number | null; flags?: string[] };
+export type SegmentRepresentative = { docId: string; text: string; source: string; field: string; idx: number | null };
+export type SegmentRequest = { layer: 'clusters'; id: string; kind: 'split' | 'merge'; note: string };
+export type SegmentRequestMemo = SegmentRequest & { at: string };
+export type SegmentRow = { id: string; docs: number; nameDraft: string | null; name: string | null; confirmed: boolean };
+export type SegmentCluster = SegmentRow & {
+  keywords: string[]; reps: SegmentRepresentative[]; quality: SegmentQuality;
+  channels: Record<string, number>; channelSkew: boolean; requests: SegmentRequestMemo[];
+};
+export type SegmentPersona = SegmentRow & {
+  clusterId: string; authors: number; desireDraft: string | null; desire: string | null;
+  goalsDraft: string[]; goals: string[]; centrality: [string, number][];
+  network: { nodes: { id: string; persona: number; score: number }[]; edges: { source: string; target: string; weight: number }[] };
+  similar: { id: string; score: number; desire: string }[]; reps: SegmentRepresentative[]; flags: string[];
+};
+export type SegmentContext = SegmentRow & {
+  personaId: string; actionDraft: string | null; action: string | null; keywords: string[];
+  dominantConstraint: string | null; dimsSummary: Record<string, unknown>; quality: SegmentQuality; flags: string[];
+};
+export type SegmentKSuggest = { k: number; suggested: number; silhouette: Record<string, number>; inertia: Record<string, number>; dendrogram: unknown[]; sample: number };
+export type SegmentStatus = {
+    detail?: { step?: string; persona?: number; personas?: number; docs?: number; total?: number };
+  run: string | null; status: WorkerState | 'review'; step: 'load' | 'L1' | 'L2' | 'L3' | 'quality' | 'dims' | 'drafts';
+  progress: number; confirm: Record<SegmentLayer, string>; stage6?: Record<string, unknown>; reason?: string;
+};
+export type SegmentClustersResponse = { run: string | null; clusters: SegmentCluster[]; kSuggest: SegmentKSuggest | null };
+export type SegmentPersonasResponse = { run: string | null; personas: SegmentPersona[] };
+export type SegmentContextsResponse = { run: string | null; contexts: SegmentContext[]; emptyGoalConstraintRatio: number };
+export type SegmentRunRequest = { k?: number; confirmReset?: boolean };
+export type SegmentConfirmation = { run: string; name: string; confirm: true };
+export type SegmentPersonaConfirmation = SegmentConfirmation & { desire: string; goals: [string] | [string, string] | [string, string, string] };
+export type SegmentContextConfirmation = SegmentConfirmation & { action: string };
+export type SegmentBulkConfirmation = { run: string; contexts: { id: string; name: string; action: string }[] };
+export type SegmentBulkResponse = { run: string; contexts: SegmentContext[] };
+export type SegmentBand = 'core' | 'fringe' | 'edge';
+export type SegmentDocsOptions = { context?: string; band?: SegmentBand; offset?: number; limit?: number };
+export type SegmentDocument = {
+  docId: string; title: string; body: string; comments: unknown[]; url: string;
+  clusterId: string | null; personaId: string | null; contextId: string | null;
+  theta: number | null; thetaJson: number[] | null; distCentroid: number | null; band: SegmentBand | null;
+  comboRarity: number | null; emerging: number | null; lexicalSurprise: number | null;
+  sentiment: number | null; predEntropy: number | null; evidenceLevel: EvidenceLevel | null;
+  source: string | null; authorHash: string | null; date: string | null;
+};
+export type SegmentDocsResponse = { run: string | null; docs: SegmentDocument[]; total: number; offset: number; limit: number };
+export type SegmentDraft = { run: string; [key: string]: unknown };
+export type SegmentErrorKind = 'locked' | 'confirm_required' | 'stale_run' | 'validation';
+
+// Stage 8 contracts (task-T12-brief.md). `run` is a generation; `runId` is a worker.
+export type PersonaGrade = 'observed' | 'inferred' | 'speculated';
+export type PersonaGradeLabel =
+  | { text: '관측'; shape: 'circle' }
+  | { text: '추론'; shape: 'triangle' }
+  | { text: '추측'; shape: 'cross' }
+  | { text: '근거 부족'; shape: null };
+export type PersonaZone = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+export type PersonaState = WorkerState | 'pending' | 'stale';
+export type PersonaErrorKind = 'evidence_required' | 'running' | 'locked' | 'not_ready' | 'stale_run';
+export type PersonaRunRequest = { fresh?: boolean; personas?: string[] };
+export type PersonaRunResponse = { runId: string };
+export type PersonaRetryRequest = { run: string };
+export type PersonaStatus = {
+  package: boolean; evidence_required?: boolean;
+  status: PersonaState; run: string | null; progress: number;
+  personas: { id: string; status: PersonaState; error: unknown | null }[];
+  stage8?: Record<string, unknown> | null;
+};
+export type PersonaField = { text: string; cite: string[] };
+export type PersonaConstraint = { constraint: string; verdict: 'ok' | 'violates' | 'review'; reason: string };
+export type PersonaPrescription = {
+  direction: string; target_metric: string; contribution: string; journey_hypothesis: string;
+  constraint: PersonaConstraint[]; blocked: boolean; represcribed: boolean;
+};
+export type PersonaScope = { verdict: 'in' | 'outside'; reason: string };
+// Nested card/trace serialization is not specified by the API table. Keep those
+// payloads open instead of asserting a router-specific layout before T11 lands.
+export type PersonaCardContext = Record<string, unknown> & { context_id: string; keywords: string[] };
+export type PersonaCardBody = Record<string, unknown> & { contexts?: PersonaCardContext[]; artifacts?: { name: string; mention_count: number }[] };
+export type PersonaCard = {
+  status: PersonaState; card: PersonaCardBody | null;
+  grades?: Record<string, Record<string, PersonaGrade | null>>;
+  trace?: Record<string, unknown>[]; prescription?: PersonaPrescription | null;
+  constraint?: PersonaConstraint[]; scope?: PersonaScope | null; error?: unknown;
+  [key: string]: unknown;
+};
+export type PersonaCardsResponse = { run: string | null; personas: Record<string, PersonaCard>; package_run?: string };
+export type PersonaMapPoint = {
+  context_id: string; persona_id: string; cluster_id: string;
+  i: number | null; s: number | null; odi: number | null; zone: PersonaZone | null; star: boolean; counter: boolean;
+  shape: string; tone: string | number;
+};
+export type PersonaMap = {
+  points: PersonaMapPoint[];
+  base: { s_line: number; diag1: [[number, number], [number, number]]; diag2: [[number, number], [number, number]] };
+  legend: { cluster_id: string; shape: string; cluster_label: string | null;
+    personas: {persona_id: string; persona_name: string; tone: string}[] }[];
+};
+// The tree's node/link envelope is deliberately opaque in the published contract.
+export type PersonaTree = Record<string, unknown>;
+export type PersonaContextRow = PersonaMapPoint & { name?: string; persona_name?: string };
+export type PersonaSortDirection = 'asc' | 'desc';
+
+export type InsightErrorKind = 'persona_required' | 'not_found' | 'stale';
+export type InsightRunRequest = { mode: 'derive' | 'concept'; target?: string };
+export type InsightRunResponse = { runId: string };
+export type InsightTarget = 'insights' | `concept:${string}`;
+export type InsightChatRequest = { target: InsightTarget; message: string };
+export type InsightChatResponse =
+  | { ok: true; revision: number }
+  | { ok: false; message: '요청을 반영하지 못했습니다. 다르게 말해 주세요.' };
+export type InsightRevertRequest = { target: InsightTarget; revision: number };
+export type InsightRevertResponse = { revision: number };
+export type InsightConfirmRequest = { ids: string[] };
+export type InsightConfirmResponse = { confirmed: string[] };
+export type InsightItem = { id: string; title: string; pain_point: string; context_ids: string[]; known_ki_id: string | null };
+export type InsightCxDimension = '정신적' | '물리적' | '문화적' | '시스템';
+export type InsightJourneyRow = {
+  context_id: string; action: string; feeling: string; service: string; service_action: string; cx_4d: InsightCxDimension;
+};
+export type InsightConcept = {
+  outdated: boolean; insight_revision?: number; context_ids?: string[];
+  persona_profile: unknown; basis: string; pain_points: Record<string, unknown>[];
+  journey: InsightJourneyRow[]; constraint_check: PersonaConstraint[];
+  [key: string]: unknown;
+};
+// The brief fixes the revision envelope, but not history entry or metric layout.
+export type InsightRevision<T> = { revision: number; items: T[]; history: Record<string, unknown>[] };
+export type InsightBars = { bars: unknown; mean: number | null; targets: string[] };
+export type InsightRadar = Record<string, unknown>;
+export type InsightWorker = { status: 'idle' | 'running' | 'done' | 'failed' | 'interrupted'; reason: string | null; runId: string | null; mode: 'derive' | 'concept' | null; target: string | null };
+export type InsightResponse = {
+  worker: InsightWorker;
+  /** Authoritative selection loaded from the selected version session by the API client. */
+  confirmed?: string[];
+  insights: InsightRevision<InsightItem>; concepts: InsightRevision<InsightConcept>;
+  bars: InsightBars | null; radar: InsightRadar | null;
+};
+export type InsightSuggestion = { sessionId: string; insightId: string; title: string; painPoint: string };
+export type InsightSuggestionsResponse = { items: InsightSuggestion[] };
+export type InsightSuggestedKnownRequest = { type: 'statement'; text: string };
+// Stage 7 wire contracts. `run` is the result generation, not the worker runId.
+export type EvidenceTab = 'all' | 'new';
+export type EvidenceContextState = 'queued' | 'running' | 'done' | 'failed' | 'skipped';
+export type EvidenceState = 'none' | 'running' | 'done' | 'failed' | 'interrupted' | 'stale' | 'partial';
+export type EvidenceRole = 'support' | 'counter' | 'rare';
+export type EvidenceLocation = { field: 'title' | 'body' | 'comment'; idx: number | null };
+export type EvidenceQuote = { text: string; start: number | null; end: number | null; verified: boolean };
+/** Quote offsets are Unicode code points into quoteSource.text (D-258/D-266). */
+export type EvidenceQuoteSource = EvidenceLocation & { text: string };
+export type EvidenceItemView = {
+  docId: string; source: string; location: EvidenceLocation; quote: EvidenceQuote | null; quoteSource: EvidenceQuoteSource;
+  text: string; tags: string[]; band: SegmentBand | null; novelty: string | null;
+  known: { handed: boolean; kiId: string | null };
+  noveltyShown: boolean; noveltyReason: string | null; knownMatch: string | null; rare: boolean; role: EvidenceRole;
+};
+export type EvidenceQuery = { dim: string; text: string; origin: 'llm' | 'regen' | 'fallback' };
+export type EvidenceContextStatus = {
+  id: string; personaId: string; name: string; status: EvidenceContextState;
+  coverage: number | null; counts: Record<string, number>; error: string | null; knownChanged: boolean;
+};
+export type EvidenceStageReport = {
+  tag_calls: number; relevant_false: number;
+  [key: string]: unknown;
+};
+export type EvidenceStatus = {
+  status: EvidenceState; run: string | null; progress: number; contexts: EvidenceContextStatus[];
+  stage7?: EvidenceStageReport; reason?: string; tagCalls?: number;
+};
+export type EvidenceRunRequest = { fresh?: boolean; contexts?: string[] };
+export type EvidenceRunResponse = { runId: string };
+export type EvidenceGenerationRequest = { run: string };
+// Nested context/artifact/PersonaBlock fields are not specified by the API table.
+// Keep them opaque instead of guessing a backend shape.
+export type EvidenceContextResponse = {
+  context: Record<string, unknown>; tab: EvidenceTab; items: EvidenceItemView[];
+  counter: EvidenceItemView[]; rare: EvidenceItemView[]; excludedKnown: number;
+  queries: EvidenceQuery[]; queryFailed: boolean; undifferentiated: string[];
+};
+export type EvidenceArtifact = { name: string; mention_count: number };
+export type EvidencePersonaResponse = { desireSupport: EvidenceItemView[]; artifacts: EvidenceArtifact[] };
+export type EvidenceItem = {
+  doc_id: string; source: string; quote: (EvidenceLocation & EvidenceQuote) | null;
+  tags: string[]; polarity: number | null; novelty: string | null; known_match: string | null;
+  tab: EvidenceTab[]; role: EvidenceRole; dist_centroid?: number | null; combo_rarity?: number | null;
+};
+export type EvidencePersonaBlock = Record<string, unknown>;
+export type EvidencePackage = {
+  schema: 'evidence-package/1'; version: string; params: Record<string, unknown>; personas: EvidencePersonaBlock[];
+};
+export type EvidenceErrorKind = 'segment_required' | 'running' | 'locked' | 'not_found' | 'not_ready' | 'stale_run';

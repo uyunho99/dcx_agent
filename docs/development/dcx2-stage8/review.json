@@ -1,0 +1,22 @@
+{"verdict": "PASS", "head": "12f02ca5944db157a9c036d208f33f8804713abb", "fingerprint": "496276730837b9ab24abb9dcb9a9657e139314c4ffe2184a2475ceb1d3da023e", "commands": [{"command": "backend/.venv/bin/python -m pytest backend/tests -q  (2332 passed, 3 deselected)", "exitCode": 0}, {"command": "npm --prefix frontend test  (693 passed)", "exitCode": 0}, {"command": "npm --prefix frontend run lint", "exitCode": 0}, {"command": "npm --prefix frontend run build", "exitCode": 0}], "findings": [],
+  "reviews": [
+    {"scope": "Controller per-task diff review T1-T17", "result": "fix rounds: T9 distinct authors (D-310) and public constraint check; others accepted", "evidence": "docs/development/dcx2-stage8/reports/sdd-ledger.md"},
+    {"scope": "Final whole-branch review, Claude opus (0dcf213..763c83c)", "result": "Ready with fixes: Critical 1, Important 5, Minor 14", "evidence": "docs/development/dcx2-stage8/reports/final-review1.md"},
+    {"scope": "Codex read-only branch review (0dcf213..763c83c)", "result": "Important 7, Minor 2", "evidence": "docs/development/dcx2-stage8/reports/codex-branch-review1.md"},
+    {"scope": "Fix wave 7ce3215 + re-review 1 (opus)", "result": "21 addressed, 4 partial, 2 not, 2 deferred; new N1 Critical + N2-N4 Important", "evidence": "docs/development/dcx2-stage8/reports/final-rereview1.md; final-fix-backend-report.md; final-fix-frontend-report.md"},
+    {"scope": "Fix round 2 d7478dd + re-review 2 (opus)", "result": "16/16 addressed, no new Critical/Important", "evidence": "docs/development/dcx2-stage8/reports/final-rereview2.md; final-fix2-report.md"},
+    {"scope": "T17 merge f35a4a1 review (opus) + fix 7a93614", "result": "approve with 1 Important (evidence readiness) + 6 Minor, all fixed (D-320)", "evidence": "docs/development/dcx2-stage8/reports/merge-review1.md; merge-fix1-report.md"}
+  ],
+  "resolvedFindings": [
+    "opus C1 stale persona could not regenerate: 7ce3215",
+    "Codex 1-7 races, concept invalidation, stale edits, embedder, confirm sync: 7ce3215, d7478dd (D-312..D-315)",
+    "re-review N1 first run blocked, N2 error copy, N3 class-name reasons, N4 concept scope: d7478dd",
+    "QA fake responses, concept failure display, blocked prescription, Korean labels: 4438f50 (D-318)",
+    "QA author counts, pain point source labels, second session: 4ab206c",
+    "merge review evidence readiness + 6 Minor: 7a93614 (D-320)"
+  ],
+  "deferred": [
+    "Insight derive prompt size (measure on real session, D-316)",
+    "Real session 0 to 8 check after bundle 3 (D-247)"
+  ]
+}

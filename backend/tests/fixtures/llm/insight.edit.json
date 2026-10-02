@@ -1,0 +1,31 @@
+{
+  "items": [
+    {
+      "id": "I1",
+      "title": "냉방 조절 경험 개선 1",
+      "pain_point": "냉방을 조절할 때 번거로움을 겪는다.",
+      "context_ids": [
+        "CL0-P0-C0"
+      ],
+      "known_ki_id": null
+    },
+    {
+      "id": "I2",
+      "title": "냉방 조절 경험 개선 2",
+      "pain_point": "냉방을 조절할 때 번거로움을 겪는다.",
+      "context_ids": [
+        "CL0-P0-C1"
+      ],
+      "known_ki_id": null
+    },
+    {
+      "id": "I3",
+      "title": "냉방 조절 경험 개선 3",
+      "pain_point": "냉방을 조절할 때 번거로움을 겪는다.",
+      "context_ids": [
+        "CL0-P0-C2"
+      ],
+      "known_ki_id": null
+    }
+  ]
+}

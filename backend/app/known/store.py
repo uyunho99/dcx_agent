@@ -189,3 +189,47 @@ def known_vectors(sid, items, vectors, version_dir=None):
         result.extend(stored[item.vectorRow].astype(np.float32) for item in items
                       if item.type == 'statement' and item.vectorRow is not None and 0 <= item.vectorRow < len(stored))
     return np.asarray(result, dtype=np.float32).reshape(-1, settings.embed_dim)
+
+
+def suggestions(sid, version=None):
+    """Newest 20 distinct confirmed titles from other same-bk sessions.
+
+    Read each source's active version, never initialize/copy its insights into
+    Known. savedAt orders source insight publications; IDs break timestamp ties.
+    """
+    from app.context import versions
+    from app.persona.store import PersonaStore
+
+    data = versions._data(sid, version) if version else _data(sid)
+    bk = (data.get('projectContext') or {}).get('bk') or data.get('bk')
+    if not bk:
+        return []
+    candidates = []
+    for path in (Path(settings.local_data_dir) / 'sessions').iterdir():
+        if not path.is_dir() or path.name == sid:
+            continue
+        previous = sessions.load_session(path.name) or {}
+        previous_bk = (previous.get('projectContext') or {}).get('bk') or previous.get('bk')
+        if previous_bk != bk or not previous.get('version'):
+            continue
+        state = previous.get('insight') or {}
+        confirmed = set(state.get('confirmed', []))
+        if not confirmed or 'stage8' in previous.get('stale', {}):
+            continue
+        doc = PersonaStore.open(path.name, previous['version']).read('insights') or {}
+        at = state.get('savedAt') or previous.get('updatedAt', '')
+        for row in doc.get('items', []):
+            if row['id'] in confirmed:
+                candidates.append((at, path.name, row['id'], dict(sessionId=path.name,
+                    insightId=row['id'], title=row['title'], painPoint=row['pain_point'])))
+    seen = {item if isinstance(item, str) else item.get('text', '')
+            for item in data.get('knownInsights', [])}
+    result = []
+    for _, _, _, row in sorted(candidates, key=lambda value: value[:3], reverse=True):
+        if row['title'] in seen:
+            continue
+        seen.add(row['title'])
+        result.append(row)
+        if len(result) == 20:
+            break
+    return result
