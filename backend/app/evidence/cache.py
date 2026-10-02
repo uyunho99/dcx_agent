@@ -82,24 +82,28 @@ class TagCache:
         finally:
             db.close()
 
-    def get_tags(self, doc_ids: Iterable[str]) -> dict[str, dict]:
+    def get_tags(self, doc_ids: Iterable[str], *, model: str | None = None) -> dict[str, dict]:
         result = {}
         with self._db() as db:
             db.execute('BEGIN')
             for doc_id in dict.fromkeys(doc_ids):
                 row = db.execute('SELECT tags_json, model FROM tags WHERE doc_id=?', (doc_id,)).fetchone()
-                if row:
+                if row and (model is None or row['model'] == model):
                     result[doc_id] = {**json.loads(row['tags_json']), 'model': row['model']}
         return result
 
     def put_tags(self, rows: dict[str, dict], model: str) -> None:
         with self._db(write=True) as db:
+            # A retagged document cannot retain another model's KI judgments.
+            # Same-model content-fingerprinted pairs remain incremental (D-261).
+            db.executemany('DELETE FROM known WHERE doc_id=? AND model<>?',
+                           [(doc_id, model) for doc_id in rows])
             db.executemany('INSERT INTO tags VALUES (?, ?, ?) ON CONFLICT(doc_id) '
                            'DO UPDATE SET tags_json=excluded.tags_json, model=excluded.model',
                            [(doc_id, json.dumps({k: v for k, v in tags.items() if k != 'model'}, ensure_ascii=False), model)
                             for doc_id, tags in rows.items()])
 
-    def get_known(self, doc_ids: Iterable[str], ki_ids: Iterable[str]) -> dict[tuple[str, str], bool]:
+    def get_known(self, doc_ids: Iterable[str], ki_ids: Iterable[str], *, model: str | None = None) -> dict[tuple[str, str], bool]:
         wanted = set(ki_ids)
         if not wanted:
             return {}
@@ -107,8 +111,8 @@ class TagCache:
         with self._db() as db:
             db.execute('BEGIN')
             for doc_id in dict.fromkeys(doc_ids):
-                for row in db.execute('SELECT ki_id, match FROM known WHERE doc_id=?', (doc_id,)):
-                    if row['ki_id'] in wanted:
+                for row in db.execute('SELECT ki_id, match, model FROM known WHERE doc_id=?', (doc_id,)):
+                    if row['ki_id'] in wanted and (model is None or row['model'] == model):
                         result[doc_id, row['ki_id']] = bool(row['match'])
         return result
 

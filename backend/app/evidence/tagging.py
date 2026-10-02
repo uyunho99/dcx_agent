@@ -126,8 +126,8 @@ def _input(doc, context_dims):
 
 
 def _request(sid, batch, inputs, instructions, run_task):
-    task = LLMTask(task='evidence.tag', sid=sid, instructions=instructions,
-                   attachments=[Attachment(title=i, body=json.dumps(inputs[i], ensure_ascii=False)) for i in batch],
+    task = LLMTask(task='evidence.tag', sid=sid, instructions=instructions + '\n출력 JSON 스키마:\n' + json.dumps(TagOut.model_json_schema(), ensure_ascii=False),
+                   attachments=[Attachment(title=i, body=json.dumps(dict(inputs[i], doc_id=i), ensure_ascii=False)) for i in batch],
                    output_schema=TagOut)
     result = run_task(task)
     if not result.ok or not isinstance(result.data, TagOut):
@@ -182,7 +182,7 @@ def tag_documents(sid, doc_ids, *, docs, dims_by_id, known_items, cache,
                   run_task=registry.run_task, concurrency=None) -> TagResult:
     ids = list(dict.fromkeys(doc_ids))
     known = [i for i in _known_rows(known_items) if i['type'] == 'statement']
-    cached = cache.get_tags(ids)
+    cached = cache.get_tags(ids, model=_model())
     pending = [i for i in ids if i not in cached]
     inputs = {i: _input(docs[i], dims_by_id.get(i) or docs[i].get('context_dims')) for i in pending}
     rows, calls = _collect(sid, pending, inputs, known, run_task, concurrency)
@@ -210,7 +210,7 @@ def tag_documents(sid, doc_ids, *, docs, dims_by_id, known_items, cache,
     if pairs:
         cache.put_known(pairs, model)
     tags = {i: (rows[i] if i in rows else cached[i]) for i in ids if i in rows or i in cached}
-    judgments = cache.get_known(tags, [known_key(item) for item in known])
+    judgments = cache.get_known(tags, [known_key(item) for item in known], model=_model())
     for doc_id, row in tags.items():
         row['known_match'] = next((item['id'] for item in known if judgments.get((doc_id, known_key(item)))), 'none')
     missing = [i for i in ids if i not in tags]
@@ -227,8 +227,8 @@ def judge_known(sid, doc_ids, ki_ids, *, cache, run_task=registry.run_task, conc
     items = _known_rows(known_items) if known_items is not None else [item.model_dump() for item in list_known(sid)]
     known = {item['id']: item for item in items if item['type'] == 'statement'}
     wanted = [i for i in dict.fromkeys(ki_ids) if i in known]
-    tags = cache.get_tags(doc_ids)
-    result = cache.get_known(tags, [known_key(known[i]) for i in wanted])
+    tags = cache.get_tags(doc_ids, model=_model())
+    result = cache.get_known(tags, [known_key(known[i]) for i in wanted], model=_model())
     for ki_id in wanted:
         pending = [i for i in tags if (i, known_key(known[ki_id])) not in result]
         inputs = {i: tags[i].get('_input', tags[i]) for i in pending}

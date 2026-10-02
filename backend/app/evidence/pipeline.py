@@ -34,6 +34,12 @@ from app.segment.store import SegmentStore
 from app.vectors.store import VectorStore
 
 
+class _TaggingFailed(ValueError):
+    def __init__(self, rows):
+        super().__init__('근거 원문을 태깅하지 못했습니다. 다시 시도하세요.')
+        self.rows = rows
+
+
 def _session(sid, version, values, *, already_locked=False):
     with nullcontext() if already_locked else sessions.locked(sid):
         sessions.assert_writable(sid, version)
@@ -346,6 +352,10 @@ def run(context):
 
         initial = search(qrows)
         ingest(initial)
+        # A valid irrelevant judgment is tagged; only absent/invalid judgments
+        # count as failures. Stop before selection can publish empty success.
+        if pool and len(tags) / len(pool) <= .1:
+            raise _TaggingFailed(list(pool.values()))
 
         def supplement(missing, n):
             rows = search([q for q in qrows if q['dim'].lower() in missing], n, 'cov')
@@ -363,6 +373,8 @@ def run(context):
 
         new = tabs.new_tab(cid, list(pool.values()), tags, source['vectors'], source['docs'],
                           known_items=lambda: rpc(reconcile), expand=expand, prepare=ingest, supplement=supplement)
+        if pool and len(tags) / len(pool) <= .1:
+            raise _TaggingFailed(list(pool.values()))
         known = rpc(reconcile)
         call, check = calls.step(cid, 'novelty')
         core = novelty.core_representatives([d for d in source['docs'].values() if d.get('context_id') == cid],
@@ -485,6 +497,8 @@ def run(context):
                         raise
                     with sessions.locked(sid):
                         generation.check(sid, version, ev, run_id)
+                        if isinstance(exc, _TaggingFailed):
+                            ev.write_candidates(cid, exc.rows)
                         ev.set_context(cid, row['persona_id'], 'failed', error=str(exc))
                 save()
                 pulse(step='context', context=cid)
@@ -598,11 +612,11 @@ class _PendingKnown:
         self.cache = cache
         self.writes = []
 
-    def get_tags(self, ids):
-        return self.cache.get_tags(ids)
+    def get_tags(self, ids, **kwargs):
+        return self.cache.get_tags(ids, **kwargs)
 
-    def get_known(self, ids, keys):
-        return self.cache.get_known(ids, keys)
+    def get_known(self, ids, keys, **kwargs):
+        return self.cache.get_known(ids, keys, **kwargs)
 
     def put_known(self, pairs, model):
         self.writes.append((pairs, model))

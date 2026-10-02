@@ -327,3 +327,55 @@ def test_resume_records_current_concurrency(setup, monkeypatch):
     package = sessions.read_json(setup.ev.path.parent/'package.json')
     assert package['params']['CONCURRENCY'] == 4
     assert setup.ev.snapshot().params['CONCURRENCY'] == 4
+
+
+@pytest.mark.parametrize('survivors', [0, 1])
+def test_nearly_all_untagged_contexts_fail_retryably(setup, monkeypatch, survivors):
+    # Schema failures, not provider outages, must become per-Context failures.
+    from app.llm.base import validate
+    def backend(task):
+        if task.task == 'evidence.tag':
+            result = setup.backend(task)
+            value = result.data.model_dump()
+            value['items'] = [r for r in value['items'] if r['doc_id'] == 'd00'] if survivors else []
+            return validate(task, json.dumps(value))
+        return setup.backend(task)
+    monkeypatch.setattr(registry, 'run_task', backend)
+    pipeline.run(setup.ctx)
+    assert all(r['status'] == 'failed' for r in setup.ev.contexts())
+    assert all(r['error'] == '근거 원문을 태깅하지 못했습니다. 다시 시도하세요.' for r in setup.ev.contexts())
+    assert all(not setup.ev.selected(f'c{i}') for i in range(3))
+    monkeypatch.setattr(registry, 'run_task', setup.backend)
+    pipeline.run(setup.ctx)
+    assert all(r['status'] == 'done' for r in setup.ev.contexts())
+
+
+def test_qa_fake_tagger_context_failure_retry_and_skip(setup, monkeypatch):
+    from app.llm.fake import FakeBackend
+    config = sessions.root_dir(setup.sid) / 'qa-evidence.json'
+    sessions.write_json(config, dict(fail_context='c1', fail_doc_ids=[f'd{i:02}' for i in range(12, 24)]))
+    monkeypatch.setattr(registry, 'run_task', FakeBackend().run)
+    pipeline.run(setup.ctx)
+    assert [r['status'] for r in setup.ev.contexts()] == ['done', 'failed', 'done']
+    pipeline.skip_context(setup.sid, 'v1', 'c1', setup.ev.get_run())
+    assert sessions.load_session(setup.sid)['evidence']['status'] == 'done'
+    config.unlink()
+    setup.ctx.args = {'fresh': True}
+    pipeline.run(setup.ctx)
+    assert all(r['status'] == 'done' for r in setup.ev.contexts())
+
+
+def test_all_valid_irrelevant_judgments_are_not_tagging_failure(setup, monkeypatch):
+    from app.llm.base import validate
+    def irrelevant(task):
+        result = setup.backend(task)
+        if task.task == 'evidence.tag':
+            value = result.data.model_dump()
+            for row in value['items']:
+                row.update(relevant=False, reason_code='no_needs')
+            return validate(task, json.dumps(value))
+        return result
+    monkeypatch.setattr(registry, 'run_task', irrelevant)
+    pipeline.run(setup.ctx)
+    assert all(r['status'] == 'done' for r in setup.ev.contexts())
+    assert not setup.ev.snapshot().selected

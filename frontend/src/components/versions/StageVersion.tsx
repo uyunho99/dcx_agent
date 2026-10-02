@@ -13,7 +13,7 @@ import { crawlBlocksVersion, prepareRestartVersion } from '@/lib/logic/restartVe
 import { useVersion } from './VersionProvider';
 import { useDirty } from "../DirtyProvider";
 import { restartLabelNotice } from '@/lib/logic/browserQa';
-const routes = ['start','keywords','crawling','preprocess','labeling','training','clustering','personas'];
+const routes = ['start','keywords','crawling','preprocess','labeling','training','clustering','evidence'];
 export function RestartVersion({stage, from, label = '이 단계부터 다시', disabled = false, crawlStatus, contained = false}: {stage?: Stage; from?: string; label?: string; disabled?: boolean; crawlStatus?: CrawlStatus | null; contained?: boolean}) {
   const {confirmNavigation} = useDirty();
   const view = useVersion(); const router = useRouter(); const [open, setOpen] = useState(false); const [note, setNote] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const lock = useRef(false);

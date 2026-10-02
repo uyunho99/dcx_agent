@@ -234,7 +234,8 @@ def test_handed_and_semantic_known_api_fields_and_refresh_isolation(api):
     statement = dict(id='ki_statement', type='statement', text='이미 아는 내용')
     sessions.update_session(api.sid, {'knownInsights':[added, statement]})
     cache = TagCache.open(api.sid, 'p_0123456789ab', prompt_version('tag'))
-    cache.put_known({(doc, known_key(statement)):doc == matched for doc in api.docs}, 'fake')
+    from app.evidence.tagging import _model
+    cache.put_known({(doc, known_key(statement)):doc == matched for doc in api.docs}, _model())
     items = {r['docId']:r for r in ok(api.client.get(api.base+'/contexts/c0?tab=all'))['items']}
     assert items[handed]['knownMatch'] == 'none'
     assert items[handed]['known'] == {'handed':True, 'kiId':added['id']}

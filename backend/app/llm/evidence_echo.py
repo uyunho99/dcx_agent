@@ -33,8 +33,13 @@ def queries(task):
 
 def tag(task):
     known = re.findall(r'^(#[1-9][0-9]*) (.+)$', task.instructions.split('Known Insight:\n')[-1], re.M)
+    from app.context.store import root_dir, read_json
+    config = read_json(root_dir(task.sid) / 'qa-evidence.json') or {}
+    excluded = set(config.get('fail_doc_ids', []))
     items = []
     for attachment in task.attachments:
+        if attachment.title in excluded:
+            continue
         doc = json.loads(attachment.body)
         fields = [('body', None, doc.get('body')), ('title', None, doc.get('title'))]
         fields += [('comment', c['idx'], c['text']) for c in doc.get('comments', [])]

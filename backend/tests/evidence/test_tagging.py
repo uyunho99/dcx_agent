@@ -193,3 +193,29 @@ def test_deleted_known_not_projected_from_tag_cache(setup):
     cache.drop_known('ki')
     result = tag(setup, run)
     assert result.calls == 0 and all(r['known_match'] == 'none' for r in result.tags.values())
+
+
+def test_request_carries_explicit_ids_and_schema(setup):
+    run, tasks = runner(setup[0])
+    tag(setup, run)
+    task = tasks[0]
+    assert '"properties"' in task.instructions
+    assert all(json.loads(a.body)['doc_id'] == a.title for a in task.attachments)
+
+
+def test_switch_model_retags_and_rejudges_known(setup, monkeypatch):
+    from app.evidence import tagging
+    model = ['old-model']
+    monkeypatch.setattr(tagging, '_model', lambda: model[0])
+    docs, cache = setup
+    known = [dict(id='ki', type='statement', text='문장')]
+    run, tasks = runner(docs, lambda task, value: [r.update(known_match='#1') for r in value['items']])
+    kwargs = dict(docs=docs, cache=cache, dims_by_id={}, known_items=known, run_task=run, concurrency=1)
+    first = tag_documents('test', list(docs), **kwargs)
+    assert all(r['known_match'] == 'ki' for r in first.tags.values())
+    model[0] = 'new-model'
+    tasks.clear()
+    run, tasks = runner(docs)
+    second = tag_documents('test', list(docs), **{**kwargs, 'run_task': run})
+    assert second.cache_hits == 0 and second.calls == 3
+    assert all(r['known_match'] == 'none' for r in second.tags.values())

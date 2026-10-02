@@ -2,7 +2,7 @@ import pytest
 from app.context import store as sessions, versions
 from app.evidence.cache import TagCache, prompt_version
 from app.evidence.store import EvidenceStore
-from app.evidence.tagging import tag_documents
+from app.evidence.tagging import tag_documents, _model
 from app.routers.sessions import _completion
 from app.segment.store import SegmentStore
 from test_api import create
@@ -31,7 +31,7 @@ def test_restart_from7_keeps_segment_confirmations(client):
 def test_restart_from7_reuses_tag_cache(client):
     sid=seed(client)
     cache=TagCache.open(sid,'p_0123456789ab',prompt_version('tag'))
-    cache.put_tags({'d1':{'relevant':True}},'fake')
+    cache.put_tags({'d1':{'relevant':True}},_model())
     versions.create_version(sid,'v1','stage7','')
     result=tag_documents(sid,['d1'],docs={},dims_by_id={},known_items=[],cache=TagCache.open(sid,'p_0123456789ab',prompt_version('tag')),run_task=lambda t: pytest.fail('cache miss'),concurrency=4)
     assert result.calls==0 and result.cache_hits==1
