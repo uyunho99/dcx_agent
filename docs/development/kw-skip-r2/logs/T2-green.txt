@@ -1,0 +1,208 @@
+........................................................................ [ 23%]
+........................................................................ [ 47%]
+............................FFFFF.FFFF......F........................... [ 71%]
+........................................................................ [ 94%]
+................                                                         [100%]
+=================================== FAILURES ===================================
+__________________________ test_locked_round_rejected __________________________
+
+client = <starlette.testclient.TestClient object at 0x118cceb70>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x118cccce0>
+
+    def test_locked_round_rejected(client, monkeypatch):
+        finish_r1(client)
+        before = store.load_session('test')
+        queued = []
+        monkeypatch.setattr(rounds, 'execute', queued.append)
+        for path, body in [('/rounds/2', None), ('/rounds/2?regenerate=true', None),
+                           ('/rounds/2/commit', {'gen': 1, 'decisions': []})]:
+            response = client.post('/keywords/test' + path, json=body)
+>           assert response.status_code == 409
+E           assert 200 == 409
+E            +  where 200 = <Response [200 OK]>.status_code
+
+tests/keywords/test_round_lock.py:49: AssertionError
+_______________________________ test_r3_after_r1 _______________________________
+
+client = <starlette.testclient.TestClient object at 0x118e00890>
+
+    def test_r3_after_r1(client):
+        first = start(client, 1)
+        assert client.post('/keywords/test/rounds/3').status_code == 409
+        assert commit(client, 1, first).status_code == 200
+>       assert start(client, 3)['status'] == 'done'
+               ^^^^^^^^^^^^^^^^
+
+tests/keywords/test_round_lock.py:61: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+client = <starlette.testclient.TestClient object at 0x118e00890>, n = 3
+
+    def start(client, n):
+        response = client.post(f'/keywords/test/rounds/{n}')
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"status":"error","error":{"kind":"conflict","message":"이전 라운드를 먼저 확정하세요"}}
+E       assert 409 == 200
+E        +  where 409 = <Response [409 Conflict]>.status_code
+
+tests/keywords/test_rounds_api.py:61: AssertionError
+_______________________ test_r1_commit_triggers_coverage _______________________
+
+client = <starlette.testclient.TestClient object at 0x118deb110>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x118dea150>
+
+    def test_r1_commit_triggers_coverage(client, monkeypatch):
+        first = start(client, 1)
+        queued = []
+        monkeypatch.setattr(rounds, 'execute', queued.append)
+        assert commit(client, 1, first).status_code == 200
+>       saved = store.load_session('test')['coverage']
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'coverage'
+
+tests/keywords/test_round_lock.py:69: KeyError
+______________________ test_pending_locked_round_ignored _______________________
+
+client = <starlette.testclient.TestClient object at 0x118e02e10>
+backend = <test_rounds_api.backend.<locals>.RecordingFake object at 0x118e03950>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x118deaf60>
+
+    def test_pending_locked_round_ignored(client, backend, monkeypatch):
+        finish_r1(client)
+        seed_r2()
+        duplicate_response(backend, monkeypatch)
+>       assert '가짜중복' in [k['kw'] for k in start(client, 3)['keywords']]
+                                           ^^^^^^^^^^^^^^^^
+
+tests/keywords/test_round_lock.py:84: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+client = <starlette.testclient.TestClient object at 0x118e02e10>, n = 3
+
+    def start(client, n):
+        response = client.post(f'/keywords/test/rounds/{n}')
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"status":"error","error":{"kind":"conflict","message":"이전 라운드를 먼저 확정하세요"}}
+E       assert 409 == 200
+E        +  where 409 = <Response [409 Conflict]>.status_code
+
+tests/keywords/test_rounds_api.py:61: AssertionError
+_______________ test_pending_locked_round_hidden_in_version_view _______________
+
+client = <starlette.testclient.TestClient object at 0x118d94530>
+
+    def test_pending_locked_round_hidden_in_version_view(client):
+        finish_r1(client)
+        seed_r2()
+        before = store.load_session('test')
+        version = before['version']
+        response = client.get(f'/keywords/test?version={version}')
+        assert response.status_code == 200
+>       assert '2' not in response.json()['keywordRounds']
+E       AssertionError: assert '2' not in {'1': {'round': 1, 'gen': 1, 'committed': True, 'replacing': False, ...}, '2': {'round': 2, 'gen': 1, 'job': {'status': 'done', 'gen': 1}, 'committed': False, ...}}
+
+tests/keywords/test_round_lock.py:98: AssertionError
+__________ test_committed_locked_round_not_regenerable_after_restart ___________
+
+client = <starlette.testclient.TestClient object at 0x118de88c0>
+
+    def test_committed_locked_round_not_regenerable_after_restart(client):
+        finish_r1(client)
+        seed_r2(committed=True, needs_regeneration=True)
+        before = store.load_session('test')
+        for suffix in ('', f"?version={before['version']}"):
+>           assert client.get('/keywords/test' + suffix).json()['keywordRounds']['2']['needsRegeneration'] is False
+E           assert True is False
+
+tests/keywords/test_round_lock.py:120: AssertionError
+_____________________ test_r1_recommit_then_r3_regenerates _____________________
+
+client = <starlette.testclient.TestClient object at 0x118e00f20>
+
+    def test_r1_recommit_then_r3_regenerates(client):
+        finish_r1(client)
+        seed_r2(committed=True)
+        assert commit(client, 3, start(client, 3)).status_code == 200
+        store.update_session('test', {'keywordRounds': {'1': {'needsRegeneration': True}}})
+        first = start(client, 1)
+        assert store.load_session('test')['keywordRounds']['1']['replacing'] is True
+        assert commit(client, 1, first).status_code == 200
+        saved = store.load_session('test')['keywordRounds']
+        assert saved['2']['needsRegeneration'] and saved['3']['needsRegeneration']
+>       assert start(client, 3)['status'] == 'done'
+               ^^^^^^^^^^^^^^^^
+
+tests/keywords/test_round_lock.py:138: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+client = <starlette.testclient.TestClient object at 0x118e00f20>, n = 3
+
+    def start(client, n):
+        response = client.post(f'/keywords/test/rounds/{n}')
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"status":"error","error":{"kind":"conflict","message":"이전 라운드를 먼저 확정하세요"}}
+E       assert 409 == 200
+E        +  where 409 = <Response [409 Conflict]>.status_code
+
+tests/keywords/test_rounds_api.py:61: AssertionError
+______________________ test_unlocked_setting_restores_r2 _______________________
+
+client = <starlette.testclient.TestClient object at 0x118d21f10>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x118d21130>
+
+    def test_unlocked_setting_restores_r2(client, monkeypatch):
+>       monkeypatch.setattr(settings, 'keyword_locked_rounds', [])
+E       AttributeError: Settings(storage='local', local_data_dir='/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-963/test_unlocked_setting_restores0', llm_backend='openai_api', openai_api_key='', openai_model='', llm_backend_overrides={}, codex_bin='codex', codex_profile='dcx-worker', codex_timeout_s=600, claude_model='claude-sonnet-4-20250514', naver_search_base_url='https://openapi.naver.com', autocomplete_backend='fake', searchad_api_key='', searchad_secret='', searchad_customer_id='', youtube_api_key='', fixture_corpus_path='', enable_fixture_channel=False, real_channels_enabled=True, low_volume_threshold=10, gate_low_count=10, gate_low_unique=0.2, author_salt_path='data/.author_salt', s3_bucket='x', s3_region='x', naver_client_id='x', naver_client_secret='x', claude_api_key='x', voyage_api_key='x', embed_backend='voyage', embed_model='voyage-4', embed_dim=1024, jev_api_keys=[], jev_model='jev-latest', jev_rate_per_min=120, jev_backend='http', label_gpt_backend='codex_exec', label_batch_size=20, label_concurrency=4, known_theta=0.85, model_cut_low=0.2, model_cut_high=0.8, monitor_rate=0.01, monitor_warn=0.15, head_min_samples=30, audit_first=1000, audit_every=10000, audit_size=50, audit_reissue=2, kappa_floor=0.75, cors_origins='*') has no attribute 'keyword_locked_rounds'
+
+tests/keywords/test_round_lock.py:142: AttributeError
+_____________________________ test_locked_helpers ______________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x118d22b70>
+
+    def test_locked_helpers(monkeypatch):
+>       assert rounds.locked(2) is True
+               ^^^^^^^^^^^^^
+E       AttributeError: module 'app.keywords.rounds' has no attribute 'locked'
+
+tests/keywords/test_round_lock.py:154: AttributeError
+___________________________ test_r3_inputs_recorded ____________________________
+
+client = <starlette.testclient.TestClient object at 0x118de9250>
+backend = <test_rounds_api.backend.<locals>.RecordingFake object at 0x118de8200>
+
+    def test_r3_inputs_recorded(client, backend):
+        through(client, 2)
+        start(client, 3)
+        inputs = store.load_session('test')['keywordRounds']['3']['inputs']
+>       assert inputs == {'rejection': 'empty:no_rejections', 'coverage': 'ok',
+                          'prior_session': 'empty:no_prior_session', 'promptVersion': 'r3.v2'}
+E       AssertionError: assert {'rejection':...ion': 'r3.v3'} == {'rejection':...ion': 'r3.v2'}
+E         
+E         Omitting 3 identical items, use -vv to show
+E         Differing items:
+E         {'promptVersion': 'r3.v3'} != {'promptVersion': 'r3.v2'}
+E         Use -v to get more diff
+
+tests/keywords/test_rounds_api.py:122: AssertionError
+=============================== warnings summary ===============================
+app/config.py:12
+  /Users/persona1/Desktop/dcx_agent-kw-skip-r2/backend/app/config.py:12: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class Settings(BaseSettings):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/keywords/test_round_lock.py::test_locked_round_rejected - assert...
+FAILED tests/keywords/test_round_lock.py::test_r3_after_r1 - AssertionError: ...
+FAILED tests/keywords/test_round_lock.py::test_r1_commit_triggers_coverage - ...
+FAILED tests/keywords/test_round_lock.py::test_pending_locked_round_ignored
+FAILED tests/keywords/test_round_lock.py::test_pending_locked_round_hidden_in_version_view
+FAILED tests/keywords/test_round_lock.py::test_committed_locked_round_not_regenerable_after_restart
+FAILED tests/keywords/test_round_lock.py::test_r1_recommit_then_r3_regenerates
+FAILED tests/keywords/test_round_lock.py::test_unlocked_setting_restores_r2
+FAILED tests/keywords/test_round_lock.py::test_locked_helpers - AttributeErro...
+FAILED tests/keywords/test_rounds_api.py::test_r3_inputs_recorded - Assertion...
+10 failed, 294 passed, 1 warning in 18.97s
+
+Focused verification: cd backend && .venv/bin/python -m pytest tests/keywords/test_prompts.py -q
+39 passed, 1 warning in 0.04s
+Shared bytes, R3 input blocks, and existing placeholders verified.

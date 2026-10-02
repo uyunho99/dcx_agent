@@ -13,7 +13,7 @@ from .models import Keyword
 from .normalize import BANNED
 from .taxonomy import AXES
 
-PROMPT_VERSION = {1: "r1.v3", 2: "r2.v2", 3: "r3.v2", 4: "r4.v2"}
+PROMPT_VERSION = {1: "r1.v3", 2: "r2.v2", 3: "r3.v3", 4: "r4.v3"}
 MIN_COUNT = {1: 70, 2: 100, 3: 60, 4: 60}
 TONE = {
     "renewal": "기존 사용 중 불만 · 고장 · 관리 부담",
