@@ -1,0 +1,33 @@
+{
+  "verdict": "PASS",
+  "head": "57c00f51443d74b160976faebc12da8b50e3b56e",
+  "fingerprint": "25bdf63a8ab1980a16e71c147ccbbd966c6c781bddd61687b364b460d56da4bc",
+  "commands": [
+    {"command": "backend/.venv/bin/python -m pytest backend/tests -q  (1707 passed, 2 deselected)", "exitCode": 0},
+    {"command": "npm --prefix frontend test  (467 passed)", "exitCode": 0},
+    {"command": "npm --prefix frontend run lint", "exitCode": 0},
+    {"command": "npm --prefix frontend run build", "exitCode": 0}
+  ],
+  "findings": [],
+  "reviews": [
+    {"scope": "SDD per-task reviews T1-T15 (9c1e3d7..5981e30)", "result": "spec + quality approved for all 15 tasks after fix rounds", "evidence": "docs/development/dcx2-stage6-8/reports/sdd-ledger.md"},
+    {"scope": "Final whole-branch review, Claude opus (9c1e3d7..5981e30)", "result": "Critical 0, Important 7, Minor 6; all Important + selected Minor fixed in 54435cf, opus re-review: all addressed", "evidence": "docs/development/dcx2-stage6-8/reports/final-review1.md; docs/development/dcx2-stage6-8/reports/final-fix-report.md"},
+    {"scope": "Codex read-only branch review (9c1e3d7..b590715)", "result": "3 Important, 1 Minor; all fixed in b28c39c (backend) and 515430d (frontend)", "evidence": "docs/development/dcx2-stage6-8/reports/codex-branch-review1.md; docs/development/dcx2-stage6-8/reports/review-fix1-report.md"},
+    {"scope": "QA fixes 1-4 (515430d, d9dc35b, 975823d, 57c00f5)", "result": "each diff reviewed by controller, targeted + full suites re-run, browser re-checked", "evidence": "docs/development/dcx2-stage6-8/reports/qa-fix1-report.md; qa-fix2-report.md; qa-fix3-report.md; qa-fix4-report.md"}
+  ],
+  "resolvedFindings": [
+    "Codex review: dims tagProbs null crash -> b28c39c",
+    "Codex review: persona generation/rows read in separate snapshots -> b28c39c",
+    "Codex review: stage6 version compare scanned wrong directory -> b28c39c",
+    "Codex review: autosave lost on navigation within debounce -> 515430d",
+    "QA-S5: sidebar missing clustering completion (segmentDone) -> 975823d",
+    "QA-S7b: compare '3단계 이후 보기' crash on stage3-5 metrics shape -> 57c00f5"
+  ],
+  "deferred": [
+    "Stopword list for L2/L3 vocabulary (user decision at UAT)",
+    "Server-side stale-run rejection of drafts, paused worker stop on read-only version, request-memo run check, stale banner wording (ledger deferred minors)",
+    "Low: _SelectedVectors.get per-row stat; some English StoreError messages may surface as reasons",
+    "UAT observation: product name 'LG 에어컨' extracted as an environment dims code (QA-L1)",
+    "UAT observation: compare stage3-6 tables show raw metric keys / report dump"
+  ]
+}
