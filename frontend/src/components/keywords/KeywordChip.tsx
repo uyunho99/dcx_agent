@@ -7,14 +7,14 @@ import { isMoveShortcut } from '@/lib/logic/keywordKeys';
 import { badgeLabels } from './taxonomy';
 import { RejectPopover } from './RejectPopover';
 import { keywordLabel, keywordTitle } from './keywordDisplay';
-export function KeywordChip({ keyword: k, groups, tabIndex, onFocus, onKeyDown, onReview, onMove, disabled }: {
-  keyword: Keyword; groups: Destination[]; tabIndex: number; onFocus: () => void; onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
+export function KeywordChip({ keyword: k, roundTag, groups, tabIndex, onFocus, onKeyDown, onReview, onMove, disabled }: {
+  keyword: Keyword; roundTag?: string; groups: Destination[]; tabIndex: number; onFocus: () => void; onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
   onReview: (k: Keyword, rejection: Rejection | null, destination?: Destination) => Promise<void>; onMove: (k: Keyword, to: Destination) => Promise<void>; disabled: boolean;
 }) {
   const [mode, setMode] = useState<'reject' | 'move' | null>(null);
   const { request } = useSidebarAuto();
   useEffect(() => { if (mode !== null) return request(); }, [mode, request]);
-  const labels = [...new Set([...(k.badges ?? []).map(b => badgeLabels[b]).filter(Boolean), ...(k.origin === 'manual' ? ['수동'] : k.origin === 'suggested' ? ['추천'] : []), ...(k.volume?.source === 'unconnected' ? ['미연결'] : []), ...(k.volume?.error ? ['조회 실패'] : [])])];
+  const labels = [...new Set([...(roundTag ? [roundTag] : []), ...(k.badges ?? []).map(b => badgeLabels[b]).filter(Boolean), ...(k.origin === 'manual' ? ['수동'] : k.origin === 'suggested' ? ['추천'] : []), ...(k.volume?.source === 'unconnected' ? ['미연결'] : []), ...(k.volume?.error ? ['조회 실패'] : [])])];
   const volume = k.volume?.monthly;
   const label = keywordLabel(k);
   const toggle = () => { if (k.status === 'rejected') void onReview(k, null).catch(() => {}); else setMode('reject'); };
