@@ -49,6 +49,11 @@ def _completion(sid, data, version=None):
             return False
         return data.get("clustering", {}).get("status") == "done"
 
+    def segment_done():
+        if "stage6" in data.get("stale", {}):
+            return False
+        return data.get("segment", {}).get("status") == "done"
+
     def export_done():
         export_ref = data.get("training", {}).get("exportRef")
         return isinstance(export_ref, str) and bool(export_ref.strip())
@@ -60,6 +65,7 @@ def _completion(sid, data, version=None):
         ("labelingDone", labeling_done),
         ("exportDone", export_done),
         ("clustersDone", clusters_done),
+        ("segmentDone", segment_done),
     ):
         try:
             result[field] = compute()

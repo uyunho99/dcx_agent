@@ -93,6 +93,9 @@ it('checks crawl when preprocess is opened without crawl polling', () => {
 });
 
 describe('T15 stage completion', () => {
+  it('marks stage 6 complete for the server segment completion payload (QA-S5)', () => {
+    expect(completedThrough({ completion: { clustersDone: false, segmentDone: true } })).toBe(6);
+  });
   it('uses segmentDone even when legacy completion is false', () => {
     expect(completedThrough({ completion: { ...completion, segmentDone: true } })).toBe(6);
     const html = sidebar('train-check', { completion: { segmentDone: true } });
