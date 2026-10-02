@@ -59,7 +59,7 @@ def _evidence(index, offset=0, *, role='support', novelty='low', verified=True):
                 known_match=[], tab=['all', 'new'], role=role)
 
 
-def make_package(*, personas=4, contexts=(3, 3, 3, 2), big_persona_contexts=None, seed=42) -> dict:
+def make_package(*, personas=4, contexts=(3, 3, 3, 2), big_persona_contexts=None, seed=42, qa_failed_persona=None) -> dict:
     counts = _counts(personas, contexts, big_persona_contexts)
     blocks, index = [], 0
     for p, count in enumerate(counts):
@@ -84,7 +84,7 @@ def make_package(*, personas=4, contexts=(3, 3, 3, 2), big_persona_contexts=None
         importance = sum(c['metrics']['importance'] for c in rows)/count
         satisfaction = sum(c['metrics']['satisfaction'] for c in rows)/count
         blocks.append(dict(persona_evidence=dict(cluster_id='CL0', persona_id=pid,
-            persona_name=f'쾌적한 냉방 사용자 {p+1}', desire=f'편안한 실내 생활을 원한다 {p+1}',
+            persona_name=f'쾌적한 냉방 사용자 {p+1}' + (' [QA-P6:invalid-card]' if p == qa_failed_persona else ''), desire=f'편안한 실내 생활을 원한다 {p+1}',
             goal=['쾌적한 온도 유지', '전기료 절약'], desire_support=[_evidence(first)],
             artifacts=[dict(name='에어컨', mention_count=count)],
             metrics=_metrics(importance, satisfaction, count * DOCS_PER_CONTEXT),

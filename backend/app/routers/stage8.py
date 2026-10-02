@@ -6,6 +6,7 @@ client's nested snake_case payloads intact while exposing runId at the boundary.
 from typing import Annotated, Literal
 from functools import wraps
 import json
+import sqlite3
 
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
@@ -120,21 +121,25 @@ def start_persona(sid: str, body: PersonaRun = PersonaRun(), version: str | None
 @router.get('/persona/{sid}/status')
 def persona_status(sid: str, version: str | None = None):
     data, store = _open(sid, version)
-    # Historical versions remain immutable even when their source is old.
     try:
-        sessions.assert_writable(sid, data['version'])
-    except sessions.StoreError:
-        pass
-    else:
-        if pipeline.mark_stale_if_changed(sid, data['version']):
-            data, store = _open(sid, data['version'])
-    try:
-        package = load_package(sid, data['version'])
-        has_package = True
-        evidence_required = not pipeline._confirmed_matches(sid, data['version'], package)
-    except PackageMissing:
-        has_package = False
-        evidence_required = True
+        # Historical versions remain immutable even when their source is old.
+        try:
+            sessions.assert_writable(sid, data['version'])
+        except sessions.StoreError:
+            pass
+        else:
+            if pipeline.mark_stale_if_changed(sid, data['version']):
+                data, store = _open(sid, data['version'])
+        try:
+            package = load_package(sid, data['version'])
+            has_package = True
+            evidence_required = not pipeline._confirmed_matches(sid, data['version'], package)
+        except PackageMissing:
+            has_package = False
+            evidence_required = True
+    except sqlite3.Error as exc:
+        raise sessions.StoreError('근거 상태를 확인하지 못했습니다. 다시 시도하세요.',
+                                  409, 'evidence_unavailable') from exc
     state = data.get('persona', {})
     cards = store.read('cards') or {}
     result = dict(package=has_package, evidence_required=evidence_required, status=state.get('status', 'none'), run=cards.get('run', state.get('run')),
@@ -207,6 +212,17 @@ def start_insight(sid: str, body: InsightRun, version: str | None = None):
             if not ids or (body.target is not None and body.target not in ids):
                 raise sessions.StoreError('Unknown insight target', 400, 'validation')
     work = runner.start(sid, data['version'], 'insight', body.model_dump(exclude_none=True))
+    # Register the accepted run even if the child fails before its first checkpoint.
+    # Do not overwrite a checkpoint already published by a fast worker.
+    with sessions.locked(sid):
+        sessions.assert_writable(sid, data['version'])
+        path = store.path.parent / 'session.json'
+        accepted = sessions.read_json(path)
+        state = accepted.setdefault('insight', {})
+        if state.get('run') != work['runId']:
+            state.update(run=work['runId'], mode=body.mode, target=body.target,
+                         status='running', reason=None)
+        sessions.write_json(path, accepted)
     return {'runId': work['runId']}
 
 
@@ -279,7 +295,7 @@ def _insight_worker(sid, data):
     if status not in ('idle', 'running', 'done', 'failed', 'interrupted'):
         status = 'idle'
     if status in ('failed', 'interrupted') and (not isinstance(reason, str) or not any('가' <= c <= '힣' for c in reason)):
-        reason = insights.FAILURE_COPY if status == 'failed' else '작업이 중단되었습니다. 이어서 진행하세요.'
+        reason = (insights.CONCEPT_FAILURE_COPY if mode == 'concept' else insights.FAILURE_COPY) if status == 'failed' else '작업이 중단되었습니다. 이어서 진행하세요.'
     if status in ('idle', 'running', 'done'):
         reason = None
     return dict(status=status, reason=reason, runId=run_id, mode=mode, target=target)

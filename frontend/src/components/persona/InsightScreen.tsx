@@ -40,7 +40,8 @@ export function InsightScreen({sid,version,readonly = false,initialConfirmed = [
  const worker = data?.worker;
  const running = worker?.status === 'running';
  const stopped = worker?.status === 'failed' || worker?.status === 'interrupted';
- const disabled = readonly || busy || !!pending || running;
+ const failureVisible = stopped && (!pending || worker.runId === pending.runId || (!worker.runId && worker.mode === pending.mode && worker.target === (pending.target ?? null)));
+ const disabled = readonly || busy || (!!pending && !failureVisible) || running;
  useStageCompletionRefresh(data?.insights.revision ? `insight:${data.insights.revision}` : null);
  useEffect(() => {
   let active = true;
@@ -55,7 +56,7 @@ export function InsightScreen({sid,version,readonly = false,initialConfirmed = [
     const result = await api.getInsights(sid,version);
     if (!active) return;
     setData(result);setConfirmed(result.confirmed ?? []);
-    if (result.worker && result.worker.status !== 'running' && (!pending || result.worker.runId === pending.runId)) {setPending(null);return;}
+    if (result.worker && result.worker.status !== 'running' && (!pending || result.worker.runId === pending.runId || (!result.worker.runId && result.worker.mode === pending.mode && result.worker.target === (pending.target ?? null)))) {setPending(null);return;}
     if (++count >= 120) {setPending(null);setError('처리 상태를 확인하지 못했습니다. 다시 불러오세요.');}
    } catch(cause) {if(active) {setPending(null);setError(displayError(cause));}}
   },3000);
@@ -81,10 +82,10 @@ export function InsightScreen({sid,version,readonly = false,initialConfirmed = [
  const mean = (historicalInsights ? null : data?.bars?.mean) ?? number(record(metricItems[0]).opportunity_mean);
  return <div className="space-y-5">
   <header className="ds-actions"><h1 className="ds-t-title">인사이트</h1>{!currentItems.length && <Button variant="primary" disabled={disabled} onClick={() => void mutate(async () => {const run = await api.startInsight(sid,{mode:'derive'},version);setPending({runId:run.runId,mode:'derive'});})}>인사이트 도출</Button>}</header>
-  {readonly && <p>읽기 전용</p>}{(pending || running) && <p role="status">처리 중…</p>}
+  {readonly && <p>읽기 전용</p>}{((pending && !failureVisible) || running) && <p role="status">처리 중…</p>}
   {error && <div role="alert">{error}<Button onClick={() => setRetry(value => value+1)}>다시 불러오기</Button></div>}
   {!data && !error && <p role="status">불러오는 중…</p>}
-  {stopped && !pending && <div role="alert"><p>{worker.mode === 'concept' ? '컨셉을 만들지 못했습니다. 다시 시도하세요.' : '인사이트를 만들지 못했습니다. 다시 시도하세요.'}</p>{worker.reason && <p>{worker.reason}</p>}<Button disabled={disabled} onClick={() => void mutate(async () => {const mode = worker.mode ?? 'derive';const run = await api.startInsight(sid,{mode,...(worker.target ? {target:worker.target} : {})},version);setPending({runId:run.runId,mode,target:worker.target ?? undefined});})}>{worker.status === 'interrupted' ? '이어서 진행' : '다시 시도'}</Button></div>}
+  {failureVisible && <div role="alert"><p>{worker.mode === 'concept' ? '컨셉을 만들지 못했습니다. 다시 시도하세요.' : '인사이트를 만들지 못했습니다. 다시 시도하세요.'}</p>{worker.reason && <p>{worker.reason}</p>}<Button disabled={disabled} onClick={() => void mutate(async () => {const mode = worker.mode ?? 'derive';const run = await api.startInsight(sid,{mode,...(worker.target ? {target:worker.target} : {})},version);setPending({runId:run.runId,mode,target:worker.target ?? undefined});})}>{worker.status === 'interrupted' ? '이어서 진행' : '다시 시도'}</Button></div>}
   {data && !currentItems.length && !pending && !running && !stopped && <p role="status">페르소나를 바탕으로 인사이트를 도출하세요.</p>}
   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
    <main className="lg:col-span-2 min-w-0 space-y-5">

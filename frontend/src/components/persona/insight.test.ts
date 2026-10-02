@@ -57,3 +57,11 @@ it('suggestion API explicitly sends prev_session only when invoked', async () =>
  const fetcher = vi.fn().mockResolvedValue({ok:true,json:async () => ({id:'K1'})}); vi.stubGlobal('fetch',fetcher);
  try {await addSuggestedKnownInsight('s',{type:'statement',text:'추천'},'v2');expect(fetcher).toHaveBeenCalledWith(expect.stringContaining('/known/s?version=v2'),expect.objectContaining({method:'POST',body:JSON.stringify({type:'statement',text:'추천',from:'prev_session'})}));} finally {vi.unstubAllGlobals();}
 });
+
+import { RevisionList } from './RevisionList';
+it('QA-F5 localizes revision sources and timestamps while retaining chat messages',()=>{
+ const at='2026-10-02T10:07:00Z';
+ const html=renderToStaticMarkup(createElement(RevisionList,{revisions:['generate','chat','revert'].map((by,i)=>({revision:i+1,by,createdAt:at,message:by==='chat'?'메시지 보존':undefined})),currentRevision:3,onView:vi.fn(),onRevert:vi.fn()}));
+ for(const value of ['생성','채팅 수정','되돌리기','메시지 보존',new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(at))])expect(html).toContain(value);
+ expect(html).not.toContain(at);expect(html).not.toContain('generate');
+});

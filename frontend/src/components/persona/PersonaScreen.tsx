@@ -2,6 +2,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import * as api from '@/lib/api/persona';
+import { getInsights, startInsight } from '@/lib/api/insight';
 import { getSegmentPersonas } from '@/lib/api/segment';
 import { addKnownInsight } from '@/lib/api/known';
 import { ApiError, displayError } from '@/lib/api/errors';
@@ -121,14 +122,18 @@ export function PersonaScreen({sid, version, readonly = false}: Props) {
   // Equal-weight mean across Context support ratios; empty support is zero.
   const support = supportValues.length ? supportValues.reduce((sum, value) => sum + value, 0) / supportValues.length : 0;
   const confidence = support >= .7 ? '상' : support >= .4 ? '중' : '하';
-  const constraintSummary = prescription?.blocked || constraints.some(c => c.verdict === 'violates') ? '✕ blocked' : constraints.some(c => c.verdict === 'review') ? '⚠ review' : prescription ? '✓ ok' : '—';
+  const constraintSummary = prescription?.blocked || constraints.some(c => c.verdict === 'violates') ? '✕ 차단' : constraints.some(c => c.verdict === 'review') ? '⚠ 검토' : prescription ? '✓ 통과' : '—';
   const contextRows = data?.map?.points.map(point => ({...point,persona_name:name(point.persona_id),name:String(rows(body(point.persona_id).contexts).find(c => c.context_id === point.context_id)?.context_name ?? point.context_id)})) ?? [];
   const highlightedRow = contextRows.find(row => row.context_id === highlighted);
-  if (status?.package === false || missing || data?.missing) return <section className="ds-card space-y-4"><p>{missingCopy}</p><Button onClick={() => router.push('/pipeline/evidence')}>근거 탐색으로</Button></section>;
-  if (status?.evidence_required) return <section className="ds-card space-y-4"><p>근거 탐색을 다시 실행한 뒤 페르소나를 만드세요.</p><Button onClick={() => router.push('/pipeline/evidence')}>근거 탐색으로</Button></section>;
+  if (status?.package === false || missing || data?.missing) return <section className="ds-card space-y-4"><p>{missingCopy}</p>{!readonly && <Button onClick={() => router.push('/pipeline/evidence')}>근거 탐색으로</Button>}</section>;
+  if (status?.evidence_required) return <section className="ds-card space-y-4"><p>근거 탐색을 다시 실행한 뒤 페르소나를 만드세요.</p>{!readonly && <Button onClick={() => router.push('/pipeline/evidence')}>근거 탐색으로</Button>}</section>;
   const start = () => {
-    if (complete) return router.push('/pipeline/insights');
     if (blocked) return;
+    if (complete) return mutate(async () => {
+      const insights = await getInsights(sid, version);
+      if (!insights.insights.revision && insights.worker?.status !== 'running') await startInsight(sid, {mode:'derive'}, version);
+      router.push('/pipeline/insights');
+    });
     const fresh = status?.status === 'stale';
     if (fresh && !globalThis.confirm('페르소나를 다시 만들면 인사이트와 컨셉도 지워집니다. 계속할까요?')) return;
     return mutate(() => api.startPersona(sid, fresh ? {fresh:true} : {}, version), true);
@@ -159,7 +164,7 @@ export function PersonaScreen({sid, version, readonly = false}: Props) {
             {tab === '8-A CCM' && <><p>각 칸은 개인이 아니라 그 Context에서 관측되는 담론입니다. 칸을 누르면 근거 원문이 펼쳐집니다.</p><CCMTable contexts={ccm}/></>}
             {tab === '8-B 수렴' && <><p role="note">의도 ≠ 행동</p><GradeMark grade="speculated"/><p>{label(record(card.intent).text)}</p><p>수렴 Context · {label(record(card.intent).basis_context_ids)}</p><p>유보 Context · {label(record(card.intent).reserved_context_ids)}</p></>}
             {tab === '8-C 속성' && <dl className="space-y-3">{[['usage_context','사용 맥락'],['jtbd','JTBD'],['journey','여정'],['sensitivity','민감도'],['values','가치관'],['decision_style','결정 방식']].map(([key,title]) => <div key={key}><dt>{title}</dt><dd>{['usage_context','jtbd'].includes(key) && <GradeMark grade={grade(record(card.summary)[key])}/>} {label(card[key])}{['usage_context','jtbd'].includes(key) && <details><summary>근거 원문</summary>{evidence(null,key)}</details>}</dd></div>)}</dl>}
-            {tab === '8-D 처방' && <>{prescription ? <><h3>{prescription.blocked ? '처방 차단됨' : '처방'}</h3><p>{prescription.direction}</p><p>핵심 지표 · {displayValue(prescription.target_metric)}</p><p>기여 · {prescription.contribution}</p><p>여정 가설 · {prescription.journey_hypothesis}</p>{prescription.represcribed && <Badge>재처방</Badge>}</> : <p>처방이 없습니다.</p>}<ul>{constraints.map((constraint,index) => <li key={index}>{constraint.verdict === 'ok' ? '✓' : '⚠'} {constraint.constraint} · {constraint.reason}{prescription?.blocked && constraint.verdict === 'violates' && <p>{`사내 제약 '${constraint.constraint}'를 지키는 처방을 만들지 못했습니다.`}</p>}</li>)}</ul></>}
+            {tab === '8-D 처방' && <>{prescription ? <><h3>{prescription.blocked ? '차단된 처방' : '처방'}</h3>{prescription.blocked ? <p><s className="text-muted" style={{color:'var(--sub)'}}>{prescription.direction}</s></p> : <><p>{prescription.direction}</p><p>핵심 지표 · {displayValue(prescription.target_metric)}</p><p>기여 · {prescription.contribution}</p><p>여정 가설 · {prescription.journey_hypothesis}</p></>}{prescription.represcribed && <Badge>재처방</Badge>}</> : <p>처방이 없습니다.</p>}<ul>{constraints.map((constraint,index) => <li key={index}>{constraint.verdict === 'ok' ? '✓' : '⚠'} {constraint.constraint} · {constraint.reason}{prescription?.blocked && constraint.verdict === 'violates' && <p>{`사내 제약 '${constraint.constraint}'를 지키는 처방을 만들지 못했습니다.`}</p>}</li>)}</ul></>}
             {tab === '구조 트리' && (data.tree ? <HierarchyTree root={hierarchy(data.tree)}/> : <p>구조 트리가 준비되지 않았습니다.</p>)}
           </div>
         </>}

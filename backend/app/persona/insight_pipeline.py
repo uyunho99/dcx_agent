@@ -127,10 +127,10 @@ def run(context):
             publish_status(sid, version, 'interrupted', reason=LLM_REASON)
             raise
         except Exception as exc:
-            from app.persona.insights import FAILURE_COPY
+            from app.persona.insights import FAILURE_COPY, CONCEPT_FAILURE_COPY
             from app.persona.source import SourceChanged
             reason = ('근거 또는 확정값이 바뀌었습니다. 페르소나를 다시 만들어 주세요.'
                       if isinstance(exc, SourceChanged) or getattr(exc, 'kind', None) == 'stale'
-                      else FAILURE_COPY)
+                      else CONCEPT_FAILURE_COPY if mode == 'concept' else FAILURE_COPY)
             publish_status(sid, version, 'failed', reason=reason)
             raise

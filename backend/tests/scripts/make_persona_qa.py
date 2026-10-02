@@ -24,7 +24,7 @@ def main():
     parser.add_argument('--big-persona', action='store_true')
     parser.add_argument('--seed', type=int, default=42)
     args = parser.parse_args()
-    session = write_session_with_package(args.local_data_dir, seed=args.seed,
+    session = write_session_with_package(args.local_data_dir, seed=args.seed, qa_failed_persona=3,
                                         big_persona_contexts=10 if args.big_persona else None)
     print(json.dumps(dict(sid=session.sid, version=session.version,
         package=str(args.local_data_dir.resolve() / 'sessions' / session.sid /

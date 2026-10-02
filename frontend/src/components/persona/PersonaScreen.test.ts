@@ -74,9 +74,9 @@ it.each([[.7,'상'],[.4,'중'],[.39,'하']])('M8 confidence from traceable suppo
  h.data.cards.personas.P1.prescription={blocked:false,constraint:[{verdict:'ok'}]};
  button(draw(),'Persona 카드').props.onClick();
  expect(text(draw())).toContain(`신뢰도 ${expected}`);
- expect(text(draw())).toContain('처방 · 제약 ✓ ok');
+ expect(text(draw())).toContain('처방 · 제약 ✓ 통과');
 });
-it.each([[false,'review','⚠ review'],[true,'violates','✕ blocked']])('M8 constraint summary %s %s',(blocked,verdict,expected)=>{
+it.each([[false,'review','⚠ 검토'],[true,'violates','✕ 차단']])('M8 constraint summary %s %s',(blocked,verdict,expected)=>{
  h.data.cards.personas.P1.prescription={blocked,constraint:[{verdict}]};
  button(draw(),'Persona 카드').props.onClick();expect(text(draw())).toContain(`처방 · 제약 ${expected}`);
 });
@@ -114,4 +114,22 @@ it('N6 retains decimal metrics greater than one in CCM and prescription',()=>{
  button(draw(),'Persona 카드').props.onClick();
  expect(nodes(draw()).find(n=>n.type===CCMTable).props.contexts[0].cells.opportunity.text).toBe('1.37');
  button(draw(),'8-D 처방').props.onClick();expect(text(draw())).toContain('핵심 지표 · 1.37');
+});
+
+vi.mock('@/lib/api/insight',()=>({getInsights:vi.fn(),startInsight:vi.fn().mockResolvedValue({runId:'ir1'})}));
+import * as insightApi from '@/lib/api/insight';
+it('QA-F3 keeps blocked text muted and struck without active metrics',()=>{
+ h.data.cards.personas.P1.prescription={blocked:true,direction:'위반 처방',target_metric:'만족도',contribution:'효과',constraint:[{constraint:'금지',verdict:'violates',reason:'위반 이유'}]};
+ button(draw(),'Persona 카드').props.onClick();button(draw(),'8-D 처방').props.onClick();
+ const tree=draw();expect(text(tree)).toContain('차단된 처방');expect(text(tree)).toContain('위반 이유');
+ expect(text(tree)).not.toContain('핵심 지표');expect(text(tree)).not.toContain('기여 ·');
+ const struck=nodes(tree).find(n=>n.type==='s');expect(text(struck)).toBe('위반 처방');expect(struck.props.className).toContain('text-muted');
+});
+it.each([0,1])('QA-F6 derives only without an existing revision (%s)',async revision=>{
+ vi.mocked(insightApi.getInsights).mockResolvedValue({insights:{revision,items:[],history:[]},concepts:{revision:0,items:[],history:[]},bars:null,radar:null,worker:{status:'idle',reason:null,runId:null,mode:null,target:null}});
+ await button(draw(),'인사이트 도출').props.onClick();
+ expect(insightApi.startInsight).toHaveBeenCalledTimes(revision?0:1);expect(h.push).toHaveBeenCalledWith('/pipeline/insights');
+});
+it.each(['evidence_required','package'])('m3 hides evidence action in readonly %s guidance',key=>{
+ h.data.status[key]=key==='package'?false:true;expect(button(draw(true),'근거 탐색으로')).toBeUndefined();
 });

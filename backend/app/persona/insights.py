@@ -21,6 +21,7 @@ from app.persona.params import INSIGHT_RANGE, RADAR_AXES
 from app.persona.radar import embed_axes, radar, session_percentiles
 from app.persona.store import PersonaStore
 
+CONCEPT_FAILURE_COPY = '컨셉을 만들지 못했습니다. 다시 시도하세요.'
 FAILURE_COPY = '인사이트를 만들지 못했습니다. 다시 시도하세요.'
 Text = Annotated[str, Field(min_length=1)]
 

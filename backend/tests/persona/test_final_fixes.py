@@ -360,7 +360,7 @@ def test_worker_contract_uses_durable_supervisor(ready, status):
             json.dumps({'mode': 'concept', 'target': 'I2'}), os.getpid(), status,
             time.time(), time.time(), 'durable failure' if status != 'running' else None))
     result = stage8.get_insights(sid)['worker']
-    assert result == dict(status=status, reason=(insights.FAILURE_COPY if status == 'failed' else '작업이 중단되었습니다. 이어서 진행하세요.') if status != 'running' else None,
+    assert result == dict(status=status, reason=(insights.CONCEPT_FAILURE_COPY if status == 'failed' else '작업이 중단되었습니다. 이어서 진행하세요.') if status != 'running' else None,
                          runId='durable', mode='concept', target='I2')
 
 
