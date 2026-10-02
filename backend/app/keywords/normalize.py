@@ -6,6 +6,8 @@ from .models import Keyword
 from .taxonomy import AXES, is_valid
 
 BANNED = {"후기", "비교", "추천", "가격", "장단점", "선택", "고민", "리뷰", "평가", "만족", "불만"}
+MAX_WORDS = 2  # context word + core word; longer phrases rarely match search results
+MAX_CHARS = 8  # normalized length, matching the keyword form rule in the round prompts
 
 
 def norm_key(kw: str) -> str:
@@ -33,6 +35,12 @@ def clean_generated(
         key = norm_key(kw)
         if len(key) < 2:
             logs.append(f"Dropped {kw!r}: normalized keyword is shorter than 2 characters.")
+            continue
+        if len(kw.split()) > MAX_WORDS:
+            logs.append(f"Dropped {kw!r}: more than {MAX_WORDS} words.")
+            continue
+        if len(key) > MAX_CHARS:
+            logs.append(f"Dropped {kw!r}: normalized keyword is longer than {MAX_CHARS} characters.")
             continue
         if key in banned_keys:
             logs.append(f"Dropped {kw!r}: banned keyword.")

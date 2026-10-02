@@ -120,7 +120,7 @@ def test_r3_inputs_recorded(client, backend):
     start(client, 3)
     inputs = store.load_session('test')['keywordRounds']['3']['inputs']
     assert inputs == {'rejection': 'empty:no_rejections', 'coverage': 'ok',
-                      'prior_session': 'empty:no_prior_session', 'promptVersion': 'r3.v1'}
+                      'prior_session': 'empty:no_prior_session', 'promptVersion': 'r3.v2'}
     assert [a.title for a in backend.calls[-1].attachments] == ['project_context.md', 'keyword_feedback.md']
     assert backend.calls[-1].attachments[0].body.startswith('원문 맥락')
 
