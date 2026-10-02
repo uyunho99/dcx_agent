@@ -3,10 +3,17 @@
 Step artifacts are local to a segmentation, while dims owns its cross-version
 cache. A fresh run replaces layers; resume retains artifacts and rotates the
 public run UUID so old confirmation clients cannot write to the resumed run.
+
+T10 args contract: {'k': int | None, 'fresh': bool}, defaulting to None/False.
+With k=None and fresh=False, reuse any checkpoint (including completed runs)
+and keep confirmations. An integer k or fresh=True resets L1-L3 and confirmations.
+T10 sends fresh=True only after confirmReset. Without a checkpoint, initialize
+new layers. The legacy resume argument is unnecessary and cannot override reset.
 """
 from collections import Counter, defaultdict
 import hashlib
 import os
+import shutil
 import tempfile
 import json
 from types import FunctionType
@@ -18,7 +25,7 @@ from app.context import store as sessions
 from app.context.stale import clear_stale
 from app.context.versions import version_dir
 from app.llm import registry
-from app.llm.base import failure, validate
+from app.llm.base import validate
 from app.segment import ctfidf, dims, drafts, inputs, l1, l2, l3, params, quality, signals
 from app.segment.store import SegmentStore
 
@@ -105,13 +112,13 @@ class _Calls:
         digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
         path = self.root / 'draft_cache' / f'{digest}.json'
         cached = sessions.read_json(path) if name != 'dims' else None
-        if cached is not None:
-            return validate(task, cached['raw']) if cached['ok'] else failure('backend', 'Draft unavailable')
+        if cached is not None and cached.get('ok'):
+            return validate(task, cached['raw'])
         self.counts[name] += 1
         _write(self.path, self.counts)
         result = registry.run_task(task)
-        if name != 'dims':
-            _write(path, {'ok': result.ok, 'raw': result.raw})
+        if name != 'dims' and result.ok:
+            _write(path, {'ok': True, 'raw': result.raw})
         return result
 
 
@@ -197,15 +204,14 @@ def run(context):
     with sessions.locked(sid):
         sessions.assert_writable(sid, version)
     checkpoint = sessions.read_json(root / 'checkpoint.json') or {}
-    resume = bool(checkpoint and (context.args.get('resume') or
-                  ('drafts' not in checkpoint.get('done', []) and 'k' not in context.args)))
+    resume = bool(checkpoint and context.args.get('k') is None
+                  and not context.args.get('fresh', False))
     run_id = str(uuid.uuid4())
     store = SegmentStore.open(sid, version)
     if not resume:
         # Remove only this segmentation's artifacts; shared dims/nouns survive.
-        import shutil
         for path in root.iterdir():
-            if path.name != 'segment.sqlite':
+            if not path.name.startswith('segment.sqlite'):
                 if path.is_dir():
                     shutil.rmtree(path)
                 else:
@@ -214,11 +220,16 @@ def run(context):
         with store._db(write=True) as db:
             db.execute('DELETE FROM meta')
         checkpoint = {'done': [], 'k': context.args.get('k')}
+    if resume and 'drafts' in checkpoint.get('done', []):
+        with store._db() as db:
+            row = db.execute("SELECT value FROM meta WHERE key='draft_flags'").fetchone()
+        if row and any('draft_failed' in flags for flags in json.loads(row[0]).values()):
+            checkpoint['done'].remove('drafts')
     store.set_run(run_id)
     checkpoint['run'] = run_id
     _write(root / 'checkpoint.json', checkpoint)
     all_params = {k: v for k, v in vars(params).items() if k.isupper()}
-    _session(sid, version, dict(status='running', run=run_id, params=all_params), reset=True)
+    _session(sid, version, dict(status='running', run=run_id, params=all_params), reset=not resume)
     state = sessions.read_json(root / 'state.json') or {'warnings': []}
     source = None
     step = 'load'
@@ -330,7 +341,7 @@ def run(context):
                 generate = _bind(drafts.generate_drafts, _draft=_bind(drafts._draft, registry=calls))
                 result = generate(sid, _DraftStore(store, pulse), session.get('projectContext', {}), context_reps=reps)
                 for persona in store.personas():
-                    persona['flags'] = list(dict.fromkeys((persona['flags'] or []) + result['flags'].get(persona['persona_id'], [])))
+                    persona['flags'] = list(dict.fromkeys([flag for flag in (persona['flags'] or []) if flag != 'draft_failed'] + result['flags'].get(persona['persona_id'], [])))
                     _save_row(store, 'personas', 'persona_id', persona)
             _write(root / 'state.json', state)
             checkpoint['done'].append(step)
@@ -341,6 +352,8 @@ def run(context):
         _session(sid, version, dict(status='review', step='drafts', progress=1,
             k={'L1': state['L1']['k'], 'suggested': state['L1']['suggested']},
             confirm=_confirm_counts(store), savedAt=result['at']))
+        if resume:
+            mark_done_if_complete(sid, version)
         return result
     except _Stopped:
         _session(sid, version, {'status': 'interrupted'})

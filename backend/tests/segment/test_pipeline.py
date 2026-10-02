@@ -121,14 +121,15 @@ def test_heartbeat_each_persona(setup):
         assert ids <= {d.get('persona') for _, d in ctx.events if d.get('step') == step}
 
 
-def test_rerun_with_k_resets_confirmations(setup):
+@pytest.mark.parametrize('args', [{'k': 3, 'fresh': False}, {'k': None, 'fresh': True}])
+def test_rerun_with_k_resets_confirmations(setup, args):
     fixture, _ = setup(docs_per_context=12)
     pipeline.run(Context(fixture.sid))
     confirm_all(fixture.sid)
     previous = report(fixture.sid)['run']
-    pipeline.run(Context(fixture.sid, args={'k': 3}))
+    pipeline.run(Context(fixture.sid, args=args))
     store = SegmentStore.open(fixture.sid, 'v1')
-    assert len(store.clusters()) == 3
+    assert len(store.clusters()) == (args['k'] or 5)
     assert all(not r['confirmed_at'] for layer in ('clusters', 'personas', 'contexts') for r in getattr(store, layer)())
     assert report(fixture.sid)['run'] != previous
     assert not sessions.load_session(fixture.sid)['completion'].get('segmentDone')
@@ -271,3 +272,91 @@ def test_resume_mid_dims_reuses_completed_batches(setup):
     later_ids = {a['title'] for name, attachments in calls[1:] if name == 'segment.dims' for a in attachments}
     assert not first_ids & later_ids
     assert report(fixture.sid)['dims']['extracted'] > len(first_ids)
+
+
+@pytest.mark.parametrize('args', [{}, {'k': None, 'fresh': False}])
+@pytest.mark.parametrize('completed', [False, True])
+def test_default_run_keeps_confirmations(setup, monkeypatch, args, completed):
+    fixture, calls = setup(docs_per_context=4)
+    pipeline.run(Context(fixture.sid, stop_after=None if completed else 'dims'))
+    confirm_all(fixture.sid)
+    store = SegmentStore.open(fixture.sid, 'v1')
+    before = {layer: getattr(store, layer)() for layer in ('clusters', 'personas', 'contexts')}
+    monkeypatch.setattr(pipeline.l1, 'cluster', lambda *a, **kw: pytest.fail('L1 recalculated'))
+    pipeline.run(Context(fixture.sid, args=args))
+    for layer, rows in before.items():
+        after = getattr(store, layer)()
+        assert [r['confirmed_at'] for r in after] == [r['confirmed_at'] for r in rows]
+        assert [r['name'] for r in after] == [r['name'] for r in rows]
+    assert sessions.load_session(fixture.sid)['completion']['segmentDone']
+
+
+def test_failed_persona_draft_retried_on_resume(setup, monkeypatch):
+    from app.llm.base import failure
+    fixture, _ = setup(docs_per_context=4)
+    original = registry.run_task
+    attempts = []
+    def fail_once(task):
+        if task.task == 'segment.persona_draft':
+            attempts.append(task.model_dump(exclude={'output_schema'}))
+            if len(attempts) == 1:
+                return failure('backend', 'offline')
+        return original(task)
+    monkeypatch.setattr(registry, 'run_task', fail_once)
+    pipeline.run(Context(fixture.sid, stop_after='drafts'))
+    store = SegmentStore.open(fixture.sid, 'v1')
+    failed = [p['persona_id'] for p in store.personas() if 'draft_failed' in p['flags']]
+    assert len(failed) == 1
+    pipeline.run(Context(fixture.sid, args={'k': None, 'fresh': False, 'resume': True}))
+    assert attempts.count(attempts[0]) == 2
+    assert all('draft_failed' not in p['flags'] and p['desire_draft'] for p in store.personas())
+    assert all('draft_failed' not in p['flags'] for p in report(fixture.sid)['personas'])
+
+
+def test_fresh_cleanup_preserves_sqlite_sidecars(setup, monkeypatch):
+    fixture, _ = setup(docs_per_context=4)
+    store = SegmentStore.open(fixture.sid, 'v1')
+    root = version_dir(fixture.sid, 'v1') / 'segment'
+    # Sentinels are inserted after SQLite opens; abort before any database writes.
+    # This isolates cleanup ownership without asking SQLite to consume fake journals.
+    def opened(*args):
+        for suffix in ('-journal', '-wal', '-shm'):
+            (root / f'segment.sqlite{suffix}').write_bytes(b'sidecar')
+        (root / 'obsolete.json').write_text('{}')
+        (root / 'draft_cache').mkdir()
+        return store
+    class CleanupChecked(Exception):
+        pass
+    def check_cleanup(**kwargs):
+        for suffix in ('-journal', '-wal', '-shm'):
+            assert (root / f'segment.sqlite{suffix}').read_bytes() == b'sidecar'
+        assert not (root / 'obsolete.json').exists()
+        assert not (root / 'draft_cache').exists()
+        raise CleanupChecked
+    monkeypatch.setattr(pipeline.SegmentStore, 'open', opened)
+    monkeypatch.setattr(store, 'write_layers', check_cleanup)
+    with pytest.raises(CleanupChecked):
+        pipeline.run(Context(fixture.sid, args={'k': None, 'fresh': True}))
+
+
+@pytest.mark.parametrize('legacy_cache', [False, True])
+def test_draft_cache_retries_failures(tmp_path, monkeypatch, legacy_cache):
+    import hashlib
+    from app.llm.base import LLMTask, failure, validate
+    task = LLMTask(task='segment.persona_draft', sid='retry', instructions='draft',
+        attachments=[], output_schema=pipeline.drafts.PersonaDraftOut)
+    requests = []
+    def call(task):
+        requests.append(task)
+        return (failure('backend', 'offline') if len(requests) == 1 else
+                validate(task, '{"name":"name","desire":"desire","goals":["goal"]}'))
+    monkeypatch.setattr(registry, 'run_task', call)
+    assert not pipeline._Calls(tmp_path, lambda: None).run_task(task).ok
+    if legacy_cache:
+        digest = hashlib.sha256(json.dumps(task.model_dump(exclude={'output_schema'}), sort_keys=True).encode()).hexdigest()
+        sessions.write_json(tmp_path / 'draft_cache' / f'{digest}.json', {'ok': False, 'raw': None})
+    else:
+        assert not list((tmp_path / 'draft_cache').glob('*.json'))
+    assert pipeline._Calls(tmp_path, lambda: None).run_task(task).ok
+    assert pipeline._Calls(tmp_path, lambda: None).run_task(task).ok
+    assert len(requests) == 2

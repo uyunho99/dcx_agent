@@ -1,10 +1,18 @@
+from copy import deepcopy
+from pathlib import Path
+import shutil
+import subprocess
+from types import ModuleType
+
 import os
 import sqlite3
 import time
 
 import pytest
 
+from app.config import settings
 from app.context import store, versions
+from app.model.infer import prepared_root
 from app.segment.store import SegmentStore
 from app.work.status import transaction
 
@@ -12,11 +20,12 @@ from app.work.status import transaction
 @pytest.fixture
 def completed(data_dir):
     sid = 'completed-segment'
-    store.update_session(sid, {'schemaVersion': 2, 'prep': {'status': 'done'},
+    store.update_session(sid, {'schemaVersion': 2, 'prep': {'status': 'done', 'derivedRef': {'collectionId': 'c1', 'prepKey': 'p_aaaaaaaaaaaa'}},
         'labeling': {'status': 'done', 'started': True, 'mode': 'llm', 'modelId': 'm', 'judgeRefs': ['j']},
         'training': {'status': 'done', 'exportRef': 'old'},
         'segment': {'status': 'done', 'run': 'old'}, 'completion': {'segmentDone': True, 'other': True},
-        'drafts': {'segment': {'run': 'old'}, 'other': {} }})
+        'drafts': {'segment': {'run': 'old'}, 'other': {'keep': [1, 2]}},
+        'stageResults': {'stage3': {'keep': True}, 'stage5': {'keep': True}}})
     root = versions.version_dir(sid, 'v1')
     store.write_json(root / 'stage_3.json', {'old': 3})
     store.write_json(root / 'stage_5.json', {'old': 5})
@@ -31,8 +40,8 @@ def completed(data_dir):
     segment.set_run('old')
     for name in ('evidence', 'persona'):
         store.write_json(root / name / 'result.json', {'old': True})
-    for name in ('llmcache/cache', 'derived/nouns/cache'):
-        path = data_dir / name
+    for path in (data_dir / 'llmcache' / sid / 'p_aaaaaaaaaaaa' / 'cache.json',
+                 prepared_root(sid, store.read_json(root / 'session.json')) / 'nouns' / 'cache.json'):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text('keep')
     return sid
@@ -48,20 +57,50 @@ def test_restart_from_3_4_5_6_invalidates_segment(completed, data_dir, stage):
     assert not (root / 'segment').exists()
     assert data['segment'] == {'status': 'stale'}
     assert 'segmentDone' not in data['completion'] and 'segment' not in data['drafts']
-    assert {'stage6', 'stage7', 'stage8'} <= data['stale'].keys()
+    assert set(data['stale']) == {f'stage{s}' for s in range(stage, 9)}
     assert not (root / 'evidence').exists() and not (root / 'persona').exists()
     assert store.read_json(versions.version_dir(sid, 'v1') / 'session.json') == before
     assert SegmentStore.open(sid, 'v1').contexts()[0]['confirmed_at'] == 'yes'
-    assert (data_dir / 'llmcache/cache').read_text() == 'keep'
-    assert (data_dir / 'derived/nouns/cache').read_text() == 'keep'
+    assert (data_dir / 'llmcache' / sid / 'p_aaaaaaaaaaaa' / 'cache.json').read_text() == 'keep'
+    assert (prepared_root(sid, before) / 'nouns' / 'cache.json').read_text() == 'keep'
 
 
 @pytest.mark.parametrize('stage', [3, 4, 5])
-def test_restart_stage3_4_5_unchanged(completed, stage):
+def test_restart_stage3_4_5_unchanged(completed, stage, data_dir, tmp_path_factory, monkeypatch):
     sid = completed
+    parent = store.read_json(versions.version_dir(sid, 'v1') / 'session.json')
+    # Execute the pre-T9 implementation against an identical isolated tree.
+    legacy = ModuleType('versions_before_T9')
+    source = subprocess.check_output(
+        ['git', 'show', 'e0d124f:backend/app/context/versions.py'],
+        cwd=Path(__file__).resolve().parents[3], text=True)
+    exec(compile(source, 'e0d124f/versions.py', 'exec'), legacy.__dict__)
+    baseline_dir = tmp_path_factory.mktemp('legacy') / 'data'
+    shutil.copytree(data_dir, baseline_dir, symlinks=True)
+    with monkeypatch.context() as patch:
+        patch.setattr(settings, 'local_data_dir', str(baseline_dir))
+        legacy.create_version(sid, 'v1', f'stage{stage}', '')
+        old = store.read_json(legacy.version_dir(sid, 'v2') / 'session.json')
     versions.create_version(sid, 'v1', f'stage{stage}', '')
     root = versions.version_dir(sid, 'v2')
     data = store.read_json(root / 'session.json')
+    assert set(data['stale']) == {f'stage{s}' for s in range(stage, 9)}
+    def normalized(value, keys):
+        value = deepcopy(value)
+        for key in keys:
+            value.pop(key, None)
+        value.get('completion', {}).pop('segmentDone', None)
+        value.get('drafts', {}).pop('segment', None)
+        return value
+    # Only D-237 changes and the timestamp may differ from the historical output.
+    current = normalized(data, ('updatedAt', 'segment'))
+    previous = normalized(old, ('updatedAt', 'segment'))
+    for key in ('stage7', 'stage8'):
+        current['stale'].pop(key)
+    assert current == previous
+    intended = ('version', 'parentVersion', 'restartFrom', 'updatedAt', 'stale',
+                'prep', 'labeling', 'training', 'segment')
+    assert normalized(data, intended) == normalized(parent, intended)
     assert (root / 'stage_3.json').exists() == (stage > 3)
     assert not (root / 'stage_5.json').exists()
     assert data['prep']['status'] == ('stale' if stage == 3 else 'done')
