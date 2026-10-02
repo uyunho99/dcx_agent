@@ -1,0 +1,18 @@
+{
+ "verdict": "PASS",
+ "head": "2b187a25fd1091c2c46ec40f4db8939cbf154d46",
+ "fingerprint": "fdf296f108a77be4e8957cb1068ca2251aef326aca258b55a6ad45793dde2867",
+ "commands": [
+  {
+   "command": "git diff e10da4e...HEAD — Main Claude 읽기 전용 검토: page.tsx 3곳만 shown으로 교체, all 사용처 4곳(reveal · 중복 · approved · 승인 예정/거절) 유지, decisions()는 current.keywords 그대로",
+   "exitCode": 0
+  }
+ ],
+ "findings": [],
+ "accepted": [
+  {
+   "summary": "다른 라운드 중복 단어의 \"중복 키워드 확인하기\" 스크롤 불가 — 설계 4절 수용",
+   "severity": "P3"
+  }
+ ]
+}
