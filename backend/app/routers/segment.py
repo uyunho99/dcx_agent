@@ -148,13 +148,20 @@ def _report(sid, data):
 @router.post('/run')
 def start(sid: str, body: Run = Run(), version: str | None = None):
     with sessions.locked(sid):
-        data, store = _open(sid, version, writable=True)
+        data, _ = _open(sid, version, writable=True)
         ref = data.get('training', {}).get('exportRef')
         path = (Path(settings.local_data_dir) / ref).resolve() if isinstance(ref, str) and ref else None
         base = (Path(settings.local_data_dir) / 'classified' / sid).resolve()
         if path is None or not path.is_relative_to(base) or path.name != 'relevant.jsonl' or not path.is_file():
             raise sessions.StoreError('학습 단계에서 결과를 저장한 뒤 클러스터링을 실행하세요.', 409, 'stage5_required')
-        if (body.k is not None or any(getattr(store, layer)() for layer in LAYERS)) and not body.confirmReset:
+        work = next((r for r in reversed(runner.status(sid))
+                     if r['kind'] == 'segment' and r['version'] == data['version']), None)
+        if work and work['state'] in ('running', 'paused'):
+            raise sessions.StoreError('클러스터링이 이미 진행 중입니다.', 409, 'running')
+        completed = data.get('segment', {}).get('status') in ('review', 'done')
+        if work and work['state'] in ('interrupted', 'failed', 'stopped'):
+            completed = False
+        if (body.k is not None or completed) and not body.confirmReset:
             raise sessions.StoreError('다시 나누면 확정값이 지워집니다. 다시 나누기를 확인하세요.', 409, 'confirm_required')
         selected = data['version']
     work = runner.start(sid, selected, 'segment', {'k': body.k, 'fresh': body.confirmReset})

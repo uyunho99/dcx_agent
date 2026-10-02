@@ -114,6 +114,59 @@ def test_run_reset_required(api):
     assert all(not row['confirmed_at'] for row in api.store.clusters())
 
 
+@pytest.mark.parametrize(('segment_status', 'work_state'), [
+    ('interrupted', 'interrupted'), ('failed', 'failed'), ('stopped', 'done'),
+    ('running', 'interrupted'), ('review', 'failed'),
+])
+def test_interrupted_or_failed_run_resumes_and_keeps_confirmations(api, segment_status, work_state):
+    run(api)
+    confirm(api, 'clusters')
+    confirm(api, 'personas')
+    cid = api.store.contexts()[0]['context_id']
+    ok(api.client.put(f'{api.base}/contexts/{cid}', json=payload(api, 'contexts')))
+    before = {layer: getattr(api.store, layer)() for layer in ('clusters', 'personas', 'contexts')}
+    old_run = api.store.get_run()
+    root = version_dir(api.sid, 'v1')
+    # Model a stop after layer publication, before the last checkpoint completes.
+    checkpoint = sessions.read_json(root / 'segment/checkpoint.json')
+    checkpoint['done'].remove('drafts')
+    sessions.write_json(root / 'segment/checkpoint.json', checkpoint)
+    data = sessions.load_session(api.sid)
+    data['segment']['status'] = segment_status
+    sessions.write_json(root / 'session.json', data)
+    api.works[-1]['state'] = work_state
+
+    error(api.client.post(api.base + '/run', json={'k': 3}), 409, 'confirm_required')
+    assert run(api)['runId'] == 'worker-2'
+    assert api.calls[-1] == {'k': None, 'fresh': False}
+    assert api.store.get_run() != old_run
+    for layer, rows in before.items():
+        after = getattr(api.store, layer)()
+        for old, new in zip(rows, after, strict=True):
+            for field in ('confirmed_at', 'name', 'desire', 'goals', 'action'):
+                assert new.get(field) == old.get(field)
+
+
+@pytest.mark.parametrize('state', ['running', 'paused'])
+@pytest.mark.parametrize('body', [{}, {'confirmReset': True}, {'k': 3}])
+def test_running_run_returns_conflict(api, state, body):
+    run(api)
+    api.works[-1]['state'] = state
+    result = error(api.client.post(api.base + '/run', json=body), 409, 'running')
+    assert result['message'] == '클러스터링이 이미 진행 중입니다.'
+    assert len(api.calls) == 1
+
+
+@pytest.mark.parametrize('state', ['review', 'done'])
+def test_completed_run_requires_reset_confirmation(api, state):
+    run(api)
+    data = sessions.load_session(api.sid)
+    data['segment']['status'] = state
+    sessions.write_json(version_dir(api.sid, 'v1') / 'session.json', data)
+    error(api.client.post(api.base + '/run', json={}), 409, 'confirm_required')
+    assert len(api.calls) == 1
+
+
 def test_stage5_missing(api):
     data = sessions.load_session(api.sid)
     data['training'] = {}
