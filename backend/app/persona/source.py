@@ -1,6 +1,6 @@
 """Read-only publication guards; safe while holding the session lock."""
 from app.context import store as sessions
-from app.persona.package import load_package, PackageMissing
+from app.persona.package import load_package, PackageMissing, evidence_ready
 
 
 def require_persona(data):
@@ -41,7 +41,7 @@ class Source:
         require_persona(data)
         try:
             package = load_package(self.sid, self.version)
-            valid = (package.run == self.package_run and _digest(package) == self.digest and
+            valid = (evidence_ready(self.sid, self.version) and package.run == self.package_run and _digest(package) == self.digest and
                      _confirmed_matches(self.sid, self.version, package))
         except PackageMissing:
             valid = False

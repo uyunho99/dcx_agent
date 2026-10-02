@@ -251,3 +251,29 @@ def test_handed_and_semantic_known_api_fields_and_refresh_isolation(api):
         assert not next(r for r in states if r['id']==cid)['knownChanged']
         assert sum(r['knownChanged'] for r in states) == remaining
     assert api.calls == []
+
+
+def test_skip_with_pending_context_refuses_persona(api):
+    generation = run(api)
+    api.ev.set_context('c0', 'p1', 'failed', error='failed')
+    api.ev.set_context('c1', 'p1', 'failed', error='failed')
+    sessions.update_session(api.sid, {'evidence': {'status': 'partial'}})
+    result = ok(api.client.post(api.base + '/contexts/c1/skip', json={'run': generation}))
+    assert result['status'] == 'partial'
+    assert (api.ev.path.parent / 'package.json').exists()
+    error(api.client.post(f'/persona/{api.sid}/run', json={}), 409, 'evidence_required')
+
+
+def test_resumed_evidence_in_progress_refuses_persona(api):
+    run(api)
+    package = (api.ev.path.parent / 'package.json').read_bytes()
+    responses = []
+    def heartbeat(*args):
+        if not responses:
+            assert sessions.load_session(api.sid)['evidence']['status'] == 'running'
+            assert (api.ev.path.parent / 'package.json').read_bytes() == package
+            responses.append(api.client.post(f'/persona/{api.sid}/run', json={}))
+    api.ctx.heartbeat = heartbeat
+    pipeline.run(api.ctx)
+    assert responses
+    error(responses[0], 409, 'evidence_required')

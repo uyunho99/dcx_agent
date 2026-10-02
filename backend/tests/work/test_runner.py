@@ -160,3 +160,26 @@ def test_empty_example_settings_use_defaults(monkeypatch):
     monkeypatch.setenv('EMBED_DIM', '')
     monkeypatch.setenv('JEV_BACKEND', '')
     assert Settings(_env_file=None).embed_dim == 1024
+
+
+@pytest.mark.parametrize('kinds', [('evidence', 'persona'), ('persona', 'evidence'), ('segment', 'insight'), ('insight', 'evidence')])
+def test_shared_launch_guard(data_dir, monkeypatch, kinds):
+    from threading import Barrier
+    from types import SimpleNamespace
+    from app.context.store import StoreError
+    barrier = Barrier(2)
+    launches = []
+    def launch(*args, **kwargs):
+        launches.append(args)
+        return SimpleNamespace(pid=os.getpid(), wait=lambda: 0, kill=lambda: None)
+    monkeypatch.setattr(runner.subprocess, 'Popen', launch)
+    def start(kind):
+        barrier.wait()
+        try:
+            return runner.start('s1', 'v1', kind, {})
+        except StoreError as exc:
+            return exc
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(start, kinds))
+    assert len(launches) == 1
+    assert sum(isinstance(r, StoreError) for r in results) == 1

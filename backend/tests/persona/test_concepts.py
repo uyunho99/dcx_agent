@@ -277,3 +277,18 @@ def test_concept_uses_public_constraint_check(case, monkeypatch):
     assert checked[0][2]['constraints'] == [CONSTRAINT]
     assert checked[0][3] is run
     assert result['constraint_check'][0]['reason'] == 'public check'
+
+
+def test_concept_ignores_package_project_context(case, monkeypatch):
+    from app.persona import concepts
+    session, _ = case
+    run, calls, _ = runner(case, monkeypatch, check_rows=[])
+    package = load_package(session.sid, session.version)
+    package.projectContext = {'analysisGoal': 'obsolete package goal'}
+    monkeypatch.setattr(concepts, 'load_package', lambda *args: package)
+    path = version_dir(session.sid, session.version) / 'session.json'
+    data = sessions.read_json(path)
+    data['projectContext'] = {}
+    sessions.write_json(path, data)
+    generate(case, run)
+    assert json.loads(calls[0].attachments[0].body)['analysisGoal'] is None

@@ -1,13 +1,13 @@
 """Stage-seven validated file contract with a stage-eight read projection.
 
-Unknown fields are retained at every level for forward compatibility. Numbering
+The producer contract rejects unknown fields and invalid enum values. Numbering
 is local to a Persona: desire support first, then Contexts in package order,
 with support, counter, and rare lists traversed in that order. Duplicate source
 quotes remain separate references because their context/role can differ.
 """
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.context.versions import version_dir
 from app.context.store import read_json
@@ -130,6 +130,16 @@ class PackageMissing(FileNotFoundError):
     """The requested version has no Evidence Package."""
 
 
+class PackageInvalid(PackageMissing):
+    """The Evidence Package does not satisfy the stage-seven wire contract."""
+
+
+def evidence_ready(sid: str, version: str) -> bool:
+    """A retained package is usable only after current stage-seven completion."""
+    data = read_json(version_dir(sid, version) / 'session.json') or {}
+    return data.get('evidence', {}).get('status') == 'done' and 'stage7' not in data.get('stale', {})
+
+
 class EvidenceRef(Evidence):
     context_id: str | None
     role: str
@@ -143,8 +153,11 @@ def load_package(sid: str, version: str) -> Package:
         raw = path.read_text(encoding='utf-8')
     except FileNotFoundError as exc:
         raise PackageMissing(f'Evidence Package missing: {sid}/{version}') from exc
-    validated = EvidencePackage.model_validate_json(raw)
-    package = Package.model_validate(validated.model_dump(by_alias=True))
+    try:
+        validated = EvidencePackage.model_validate_json(raw)
+        package = Package.model_validate(validated.model_dump(by_alias=True))
+    except ValidationError as exc:
+        raise PackageInvalid('근거 탐색을 다시 실행하세요.') from exc
     # Generation metadata belongs to the version session, not the wire package.
     session = read_json(version_dir(sid, version) / 'session.json') or {}
     package.run = session.get('evidence', {}).get('run')

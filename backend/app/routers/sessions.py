@@ -88,6 +88,9 @@ def _completion(sid, data, version=None):
             return False
         selected = version or data.get('version')
         if selected:
+            from app.persona.package import evidence_ready
+            if not evidence_ready(sid, selected):
+                return False
             root = versions.version_dir(sid, selected)
             from app.segment.store import SegmentStore
             segment = SegmentStore.open(sid, selected).path

@@ -2,9 +2,8 @@ import copy
 import json
 
 import pytest
-from pydantic import ValidationError
 
-from app.persona.package import Package, PackageMissing, evidence_index, load_package
+from app.persona.package import Package, PackageInvalid, PackageMissing, evidence_index, load_package
 from app.segment.store import SegmentStore
 from tests.fixtures.evidence_package import make_package, write_session_with_package, fake_persona_backend
 
@@ -68,10 +67,10 @@ def test_load_package_validates_required(data_dir):
             parent = parent[key]
         del parent[route[-1]]
         path.write_text(json.dumps(broken))
-        with pytest.raises(ValidationError):
+        with pytest.raises(PackageInvalid):
             load_package('test', 'v1')
     path.write_text('{broken')
-    with pytest.raises(ValidationError):
+    with pytest.raises(PackageInvalid):
         load_package('test', 'v1')
     with pytest.raises(PackageMissing):
         load_package('test', 'v2')

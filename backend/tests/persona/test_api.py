@@ -164,3 +164,53 @@ def test_insight_conflicts_failure_and_concept_revert(api):
     assert ok(api.client.get(base))['concepts']['items'][0]['basis'] == 'original'
     error(api.client.post(base + '/revert', json={'target': 'concept:missing', 'revision': 1}), 404, 'not_found')
     error(api.client.post(base + '/chat', json={'target': '../../cards', 'message': 'edit'}), 422, 'validation')
+
+
+@pytest.mark.parametrize('status,stale', [('partial', {}), ('running', {}), ('done', {'stage7': 'changed'})])
+def test_unready_evidence_refuses_run_and_retry(api, status, stale):
+    generate(api)
+    cards = api.store.read('cards')
+    sessions.update_session(api.sid, {'evidence': {'status': status}, 'stale': stale})
+    for suffix, body in [('/run', {}), ('/cards/CL0-P0/retry', {'run': cards['run']})]:
+        result = error(api.client.post(f'/persona/{api.sid}' + suffix, json=body), 409, 'evidence_required')
+        assert result['message'] == '근거 탐색을 마친 뒤 페르소나를 만들 수 있습니다.'
+    status = ok(api.client.get(f'/persona/{api.sid}/status'))
+    assert status['package'] is False and status['evidence_required'] is True
+
+
+def test_segment_reset_identical_reconfirmation_is_not_current(api):
+    from app.segment.pipeline import _session
+    from app.persona.package import load_package
+    from app.routers.sessions import _completion
+    generate(api)
+    package = (api.root / 'evidence/package.json').read_bytes()
+    evidence = sessions.load_session(api.sid)['evidence']
+    _session(api.sid, 'v1', {'status': 'done'}, reset=True)
+    sessions.update_session(api.sid, {'evidence': {**evidence, 'status': 'stale'}})
+    from app.segment.store import SegmentStore
+    seg = SegmentStore.open(api.sid, 'v1')
+    for row in seg.personas():
+        seg.confirm('personas', row['persona_id'], {'name': row['name'], 'desire': row['desire']})
+    for row in seg.contexts():
+        seg.confirm('contexts', row['context_id'], {'name': row['name'], 'action': row['action']})
+    # Identical re-confirmation cannot make retained evidence current.
+    assert pipeline._confirmed_matches(api.sid, 'v1', load_package(api.sid, 'v1'))
+    assert (api.root / 'evidence/package.json').read_bytes() == package
+    assert not _completion(api.sid, sessions.load_session(api.sid), 'v1')['personaDone']
+    assert pipeline.mark_stale_if_changed(api.sid, 'v1')
+    assert ok(api.client.get(f'/persona/{api.sid}/status'))['status'] == 'stale'
+
+
+def test_invalid_package_has_korean_error_and_safe_reads(api):
+    generate(api)
+    path = api.root / 'evidence/package.json'
+    package = sessions.read_json(path)
+    package['projectContext'] = {}
+    sessions.write_json(path, package)
+    result = error(api.client.post(f'/persona/{api.sid}/run'), 409, 'evidence_required')
+    assert '근거 탐색' in result['message']
+    assert ok(api.client.get(f'/persona/{api.sid}/status'))['package'] is False
+    cards = api.store.read('cards')
+    cards['personas']['CL0-P0']['status'] = 'failed'
+    api.store.write('cards', cards)
+    ok(api.client.get(f'/persona/{api.sid}/cards'))

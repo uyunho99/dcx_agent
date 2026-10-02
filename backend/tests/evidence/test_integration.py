@@ -45,7 +45,7 @@ def offline_worker(monkeypatch):
     class ThreadProcess:
         def __init__(self, command, *, env, **kwargs):
             assert command[:3] == [sys.executable, '-m', 'app.work.worker']
-            assert command[3] == 'evidence'
+            assert command[3] in ('evidence', 'persona', 'insight')
             self.pid = os.getpid()
             context = worker.Context(
                 command[command.index('--sid') + 1],

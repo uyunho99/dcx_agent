@@ -23,7 +23,7 @@ from app.persona import params
 from app.persona.cards import generate_card
 from app.persona.grade import grade_card
 from app.persona.opportunity import build_map
-from app.persona.package import PackageMissing, evidence_index, load_package
+from app.persona.package import PackageMissing, evidence_ready, evidence_index, load_package
 from app.persona.prescribe import prescribe, scope_check
 from app.persona.store import PersonaStore
 from app.persona.tree import build_tree
@@ -112,7 +112,8 @@ def mark_stale_if_changed(sid, version):
         return False
     try:
         package = load_package(sid, version)
-        changed = (cards.get('package_run') != getattr(package, 'run', None)
+        changed = (not evidence_ready(sid, version)
+                   or cards.get('package_run') != getattr(package, 'run', None)
                    or cards.get('package_hash', _digest(package)) != _digest(package)
                    or not _confirmed_matches(sid, version, package))
     except PackageMissing:
@@ -224,7 +225,7 @@ def _run(context):
         if 'run' in context.args:
             assert_run(sid, version, context.args['run'])
     package = load_package(sid, version)
-    if not _confirmed_matches(sid, version, package):
+    if not evidence_ready(sid, version) or not _confirmed_matches(sid, version, package):
         _session(sid, version, {'status': 'stale'}, stale=True)
         return
     if not context.args.get('fresh') and mark_stale_if_changed(sid, version):
@@ -273,7 +274,8 @@ def _run(context):
     def check_source():
         try:
             current = load_package(sid, version)
-            valid = _digest(current) == signature and _confirmed_matches(sid, version, current)
+            valid = (evidence_ready(sid, version) and _digest(current) == signature
+                     and _confirmed_matches(sid, version, current))
         except PackageMissing:
             valid = False
         if not valid:

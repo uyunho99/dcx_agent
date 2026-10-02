@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 from app.context import store as sessions
 from app.label.overview import session
 from app.persona import chat, insights, pipeline
-from app.persona.package import PackageMissing, load_package
+from app.persona.package import PackageMissing, evidence_ready, load_package
 from app.persona.store import PersonaStore
 from app.persona.insight_pipeline import serialized
 from app.persona.source import require_persona
@@ -75,6 +75,8 @@ def _idle(sid, version, kind):
 
 def _package(sid, version):
     try:
+        if not evidence_ready(sid, version):
+            raise PackageMissing()
         return load_package(sid, version)
     except PackageMissing as exc:
         raise sessions.StoreError('근거 탐색을 마친 뒤 페르소나를 만들 수 있습니다.',
@@ -144,8 +146,8 @@ def persona_status(sid: str, version: str | None = None):
                 data, store = _open(sid, data['version'])
         try:
             package = load_package(sid, data['version'])
-            has_package = True
-            evidence_required = not pipeline._confirmed_matches(sid, data['version'], package)
+            has_package = evidence_ready(sid, data['version'])
+            evidence_required = not has_package or not pipeline._confirmed_matches(sid, data['version'], package)
         except PackageMissing:
             has_package = False
             evidence_required = True

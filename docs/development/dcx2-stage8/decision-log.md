@@ -54,3 +54,5 @@
 
 ### D-319 ③은 ②를 rebase가 아니라 merge로 합친다(feature/dcx2-stage7 → feature/dcx2-stage8) · 판단 (Claude)
 - 두 브랜치 모두 커밋 기록이 리뷰 · QA 근거로 쓰였다. rebase는 커밋 해시를 바꿔 근거 문서의 참조가 깨진다. 충돌 파일 6개(fake.py · main.py · sessions.py · worker.py · test_session_completion.py · types.ts)는 Codex가 해결하고 controller가 확인 뒤 merge 커밋.
+### D-320 8단계 실행 · 재시도 · 완료 판정은 "7단계 done ∧ stage7 stale 아님"을 한 함수로 확인(package.json 존재만으로는 부족) · 판단 (Claude, 합류 리뷰 Important)
+- 6단계 재실행 · 이어 하기 · 건너뛰기 partial에서 옛 package.json이 남아 오래된 근거로 페르소나가 "현재"로 보이던 문제.

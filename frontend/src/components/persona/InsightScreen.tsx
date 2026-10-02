@@ -89,7 +89,7 @@ export function InsightScreen({sid,version,readonly = false,initialConfirmed = [
  const historicalInsights = preview !== null && target === 'insights';
  const metricItems = historicalInsights ? insightItems : currentItems;
  const rawBars = historicalInsights ? null : data?.bars?.bars;
- const bars = Array.isArray(rawBars) ? rawBars.map(value => {const row = record(value); return {id:text(row.id),label:currentItems.find(item => item.id === row.id)?.title ?? text(row.id),value:number(row.odi ?? row.value) ?? 0};}) : metricItems.flatMap(item => {const value = number(record(item).odi);return value === null ? [] : [{id:item.id,label:item.title,value}];});
+ const bars = Array.isArray(rawBars) ? rawBars.map(value => {const row = record(value); return {id:text(row.id),label:currentItems.find(item => item.id === row.id)?.title ?? text(row.id),value:number('odi' in row ? row.odi : row.value)};}) : metricItems.map(item => ({id:item.id,label:item.title,value:number(record(item).odi)}));
  const mean = (historicalInsights ? null : data?.bars?.mean) ?? number(record(metricItems[0]).opportunity_mean);
  return <div className="space-y-5">
   <header className="ds-actions"><h1 className="ds-t-title">인사이트</h1>{!currentItems.length && <Button variant="primary" disabled={disabled} onClick={() => void mutate(async () => {const run = await api.startInsight(sid,{mode:'derive'},version);setPending({runId:run.runId,mode:'derive'});})}>인사이트 도출</Button>}</header>

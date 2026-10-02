@@ -3,7 +3,6 @@ from collections import defaultdict
 from copy import deepcopy
 
 import pytest
-from pydantic import ValidationError
 
 from app.context import store as sessions
 from app.context.versions import version_dir
@@ -14,7 +13,7 @@ from app.persona.cards import generate_card
 from app.persona.concepts import _hydrate
 from app.persona.insights import opportunity_bars
 from app.persona.opportunity import build_map
-from app.persona.package import evidence_index, load_package
+from app.persona.package import PackageInvalid, evidence_index, load_package
 from tests.evidence.test_integration import offline_worker, bind_backend, run_and_poll
 from tests.fixtures.evidence_package import make_package
 from tests.fixtures.evidence_synth import make_evidence_session
@@ -64,6 +63,27 @@ def test_real_stage7_package_loads_and_generates_cards(client, data_dir, monkeyp
         assert result.status == 'done', result.error
     assert build_map(package)['points']
 
+    # Pass the real producer output through both HTTP launches and worker dispatch.
+    import time
+    from app.work import runner
+    monkeypatch.setattr(registry, 'run_task', backend.run)
+    for kind, body in [('persona', {}), ('insight', {'mode': 'derive'})]:
+        response = client.post(f'/{kind}/{fixture.sid}/run', json=body)
+        assert response.status_code == 200, response.text
+        run_id = response.json()['runId']
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            work = next(row for row in runner.status(fixture.sid) if row['runId'] == run_id)
+            if work['state'] not in ('running', 'paused'):
+                break
+            time.sleep(.01)
+        assert work['state'] == 'done', work
+    assert client.get(f'/insight/{fixture.sid}').json()['insights']['items']
+    saved = sessions.load_session(fixture.sid)
+    sessions.update_session(fixture.sid, {'evidence': {**saved['evidence'], 'status': 'running'}})
+    assert client.post(f'/persona/{fixture.sid}/run', json={}).status_code == 409
+    sessions.update_session(fixture.sid, {'evidence': saved['evidence']})
+
     # A generation change can have identical package contents (e.g. cached rerun).
     from app.persona import pipeline
     from app.persona.store import PersonaStore
@@ -106,5 +126,5 @@ def test_real_stage7_package_loads_and_generates_cards(client, data_dir, monkeyp
     # The producer's model, not just a permissive local projection, validates loads.
     nullable['schema'] = 'unsupported'
     sessions.write_json(path, nullable)
-    with pytest.raises(ValidationError):
+    with pytest.raises(PackageInvalid):
         load_package(fixture.sid, fixture.version)

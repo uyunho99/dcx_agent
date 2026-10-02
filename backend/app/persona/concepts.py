@@ -175,7 +175,7 @@ def make_concept(sid, version, insight_id, *, run_task=None, before_publish=None
     package = load_package(sid, version)
     contexts, blocks, refs, owners = _inputs(package, insight)
     context_ids = {c.context_id for c in contexts}
-    project = (sessions.load_session(sid) or {}).get('projectContext') or getattr(package, 'projectContext', {})
+    project = (sessions.load_session(sid) or {}).get('projectContext') or {}
     constraints = list(dict.fromkeys(project.get('constraints', [])))
     payload = dict(insight=insight,
         personas=[dict(persona_id=b.persona_evidence.persona_id,

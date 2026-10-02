@@ -140,3 +140,12 @@ it('Q2 failed card keeps package counts with a null card',()=>{
  button(draw(),'Persona 카드').props.onClick();
  expect(text(draw())).toContain('근거 16건 · 작성자 8명 · Context 2개');
 });
+
+it('marks traces with no quote as unverified inference',()=>{
+ h.data.cards.personas.P1.card.contexts=[{context_id:'C1',state:{text:'상태',cite:['E1']}}];
+ h.data.cards.personas.P1.trace=[{context_id:'C1',field:'state',evidence_id:'E1',evidence:{doc_id:'doc1',quote:null}}];
+ button(draw(),'Persona 카드').props.onClick();
+ const cell=nodes(draw()).find(n=>n.type===CCMTable).props.contexts[0].cells.state;
+ expect(text(cell.evidence)).toContain('인용 없음 · 추론');
+ expect(text(cell.evidence)).toContain('인용 미확인');
+});
