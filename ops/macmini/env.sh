@@ -13,5 +13,5 @@ export DCX_CI_API="${DCX_CI_API:-https://api.github.com/repos/uyunho99/dcx_agent
 export DCX_HEALTH_API="${DCX_HEALTH_API:-http://127.0.0.1:$DCX_API_PORT/health}"
 export DCX_HEALTH_WEB="${DCX_HEALTH_WEB:-http://127.0.0.1:$DCX_WEB_PORT/pipeline/start}"
 DCX_HEALTH_TIMEOUT="${DCX_HEALTH_TIMEOUT:-120}"
-DCX_LAUNCH_DOMAIN="${DCX_LAUNCH_DOMAIN:-gui/$(id -u)}"
+MAINTENANCE="$SHARED/maintenance"
 DCX_LAUNCH_LABEL="${DCX_LAUNCH_LABEL:-ai.person-a.dcx-agent}"

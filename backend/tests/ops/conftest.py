@@ -19,7 +19,7 @@ class Macmini:
         self.root.mkdir()
         self.env = dict(os.environ, APP_ROOT=str(self.root), DCX_BASH=os.getenv("DCX_BASH", "/bin/bash"))
         # Enumerate allowed binaries; never fall through to real curl/launchctl/npm.
-        for name in ("bash", "git", "tar", "mkdir", "rm", "mv", "cp", "ln", "cat", "date", "basename", "dirname", "readlink", "awk", "tail", "head", "sort", "tr", "diff", "sleep", "uname", "shasum", "sha256sum", "id", "touch", "env"):
+        for name in ("bash", "git", "tar", "mkdir", "rm", "mv", "cp", "ln", "cat", "date", "basename", "dirname", "readlink", "awk", "tail", "head", "sort", "sed", "tr", "diff", "sleep", "uname", "shasum", "sha256sum", "id", "touch", "env"):
             source = shutil.which(name)
             if source:
                 (self.bin / name).symlink_to(source)
@@ -160,3 +160,36 @@ sys.exit(int(os.environ.get('FAKE_PIP_FAIL','0')))
 @pytest.fixture
 def macmini(tmp_path):
     return Macmini(tmp_path)
+
+
+@pytest.fixture
+def owned_listener(macmini):
+    """Simulated listener inventory: sandbox forbids bind; signal a real child."""
+    import time
+    m = macmini
+    program = '''import os,pathlib,signal,sys,time
+root=pathlib.Path(sys.argv[1]); alive=root/('alive-'+str(os.getpid()))
+def stop(*_):
+    alive.unlink(missing_ok=True); sys.exit(0)
+signal.signal(signal.SIGTERM,stop)
+alive.touch(); (root/'listener-port').write_text('18499')
+time.sleep(120)
+'''
+    p = subprocess.Popen([sys.executable, '-c', program, str(m.root)], cwd=m.root)
+    try:
+        for _ in range(200):
+            if (m.root/'listener-port').exists() or p.poll() is not None:
+                break
+            time.sleep(.01)
+        assert p.poll() is None, 'test listener failed to start'
+        port = (m.root/'listener-port').read_text()
+        (m.root/'processes.json').write_text(json.dumps({str(p.pid): str(m.root)}))
+        m.command('lsof', f'''import pathlib,sys
+root=pathlib.Path({str(m.root)!r})
+if '-iTCP:{port}' in sys.argv and (root/'alive-{p.pid}').exists(): print({p.pid})
+''')
+        yield p, port
+    finally:
+        if p.poll() is None:
+            p.terminate()
+        p.wait(timeout=5)

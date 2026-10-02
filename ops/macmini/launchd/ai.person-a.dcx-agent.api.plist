@@ -18,8 +18,6 @@
 		<string>__API_PORT__</string>
 		<key>DCX_WEB_PORT</key>
 		<string>__WEB_PORT__</string>
-		<key>DCX_LAUNCH_DOMAIN</key>
-		<string>__DOMAIN__</string>
 		<key>DCX_LAUNCH_LABEL</key>
 		<string>__LABEL__</string>
 	</dict>

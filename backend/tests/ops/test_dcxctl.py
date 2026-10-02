@@ -83,3 +83,40 @@ def test_rollback_unhealthy(macmini):
     assert r.returncode != 0
     assert m.logs[-1]['decision'] == 'unhealthy-both'
     assert (m.root/'shared/last-failed-sha').read_text().strip() == m.b
+
+
+def test_manual_rollback_recovers_after_kill(macmini):
+    m = macmini
+    assert m.run_deploy()[0] == 0
+    (m.root/'shared/data/sessions/value').write_text('after')
+    history = (m.root/'shared/deploy-history').read_text()
+    # switch_to runs after restoration and before history finalization.
+    (m.bin/'mv').unlink()
+    m.command('mv', '''import os,signal,sys
+if sys.argv[-2].endswith('/current.tmp'):
+    os.kill(os.getppid(), signal.SIGKILL)
+    sys.exit(0)
+os.execv('/bin/mv', ['/bin/mv']+sys.argv[1:])
+''')
+    r = ctl(m, 'rollback')
+    assert r.returncode == -9
+    assert (m.root/'shared/data/sessions/value').read_text() == 'original'
+    assert (m.root/'shared/deploy-history').read_text() == history
+    state = m.root/'shared/deploy-state'
+    saved = state.read_text()
+    assert saved.startswith(f'rolling-back {m.b} {m.a} ')
+    (m.bin/'mv').unlink(); (m.bin/'mv').symlink_to('/bin/mv')
+    assert m.run_deploy()[0] == 0, m.output
+    assert m.current == m.a
+    assert (m.root/'shared/last-failed-sha').read_text().strip() == m.b
+    assert (m.root/'shared/deploy-history').read_text() == f'{m.a} -\n'
+    assert m.logs[-1]['decision'] == 'rolled-back'
+    assert not state.exists()
+    assert not (m.root/'shared/maintenance').exists()
+    backups = list((m.root/'shared/snapshots').glob('*-failed/sessions/value'))
+    assert len(backups) == 1 and backups[0].read_text() == 'after'
+    # Replay a crash after history rename: never remove another history row.
+    state.write_text(saved)
+    assert m.run_deploy()[0] == 0, m.output
+    assert (m.root/'shared/deploy-history').read_text() == f'{m.a} -\n'
+    assert not state.exists()

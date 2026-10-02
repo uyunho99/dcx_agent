@@ -17,7 +17,7 @@ APP_ROOT="$HOME/srv/dcx-agent" /bin/bash ops/macmini/install.sh \
 sudo APP_ROOT="$HOME/srv/dcx-agent" /bin/bash ops/macmini/install.sh
 ```
 
-첫 설치는 main 머리 커밋을 정식 빌드합니다. 손 clone의 가상환경을 이동해 재사용하지 않습니다. 빌드는 대상 사용자로 실행하고, 서버 키를 빌드 환경에 싣지 않습니다. api/web KeepAlive를 끄고 서버와 릴리스 Python 작업자를 종료한 다음 sessions와 work를 스냅샷으로 저장합니다. 새 current를 연결하고 잡을 등록한 뒤 상태 확인이 성공해야 손 clone을 삭제하고 fetch용 clone으로 교체합니다. 실패하면 손 clone과 스냅샷을 보존하며 로그를 확인해야 합니다. 실제 설치·재부팅 검증은 별도의 운영 QA입니다.
+첫 설치는 main 머리 커밋을 정식 빌드합니다. 손 clone의 가상환경을 이동해 재사용하지 않습니다. 빌드는 대상 사용자로 실행하고, 서버 키를 빌드 환경에 싣지 않습니다. `shared/maintenance` hold 파일로 api/web 시작을 막고 서버와 릴리스 Python 작업자를 종료한 다음 sessions와 work를 스냅샷으로 저장합니다. 새 current를 연결하고 잡을 등록한 뒤 hold를 제거합니다. 상태 확인이 성공해야 손 clone을 삭제하고 fetch용 clone으로 교체합니다. 실패하면 손 clone과 스냅샷을 보존하며 로그를 확인해야 합니다. 실제 설치·재부팅 검증은 별도의 운영 QA입니다.
 
 설치가 쓰는 runtime 설정은 다음과 같습니다. 포트를 바꾸면 두 localhost URL도 함께 바뀝니다.
 
@@ -48,7 +48,11 @@ APP_ROOT="$HOME/srv/dcx-agent" "$HOME/srv/dcx-agent/ops/dcxctl" rollback
 
 롤백은 코드와 sessions/work만 되돌립니다. 큰 파일·캐시·모델은 복원하지 않습니다. 롤백 뒤 화면이 이상하면 그 세션을 새 버전으로 다시 시작하세요. 배포 중 작업자는 종료되며, 기존 죽은 작업자 감지 로직이 상태를 갱신합니다.
 
-**운영 권한 확인 필요:** 현재 공용 lib.sh는 `launchctl disable/enable/kickstart system/...`을 직접 호출합니다. UserName으로 권한을 낮춘 운영 deploy 잡이 이 동작을 수행할 수 있는지 해결·검증해야 합니다. T3에서 T2 파일을 수정하지 않았으며, 이 문제를 해결하기 전 운영 자동 배포가 정상이라고 간주하면 안 됩니다. QA 사용자 에이전트는 자신의 gui 도메인을 사용합니다.
+배포와 수동 롤백은 `shared/maintenance` 파일을 먼저 만듭니다. api/web 진입점은 파일이 있으면 서버를 시작하지 않고 10초 대기 후 정상 종료합니다. launchd의 KeepAlive와 ThrottleInterval=10이 재시도하며, 시작 단계는 파일을 제거하고 정상 상태 확인을 기다립니다. 운영 LaunchDaemon과 QA LaunchAgent 모두 같은 계약을 쓰며 deploy/dcxctl은 launchctl이나 관리자 권한이 필요하지 않습니다. 등록·교체는 설치기만 담당합니다.
+
+중지는 PID 파일의 자손·지정 포트 리스너·releases 아래 Python 작업자에 TERM → 최대 20초 대기 → KILL을 적용한 뒤 포트와 작업자를 다시 확인합니다. 남아 있거나 확인에 실패하면 error를 기록하고 hold를 유지하며 스냅샷·전환을 하지 않습니다. 다음 틱도 중지 검증을 통과해야 hold를 해제합니다. 이때 `deploy.log`와 `shared/deploy-state`를 확인하고 남은 프로세스 원인을 해결하세요. 복구 중 hold 파일을 임의로 삭제하면 안 됩니다.
+
+수동 롤백도 동작 전에 `deploy-state` 첫 줄에 `rolling-back <from> <to> <snapshot>`을 기록합니다. 둘째 줄의 `manual` 표시는 복구가 끝날 때까지 유지됩니다. kill·재부팅 후 다음 deploy 틱은 fetch/CI보다 먼저 복원·전환·이력 확정을 마칩니다. 이력 갱신은 반복해도 이전 행을 더 지우지 않으며 최초 실패 데이터 백업도 보존합니다.
 
 ## QA 사용자 에이전트
 
@@ -59,7 +63,7 @@ APP_ROOT="$HOME/srv/dcx-agent-qa" /bin/bash ops/macmini/install.sh \
 APP_ROOT="$HOME/srv/dcx-agent-qa" /bin/bash ops/macmini/install.sh --qa
 ```
 
-QA는 sudo 없이 `~/Library/LaunchAgents/ai.person-a.dcx-agent-qa.{deploy,api,web}.plist`를 등록합니다. 기본 포트는 8401/3401, 도메인은 `gui/<uid>`입니다. API 잡 시작 로그에 `codex --version`을 남기므로 launchd 아래 PATH와 사용자 로그인 환경을 확인할 수 있습니다. 설치된 `shared/launch.env`는 dcxctl에 같은 도메인·포트를 전달합니다. 테스트 개발 중에는 실제 QA 설치나 아래 정리 명령을 실행하지 않습니다.
+QA는 sudo 없이 `~/Library/LaunchAgents/ai.person-a.dcx-agent-qa.{deploy,api,web}.plist`를 등록합니다. 기본 포트는 8401/3401, 도메인은 `gui/<uid>`입니다. API 잡 시작 로그에 `codex --version`을 남기므로 launchd 아래 PATH와 사용자 로그인 환경을 확인할 수 있습니다. 설치된 `shared/launch.env`는 dcxctl에 같은 라벨·포트·상태 확인 URL을 전달합니다. 테스트 개발 중에는 실제 QA 설치나 아래 정리 명령을 실행하지 않습니다.
 
 ```bash
 for job in deploy api web; do

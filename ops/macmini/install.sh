@@ -29,10 +29,10 @@ fi
 . "$HERE/env.sh"
 . "$HERE/lib.sh"
 if $qa; then
-    export DCX_LAUNCH_LABEL=ai.person-a.dcx-agent-qa DCX_LAUNCH_DOMAIN="gui/$(id -u)"
+    export DCX_LAUNCH_LABEL=ai.person-a.dcx-agent-qa INSTALL_DOMAIN="gui/$(id -u)"
     destination="$HOME/Library/LaunchAgents"
 else
-    export DCX_LAUNCH_LABEL=ai.person-a.dcx-agent DCX_LAUNCH_DOMAIN=system
+    export DCX_LAUNCH_LABEL=ai.person-a.dcx-agent INSTALL_DOMAIN=system
     destination=/Library/LaunchDaemons
 fi
 # Explicit overrides are supported, but protected demo ports are never targets.
@@ -83,7 +83,7 @@ log() {
 }
 # Render templates structurally: XML metacharacters and spaces stay valid.
 render() {
-    python3.12 - "$HERE" "$1" "$APP_ROOT" "$TARGET_USER" "$TARGET_HOME" "$DCX_LAUNCH_LABEL" "$DCX_LAUNCH_DOMAIN" "$DCX_API_PORT" "$DCX_WEB_PORT" "$qa" <<'PY'
+    python3.12 - "$HERE" "$1" "$APP_ROOT" "$TARGET_USER" "$TARGET_HOME" "$DCX_LAUNCH_LABEL" "$INSTALL_DOMAIN" "$DCX_API_PORT" "$DCX_WEB_PORT" "$qa" <<'PY'
 import pathlib, plistlib, shlex, sys
 here,out,root,user,home,label,domain,api,web,qa=sys.argv[1:]
 out=pathlib.Path(out); out.mkdir(parents=True,exist_ok=True)
@@ -104,7 +104,7 @@ config={'AUTHOR_SALT_PATH':root+'/shared/data/.author_salt','STORAGE':'local','L
         'LABEL_GPT_BACKEND':'codex_exec','JEV_BACKEND':'fake','CORS_ORIGINS':'http://localhost:'+web,'NEXT_PUBLIC_API_URL':'http://localhost:'+api}
 (out/'runtime.env').write_text(''.join(k+'='+shlex.quote(v)+'\n' for k,v in config.items()))
 (out/'launch.env').write_text(''.join('export '+k+'='+shlex.quote(v)+'\n' for k,v in {
-    'DCX_LAUNCH_DOMAIN':domain,'DCX_LAUNCH_LABEL':label,'DCX_API_PORT':api,'DCX_WEB_PORT':web,
+    'DCX_LAUNCH_LABEL':label,'DCX_API_PORT':api,'DCX_WEB_PORT':web,
     'DCX_HEALTH_API':'http://127.0.0.1:'+api+'/health','DCX_HEALTH_WEB':'http://127.0.0.1:'+web+'/pipeline/start'}.items()))
 PY
 }
@@ -137,7 +137,7 @@ if [[ -z "$sha" ]]; then
     # Prepare the fetch clone without moving the running manual tree or its venv.
     as_user git clone --quiet "$DCX_REPO_URL" "$staging/repo"
 fi
-# Disable KeepAlive before terminating writers and taking the snapshot.
+# Hold KeepAlive launches before terminating writers and taking the snapshot.
 restart_services stop
 if $first; then
     snapshot="$(as_user /bin/bash -c '. "$1/env.sh"; . "$1/lib.sh"; snapshot_sessions "$2"' dcx-install "$APP_ROOT/ops" "$sha")"
@@ -153,16 +153,17 @@ for job in api web deploy; do
     if ! $qa; then chown root:wheel "$dest"; fi
     chmod 644 "$dest"
     plutil -lint "$dest"
-    if launchctl print "$DCX_LAUNCH_DOMAIN/$label" >/dev/null 2>&1; then
-        launchctl bootout "$DCX_LAUNCH_DOMAIN/$label"
+    if launchctl print "$INSTALL_DOMAIN/$label" >/dev/null 2>&1; then
+        launchctl bootout "$INSTALL_DOMAIN/$label"
         for ((attempt=0; attempt<30; attempt++)); do
-            launchctl print "$DCX_LAUNCH_DOMAIN/$label" >/dev/null 2>&1 || break
+            launchctl print "$INSTALL_DOMAIN/$label" >/dev/null 2>&1 || break
             sleep 1
         done
     fi
-    launchctl enable "$DCX_LAUNCH_DOMAIN/$label"
-    launchctl bootstrap "$DCX_LAUNCH_DOMAIN" "$dest"
+    launchctl enable "$INSTALL_DOMAIN/$label"
+    launchctl bootstrap "$INSTALL_DOMAIN" "$dest"
 done
+restart_services start
 if ! wait_healthy "$DCX_HEALTH_TIMEOUT" "$sha"; then
     log unhealthy '"reason":"installation health check failed; manual clone retained"'
     echo '설치 상태 확인 실패: 손 clone과 스냅샷을 보존했습니다' >&2

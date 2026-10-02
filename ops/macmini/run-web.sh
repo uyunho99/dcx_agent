@@ -3,6 +3,11 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 . "$HERE/env.sh"
 . "$HERE/lib.sh"
+# KeepAlive retries without starting a writer during snapshot/restore.
+if [[ -e "$MAINTENANCE" ]]; then
+    sleep 10
+    exit 0
+fi
 sha="$(current_sha)"
 [[ -n "$sha" ]] || { echo 'current 릴리스가 없습니다' >&2; exit 1; }
 [[ $# == 0 || "${1:-}" == --print-cmd ]] || exit 2

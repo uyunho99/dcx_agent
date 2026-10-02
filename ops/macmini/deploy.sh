@@ -8,10 +8,6 @@ preflight || exit 1
 acquire_lock || exit 0
 trap 'log error "\"line\":$LINENO"' ERR
 
-write_state() { # phase sha previous snapshot (all paths may contain spaces)
-    printf '%s %s %s %s\n' "$1" "$sha" "${previous:--}" "${snapshot:--}" > "$SHARED/deploy-state.tmp"
-    mv -f "$SHARED/deploy-state.tmp" "$SHARED/deploy-state"
-}
 finish_success() {
     local last ops_outdated=false
     last="$(tail -n 1 "$HISTORY" 2>/dev/null | awk '{print $1}' || true)"
@@ -22,27 +18,6 @@ finish_success() {
     log deployed "\"ops_outdated\":$ops_outdated" || return 1
     rm -f "$SHARED/deploy-state" || return 1
     prune_releases
-}
-rollback_candidate() {
-    printf '%s\n' "$sha" > "$FAILED"
-    if [[ -z "$previous" || ! -d "$APP_ROOT/releases/$previous" ]]; then
-        log unhealthy '"rolled_back_to":null'
-        rm -f "$SHARED/deploy-state"
-        return 1
-    fi
-    write_state rolling-back
-    restart_services stop || { log error '"reason":"rollback stop failed"'; return 1; }
-    restore_sessions "$snapshot" || { log error '"reason":"snapshot restore failed"'; return 1; }
-    switch_to "$previous" || { log error '"reason":"rollback switch failed"'; return 1; }
-    restart_services start || { log error '"reason":"rollback start failed"'; return 1; }
-    if wait_healthy "$DCX_HEALTH_TIMEOUT" "$previous"; then
-        rm -rf "$APP_ROOT/releases/$sha"
-        log unhealthy "$(python3.12 -c 'import json,sys; print(json.dumps(dict(rolled_back_to=sys.argv[1],snapshot=sys.argv[2])))' "$previous" "$snapshot")"
-    else
-        log unhealthy-both "\"rolled_back_to\":\"$previous\""
-    fi
-    rm -f "$SHARED/deploy-state"
-    return 1
 }
 verify_candidate() {
     if wait_healthy "$DCX_HEALTH_TIMEOUT" "$sha"; then
@@ -55,6 +30,7 @@ verify_candidate() {
 # Recovery precedes the up-to-date short circuit and any fetch/CI request.
 if [[ -s "$SHARED/deploy-state" ]]; then
     IFS=' ' read -r phase sha previous snapshot < "$SHARED/deploy-state"
+    rollback_mode="$(sed -n '2p' "$SHARED/deploy-state")"
     [[ "$previous" != - ]] || previous=""
     if [[ "${DEPLOY_DRY_RUN:-0}" == 1 ]]; then
         log error '"dry_run":true,"reason":"recovery pending"'
@@ -62,7 +38,8 @@ if [[ -s "$SHARED/deploy-state" ]]; then
     fi
     case "$phase" in
         preparing)
-            # No data/symlink changes were authorized yet; resume old services.
+            # Reassert quiescence before releasing a hold from a failed stop.
+            restart_services stop
             restart_services start
             rm -f "$SHARED/deploy-state"
             ;;

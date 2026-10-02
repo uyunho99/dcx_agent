@@ -132,7 +132,7 @@ build_release() { # sha
         return 0
     fi
     # Rebuilding a current release in place would modify live code.
-    if [[ "$(current_sha)" == "$target" && -f "$release_dir/.built" ]]; then
+    if [[ "$(current_sha)" == "$target" ]]; then
         log error '"reason":"cannot rebuild active release; deploy another commit first"'
         return 1
     fi
@@ -149,7 +149,7 @@ build_release() { # sha
         fi
     else
         # Constraints and interpreter version are part of the cache identity.
-        key="$( (set -o pipefail; cat "$release_dir/backend/requirements.txt" && cat "$release_dir/backend/constraints.txt" && python3.12 --version) | sha256)" || { rm -rf "$release_dir"; return 1; }
+        key="$(set -o pipefail; (cat "$release_dir/backend/requirements.txt" && cat "$release_dir/backend/constraints.txt" && python3.12 --version) | sha256)" || { rm -rf "$release_dir"; return 1; }
         venv="$SHARED/venvs/$key"
         if [[ ! -f "$venv/.complete" ]]; then
             rm -rf "$venv"
@@ -277,19 +277,36 @@ if pids:
     raise RuntimeError('workers did not exit after SIGKILL')
 PY
 }
+listener_pids() {
+    local port result status
+    for port in "$DCX_API_PORT" "$DCX_WEB_PORT"; do
+        status=0
+        result="$("${DCX_LSOF:-$(command -v lsof || echo /usr/sbin/lsof)}" -nP -t -iTCP:"$port" -sTCP:LISTEN)" || status=$?
+        # lsof returns 1 when no file matches; execution errors must fail closed.
+        [[ $status -le 1 ]] || return 1
+        [[ -z "$result" ]] || printf '%s\n' "$result"
+    done
+}
+assert_services_stopped() {
+    local listeners workers
+    listeners="$(listener_pids)" || return 1
+    workers="$(worker_pids)" || return 1
+    if [[ -n "$listeners" || -n "$workers" ]]; then
+        log error '"reason":"service listeners or workers remain; maintenance hold retained"'
+        return 1
+    fi
+}
 stop_services() {
-    local service pid pids="" port
+    local service pid pids="" listeners
+    touch "$MAINTENANCE" || return 1
     if [[ -n "${DCX_RESTART_CMD:-}" ]]; then
         "$DCX_RESTART_CMD" stop || return 1
-    else
-        for service in api web; do
-            launchctl disable "$DCX_LAUNCH_DOMAIN/$DCX_LAUNCH_LABEL.$service" || return 1
-        done
-        for service in api web; do
-            pid="$(cat "$SHARED/$service.pid" 2>/dev/null || true)"
-            case "$pid" in ''|*[!0-9]*) continue ;; esac
-            # PID files are trusted only while the process cwd is our release.
-            if python3.12 - "$pid" "$APP_ROOT/releases" <<'PY'
+    fi
+    for service in api web; do
+        pid="$(cat "$SHARED/$service.pid" 2>/dev/null || true)"
+        case "$pid" in ''|*[!0-9]*) continue ;; esac
+        # PID files are trusted only while the process cwd is our release.
+        if python3.12 - "$pid" "$APP_ROOT/releases" <<'PY'
 import os, pathlib, shutil, subprocess, sys
 try:
     if sys.platform.startswith('linux'):
@@ -300,29 +317,23 @@ try:
     pathlib.Path(cwd).resolve().relative_to(pathlib.Path(sys.argv[2]).resolve())
 except (OSError,ValueError,StopIteration,subprocess.CalledProcessError): sys.exit(1)
 PY
-            then
-                pids="$pids $(descendants "$pid") $pid"
-            fi
-        done
-        for port in "$DCX_API_PORT" "$DCX_WEB_PORT"; do
-            pids="$pids $("${DCX_LSOF:-$(command -v lsof || echo /usr/sbin/lsof)}" -nP -t -iTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)"
-        done
-    fi
-    # Stop API parents before scanning for detached workers: they can no
-    # longer spawn a worker between discovery and the snapshot.
+        then
+            pids="$pids $(descendants "$pid") $pid"
+        fi
+    done
+    listeners="$(listener_pids)" || return 1
+    pids="$pids $listeners"
+    # Stop parents before scanning for detached workers they could still spawn.
     terminate_pids "$pids" || return 1
     pids="$(worker_pids)" || return 1
-    terminate_pids "$pids"
+    terminate_pids "$pids" || return 1
+    assert_services_stopped
 }
 start_services() {
-    local service
+    rm -f "$MAINTENANCE" || return 1
+    # Sleeping holders exit within 10 seconds; launchd KeepAlive retries them.
     if [[ -n "${DCX_RESTART_CMD:-}" ]]; then
         "$DCX_RESTART_CMD" start
-    else
-        for service in api web; do
-            launchctl enable "$DCX_LAUNCH_DOMAIN/$DCX_LAUNCH_LABEL.$service" || return 1
-            launchctl kickstart -k "$DCX_LAUNCH_DOMAIN/$DCX_LAUNCH_LABEL.$service" || return 1
-        done
     fi
 }
 restart_services() { # Optional stop/start phases; no argument performs both.
@@ -395,4 +406,49 @@ prune_releases() {
         [[ -d "$dir" ]] || continue
         [[ "$keep" == *" $(basename "$dir") "* ]] || rm -rf "$dir"
     done
+}
+
+write_state() { # phase; sha/previous/snapshot from the locked transaction
+    printf '%s %s %s %s\n' "$1" "$sha" "${previous:--}" "${snapshot:--}" > "$SHARED/deploy-state.tmp" || return 1
+    # Optional second line preserves manual intent across history finalization.
+    printf '%s\n' "${rollback_mode:-automatic}" >> "$SHARED/deploy-state.tmp" || return 1
+    mv -f "$SHARED/deploy-state.tmp" "$SHARED/deploy-state"
+}
+rollback_candidate() {
+    if [[ -z "$previous" || ! -d "$APP_ROOT/releases/$previous" ]]; then
+        printf '%s\n' "$sha" > "$FAILED"
+        log unhealthy '"rolled_back_to":null'
+        rm -f "$SHARED/deploy-state"
+        return 1
+    fi
+    write_state rolling-back || return 1
+    printf '%s\n' "$sha" > "$FAILED" || return 1
+    restart_services stop || { log error '"reason":"rollback stop failed"'; return 1; }
+    restore_sessions "$snapshot" || { log error '"reason":"snapshot restore failed"'; return 1; }
+    switch_to "$previous" || { log error '"reason":"rollback switch failed"'; return 1; }
+    if [[ "${rollback_mode:-automatic}" == manual ]]; then
+        # Atomic and idempotent: a replay must never remove the previous row.
+        python3.12 - "$HISTORY" "$sha" <<'HISTORY_PY'
+import pathlib,sys
+p=pathlib.Path(sys.argv[1]); rows=p.read_text().splitlines()
+if rows and rows[-1].split(' ',1)[0] == sys.argv[2]:
+    tmp=p.with_suffix('.tmp')
+    tmp.write_text('\n'.join(rows[:-1])+'\n'); tmp.replace(p)
+HISTORY_PY
+        [[ $? == 0 ]] || return 1
+    fi
+    restart_services start || { log error '"reason":"rollback start failed"'; return 1; }
+    if wait_healthy "$DCX_HEALTH_TIMEOUT" "$previous"; then
+        if [[ "${rollback_mode:-automatic}" == manual ]]; then
+            log rolled-back "\"rolled_back_to\":\"$previous\"" || return 1
+            rm -f "$SHARED/deploy-state"
+            return $?
+        fi
+        rm -rf "$APP_ROOT/releases/$sha"
+        log unhealthy "$(python3.12 -c 'import json,sys; print(json.dumps(dict(rolled_back_to=sys.argv[1],snapshot=sys.argv[2])))' "$previous" "$snapshot")"
+    else
+        log unhealthy-both "\"rolled_back_to\":\"$previous\""
+    fi
+    rm -f "$SHARED/deploy-state"
+    return 1
 }

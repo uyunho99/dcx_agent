@@ -42,7 +42,7 @@ def test_install_dry_run(macmini, tmp_path, qa):
         assert d['EnvironmentVariables']['APP_ROOT'] == str(m.root)
         assert d['EnvironmentVariables']['DCX_API_PORT'] == api
         assert d['EnvironmentVariables']['DCX_WEB_PORT'] == web
-        assert d['EnvironmentVariables']['DCX_LAUNCH_DOMAIN'] == (f'gui/{os.getuid()}' if qa else 'system')
+        assert 'DCX_LAUNCH_DOMAIN' not in d['EnvironmentVariables']
         if qa:
             assert 'UserName' not in d
         else:
@@ -51,6 +51,7 @@ def test_install_dry_run(macmini, tmp_path, qa):
             assert d['StartInterval'] == 120 and d['RunAtLoad'] is True
         else:
             assert d['KeepAlive'] is True
+            assert d['ThrottleInterval'] == 10
         if sys.platform == 'darwin':
             subprocess.run(['/usr/bin/plutil', '-lint', str(p)], check=True, capture_output=True)
     runtime = (out/'runtime.env').read_text()
@@ -138,3 +139,16 @@ def test_api_execution_environment(macmini):
     assert env['DCX_RELEASE_SHA'] == m.a
     assert env['AUTHOR_SALT_PATH'] == str(m.root/'shared/data/.author_salt')
     assert (m.root/'shared/api.pid').read_text().strip().isdigit()
+
+
+@pytest.mark.parametrize('script', ['run-api.sh', 'run-web.sh'])
+def test_run_waits_during_maintenance(macmini, script):
+    m = macmini
+    (m.root/'shared/maintenance').touch()
+    # Record the required delay without making the suite sleep.
+    (m.bin/'sleep').unlink()
+    m.command('sleep', "import sys; assert sys.argv[1:] == ['10']")
+    r = run(m, script, '--print-cmd')
+    assert r.returncode == 0, r.stderr
+    assert r.stdout == ''
+    assert not (m.root/('shared/'+script[4:-3]+'.pid')).exists()

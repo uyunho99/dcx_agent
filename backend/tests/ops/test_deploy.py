@@ -146,7 +146,9 @@ def test_leftover_current_tmp(macmini):
 def test_venv_hash_and_cleanup(macmini):
     m = macmini
     m.env["DCX_BUILD_CMD"] = ""
+    (m.root / "current").unlink()
     m.lib(f'build_release "{m.a}"; build_release "{m.b}"')
+    m.set_current(m.a)
     first = (m.root / f"releases/{m.a}/backend/.venv").resolve()
     assert first == (m.root / f"releases/{m.b}/backend/.venv").resolve()
     assert len((m.root / "pip-calls").read_text().splitlines()) == 1
@@ -233,7 +235,7 @@ def test_resume_after_crash_mid_switch(macmini, healthy):
 
 def test_legacy_release_health(macmini):
     m = macmini
-    assert m.lib(f'if wait_healthy 1 "{m.a}"; then echo yes; else echo no; fi', FAKE_HEALTH='{"status":"ok"}') == "yes"
+    assert m.lib(f'if wait_healthy 3 "{m.a}"; then echo yes; else echo no; fi', FAKE_HEALTH='{"status":"ok"}') == "yes"
     m.set_current(m.b)
     assert m.lib(f'if wait_healthy 1 "{m.b}"; then echo yes; else echo no; fi', FAKE_HEALTH='{"status":"ok"}') == "no"
 
@@ -286,16 +288,61 @@ def test_config_is_data_not_shell(macmini):
     assert not (m.root / f"releases/{m.b}/injected").exists()
 
 
-def test_default_service_control_disables_before_stopping(macmini):
+@pytest.mark.parametrize("service", ["API", "WEB"])
+def test_hold_stop_and_start(macmini, owned_listener, service):
     m = macmini
-    m.command("launchctl", '''import os,pathlib,sys
-p=pathlib.Path(os.environ['APP_ROOT'])
-with (p/'launch-events').open('a') as f:f.write(' '.join(sys.argv[1:])+'\\n')
+    child, port = owned_listener
+    m.env["DCX_" + service + "_PORT"] = port
+    m.command("launchctl", "raise AssertionError('deploy must not use launchctl')")
+    m.lib('stop_services', DCX_RESTART_CMD="")
+    child.wait(timeout=3)
+    assert (m.root/"shared/maintenance").exists()
+    assert m.lib('listener_pids') == ""
+    m.lib('start_services', DCX_RESTART_CMD="")
+    assert not (m.root/"shared/maintenance").exists()
+
+
+@pytest.mark.parametrize("service", ["API", "WEB"])
+def test_listener_blocks_snapshot(macmini, owned_listener, service):
+    m = macmini
+    child, port = owned_listener
+    m.env["DCX_" + service + "_PORT"] = port
+    # Simulate failed PID identity discovery: termination cannot safely signal it.
+    m.command("ps", "pass")
+    code, log = m.run_deploy(DCX_RESTART_CMD="")
+    assert code != 0 and log["decision"] == "error"
+    assert child.poll() is None
+    assert (m.root/"shared/maintenance").exists()
+    assert not list((m.root/"shared/snapshots").iterdir())
+    assert m.current == m.a
+    # Recovery must also refuse to release the hold while a writer remains.
+    assert m.run_deploy(DCX_RESTART_CMD="")[0] != 0
+    assert (m.root/"shared/maintenance").exists()
+
+
+def test_active_release_without_marker_is_untouched(macmini):
+    m = macmini
+    live = m.root/"releases"/m.a
+    (live/"sentinel").write_text("live")
+    assert m.lib(f'if build_release "{m.a}"; then echo rebuilt; else echo refused; fi') == "refused"
+    assert (live/"sentinel").read_text() == "live"
+    assert not (m.root/"build-calls").exists()
+
+
+@pytest.mark.parametrize("entry", ["deploy.sh", "dcxctl"])
+def test_cache_key_failure_aborts_build(macmini, entry):
+    m = macmini
+    (m.bin/"python3.12").unlink()
+    m.command("python3.12", '''import os,sys
+if sys.argv[1:] == ['--version']: sys.exit(42)
+os.execv(sys.executable,[sys.executable]+sys.argv[1:])
 ''')
-    assert m.run_deploy(DCX_RESTART_CMD="")[0] == 0, m.output
-    events = (m.root / "launch-events").read_text().splitlines()
-    assert [line.split()[0] for line in events] == ["disable", "disable", "enable", "kickstart", "enable", "kickstart"]
-    assert all("ai.person-a.dcx-agent." in line for line in events)
+    args = [m.env["DCX_BASH"], str(SCRIPTS/entry)] + (["deploy"] if entry == "dcxctl" else [])
+    r = subprocess.run(args, env=dict(m.env, DCX_BUILD_CMD=""), capture_output=True, text=True, timeout=45)
+    assert r.returncode != 0
+    assert m.logs[-1]["decision"] == "build-failed"
+    assert not list((m.root/"shared/venvs").iterdir())
+    assert m.current == m.a
 
 
 def test_recovery_before_switch_and_history_idempotence(macmini):
