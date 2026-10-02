@@ -126,9 +126,7 @@ def test_package_changed_marks_stale(setup, change):
     pipeline.run(ctx)
     before = len(runner.calls)
     if change == 'package_run':
-        package = sessions.read_json(root / 'evidence/package.json')
-        package['run'] = 'new-evidence'
-        sessions.write_json(root / 'evidence/package.json', package)
+        sessions.update_session(ctx.sid, {'evidence': {'run': 'new-evidence'}})
     else:
         segment = SegmentStore.open(ctx.sid, ctx.version)
         segment.confirm('contexts' if change == 'action' else 'personas',
@@ -174,7 +172,7 @@ def test_source_changes_during_call_do_not_publish_done(setup, monkeypatch):
     def change_source(task):
         result = runner(task)
         package = sessions.read_json(root / 'evidence/package.json')
-        package['run'] = 'changed-during-call'
+        package['params']['CONCURRENCY'] = 99  # changed producer package
         sessions.write_json(root / 'evidence/package.json', package)
         return result
     monkeypatch.setattr(pipeline.registry, 'run_task', change_source)
@@ -197,9 +195,7 @@ def test_fresh_rebuilds_changed_package_and_resets_insights(setup):
     pipeline.run(ctx)
     store = PersonaStore.open(ctx.sid, ctx.version)
     store.new_revision('insights', [{'id': 'old'}], by='generate', message=None)
-    raw = sessions.read_json(root / 'evidence/package.json')
-    raw['run'] = 'updated-package'
-    sessions.write_json(root / 'evidence/package.json', raw)
+    sessions.update_session(ctx.sid, {'evidence': {'run': 'updated-package'}})
     before = len(runner.calls)
     ctx.args = {'fresh': True}
     pipeline.run(ctx)

@@ -40,6 +40,7 @@ export function OpportunityMap({ map, highlightedId, selectedPersonaId, onHighli
       {lines.map((line,index) => <line key={index} data-baseline={index} x1={x(line[0][0])} y1={y(line[0][1])} x2={x(line[1][0])} y2={y(line[1][1])} stroke="var(--line-strong)" strokeDasharray="4 4"/>)}
       <text x={300} y={380} textAnchor="middle" fill="var(--ink)">중요도</text><text x={18} y={180} transform="rotate(-90 18 180)" textAnchor="middle" fill="var(--ink)">만족도</text>
       {map.points.filter(point => !hiddenPersonas.includes(point.persona_id)).map(point => {
+        if (point.i === null || point.s === null) return null;
         const entry = legend.get(point.cluster_id);
         const shape = entry?.shape ?? point.shape ?? shapes[clusters.indexOf(point.cluster_id)] ?? 'circle';
         const cluster = shapes.indexOf(shape);

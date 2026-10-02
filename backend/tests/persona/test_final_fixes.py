@@ -203,9 +203,7 @@ def test_fresh_stale_rebuilds_checkpoints(setup, selected):
     ctx, root, runner = setup
     pipeline.run(ctx)
     old = sessions.read_json(root / 'persona/cards.json')
-    package = sessions.read_json(root / 'evidence/package.json')
-    package['run'] = 'new-evidence-run'
-    sessions.write_json(root / 'evidence/package.json', package)
+    sessions.update_session(ctx.sid, {'evidence': {'run': 'new-evidence-run'}})
     assert pipeline.mark_stale_if_changed(ctx.sid, ctx.version)
     before = len(runner.calls)
     ctx.args = {'fresh': True, 'personas': selected}
@@ -324,7 +322,7 @@ def test_chat_detects_changed_package_without_poll(ready):
     store.write('cards', cards)
     path = version_dir(session.sid, session.version) / 'evidence/package.json'
     raw = sessions.read_json(path)
-    raw['run'] = 'changed'
+    raw['params']['CONCURRENCY'] = 99
     sessions.write_json(path, raw)
     with pytest.raises(sessions.StoreError) as exc:
         edit(ready, {'items': ready[2]})

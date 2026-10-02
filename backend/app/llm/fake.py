@@ -24,26 +24,20 @@ class FakeBackend:
                 raw = path.read_text()
         except (KeyError, OSError):
             return failure('backend', 'Fake response unavailable')
-        if task.task == 'segment.dims':
+        from app.llm.evidence_echo import BUILDERS
+        builders = {**BUILDERS, 'segment.dims': _segment_echo,
+                    **{name: _persona_echo for name in (
+                        'persona.card', 'persona.summary', 'persona.prescribe',
+                        'persona.constraint_check', 'insight.derive', 'insight.concept')}}
+        try:
+            echo = json.loads(raw) == {'echo': True}
+        except (ValueError, TypeError):
+            echo = False
+        if echo and task.task in builders:
             try:
-                echo = json.loads(raw) == {'echo': True}
-            except (ValueError, TypeError):
-                echo = False
-            if echo:
-                raw = json.dumps({'items': [dict(doc_id=a.title,
-                    environment='여름 실내', internal_state='더위 걱정',
-                    task_goal='쾌적한 냉방', activity_response='예약 운전',
-                    resource_constraint='전기료 부담') for a in task.attachments]}, ensure_ascii=False)
-        if task.task in ('persona.card', 'persona.summary', 'persona.prescribe', 'persona.constraint_check', 'insight.derive', 'insight.concept'):
-            try:
-                echo = json.loads(raw) == {'echo': True}
-            except (ValueError, TypeError):
-                echo = False
-            if echo:
-                try:
-                    raw = json.dumps(_persona_echo(task), ensure_ascii=False)
-                except (ValueError, KeyError, IndexError, TypeError):
-                    return failure('schema', 'Invalid fake task input')
+                raw = json.dumps(builders[task.task](task), ensure_ascii=False)
+            except (ValueError, KeyError, IndexError, TypeError):
+                return failure('schema', 'Invalid fake task input')
         return validate(task, raw)
 
 
@@ -91,3 +85,9 @@ def _persona_echo(task):
         journey=[dict(context_id=row['context_id'], action=row['action'], feeling='번거롭다',
             service='예약 조절 안내', service_action='예약 방법을 안내한다', cx_4d='시스템')
             for row in payload['contexts']])
+
+
+def _segment_echo(task):
+    return {'items': [dict(doc_id=a.title, environment='여름 실내',
+        internal_state='더위 걱정', task_goal='쾌적한 냉방', activity_response='예약 운전',
+        resource_constraint='전기료 부담') for a in task.attachments]}

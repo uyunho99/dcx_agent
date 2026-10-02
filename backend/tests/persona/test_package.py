@@ -56,10 +56,8 @@ def test_load_package_validates_required(data_dir):
     path = data_dir / 'sessions/test/versions/v1/evidence/package.json'
     path.parent.mkdir(parents=True)
     data = make_package()
-    data['future'] = {'anything': True}
-    data['personas'][0]['context_evidence'][0]['future'] = 1
     path.write_text(json.dumps(data))
-    assert load_package('test', 'v1').model_dump(by_alias=True)['future'] == {'anything': True}
+    assert load_package('test', 'v1').schema_ == 'evidence-package/1'
     for route in [('schema',), ('params',), ('personas', 0, 'persona_evidence', 'goal'),
                   ('personas', 0, 'context_evidence', 0, 'context_id'),
                   ('personas', 0, 'context_evidence', 0, 'metrics', 'odi'),

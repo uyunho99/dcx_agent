@@ -81,6 +81,8 @@ class SegmentStore:
                 if 'flags_json' not in {row['name'] for row in db.execute('PRAGMA table_info(personas)')}:
                     db.execute("ALTER TABLE personas ADD COLUMN flags_json TEXT DEFAULT '[]'")
                 db.execute('PRAGMA user_version=1')
+            if 'quality_json' not in {r['name'] for r in db.execute('PRAGMA table_info(personas)')}:
+                db.execute('ALTER TABLE personas ADD COLUMN quality_json TEXT')
             self._columns = {table: {row['name'] for row in db.execute(f'PRAGMA table_info({table})')}
                              for table in (*_LAYERS, 'docs', 'codes', 'combos')}
 

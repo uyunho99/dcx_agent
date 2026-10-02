@@ -152,3 +152,56 @@
 ### D-248 묶음 ③ 기획 · 설계 · 계획을 ②와 병행 · 확정 (사용자, Q5)
 - ③은 별도 하네스 실행(`dcx2-stage8`)과 별도 체크아웃에서 진행하고, 가짜 Evidence Package(02-design 2.4 스키마) 픽스처로 7단계 없이 시험한다. 승인 게이트는 ② · ③ 따로.
 - 7단계 동시 호출(01 Q4): Claude 판단 — LLM 동시 호출 4개(설정값). 계획에서 확정.
+
+## 묶음 ② 설계 (2026-10-02)
+
+### D-249 불용어는 표시 · 전달 키워드에만 적용, LDA 학습 어휘는 그대로 · 판단 (Claude)
+- 적용: 6-A c-TF-IDF 키워드 · 6-B 어휘 네트워크(어휘 선정 전) · 6-C 표시 키워드 · 7단계 쿼리 키워드 · Artifact 집계. 6-A는 사용자 범위(6-B · Context · 7) 밖이지만 같은 "흔한 단어가 키워드로 보이는" 문제라 함께 적용.
+- LDA 학습 어휘를 건드리면 C_v로 고른 Context 수(D-235)가 바뀔 수 있어 제외. 틀렸을 때 비용: 목록 적용 위치 한 줄 추가.
+### D-250 7단계 LLM 동시 호출 4개(설정 `evidence_llm_concurrency`, 1이면 순차), SQLite 쓰기는 한 스레드 · 판단 (Claude)
+- QA-L1 속도(호출당 약 15초) 기준 합성 세션 약 75분 → 약 20분. 테스트로 순차 · 동시 결과 동일을 고정.
+### D-251 `evidence.sqlite` 표 구조 · 질의 임베딩 `input_type` 인자 · 필터 강제 검색 래퍼 · 판단 (Claude)
+- 설계가 비워 둔 저장 구조를 6개 표(meta · queries · candidates · selected · contexts · persona_support)로 정함. `Embedder.embed(texts, input_type='document')` 하위 호환 인자. 7단계는 `allow=None`이면 오류를 내는 래퍼만 사용(AC-06).
+
+## 묶음 ② 계획 (2026-10-02)
+
+### D-252 실패 Context가 남으면 7단계 상태는 `partial`, 모두 완료 또는 "건너뛰고 진행"이면 `done` · 판단 (Claude)
+- D-223("페르소나 만들기"는 전부 완료 또는 실패 행 건너뛰기 확정까지 잠김)을 상태값으로 표현. `evidenceDone`은 `done`일 때만.
+### D-253 태깅 응답 누락 문서는 1회 재시도 후 `untagged`로 후보에서 제외하고 수를 기록 · 판단 (Claude)
+### D-254 인용 위치의 댓글 번호는 6단계 입력(prepared) 순서 기준 · 판단 (Claude)
+### D-255 "페르소나 만들기"는 묶음 ③ 합류 전까지 `/pipeline/personas` 이동만 · 판단 (Claude)
+
+## 묶음 ② 구현 (2026-10-02)
+
+### D-256 Voyage 문서 임베딩 요청은 기존 그대로(input_type 없음), 질의만 `input_type='query'` · 판단 (Claude, T2 Codex 질문)
+- 저장된 3단계 문서 벡터가 input_type 없이 만들어졌다. 지금부터 'document'를 보내면 새로 임베딩한 문서와 기존 문서가 서로 다른 방식이 된다. 비용: 나중에 전부 'document'로 다시 임베딩하려면 3단계 재실행.
+### D-257 DPP가 10건 전에 멈추면(거의 같은 문서) 나머지는 quality 순으로 채우되 이미 고른 문서와 코사인 0.95 미만만 · 판단 (Claude, T8 Codex 우려)
+- 복붙 문서를 중복으로 보이지 않으면서 가능한 한 10건을 채운다. 채운 수는 `dpp_fill`로 기록. 비용: 채운 문서는 다양성 보장이 약함.
+### D-258 인용 위치(start/end)는 유니코드 코드 포인트 기준 — 백엔드(Python) 그대로, 프런트는 `Array.from(text)`로 변환 · 판단 (Claude, T13 Codex 우려)
+- 한국어는 차이가 없지만 이모지(서로게이트 쌍)가 있으면 JS 문자열 인덱스와 어긋난다. T14에서 `highlight` 수정 + 이모지 테스트.
+
+## 묶음 ② 최종 리뷰 반영 (2026-10-02)
+
+### D-259 Evidence Package는 2.4 스키마를 빠짐없이 채운다(Context quality: cohesion · boundary · stability · npmi, Persona quality: cohesion · boundary · stability_ari — 6단계 값), ③ 읽기 모델 완화 · 계약 테스트는 ③ T17에서 · 판단 (Claude, opus C1)
+### D-260 6단계 재실행 시 evidence stale 표시는 7단계 결과가 있을 때만(status none · 미실행 버전은 그대로) · 판단 (Claude, opus I2)
+### D-261 Known Insight 판정 캐시 키에 문장 내용 지문 포함, 완료 Context에 새 문장형 KI는 빠진 쌍만 판정 예약 + 끝날 때까지 knownChanged 유지 · 판단 (Claude, opus I1 · Codex 3 · 4)
+### D-262 질의 임베딩 실패(0 벡터 · 개수 불일치)는 그 Context 실패(재시도 가능), "결과 없음 완료"로 기록하지 않음 · 판단 (Claude, Codex 7)
+### D-263 7단계 생성마다 segment run · prepKey · 프롬프트 판(pver)을 기록하고, 읽기 · 이어 하기는 그 값 기준. 값이 바뀌면 해당 체크포인트 무효화 · 판단 (Claude, Codex 2 · 6)
+### D-264 Persona 쿼리 위반은 Persona 쿼리만, Context 쿼리 위반은 그 Context만 대체 쿼리 · 판단 (Claude, opus I8)
+### D-265 한 버전에서 Known Insight를 지워도 공유 캐시 행은 지우지 않고 무시만 한다(다른 버전 보호) · 판단 (Claude, opus Minor)
+### D-266 공유 계약: stage_7.json에 tag_calls 추가 · 프런트는 relevant_false 사용 · 근거 항목에 quoteSource {field, idx, text}(위치와 짝) · noveltyShown: bool · 판단 (Claude, opus I3 · I4 · I5 · Codex 5 · 8 · 9)
+
+## 묶음 ② 브라우저 QA 1회차 (2026-10-02)
+
+### D-267 QA용 가짜 LLM은 프롬프트의 Context ID · 문서 ID로 유효한 응답을 만든다(evidence.queries · tag · novelty) · 판단 (Claude, ③ D-318과 같은 방식)
+- 정적 응답만으로는 QA 세션에서 쿼리 34개 전부 대체 · 문서 1,196건 미태깅 → 근거 0건(제품 결함 아님). ② · ③ 두 브랜치의 `app/llm/fake.py` 변경은 ③ T17 rebase에서 합친다.
+### D-268 실행 중 진행 표시의 태깅 호출 수는 status의 실시간 값(detail)을 쓴다 · 판단 (Claude, QA)
+
+## 묶음 ② 브라우저 QA 2~3회차 (2026-10-02)
+
+### D-269 한 Context 후보가 (거의) 모두 미태깅이면 그 Context는 "실패 · 다시 시도"이지 "근거 0건 완료"가 아니다 · 판단 (Claude, QA-L2)
+- 실제 LLM 맛보기에서 태깅 40회 · 미태깅 120건 · 근거 0건인데 완료로 표시됐다. 사유 문구 "근거 원문을 태깅하지 못했습니다. 다시 시도하세요."
+### D-270 태그 캐시 키에 LLM 모델 이름을 넣는다(모델을 바꾸면 다시 판정) · 판단 (Claude, QA-L2 · UAT 안건이던 것)
+- 첫 QA-L2 시도가 가짜 실행의 캐시를 그대로 재사용했다. 운영에서도 모델 교체 뒤 옛 판정이 남는 문제.
+### D-271 버전 비교 7단계는 전용 표(보고서 핵심 수치 + Context별 선택 변화 수) · 판단 (Claude, QA E-F6)
+### D-272 실제 LLM 태깅 응답 거부(E-F7)는 프롬프트 · 스키마를 실제 응답에 맞게 고치고, 실제 응답 모양의 오프라인 회귀 테스트로 고정 · 판단 (Claude)

@@ -156,9 +156,16 @@ def _restart(data, target, stage):
         data.get('completion', {}).pop('segmentDone', None)
         data.get('drafts', {}).pop('segment', None)
     if stage <= 7:
+        data.get('completion', {}).pop('evidenceDone', None)
         shutil.rmtree(target / 'evidence', ignore_errors=True)
         if 'evidence' in data:
-            data['evidence'] = {'status': 'stale'}
+            data['evidence'] = {'status': 'none'}
+        if (target / 'segment/segment.sqlite').exists():
+            from app.segment.store import SegmentStore
+            from app.evidence.assemble import append_context_flag
+            seg = SegmentStore(target)
+            for row in seg.contexts():
+                append_context_flag(seg, row['context_id'], 'undifferentiated_candidate', present=False)
     if stage <= 8:
         shutil.rmtree(target / 'persona', ignore_errors=True)
         for key in ('personaDone', 'insightDone'):
@@ -299,6 +306,25 @@ def compare(sid, a, b, stage) -> dict:
             result = {name: {'before': metrics(before, a, name), 'after': metrics(after, b, name)} for name in names}
             result['same'] = all(value['before'] == value['after'] for value in result.values())
             return result
+        if stage == 'stage7':
+            def evidence_summary(v):
+                base = version_dir(sid, v) / 'evidence'
+                report = read_json(base / 'stage_7.json')
+                result = dict(report={k: value for k, value in report.items()
+                                      if k not in ('params', 'run', 'at')} if report is not None else None,
+                              contexts={})
+                path = base / 'evidence.sqlite'
+                if path.is_file():
+                    with closing(sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True)) as db:
+                        db.execute('BEGIN')
+                        result['contexts'] = {cid: dict(selectedAll=[], selectedNew=[])
+                                              for cid, in db.execute('SELECT context_id FROM contexts ORDER BY context_id')}
+                        for cid, tab, doc_id in db.execute("SELECT context_id, tab, doc_id FROM selected WHERE role='support' ORDER BY context_id, tab, rank, doc_id"):
+                            result['contexts'].setdefault(cid, dict(selectedAll=[], selectedNew=[]))[
+                                'selectedAll' if tab == 'all' else 'selectedNew'].append(doc_id)
+                return result
+            left, right = evidence_summary(a), evidence_summary(b)
+            return dict(same=left == right, before=left, after=right)
         if stage == 'stage6':
             def segment_summary(v):
                 import json

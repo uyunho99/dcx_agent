@@ -56,8 +56,8 @@ def _evidence(index, offset=0, *, role='support', novelty='low', verified=True):
     return dict(doc_id=f'd{index * DOCS_PER_CONTEXT + offset:06d}', source=CHANNELS[(index * DOCS_PER_CONTEXT + offset) % len(CHANNELS)],
                 quote=dict(field='body', idx=None, start=0 if verified else None,
                            end=len(text) if verified else None, text=text, verified=verified),
-                tags=['situation', 'pain_point'], polarity='negative', novelty=novelty,
-                known_match=[], tab=['all', 'new'], role=role)
+                tags=['situation', 'pain_point'], polarity=-0.5, novelty=novelty,
+                known_match=None, tab=['all', 'new'], role=role, dist_centroid=None, combo_rarity=None)
 
 
 def make_package(*, personas=4, contexts=(3, 3, 3, 2), big_persona_contexts=None, seed=42, qa_failed_persona=None) -> dict:
@@ -90,8 +90,9 @@ def make_package(*, personas=4, contexts=(3, 3, 3, 2), big_persona_contexts=None
             artifacts=[dict(name='에어컨', mention_count=count)],
             metrics=_metrics(importance, satisfaction, count * DOCS_PER_CONTEXT),
             quality=dict(cohesion=.8, boundary=.1, stability_ari=.9)), context_evidence=rows))
-    return dict(schema='evidence-package/1', version='v1', params={'seed': seed},
-                run=f'fake-evidence-{seed}', personas=blocks, projectContext=deepcopy(PROJECT_CONTEXT))
+    from app.evidence import params
+    used_params = json.loads(json.dumps({name: getattr(params, name) for name in vars(params) if name.isupper()}))
+    return dict(schema='evidence-package/1', version='v1', params=used_params, personas=blocks)
 
 
 def write_session_with_package(local_data_dir, **kw):
@@ -140,7 +141,7 @@ def write_session_with_package(local_data_dir, **kw):
             patch.multiple(s3, _USE_LOCAL=True, _DATA_DIR=base):
         sessions.update_session(session.sid, dict(bk='LG 에어컨', projectContext=deepcopy(PROJECT_CONTEXT),
             segment=dict(status='done', run=store.get_run(), savedAt=sessions.now()),
-            evidence=dict(status='done', run=package['run'], savedAt=sessions.now()),
+            evidence=dict(status='done', run=f'fake-evidence-{kw.get("seed", 42)}', savedAt=sessions.now()),
             completion=dict(segmentDone=True)))
         sessions.write_json(directory / 'evidence/package.json', package)
     return session

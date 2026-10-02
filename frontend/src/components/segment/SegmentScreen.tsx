@@ -1,4 +1,5 @@
 'use client';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge, Banner, Button, Card, ProgressBar } from '../ds';
 import { ProvisionalBadge } from '../ds/ProvisionalBadge';
@@ -16,7 +17,7 @@ import { ClusterLayer, type Edit } from './ClusterLayer';
 import { PersonaLayer } from './PersonaLayer';
 import { ContextLayer } from './ContextLayer';
 import { KSuggestChart } from './KSuggestChart';
-import { canStartEvidence, currentSegmentDraft, layerState, segmentErrorMessage, segmentErrorMessages } from './segmentView';
+import { currentSegmentDraft, layerState, segmentErrorMessage, segmentErrorMessages } from './segmentView';
 const running = (s: SegmentStatus | null) => !!s && ['queued', 'running', 'paused'].includes(s.status);
 const steps = [['load', '적재'], ['L1', 'Cluster'], ['L2', 'Persona'], ['L3', 'Context'], ['quality', '품질'], ['dims', '경험 차원'], ['drafts', '초안']];
 type Props = {
@@ -26,6 +27,7 @@ type Props = {
     draft?: SegmentDraft | null;
 };
 export function SegmentScreen({ sid, version, readonly = false }: Props) {
+    const router = useRouter();
     const view = useVersion();
     const { register } = useDirty();
     const dirtyId = `segment:${sid}:${version ?? 'current'}`;
@@ -199,7 +201,13 @@ export function SegmentScreen({ sid, version, readonly = false }: Props) {
             void load(current);
     }, [current, load, savedDraft, register, dirtyId]);
     const blocked = readonly || !!view.conflict || busy || running(current) || !current || !!error || !!pollError || savedDraft === undefined;
-    const evidence = current ? canStartEvidence(current) : { allowed: false, reason: '다음 묶음에서 열립니다' };
+    const evidence = {
+        allowed: current?.status === 'done' && Object.values(current.confirm).every(count => {
+            const match = /^(\d+)\/(\d+)$/.exec(count);
+            return !!match && Number(match[2]) > 0 && match[1] === match[2];
+        }) && !blocked && loaded && Object.keys(edits).length === 0,
+        reason: '6-C Context를 모두 확정한 뒤 근거 탐색을 실행하세요.',
+    };
     async function refresh() {
         if (lock.current) return;
         setError('');
@@ -357,8 +365,8 @@ export function SegmentScreen({ sid, version, readonly = false }: Props) {
  {!current ? <Card><p role="status">클러스터링 정보를 불러오는 중…</p></Card> : running(current) ? <Card className="space-y-4"><h2 className="ds-t-card">6단계 · 실행 중</h2><p aria-live="polite">{`${current.step} · ${steps.find(([key]) => key === current.step)?.[1] ?? ''} ${current.detail?.personas ? `${current.detail.persona}/${current.detail.personas} Persona ` : current.detail?.total ? `${current.detail.docs}/${current.detail.total} 문서 ` : ''}${current.status === 'paused' ? '일시 정지' : '진행 중'} ${Math.round(current.progress * 100)}%`}</p><ol className="grid grid-cols-4 gap-3">{steps.map(([key, label], i) => { const position = steps.findIndex(([k]) => k === current.step); return <li key={key}><Badge>{i < position ? '완료' : i === position ? '진행 중' : '대기'}</Badge><p>{label}</p></li>; })}</ol><ProgressBar label="클러스터링 진행" value={current.progress * 100}/><p>화면을 닫아도 계속됩니다.</p><Button disabled>다시 나누기</Button></Card> : !current.run || !['review', 'done'].includes(current.status) ? <Card className="space-y-4"><p>학습 결과의 Core · Supporting 문서를 나눕니다.</p><Button variant="primary" disabled={blocked} onClick={() => void start()}>{current.status === 'failed' || current.status === 'interrupted' ? '이어서 진행' : '클러스터링 실행'}</Button></Card> : !loaded ? <Card><p role="status">결과를 불러오는 중…</p></Card> : <>
  {layer === '6-A' && <>{suggest && <details><summary className="cursor-pointer">k 제안 근거 보기</summary><div className="max-w-sm"><KSuggestChart k={suggest.suggested} silhouette={suggest.silhouette} sample={suggest.sample}/></div></details>}{clusters.length ? <ClusterLayer {...editor} clusters={clusters} onRequest={(id, kind, note) => void mutate(() => api.createSegmentRequest(sid, { layer: 'clusters', id, kind, note }, version))}/> : <Card>클러스터링할 문서가 없습니다.</Card>}</>}
  {layer === '6-B' && <PersonaLayer {...editor} forwardPrimary={!!forward} personas={personas} clusters={clusters} selected={chosen?.id ?? ''} onSelect={setSelected}/>}
- {layer === '6-C' && <div className="grid grid-cols-[minmax(160px,1fr)_minmax(0,3fr)] gap-5"><nav aria-label="Persona 목록" className="min-w-0 space-y-2">{personas.map(p => { const rows = contexts.filter(c => c.personaId === p.id); return <Button key={p.id} className="w-full whitespace-normal text-left" aria-current={chosen?.id === p.id ? 'true' : undefined} onClick={() => setSelected(p.id)}>{p.clusterId} · {p.name ?? p.nameDraft ?? p.id} · {rows.filter(c => c.confirmed).length}/{rows.length} 확정</Button>; })}</nav><ContextLayer {...editor} contexts={visibleContexts} emptyRatio={emptyRatio} onBulk={bulk}/></div>}
+ {layer === '6-C' && <div className="grid grid-cols-[minmax(160px,1fr)_minmax(0,3fr)] gap-5"><nav aria-label="Persona 목록" className="min-w-0 space-y-2">{personas.map(p => { const rows = contexts.filter(c => c.personaId === p.id); return <Button key={p.id} className="w-full whitespace-normal text-left" aria-current={chosen?.id === p.id ? 'true' : undefined} onClick={() => setSelected(p.id)}>{p.clusterId} · {p.name ?? p.nameDraft ?? p.id} · {rows.filter(c => c.confirmed).length}/{rows.length} 확정</Button>; })}</nav><ContextLayer key={current.run} sid={sid} version={version} {...editor} contexts={visibleContexts} emptyRatio={emptyRatio} onBulk={bulk}/></div>}
  {forward && <div className="flex justify-end"><Button data-forward variant="primary" disabled={blocked} onClick={() => setLayer(layer === '6-A' ? '6-B' : '6-C')}>{layer === '6-A' ? '6-B로 →' : '6-C로 →'}</Button></div>}
  <p aria-live="polite">{layer === '6-A' ? current.confirm.clusters : layer === '6-B' ? current.confirm.personas : current.confirm.contexts} 확정</p></>}
- <div className="flex justify-end"><Button disabled={!evidence.allowed} title={evidence.reason}>근거 탐색 실행</Button></div></div></VersionStage>;
+ <div className="flex justify-end"><Button disabled={!evidence.allowed} title={evidence.allowed ? undefined : evidence.reason} onClick={() => router.push('/pipeline/evidence?start=1')}>근거 탐색 실행</Button></div></div></VersionStage>;
 }

@@ -13,7 +13,7 @@ def completed(data_dir):
     package = load_package(sid, 'v1')
     store.update_session(sid, dict(schemaVersion=2, segment={'status': 'done'},
         evidence={'status': 'done'}, persona={'status': 'done'}, insight={'status': 'done'},
-        completion=dict(segmentDone=True, personaDone=True, insightDone=True)))
+        completion=dict(segmentDone=True, evidenceDone=True, personaDone=True, insightDone=True)))
     root = versions.version_dir(sid, 'v1')
     for name in ('segment', 'evidence'):
         store.write_json(root / name / 'keep.json', {'keep': True})
@@ -33,6 +33,8 @@ def test_restart_stage8_artifacts_and_completion(completed, stage):
     assert (root / 'evidence/keep.json').exists() == (stage > 7)
     data = store.read_json(root / 'session.json')
     assert not {'personaDone', 'insightDone'} & data['completion'].keys()
+    assert ('segmentDone' in data['completion']) == (stage > 6)
+    assert ('evidenceDone' in data['completion']) == (stage > 7)
     assert data['persona']['status'] == data['insight']['status'] == 'stale'
     assert (versions.version_dir(completed, 'v1') / 'persona/cards.json').exists()
 

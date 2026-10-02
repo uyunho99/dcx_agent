@@ -130,8 +130,8 @@ def _hydrate(draft, insight_id, basis, refs, owners):
     for number in draft['pain_points']:
         ref = refs[number]
         points.append(dict(evidence_number=number, persona_id=owners[number],
-            quote=ref.quote.text, channel=ref.source, doc_id=ref.doc_id,
-            location={key: getattr(ref.quote, key) for key in ('field', 'idx', 'start', 'end')},
+            quote=ref.quote.text if ref.quote else None, channel=ref.source, doc_id=ref.doc_id,
+            location={key: getattr(ref.quote, key) for key in ('field', 'idx', 'start', 'end')} if ref.quote else None,
             context_id=ref.context_id, verified=ref.verified))
     journey = [dict(row, service_grade='prescription', service_label='처방') for row in draft['journey']]
     return dict(id=insight_id, insight_id=insight_id,

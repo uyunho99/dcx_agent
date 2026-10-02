@@ -15,7 +15,7 @@ const STEPS = [
   { name: "라벨링", path: "/pipeline/labeling" },
   { name: "학습", path: "/pipeline/training" },
   { name: "클러스터링", path: "/pipeline/clustering" },
-  { name: "근거 탐색", path: null },
+  { name: "근거 탐색", path: "/pipeline/evidence" },
   { name: "페르소나", path: "/pipeline/personas" },
   { name: "인사이트", path: "/pipeline/insights" },
 ];
@@ -66,9 +66,10 @@ export default function StepBar({ currentStep, session }: { currentStep: unknown
       <span>{step.name}</span>
       {i === viewed && <small>진행 중</small>}
     </>;
-    return step.path === null
+    const path = i === 7 && !(session?.prep as {derivedRef?: unknown} | undefined)?.derivedRef ? null : step.path;
+    return path === null
       ? <a key={step.name} {...props} role="link" aria-disabled="true" title="다음 묶음에서 열립니다">{content}</a>
-      : <Link key={step.name} {...props} href={step.path} onClick={e => {
+      : <Link key={step.name} {...props} href={path} onClick={e => {
         if (!confirmNavigation()) e.preventDefault();
       }}>{content}</Link>;
     })}</nav>

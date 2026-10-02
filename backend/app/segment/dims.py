@@ -187,6 +187,20 @@ def _clean(row):
     return values, too_long
 
 
+def _write_rows(cache, rows):
+    with cache:
+        cache.executemany('INSERT OR REPLACE INTO dims VALUES (?, ?, ?, ?, ?)', rows)
+
+
+def write_cache(path, values, *, origin, model):
+    """Share the sample cache format/writer with lazy stage-seven extraction."""
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    with closing(sqlite3.connect(path)) as cache:
+        cache.execute('CREATE TABLE IF NOT EXISTS dims (doc_id TEXT PRIMARY KEY, context_dims TEXT NOT NULL, origin TEXT NOT NULL, model TEXT NOT NULL, phrase_too_long INTEGER NOT NULL DEFAULT 0)')
+        _write_rows(cache, [(doc_id, json.dumps(row, ensure_ascii=False), origin, model, too_long)
+                            for doc_id, (row, too_long) in values.items()])
+
+
 def _extract(sid, batches, docs, cache, instructions):
     failed = []
     for batch in batches:
@@ -215,8 +229,7 @@ def _extract(sid, batches, docs, cache, instructions):
             for row in items:
                 values, too_long = _clean(row.model_dump())
                 rows.append((row.doc_id, json.dumps(values, ensure_ascii=False), 'sample', _model(), too_long))
-            with cache:
-                cache.executemany('INSERT OR REPLACE INTO dims VALUES (?, ?, ?, ?, ?)', rows)
+            _write_rows(cache, rows)
             break
         else:
             failed.extend(batch)

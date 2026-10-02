@@ -1,4 +1,4 @@
-import { Children, createElement, isValidElement, type ReactNode } from 'react';
+import { createElement, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({cursor: 0, stage: 'stage6', diff: {} as unknown, content: null as ReactNode}));
@@ -57,18 +57,16 @@ it.each([{before:null,after:null}, {}])('renders missing saved metrics for %j', 
  expect(html).toContain('결과가 같습니다.');
  expect(html).toContain('저장된 결과가 없습니다.');
 });
-it('keeps file-shaped stage-seven results in FileComparison', () => {
- const html = renderComparison('stage7', {same:true,before:{},after:{}});
- expect(html).toContain('결과 파일이 같습니다.');
+it('renders stage-seven numbers and selection changes even when totals match', () => {
+ const html = renderComparison('stage7', {same:false,
+  before:{report:{tag_calls:40,untagged:120},contexts:{C0:{selectedAll:['a'],selectedNew:['a']}}},
+  after:{report:{tag_calls:20,untagged:0},contexts:{C0:{selectedAll:['b'],selectedNew:['b']}}},
+ });
+ for (const text of ['태깅 호출','태깅 실패 원문','C0','추가 1 · 제외 1']) expect(html).toContain(text);
+ expect(html).not.toContain('Invalid Date');
 });
-it.each(['before', 'after'] as const)('makes FileComparison safe when %s is null', side => {
- renderComparison('stage7', {same:true,before:{},after:{}});
- // Capture the routed renderer to exercise its defensive handling directly.
- if (!isValidElement<{children: ReactNode}>(state.content)) throw new Error('Missing tab content');
- const comparison = Children.toArray(state.content.props.children).find(child => isValidElement(child) && typeof child.type === 'function');
- if (!isValidElement<{diff: unknown}>(comparison)) throw new Error('Missing comparison renderer');
- const diff = {same:false,before:{report:{savedAt:1}},after:{report:{savedAt:2}},[side]:null};
- const html = renderToStaticMarkup(createElement(comparison.type, {diff}));
- expect(html).toContain('결과 파일이 다릅니다.');
- expect(html).toContain('<td>—</td>');
+it.each(['before','after'] as const)('handles missing stage-seven %s', side => {
+ const html = renderComparison('stage7', {same:false,before:{report:null,contexts:{}},after:{report:null,contexts:{}},[side]:null});
+ expect(html).toContain('저장된 보고서 없음');
+ expect(html).not.toContain('Invalid Date');
 });

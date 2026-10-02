@@ -82,7 +82,7 @@ def test_package_to_insights_offline(client, data_dir, monkeypatch, offline):
     assert status['status'] == 'done' and status['progress'] == 1
     assert all(row['status'] == 'done' for row in status['personas'])
     cards = ok(client.get(persona + '/cards'))
-    assert len(cards['personas']) == 4 and cards['package_run'] == package['run']
+    assert len(cards['personas']) == 4 and cards['package_run'] == sessions.read_json(root / 'session.json')['evidence']['run']
     for block in package['personas']:
         p = block['persona_evidence']
         card = ok(client.get(persona + '/cards/' + p['persona_id']))
@@ -168,7 +168,7 @@ def test_qa_script_session_is_served(client, data_dir, monkeypatch, capsys, offl
     assert data['completion']['segmentDone']
     assert ok(client.get('/persona/' + output['sid'] + '/status'))['status'] == 'none'
     package = json.loads(Path(output['package']).read_text())
-    assert package['params']['seed'] == 17
+    assert package['params']['TAG_BATCH'] == 8
     assert len(package['personas'][0]['context_evidence']) == 10
     from app.persona.insights import _centroids
     ids = {c['context_id'] for b in package['personas'] for c in b['context_evidence']}

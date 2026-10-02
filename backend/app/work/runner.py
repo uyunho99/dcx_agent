@@ -26,6 +26,11 @@ def start(sid: str, version: str, kind: str, args: dict) -> dict:
                 ORDER BY started_at DESC LIMIT 1''', (version, kind, labeler)).fetchone()
             if row:
                 return public(row)
+            if kind in ('segment', 'evidence'):
+                conflict = db.execute("SELECT kind FROM runs WHERE version=? AND kind IN ('segment','evidence') AND kind<>? AND state IN ('running','paused')", (version, kind)).fetchone()
+                if conflict:
+                    from app.context.store import StoreError
+                    raise StoreError('6단계 또는 근거 탐색 작업이 진행 중입니다. 일시 정지된 근거 탐색도 취소한 뒤 6단계를 다시 실행하세요.', 409, 'locked')
             run_id, now = uuid4().hex, time.time()
             env = dict(os.environ, LOCAL_DATA_DIR=str(database_path(sid).parents[2]),
                        DCX_WORK_RUN_ID=run_id)

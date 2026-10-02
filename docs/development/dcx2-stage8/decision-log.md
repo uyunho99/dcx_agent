@@ -49,3 +49,8 @@
 
 ### D-318 QA용 가짜 LLM은 프롬프트의 Context ID · 근거 번호로 유효한 응답을 만든다(카드 · 요약 · 인사이트 · 컨셉) · 판단 (Claude)
 - 정적 응답 파일은 Persona 1개에만 맞아 QA에서 나머지 Persona 카드 · 컨셉이 "실패"로 나왔다(제품 결함 아님). QA-P6(실패 Persona)는 실패용 Persona 하나만 일부러 실패하게 한다.
+
+## ② 합류 (T17, 2026-10-02)
+
+### D-319 ③은 ②를 rebase가 아니라 merge로 합친다(feature/dcx2-stage7 → feature/dcx2-stage8) · 판단 (Claude)
+- 두 브랜치 모두 커밋 기록이 리뷰 · QA 근거로 쓰였다. rebase는 커밋 해시를 바꿔 근거 문서의 참조가 깨진다. 충돌 파일 6개(fake.py · main.py · sessions.py · worker.py · test_session_completion.py · types.ts)는 Codex가 해결하고 controller가 확인 뒤 merge 커밋.

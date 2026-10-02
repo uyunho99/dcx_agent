@@ -91,7 +91,7 @@ def _completion(sid, data, version=None):
             root = versions.version_dir(sid, selected)
             from app.segment.store import SegmentStore
             segment = SegmentStore.open(sid, selected).path
-            paths = (root / 'persona/cards.json', root / 'evidence/package.json',
+            paths = (root / 'session.json', root / 'persona/cards.json', root / 'evidence/package.json',
                      segment, Path(str(segment) + '-wal'), Path(str(segment) + '-journal'))
             return _persona_sources_match(sid, selected, str(root), tuple(_file_stamp(p) for p in paths))
         return True
@@ -122,6 +122,8 @@ def _completion(sid, data, version=None):
         ("segmentDone", segment_done),
         ("personaDone", persona_done),
         ("insightDone", insight_done),
+        ("evidenceDone", lambda: data.get("evidence", {}).get("status") == "done"
+         and "stage7" not in data.get("stale", {})),
     ):
         try:
             result[field] = compute()

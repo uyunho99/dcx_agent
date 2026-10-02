@@ -9,7 +9,7 @@ from app.config import settings
 from app.context import store as sessions
 from app.context.versions import version_dir, create_version
 from app.llm import registry
-from app.segment import pipeline, params
+from app.segment import pipeline, params, stopwords
 from app.segment.store import SegmentStore
 from tests.fixtures.segment_synth import make_segment_session, fake_dims_backend
 
@@ -83,7 +83,8 @@ def test_end_to_end_synth(setup):
         assert row['theta'] == max(row['theta_json'])
     data = report(fixture.sid)
     assert {'input', 'L1', 'clusters', 'personas', 'contexts', 'bands', 'dims', 'llm_calls', 'params', 'at', 'run'} <= data.keys()
-    assert data['params'] == json.loads(json.dumps({k: v for k, v in vars(params).items() if k.isupper()}))
+    assert data['params'] == json.loads(json.dumps({**{k: v for k, v in vars(params).items() if k.isupper()},
+        'stopwords': stopwords.stopwords_signature()}))
     assert data['L1']['k'] == 5
     assert all(row['boundary'] is not None for row in data['clusters'])
     assert sum(data['bands'].values()) == pytest.approx(1)
@@ -238,9 +239,9 @@ def test_computation_does_not_hold_session_lock(setup, monkeypatch):
 def test_counter_flags_and_persona_draft_failure_persist(setup, monkeypatch):
     fixture, _ = setup(docs_per_context=4)
     original = pipeline.l3.contexts
-    def contexts(ids, tokens, vectors, sentiment_by_id=None):
+    def contexts(ids, tokens, vectors, sentiment_by_id=None, *, bk=None):
         assert set(sentiment_by_id) == set(ids)
-        result = original(ids, tokens, vectors, sentiment_by_id)
+        result = original(ids, tokens, vectors, sentiment_by_id, bk=bk)
         result.flags.append('counter_context')
         result.context_flags[next(iter(result.centroids))] = ['counter_context']
         return result

@@ -132,7 +132,7 @@ def test_readonly_writes(api, method, path, body):
 def test_insight_checks_changed_source_without_status_poll(api):
     generate(api)
     package = sessions.read_json(api.root / 'evidence/package.json')
-    package['run'] = 'changed-evidence'
+    package['params']['CONCURRENCY'] = 99  # changed producer package
     sessions.write_json(api.root / 'evidence/package.json', package)
     error(api.client.post(f'/insight/{api.sid}/run', json={'mode': 'derive'}), 409, 'stale')
 

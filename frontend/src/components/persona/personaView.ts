@@ -37,7 +37,7 @@ export function sortContexts<T extends { context_id: string }>(rows: readonly T[
 const zoneNames: Record<PersonaZone, string> = {
   A: 'Exciting', B: 'Experiencing', C: 'Competitive', D: 'Forgiven', E: 'Dangling', F: 'At-risk',
 };
-export const zoneName = (zone: PersonaZone): string => `${zone} ${zoneNames[zone]}`;
+export const zoneName = (zone: PersonaZone | null): string => zone === null ? '—' : `${zone} ${zoneNames[zone]}`;
 
 export function cxCounts(rows: readonly { cx_4d: InsightCxDimension }[]): Record<InsightCxDimension, number> {
   const counts: Record<InsightCxDimension, number> = { 정신적: 0, 물리적: 0, 문화적: 0, 시스템: 0 };

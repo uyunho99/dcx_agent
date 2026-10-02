@@ -43,6 +43,7 @@ def zone(i: float, s: float, base: dict) -> Literal['A', 'B', 'C', 'D', 'E', 'F'
 def star(context: dict, odi_mean: float) -> bool:
     """Count qualifying entries in Context evidence, per the package contract."""
     return (sum(e['novelty'] in STAR_NOVELTY for e in context['evidence']) >= STAR_MIN
+            and context['metrics']['odi'] is not None
             and context['metrics']['odi'] >= odi_mean)
 
 
@@ -54,8 +55,9 @@ def build_map(package: Package) -> dict:
     Coincident points remain separate, retaining their original Context IDs.
     """
     contexts = [c for block in package.personas for c in block.context_evidence]
-    base = baselines([(c.metrics.importance, c.metrics.satisfaction) for c in contexts])
-    odi_mean = _mean([c.metrics.odi for c in contexts], empty=0)
+    base = baselines([(c.metrics.importance, c.metrics.satisfaction) for c in contexts
+                      if c.metrics.importance is not None and c.metrics.satisfaction is not None])
+    odi_mean = _mean([c.metrics.odi for c in contexts if c.metrics.odi is not None], empty=0)
     clusters = {}
     points = []
     for block in package.personas:
@@ -79,7 +81,8 @@ def build_map(package: Package) -> dict:
             points.append({
                 'context_id': context.context_id, 'persona_id': persona.persona_id,
                 'cluster_id': cid, 'i': metrics.importance, 's': metrics.satisfaction,
-                'odi': metrics.odi, 'zone': zone(metrics.importance, metrics.satisfaction, base),
+                'odi': metrics.odi, 'zone': (zone(metrics.importance, metrics.satisfaction, base)
+                    if metrics.importance is not None and metrics.satisfaction is not None else None),
                 'star': star(context.model_dump(), odi_mean), 'counter': counter,
                 'hollow': counter, 'shape': cluster['shape'], 'tone': tone,
                 'cluster_label': cluster['cluster_label'],

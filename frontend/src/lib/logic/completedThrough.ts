@@ -13,6 +13,7 @@ export function completedThrough(session?: Record<string, unknown> | null): numb
   if (done('insightDone', false)) return 9;
   if (done('personaDone', false)) return 8;
   const legacyClustersDone = done('clustersDone', Object.keys(record(session.clusters)).length > 0);
+  if (done('evidenceDone', false)) return 7;
   if (done('segmentDone', legacyClustersDone)) return 6;
   const exportRef = record(session.training).exportRef;
   if (done('exportDone', typeof exportRef === 'string' && !!exportRef.trim())) return 5;

@@ -5,7 +5,7 @@ import numpy as np
 from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
-from app.segment import params
+from app.segment import params, stopwords
 
 
 @dataclass
@@ -32,7 +32,7 @@ class ContextResult:
     topic_ids: list[str | None] = field(default_factory=list)
 
 
-def contexts(doc_ids, tokens, vectors_by_id, sentiment_by_id=None) -> ContextResult:
+def contexts(doc_ids, tokens, vectors_by_id, sentiment_by_id=None, *, bk: str | None = None) -> ContextResult:
     """Select maximum C_v over 2..10; ties favor the smaller topic count."""
     doc_ids = list(doc_ids)
     result = ContextResult()
@@ -78,7 +78,9 @@ def contexts(doc_ids, tokens, vectors_by_id, sentiment_by_id=None) -> ContextRes
         for index, topic in enumerate(active, 1):
             context = f'C{index}'
             result.topic_ids[topic] = context
-            result.topic_words[context] = [word for word, _ in best.show_topic(topic, topn=params.CTFIDF_TOP)]
+            # Filter only display output, after model selection and inference.
+            ranked = (word for word, _ in best.show_topic(topic, topn=len(dictionary)))
+            result.topic_words[context] = stopwords.filter_words(ranked, bk)[:params.CTFIDF_TOP]
         result.assign = {doc: result.topic_ids[topic] for doc, topic in winners.items()}
         if len(active) > params.CONTEXT_WARN_MAX:
             result.flags.append('granularity_exceeded')

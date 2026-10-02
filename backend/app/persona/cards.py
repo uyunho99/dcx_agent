@@ -145,7 +145,7 @@ def _evidence_payload(ref):
     # Explicit projection prevents producer extras/project metadata leaking into prompts.
     return dict(context_id=ref.context_id, role=ref.role, doc_id=ref.doc_id,
                 source=ref.source, quote={key: getattr(ref.quote, key) for key in
-                    ('field', 'idx', 'start', 'end', 'text', 'verified')})
+                    ('field', 'idx', 'start', 'end', 'text', 'verified')} if ref.quote else None)
 
 
 def generate_card(sid, block: PersonaBlock, *, run_task=None) -> CardResult:

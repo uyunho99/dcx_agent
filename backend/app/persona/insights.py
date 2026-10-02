@@ -48,12 +48,16 @@ class InsightError(RuntimeError):
 
 
 def opportunity_bars(insights, odi_by_context) -> dict:
-    bars = [{'id': item['id'], 'odi': float(np.mean([
-        odi_by_context[cid] for cid in dict.fromkeys(item['context_ids'])]))}
-        for item in insights]
-    mean = float(np.mean([bar['odi'] for bar in bars])) if bars else 0.0
+    bars = []
+    for item in insights:
+        values = [odi_by_context[cid] for cid in dict.fromkeys(item['context_ids'])
+                  if odi_by_context[cid] is not None]
+        bars.append({'id': item['id'], 'odi': float(np.mean(values)) if values else None})
+    available = [bar['odi'] for bar in bars if bar['odi'] is not None]
+    mean = float(np.mean(available)) if available else None
     return {'bars': bars, 'mean': mean,
-            'targets': [bar['id'] for bar in bars if bar['odi'] >= mean]}
+            'targets': [bar['id'] for bar in bars
+                        if bar['odi'] is not None and mean is not None and bar['odi'] >= mean]}
 
 
 def _centroids(sid, version, ids):

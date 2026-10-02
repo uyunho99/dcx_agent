@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     label_gpt_backend: Literal["codex_exec", "openai_api", "fake"] = "codex_exec"
     label_batch_size: int = 20
     label_concurrency: int = 4
+    evidence_llm_concurrency: int = 4
     known_theta: float = 0.85
     model_cut_low: float = 0.2
     model_cut_high: float = 0.8

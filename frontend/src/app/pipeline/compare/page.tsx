@@ -46,7 +46,7 @@ function CompareScreen() {
     void load(); return () => {cancelled = true;};
   }, [view.sid,a,b,actual,key,valid,retry]);
   if (!valid) return <Banner>비교할 두 버전을 버전 목록에서 선택하세요.</Banner>;
-  const content = error ? <Banner tone="danger" actions={<Button onClick={() => {setError('');setRetry(n=>n+1);}}>다시 확인하기</Button>}>{error}</Banner> : result?.key !== key ? <p role="status">처리 중…</p> : actual === 'stage1' ? <KeywordComparison diff={result.data as KeywordDiff} a={a} b={b} /> : actual === 'stage2' ? <CollectionComparison diff={result.data as CollectionDiff} /> : actual === 'stage0' ? <ContextComparison diff={result.data as Record<string,{before:unknown;after:unknown}>} a={a} b={b} /> : actual === 'stage6' ? <SegmentComparison diff={result.data as SegmentDiff} a={a} b={b} /> : isFileDiff(result.data) ? <FileComparison diff={result.data} /> : <MetricsComparison diff={result.data as MetricsDiff} a={a} b={b} />;
+  const content = error ? <Banner tone="danger" actions={<Button onClick={() => {setError('');setRetry(n=>n+1);}}>다시 확인하기</Button>}>{error}</Banner> : result?.key !== key ? <p role="status">처리 중…</p> : actual === 'stage1' ? <KeywordComparison diff={result.data as KeywordDiff} a={a} b={b} /> : actual === 'stage2' ? <CollectionComparison diff={result.data as CollectionDiff} /> : actual === 'stage0' ? <ContextComparison diff={result.data as Record<string,{before:unknown;after:unknown}>} a={a} b={b} /> : actual === 'stage6' ? <SegmentComparison diff={result.data as SegmentDiff} a={a} b={b} /> : actual === 'stage7' ? <EvidenceComparison diff={result.data as EvidenceDiff} a={a} b={b} /> : isFileDiff(result.data) ? <FileComparison diff={result.data} /> : <MetricsComparison diff={result.data as MetricsDiff} a={a} b={b} />;
   const collections = [...new Set(view.meta!.versions.map(v=>v.collectionId).filter(Boolean))];
   return <div className="space-y-6"><header className="flex justify-between items-start gap-6"><div><p className="ds-eyebrow">버전</p><h1 className="ds-t-screen">{a}{josa(a, '와/과')} {b}의 {actual.slice(5)}단계를 비교합니다</h1><p>버전은 세션 내용을 통째로 복사해 만듭니다. 크롤링 수집본은 복사하지 않고 여러 버전이 함께 씁니다.</p></div><RestartVersion stage={actual} from={a} label={`${a}에서 다시 시작하기`} /></header><div className="grid gap-6 lg:grid-cols-3"><Card><h2 className="ds-t-card mb-4">버전 기록</h2><VersionHistory entries={view.meta!.versions} /><h3 className="ds-t-label mt-6">크롤링 수집본</h3>{collections.length ? collections.map((cid,i)=><p key={cid}>{INTERNAL_TOOLS ? cid : `수집본 ${i+1}`} · {view.meta!.versions.filter(v=>v.collectionId===cid).map(v=>v.id).join(' · ')}</p>) : <p>연결된 수집본이 없습니다.</p>}</Card><section className="lg:col-span-2 space-y-6"><Tabs label="비교 단계" value={stage} onChange={v=>setStage(v as Stage)} items={tabs.map((label,i)=>({value:`stage${i}`,label,content:stage===`stage${i}`?<div className="space-y-6 pt-6">{stage==='stage3'&&<label className="ds-field">비교할 단계<select className="ds-inp" value={later} onChange={e=>setLater(e.target.value as Stage)}>{[3,4,5,6,7].map(n=><option key={n} value={`stage${n}`}>{n}단계</option>)}</select></label>}{content}</div>:null}))} />{result?.key === key && <StaleBanner stage={actual} session={result.session} />}</section></div></div>;
 }
@@ -105,4 +105,27 @@ function SegmentComparison({diff, a, b}: {diff: SegmentDiff; a: string; b: strin
         {summary[layer].items.map((item, j) => <p key={j}>{[item.name, item.desire, item.goals, item.action].filter(value => value != null).map(printable).join(' · ') || '이름 없음'} · {item.confirmed ? '확정' : '미확정'}</p>)}
       </td>)}</tr>)}
     </tbody></Table></div>;
+}
+
+
+type EvidenceSelection = {selectedAll: string[]; selectedNew: string[]};
+type EvidenceSummary = {report?: Record<string, unknown> | null; contexts?: Record<string, EvidenceSelection>};
+type EvidenceDiff = {same: boolean; before?: EvidenceSummary | null; after?: EvidenceSummary | null};
+const evidenceMetrics: Record<string, string> = {tag_calls:'태깅 호출', untagged:'태깅 실패 원문', llm_calls:'전체 LLM 호출', cache_hits:'캐시 재사용', relevant_false:'관련 없는 원문', query_gen_fail:'검색 문장 생성 실패', persona_query_fail:'Persona 검색 문장 실패', lazy_dims:'추가 차원 태깅', coverage_supplements:'차원 보완 검색', new_expansions:'새 발견 확장 검색', rare_fallback:'희귀 근거 보완', dpp_fill:'선택 수 보완', act_mismatch:'행동 불일치'};
+function EvidenceComparison({diff, a, b}: {diff: EvidenceDiff; a: string; b: string}) {
+  const sides = [diff.before, diff.after];
+  const ids = [...new Set(sides.flatMap(s => Object.keys(s?.contexts ?? {})))].sort();
+  return <div className="space-y-4"><Banner>근거 탐색 결과가 {diff.same ? '같습니다.' : '다릅니다.'}</Banner>
+    <Table><thead><tr><th>보고서 항목</th><th>{a}</th><th>{b}</th></tr></thead><tbody>
+      <tr><th>보고서</th>{sides.map((s, i) => <td key={i}>{s?.report ? '저장됨' : '저장된 보고서 없음'}</td>)}</tr>
+      {Object.entries(evidenceMetrics).map(([key, label]) => <tr key={key}><th>{label}</th>{sides.map((s, i) => <td key={i}>{printable(s?.report?.[key])}</td>)}</tr>)}
+    </tbody></Table>
+    {ids.length ? <Table><thead><tr><th>Context</th><th>근거 탭</th><th>{a} 선택 수</th><th>{b} 선택 수</th><th>선택 변경</th></tr></thead><tbody>
+      {ids.flatMap(id => (['selectedAll','selectedNew'] as const).map(tab => {
+        const before = diff.before?.contexts?.[id]?.[tab] ?? [];
+        const after = diff.after?.contexts?.[id]?.[tab] ?? [];
+        return <tr key={`${id}:${tab}`}><th>{id}</th><td>{tab === 'selectedAll' ? '전체 근거' : '새 발견'}</td><td>{before.length}</td><td>{after.length}</td><td>추가 {after.filter(value => !before.includes(value)).length} · 제외 {before.filter(value => !after.includes(value)).length}</td></tr>;
+      }))}
+    </tbody></Table> : <p>비교할 Context가 없습니다.</p>}
+  </div>;
 }
