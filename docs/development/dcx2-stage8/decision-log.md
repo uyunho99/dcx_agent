@@ -18,3 +18,9 @@
 ### D-306 기존 `/insights` 경로를 `/pipeline/insights`로 옮기고 옛 세션은 그 경로에서 기존 화면 · 판단 (Claude)
 - 사이드바 단계 경로를 한 체계(`/pipeline/*`)로 맞춘다. 옛 링크 `/insights`는 새 경로로 넘김.
 ### D-307 Opportunity 기준선 위 정확히 놓인 점은 위쪽 구역 · 판단 (Claude)
+
+## 계획 (2026-10-02)
+
+### D-308 ② · ③ 공유 파일 충돌은 ② 먼저 merge, ③ T17 rebase에서 해결 · 판단 (Claude)
+- 공유 파일: `app/work/worker.py` · `app/context/versions.py` · `app/routers/sessions.py` · `StepBar.tsx` · `completedThrough.ts`. 각 브랜치 안에서는 한 Task만 고친다.
+### D-309 이전 세션 추천은 최근 20개 · 같은 제목 중복 제거 · 판단 (Claude, Review Focus 4)
