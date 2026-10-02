@@ -18,6 +18,7 @@ from app.routers import (
     training,
     training_v2,
     clustering,
+    segment,
     embedding,
     personas,
     chat,
@@ -55,6 +56,7 @@ app.include_router(labeling_v2.router)
 app.include_router(training.router)
 app.include_router(training_v2.router)
 app.include_router(clustering.router)
+app.include_router(segment.router)
 app.include_router(embedding.router)
 app.include_router(personas.router)
 app.include_router(chat.router)
