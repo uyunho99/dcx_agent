@@ -12,11 +12,13 @@ vi.mock('@/stores/useSessionStore', () => ({useSessionStore: (select: any) => se
 const refreshSessionAfterStage=vi.hoisted(()=>vi.fn().mockResolvedValue(undefined));
 vi.mock('@/components/versions/VersionProvider', () => ({useVersion: () => ({version:'v1',readonly:false,refreshSessionAfterStage})}));
 vi.mock('@/components/versions/StageVersion', () => ({RestartVersion:'RestartVersion'}));
-vi.mock('@/components/ds', () => ({Badge:'Badge',Button:'Button',Tabs:'Tabs'}));
+vi.mock('@/components/ds', () => ({Badge:'Badge',Banner:'Banner',Button:'Button',Tabs:'Tabs'}));
 vi.mock('@/components/label/Overview', () => ({Overview:'Overview'}));
 vi.mock('@/components/label/Queue', () => ({Queue:'Queue'}));
 vi.mock('@/components/label/Audit', () => ({Audit:'Audit'}));
 vi.mock('@/lib/api/label', () => ({getLabelOverview:vi.fn(),markLabelSeen:vi.fn()}));
+vi.mock('@/lib/api/evidence', () => ({getEvidenceStatus:vi.fn().mockResolvedValue({status:'none'})}));
+import {getEvidenceStatus} from '@/lib/api/evidence';
 import LabelingPage from './page';
 import { getLabelOverview, markLabelSeen } from '@/lib/api/label';
 function nodes(node: any): any[] {return !node || typeof node!=='object' ? [] : Array.isArray(node) ? node.flatMap(nodes) : [node,...nodes(node.props?.children)];}
@@ -62,4 +64,28 @@ it('refreshes the session once when both judges complete, including while review
  expect(refreshSessionAfterStage).toHaveBeenCalledTimes(1);
  await vi.advanceTimersByTimeAsync(10000);render();
  expect(refreshSessionAfterStage).toHaveBeenCalledTimes(1);
+});
+
+it('shows the stage7 irrelevant count as information only', async () => {
+ vi.useFakeTimers();
+ vi.mocked(getEvidenceStatus).mockResolvedValue({stage7:{irrelevant:7}} as any);
+ vi.mocked(getLabelOverview).mockResolvedValue({started:true,queue:{total:0}} as any);
+ render(); await vi.advanceTimersByTimeAsync(0);
+ const banner=render().find(n=>n.type==='Banner');
+ expect(banner).toBeDefined();
+ expect(banner.props.tone).toBe('info');
+ expect(banner.props.children.join('')).toBe('7단계에서 무관 판정 7건 — 4단계 재점검 참고');
+ expect(getEvidenceStatus).toHaveBeenCalledWith('s','v1');
+ expect(banner.props.actions).toBeUndefined();
+});
+it.each([{}, {stage7:{irrelevant:0}}, null])('preserves legacy labeling when evidence is absent, zero, or unavailable: %s', async evidence => {
+ vi.useFakeTimers();
+ if(evidence) vi.mocked(getEvidenceStatus).mockResolvedValue(evidence as any);
+ else vi.mocked(getEvidenceStatus).mockRejectedValue(new Error('not found'));
+ vi.mocked(getLabelOverview).mockResolvedValue({legacy:true,message:'기존 세션 라벨링'} as any);
+ render(); await vi.advanceTimersByTimeAsync(0);
+ const tree=render();
+ expect(tree.some(n=>n.props?.children==='기존 세션 라벨링')).toBe(true);
+ expect(tree.some(n=>n.type==='Banner')).toBe(false);
+ expect(tree.some(n=>n.props?.role==='alert')).toBe(false);
 });
