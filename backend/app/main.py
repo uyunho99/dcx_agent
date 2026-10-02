@@ -64,4 +64,6 @@ app.include_router(known.router)
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    import os
+
+    return {"status": "ok", "release": os.environ.get("DCX_RELEASE_SHA", "dev")}
