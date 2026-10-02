@@ -143,7 +143,7 @@ def test_known_deleted_midrun(setup):
     pipeline.run(setup.ctx)
     assert not any(r['known_excluded'] for r in setup.ev.candidates('c0'))
     cache = TagCache.open(setup.sid,'p_0123456789ab',prompt_version('tag'))
-    assert cache.get_known(setup.docs,['ki_old']) == {}
+    assert cache.get_known(setup.docs,['ki_old']) == {('d00','ki_old'): True}
 
 
 @pytest.mark.parametrize('action',['refresh_new','skip_context'])

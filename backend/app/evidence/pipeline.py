@@ -20,8 +20,8 @@ from app.config import settings
 from app.context import store as sessions
 from app.context.stale import clear_stale
 from app.context.versions import version_dir
-from app.evidence import assemble, candidates, novelty, params, queries, tabs, tagging
-from app.evidence.cache import TagCache, prompt_version
+from app.evidence import assemble, candidates, novelty, params, queries, tabs, tagging, generation
+from app.evidence.cache import TagCache, prompt_version, known_key, known_snapshot
 from app.evidence.store import EvidenceStore
 from app.known import store as known_store
 from app.llm import registry
@@ -79,9 +79,9 @@ def _known(sid, version):
 
 def _project(cache, ids, known):
     tags = cache.get_tags(ids)
-    pairs = cache.get_known(ids, [i['id'] for i in known])
+    pairs = cache.get_known(ids, [known_key(i) for i in known if i['type'] == 'statement'])
     for doc_id, tag in tags.items():
-        tag['known_match'] = next((i['id'] for i in known if pairs.get((doc_id, i['id']))), 'none')
+        tag['known_match'] = next((i['id'] for i in known if pairs.get((doc_id, known_key(i)))), 'none')
     return tags
 
 
@@ -130,8 +130,13 @@ def _refresh_cached(sid, version, ev, source, row, known):
     selected = [dict(r, novelty=previous.get(r['doc_id'], {}).get('novelty'),
                      novelty_reason=previous.get(r['doc_id'], {}).get('novelty_reason')) for r in result.rows]
     ev.write_selected(cid, 'new', _selected(selected))
+    levels = {r['doc_id']: r for r in selected}
+    ev.write_selected(cid, 'all', _selected([dict(r, novelty=levels.get(r['doc_id'], {}).get('novelty'),
+        novelty_reason=levels.get(r['doc_id'], {}).get('novelty_reason')) for r in ev.selected(cid, 'all')]))
     ev.write_candidates(cid, [dict(r, known_excluded=result.exclusions.get(r['doc_id'])) for r in pool])
-    counts = {**(row.get('counts') or {}), 'knownChanged': False,
+    pairs = source['cache'].get_known(tags, [known_key(i) for i in known if i['type'] == 'statement'])
+    incomplete = any((doc_id, known_key(i)) not in pairs for doc_id in tags for i in known if i['type'] == 'statement')
+    counts = {**(row.get('counts') or {}), 'knownChanged': incomplete, 'knownSnapshot': known_snapshot(known),
               'knownIds': [i['id'] for i in known], 'excludedKnown': result.excluded_known}
     ev.set_context(cid, row['persona_id'], row['status'], counts=counts)
     return result
@@ -141,18 +146,20 @@ def _assemble(sid, version):
     package = assemble.assemble(sid, version)
     root = version_dir(sid, version) / 'evidence'
     report = sessions.read_json(root / 'stage_7.json')
-    report['llm_calls'] = sum((sessions.read_json(root / 'llm_calls.json') or {}).values())
+    call_counts = sessions.read_json(root / 'llm_calls.json') or {}
+    report['llm_calls'] = sum(call_counts.values())
+    report['tag_calls'] = call_counts.get('evidence.tag', 0)
     report.update((sessions.read_json(root / 'checkpoint.json') or {}).get('tagging', {}))
     sessions.write_json(root / 'stage_7.json', report)
     return package
 
 
-def _finish(sid, version, ev):
+def _finish(sid, version, ev, run_id):
     rows = ev.contexts()
     done = sum(r['status'] in ('done', 'skipped') for r in rows)
     state = 'done' if done == len(rows) else 'partial'
     with sessions.locked(sid):
-        sessions.assert_writable(sid, version)
+        generation.check(sid, version, ev, run_id)
         _assemble(sid, version)
         _session(sid, version, dict(status=state, run=ev.get_run(), progress=done / max(1, len(rows)),
                                    contexts=dict(done=done, total=len(rows)), reason=None, savedAt=sessions.now()),
@@ -166,6 +173,7 @@ def run(context):
         session = sessions.assert_writable(sid, version)
         if session.get('segment', {}).get('status') != 'done' or 'stage6' in session.get('stale', {}):
             raise sessions.StoreError('6-C Context를 모두 확정한 뒤 근거 탐색을 실행하세요.', 409, 'segment_required')
+        captured = generation.capture(sid, version, session, versions={name: prompt_version(name) for name in ('tag', 'queries', 'novelty')})
     source = _load(sid, version)
     contexts = source['seg'].contexts()
     if not contexts or any(not c.get('confirmed_at') for c in contexts):
@@ -180,11 +188,15 @@ def run(context):
     root = ev.path.parent
     run_id = str(uuid.uuid4())
     fresh = context.args.get('fresh', False) or ev.get_run() is None or session.get('evidence', {}).get('status') == 'stale'
+    fresh = fresh or generation.read(sid, version) != captured
     checkpoint = {} if fresh else sessions.read_json(root / 'checkpoint.json') or {}
     all_params = {name: getattr(params, name) for name in vars(params) if name.isupper()}
     all_params['CONCURRENCY'] = concurrency
     with sessions.locked(sid):
-        sessions.assert_writable(sid, version)
+        current_session = sessions.assert_writable(sid, version)
+        if (captured['segmentRun'] != source['seg'].get_run() or
+                captured['prepKey'] != current_session.get('prep', {}).get('derivedRef', {}).get('prepKey')):
+            raise sessions.StoreError('Evidence input generation changed', 409, 'stale_run')
         if fresh:
             ev.reset(run_id, all_params)
             for name in ('package.json', 'stage_7.json', 'queries.json', 'llm_calls.json'):
@@ -195,6 +207,7 @@ def run(context):
             used_params = {**ev.snapshot().params, 'CONCURRENCY': concurrency}
             with ev._db(write=True) as db:
                 db.execute('UPDATE meta SET run=?, params_json=?', (run_id, json.dumps(used_params)))
+        sessions.write_json(root / 'generation.json', captured)
         _session(sid, version, dict(status='running', run=run_id, reason=None, progress=0), already_locked=True)
     checkpoint['run'] = run_id
     checkpoint.setdefault('personas', [])
@@ -204,13 +217,21 @@ def run(context):
     events, requests, aborted = Queue(), Queue(), Event()
     calls = _Calls(concurrency, events)
     previous_calls = sessions.read_json(root / 'llm_calls.json') or {}
+    saved_calls = Counter()
 
     def save():
-        checkpoint['done'] = [r['context_id'] for r in ev.contexts() if r['status'] in ('done', 'skipped')]
-        sessions.write_json(root / 'checkpoint.json', checkpoint)
         with calls.lock:
-            totals = dict(Counter(previous_calls) + calls.counts)
-        sessions.write_json(root / 'llm_calls.json', totals)
+            current_calls = calls.counts.copy()
+        with sessions.locked(sid):
+            if ev.get_run() != run_id:
+                return
+            checkpoint['done'] = [r['context_id'] for r in ev.contexts() if r['status'] in ('done', 'skipped')]
+            sessions.write_json(root / 'checkpoint.json', checkpoint)
+            totals = Counter(sessions.read_json(root / 'llm_calls.json') or {})
+            totals.update(current_calls - saved_calls)
+            saved_calls.clear()
+            saved_calls.update(current_calls)
+            sessions.write_json(root / 'llm_calls.json', dict(totals))
 
     def pulse(**detail):
         if context.should_stop():
@@ -230,9 +251,6 @@ def run(context):
             sessions.assert_writable(sid, version)
             known = _known(sid, version)
             ids = {i['id'] for i in known}
-            old = set(checkpoint['knownIds'])
-            for ki in old - ids:
-                source['cache'].drop_known(ki)
             for row in ev.contexts():
                 if row['status'] != 'done':
                     continue
@@ -240,7 +258,11 @@ def run(context):
                 if used - ids:
                     _refresh_cached(sid, version, ev, source, row, known)
                     row = next(r for r in ev.contexts() if r['context_id'] == row['context_id'])
-                if ids - used:
+                doc_ids = [r['doc_id'] for r in ev.candidates(row['context_id'])]
+                tagged_ids = source['cache'].get_tags(doc_ids)
+                pairs = source['cache'].get_known(tagged_ids, [known_key(i) for i in known if i['type']=='statement'])
+                missing = any((doc_id, known_key(i)) not in pairs for doc_id in tagged_ids for i in known if i['type']=='statement')
+                if missing or ids - used or (row.get('counts') or {}).get('knownSnapshot', {}) != known_snapshot(known):
                     ev.set_context(row['context_id'], row['persona_id'], 'done',
                                    counts={**(row.get('counts') or {}), 'knownChanged': True})
             checkpoint['knownIds'] = sorted(ids)
@@ -277,7 +299,7 @@ def run(context):
         check()
         call, check = calls.step(owner, 'tag')
         tagging.judge_known(sid, list(result.tags), [i['id'] for i in known], cache=source['cache'],
-                            run_task=call, concurrency=concurrency)
+                            run_task=call, concurrency=concurrency, known_items=known)
         drain()
         check()
         current = reconcile()
@@ -297,11 +319,14 @@ def run(context):
 
     def compute(row, qrows):
         cid = row['context_id']
+        if not qrows:
+            raise ValueError('query_embedding_failed (retryable): Context queries are missing')
         pool, tags, counts = {}, {}, Counter()
         known = rpc(reconcile)
         # Retain the Context's input snapshot: a later KI read must not claim
         # that already selected/tagged rows incorporated a concurrent edit.
         known_ids = [item['id'] for item in known]
+        used_known = known_snapshot(known)
 
         def ingest(rows):
             fresh_rows = [r for r in rows if r['doc_id'] not in pool]
@@ -351,7 +376,7 @@ def run(context):
         counts.update(query_gen_fail=int(any(q['origin']=='fallback' for q in qrows)), excludedKnown=new.excluded_known)
         return dict(candidates=[dict(r, known_excluded=new.exclusions.get(r['doc_id'])) for r in pool.values()],
                     all=all_rows, new=new_rows, coverage=all_selection.coverage,
-                    counts={**counts, 'knownIds':known_ids, 'knownChanged':False})
+                    counts={**counts, 'knownIds':known_ids, 'knownSnapshot':used_known, 'knownChanged':False})
 
     executor = None
     try:
@@ -383,13 +408,32 @@ def run(context):
             persona_queries = ev.queries('persona:'+pid)
             # Persona support uses all-tab ranking and is checkpointed with queries.
             support = []
+            embedding_failed = False
             for kind, qs in [('desire',[q for q in persona_queries if q['dim'].startswith('desire_check')]),
                              ('artifact',[q for q in persona_queries if q['dim']=='artifact'])]:
-                rows = candidates.search_persona(pid, qs, docs=source['docs'], store=source['source'], embedder=embedder)
+                try:
+                    rows = candidates.search_persona(pid, qs, docs=source['docs'], store=source['source'], embedder=embedder)
+                except ValueError as exc:
+                    if 'query_embedding_failed' not in str(exc):
+                        raise
+                    with sessions.locked(sid):
+                        generation.check(sid, version, ev, run_id)
+                        for owned_context in owned:
+                            cid = owned_context['context_id']
+                            if cid in pending_ids:
+                                ev.set_context(cid, pid, 'failed', error=str(exc))
+                                pending_ids.discard(cid)
+                    embedding_failed = True
+                    break
                 tagged, known = prepare(pid, rows)
                 selection = tabs.all_tab(rows, tagged.tags, source['vectors'], source['docs'], known_items=known)
                 support.extend(dict(doc_id=r['doc_id'], rank=r['rank'], kind=kind) for r in selection.rows)
-            ev.write_persona_support(pid, support)
+            if embedding_failed:
+                save()
+                continue
+            with sessions.locked(sid):
+                generation.check(sid, version, ev, run_id)
+                ev.write_persona_support(pid, support)
             checkpoint['personas'].append(pid)
             save()
         sessions.write_json(root / 'queries.json', ev.queries())
@@ -428,13 +472,17 @@ def run(context):
                 cid = row['context_id']
                 try:
                     result = future.result()
-                    ev.write_candidates(cid, result['candidates'])
-                    ev.write_selected(cid, 'all', _selected(result['all']))
-                    ev.write_selected(cid, 'new', _selected(result['new']))
-                    ev.set_context(cid, row['persona_id'], 'done', error=None,
-                                   coverage=result['coverage'], counts=result['counts'])
+                    with sessions.locked(sid):
+                        generation.check(sid, version, ev, run_id)
+                        ev.write_candidates(cid, result['candidates'])
+                        ev.write_selected(cid, 'all', _selected(result['all']))
+                        ev.write_selected(cid, 'new', _selected(result['new']))
+                        ev.set_context(cid, row['persona_id'], 'done', error=None,
+                                       coverage=result['coverage'], counts=result['counts'])
                 except Exception as exc:
-                    ev.set_context(cid, row['persona_id'], 'failed', error=str(exc))
+                    with sessions.locked(sid):
+                        generation.check(sid, version, ev, run_id)
+                        ev.set_context(cid, row['persona_id'], 'failed', error=str(exc))
                 save()
                 pulse(step='context', context=cid)
                 reconcile()
@@ -443,7 +491,7 @@ def run(context):
                 raise _Stopped()
         reconcile()
         save()
-        _finish(sid, version, ev)
+        _finish(sid, version, ev, run_id)
 
     except (_Stopped, _LLMUnavailable) as exc:
         save()
@@ -465,6 +513,7 @@ def _action(sid, version, context_id, run_id):
     ev = EvidenceStore.open(sid, version)
     if ev.get_run() != run_id or data.get('evidence', {}).get('run') != run_id or data.get('evidence', {}).get('status') == 'stale' or 'stage6' in data.get('stale', {}):
         raise sessions.StoreError('Evidence run changed', 409, 'stale_run')
+    generation.check(sid, version, ev, run_id)
     row = next((r for r in ev.contexts() if r['context_id']==context_id), None)
     if row is None:
         raise sessions.StoreError('Context not found', 404, 'not_found')
@@ -480,21 +529,9 @@ def _context_response(ev, source, context_id, known):
     docs = source['docs']
 
     def view(selected, role='support'):
-        doc_id = selected['doc_id']
-        doc = docs[doc_id]
-        item = assemble._item(doc_id, docs, tags, role=role, tabs=('new',), novelty=selected.get('novelty'))
-        quote = item['quote']
-        return dict(docId=doc_id, source=item['source'],
-                    location=dict(field=quote['field'] if quote else 'body', idx=quote.get('idx') if quote else None),
-                    quote={k: quote.get(k) for k in ('text','start','end','verified')} if quote else None,
-                    text=(doc.get('body') or doc.get('title') or '')[:600], tags=item['tags'],
-                    band=doc.get('band'), novelty=selected.get('novelty'),
-                    noveltyReason=selected.get('novelty_reason'), knownMatch=item['known_match'],
-                    rare=doc.get('band') == 'edge' and bool(tags[doc_id].get('pain_point') or tags[doc_id].get('unmet_need')),
-                    role=role)
+        return assemble.item_view(selected, docs, tags, role)
 
-    relevant = [tag.get('polarity') for tag in tags.values() if tag.get('relevant') and tag.get('polarity') is not None]
-    counter = assemble.counter_evidence(pool, tags, context_mean=sum(relevant)/len(relevant) if relevant else None)
+    counter = assemble.counter_evidence(pool, tags, context_mean=assemble.context_polarity_mean(pool, tags))
     rare = assemble.rare_evidence(pool, tags, docs)
     counts = row.get('counts') or {}
     return dict(context=context, tab='new', items=[view(r) for r in ev.selected(context_id, 'new')],
@@ -503,19 +540,75 @@ def _context_response(ev, source, context_id, known):
                 queryFailed=bool(counts.get('query_gen_fail')), undifferentiated=counts.get('undifferentiated', []))
 
 
+def _load_context(sid, version, ev, context_id, known):
+    session = sessions.read_json(version_dir(sid, version) / 'session.json')
+    session, pver = generation.inputs(sid, version, session)
+    seg = SegmentStore.open(sid, version)
+    wanted = {r['doc_id'] for r in ev.candidates(context_id)}
+    with seg._db() as db:
+        from app.segment.store import _decode
+        docs = {i: _decode(row) for i in wanted
+                if (row := db.execute('SELECT * FROM docs WHERE doc_id=?', (i,)).fetchone())}
+    root = prepared_root(sid, session)
+    for i, original in assemble._load_docs(root, wanted).items():
+        docs[i] = {**docs.get(i, {}), **original}
+    if session.get('training', {}).get('exportRef'):
+        from app.known.filter import read_export
+        for row in read_export(sid, session):
+            if row['doc_id'] in docs:
+                docs[row['doc_id']]['tagProbs'] = row.get('tagProbs')
+    vector_ids = wanted | {i['doc_id'] for i in known if i.get('doc_id')}
+    ids, vectors = VectorStore(root).get(sorted(vector_ids))
+    return dict(seg=seg, docs=docs, vectors=dict(zip(ids, vectors)),
+                cache=TagCache.open(sid, session['prep']['derivedRef']['prepKey'], pver))
+
+
 def refresh_new(sid: str, version: str | None, context_id: str, run: str) -> dict:
-    """Synchronous cache-only refresh; validates generation under publication lock."""
+    """Judge missing statement pairs outside the publication lock, then recheck."""
     with sessions.locked(sid):
         version, ev, row = _action(sid, version, context_id, run)
         if row['status'] != 'done':
             raise sessions.StoreError('Context not ready', 409, 'not_ready')
-        source = _load(sid, version)
+        generation.check_prompts(sid, version)
         known = _known(sid, version)
-        for ki in set((row.get('counts') or {}).get('knownIds', [])) - {i['id'] for i in known}:
-            source['cache'].drop_known(ki)
-        _refresh_cached(sid, version, ev, source, row, known)
-        _assemble(sid, version)
-        return _context_response(ev, source, context_id, known)
+        source = _load_context(sid, version, ev, context_id, known)
+        ev.patch_counts(context_id, knownChanged=True)
+    calls = 0
+    def call(task):
+        nonlocal calls
+        calls += 1
+        return registry.run_task(task)
+    tagging.judge_known(sid, list(source['docs']), [i['id'] for i in known],
+                        cache=source['cache'], known_items=known, run_task=call, concurrency=1)
+    with sessions.locked(sid):
+        version, ev, row = _action(sid, version, context_id, run)
+        current = _known(sid, version)
+        _refresh_cached(sid, version, ev, source, row, current)
+        if known_snapshot(current) != known_snapshot(known):
+            ev.patch_counts(context_id, knownChanged=True)
+        root = ev.path.parent
+        totals = sessions.read_json(root / 'llm_calls.json') or {}
+        totals['evidence.tag'] = totals.get('evidence.tag', 0) + calls
+        sessions.write_json(root / 'llm_calls.json', totals)
+        report = sessions.read_json(root / 'stage_7.json') or {}
+        report.update(tag_calls=totals['evidence.tag'], llm_calls=sum(totals.values()))
+        sessions.write_json(root / 'stage_7.json', report)
+        # Recompute only this Context's candidate flag; full package assembly is lazy.
+        pool = ev.candidates(context_id)
+        tags = _project(source['cache'], source['docs'], current)
+        rare = assemble._rare_candidates(pool, tags, source['docs'])
+        escalation = assemble.undifferentiated_candidate(rare, source['vectors'])
+        assemble.append_context_flag(source['seg'], context_id, 'undifferentiated_candidate', present=bool(escalation))
+        ev.patch_counts(context_id, undifferentiated=escalation)
+        snapshot = ev.snapshot()
+        report['per_tab_counts'] = {tab:sum(r['tab']==tab for r in snapshot.selected) for tab in ('all','new')}
+        report['novelty_distribution'] = dict(Counter(r['novelty'] for r in snapshot.selected if r.get('novelty')))
+        report.setdefault('escalation_candidates', {}).pop(context_id, None)
+        if escalation:
+            report['escalation_candidates'][context_id] = escalation
+        sessions.write_json(root / 'stage_7.json', report)
+        sessions.write_json(root / 'package_dirty.json', {'run':run})
+        return _context_response(ev, source, context_id, current)
 
 
 def skip_context(sid: str, version: str | None, context_id: str, run: str) -> dict:

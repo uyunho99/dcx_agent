@@ -179,3 +179,14 @@
 - 복붙 문서를 중복으로 보이지 않으면서 가능한 한 10건을 채운다. 채운 수는 `dpp_fill`로 기록. 비용: 채운 문서는 다양성 보장이 약함.
 ### D-258 인용 위치(start/end)는 유니코드 코드 포인트 기준 — 백엔드(Python) 그대로, 프런트는 `Array.from(text)`로 변환 · 판단 (Claude, T13 Codex 우려)
 - 한국어는 차이가 없지만 이모지(서로게이트 쌍)가 있으면 JS 문자열 인덱스와 어긋난다. T14에서 `highlight` 수정 + 이모지 테스트.
+
+## 묶음 ② 최종 리뷰 반영 (2026-10-02)
+
+### D-259 Evidence Package는 2.4 스키마를 빠짐없이 채운다(Context quality: cohesion · boundary · stability · npmi, Persona quality: cohesion · boundary · stability_ari — 6단계 값), ③ 읽기 모델 완화 · 계약 테스트는 ③ T17에서 · 판단 (Claude, opus C1)
+### D-260 6단계 재실행 시 evidence stale 표시는 7단계 결과가 있을 때만(status none · 미실행 버전은 그대로) · 판단 (Claude, opus I2)
+### D-261 Known Insight 판정 캐시 키에 문장 내용 지문 포함, 완료 Context에 새 문장형 KI는 빠진 쌍만 판정 예약 + 끝날 때까지 knownChanged 유지 · 판단 (Claude, opus I1 · Codex 3 · 4)
+### D-262 질의 임베딩 실패(0 벡터 · 개수 불일치)는 그 Context 실패(재시도 가능), "결과 없음 완료"로 기록하지 않음 · 판단 (Claude, Codex 7)
+### D-263 7단계 생성마다 segment run · prepKey · 프롬프트 판(pver)을 기록하고, 읽기 · 이어 하기는 그 값 기준. 값이 바뀌면 해당 체크포인트 무효화 · 판단 (Claude, Codex 2 · 6)
+### D-264 Persona 쿼리 위반은 Persona 쿼리만, Context 쿼리 위반은 그 Context만 대체 쿼리 · 판단 (Claude, opus I8)
+### D-265 한 버전에서 Known Insight를 지워도 공유 캐시 행은 지우지 않고 무시만 한다(다른 버전 보호) · 판단 (Claude, opus Minor)
+### D-266 공유 계약: stage_7.json에 tag_calls 추가 · 프런트는 relevant_false 사용 · 근거 항목에 quoteSource {field, idx, text}(위치와 짝) · noveltyShown: bool · 판단 (Claude, opus I3 · I4 · I5 · Codex 5 · 8 · 9)

@@ -6,6 +6,7 @@ import { EvidenceCard } from './EvidenceCard';
 import { completedThrough } from '@/lib/logic/completedThrough';
 import StepBar from '../StepBar';
 import EvidencePage from '@/app/pipeline/evidence/page';
+import { stage7Fixture, evidenceItemFixture, evidenceContextFixture } from './evidenceFixtures';
 import type { EvidenceContextResponse, EvidenceStatus, EvidenceItemView } from '@/lib/types';
 vi.mock('next/navigation', () => ({useRouter: () => ({push:vi.fn()}), usePathname: () => '/pipeline/evidence'}));
 vi.mock('../DirtyProvider', () => ({useDirty: () => ({confirmNavigation: () => true})}));
@@ -13,8 +14,8 @@ const session = vi.hoisted(() => ({sid:'s',sd:{prep:{}} as Record<string, unknow
 vi.mock('@/stores/useSessionStore', () => ({useSessionStore: () => session}));
 vi.mock('../versions/VersionProvider', () => ({useVersion: () => ({readonly:false,version:'v2'})}));
 const row = (id: string, status: EvidenceStatus['contexts'][number]['status']) => ({id,personaId:'P',name:id,status,coverage:5,counts:{all:10,new:8},error:null,knownChanged:false});
-const status: EvidenceStatus = {status:'running',run:'generation',progress:40,contexts:[row('C1','done'),row('C2','queued'),row('C3','failed')],stage7:{tag_calls:84}};
-const detail: EvidenceContextResponse = {context:{},tab:'new',items:[],counter:[],rare:[],queries:[],queryFailed:false,excludedKnown:7,undifferentiated:[]};
+const status: EvidenceStatus = {status:'running',run:'generation',progress:40,contexts:[row('C1','done'),row('C2','queued'),row('C3','failed')],stage7:stage7Fixture};
+const detail: EvidenceContextResponse = {...evidenceContextFixture,items:[]};
 const props = () => ({status,personas:[{id:'P',clusterId:'CL0',name:'부모',flags:[]}],selectedPersona:'P',selectedContext:'C1',tab:'new' as const,detail,personaEvidence:null,ready:true,readonly:false,busy:false,error:'',onPersona:vi.fn(),onContext:vi.fn(),onTab:vi.fn(),onStart:vi.fn(),onRetry:vi.fn(),onSkip:vi.fn(),onRefresh:vi.fn(),onAdded:vi.fn(),onNext:vi.fn(),sid:'s',version:'v2'});
 // Resolve stateless view components so handlers can be exercised without a DOM dependency.
 function nodes(node: unknown): ReactElement<Record<string, unknown>>[] {
@@ -74,9 +75,9 @@ it('unlocks navigation only after done or skipped and navigates via callback', (
  const next=button(EvidenceScreenView(p),'페르소나 만들기'); expect(next.props.disabled).toBe(false); (next.props.onClick as ()=>void)(); expect(p.onNext).toHaveBeenCalledOnce();
 });
 it('renders Unicode quote, source, location and known match', () => {
- const item: EvidenceItemView={docId:'d',source:'youtube',location:{field:'comment',idx:2},quote:{text:'인용',start:2,end:4,verified:true},text:'😀 인용 끝',tags:['Feel'],band:'edge',novelty:'high',noveltyReason:'새로운 이유',knownMatch:'ki',rare:true,role:'support'};
- const html=renderToStaticMarkup(createElement(EvidenceCard,{item,readonly:false,onAdd:vi.fn()}));
- for(const text of ['<mark>인용</mark>','댓글 3','Feel','Known Insight와 같은 내용','Known Insight에 추가']) expect(html).toContain(text);
+ const item: EvidenceItemView={...evidenceItemFixture};
+ const html=renderToStaticMarkup(createElement(EvidenceCard,{item,readonly:false,onAdd:vi.fn(),knownNumber:2}));
+ for(const text of ['<mark>인용</mark>','댓글 3','새로움 high · 잠정','Feel','Known Insight #2와 같은 내용','Known Insight에 추가']) expect(html).toContain(text);
 });
 it('adds sidebar evidence path and completion 7 while retaining legacy branch', () => {
  expect(completedThrough({completion:{evidenceDone:true,segmentDone:true}})).toBe(7);
@@ -101,4 +102,37 @@ it('shows eight queries, fallback copy and collapsed supporting evidence', () =>
 it('renders Context completion progress without assuming API percentage units', () => {
  const html=renderToStaticMarkup(createElement(EvidenceScreenView,{...props(),status:{...status,progress:1/3}}));
  expect(html).toContain('aria-valuemax="3"');expect(html).toContain('aria-valuenow="1"');
+});
+
+ it.each(['title','body','comment'] as const)('highlights only quoteSource for %s', field => {
+ const item={...evidenceItemFixture,quoteSource:{field,idx:field==='comment'?2:null,text:'😀 인용 끝'}};
+ const html=renderToStaticMarkup(createElement(EvidenceCard,{item,readonly:false,onAdd:vi.fn()}));
+ expect(html).toContain('<mark>인용</mark>');
+ expect(html).toContain('<p class="whitespace-pre-wrap">별개의 본문 미리보기</p>');
+ expect(html).toContain(field==='title'?'제목':field==='body'?'본문':'댓글 3');
+ });
+ it.each(['none','low','high','very_high'])('obeys noveltyShown rather than novelty value %s', novelty => {
+ const html=renderToStaticMarkup(createElement(EvidenceCard,{item:{...evidenceItemFixture,novelty,noveltyShown:false},readonly:false,onAdd:vi.fn()}));
+ expect(html).not.toContain('새로움 ');
+ });
+ it('replaces stale detail skeleton and suppresses stale warning without a previous run',()=>{
+ const html=renderToStaticMarkup(createElement(EvidenceScreenView,{...props(),status:{...status,status:'stale'},detail:null}));
+ expect(html).toContain('다시 실행 후 열람할 수 있습니다.');expect(html).not.toContain('근거 불러오는 중');
+ const empty=renderToStaticMarkup(createElement(EvidenceScreenView,{...props(),status:{...status,status:'stale',run:null,contexts:[]},detail:null}));
+ expect(empty).not.toContain('이 근거는 이전 결과');
+ });
+ it('shows artifact mention counts and partial recovery guidance',()=>{
+ const html=renderToStaticMarkup(createElement(EvidenceScreenView,{...props(),status:{...status,status:'partial'},personaEvidence:{desireSupport:[],artifacts:[{name:'리모컨',mention_count:12}]}}));
+ expect(html).toContain('리모컨 · 12건');expect(html).toContain('실패한 Context를 다시 시도하거나 건너뛰고 진행하세요.');
+ });
+
+it('highlights an original body quote beyond the 600-character preview',()=>{
+ const item={...evidenceItemFixture,quoteSource:{field:'body' as const,idx:null,text:'가'.repeat(610)+'인용'},quote:{text:'인용',start:610,end:612,verified:true},text:'가'.repeat(600)};
+ const html=renderToStaticMarkup(createElement(EvidenceCard,{item,readonly:false,onAdd:vi.fn()}));
+ expect(html).toContain('<mark>인용</mark>');
+});
+it('keeps unverified quotes visible without highlighting any source text',()=>{
+ const item={...evidenceItemFixture,quote:{...evidenceItemFixture.quote,verified:false}};
+ const html=renderToStaticMarkup(createElement(EvidenceCard,{item,readonly:false,onAdd:vi.fn()}));
+ expect(html).not.toContain('<mark>');expect(html).toContain('<blockquote>인용</blockquote>');expect(html).toContain('인용 미확인 · 추론');
 });

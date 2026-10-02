@@ -146,7 +146,8 @@ def test_backend_or_schema_failure_is_bounded(inputs, response):
     result = generate_queries('test', *inputs, '생활', run_task=run)
     assert result.calls == len(tasks) == 2
     assert result.failed == ['c0', 'c1']
-    assert result.persona_rows == []
+    assert len(result.persona_rows) == 3
+    assert all(r['origin'] == 'fallback' for r in result.persona_rows)
     assert all(r['origin'] == 'fallback' for rows in result.context_rows.values() for r in rows)
 
 

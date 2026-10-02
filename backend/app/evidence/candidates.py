@@ -1,4 +1,6 @@
 """Owner-scoped candidate unions with raw cosine relevance."""
+import numpy as np
+
 from app.evidence.params import CANDIDATES_M, CORE_BONUS, TOP_PER_QUERY
 from app.evidence.search import filtered_topk
 from app.vectors.embedder import Embedder
@@ -12,7 +14,13 @@ def _search(owner_key: str, owner_id: str, queries: list[dict], *,
     if not queries or not allow - exclude or top_per_query <= 0 or m <= 0:
         return []
 
-    vectors = embedder.embed([query['text'] for query in queries], input_type='query')
+    try:
+        vectors = np.asarray(embedder.embed([query['text'] for query in queries], input_type='query'))
+        if (vectors.ndim != 2 or len(vectors) != len(queries) or not np.isfinite(vectors).all()
+                or np.any(np.linalg.norm(vectors, axis=1) <= 0)):
+            raise ValueError('invalid vectors')
+    except Exception as exc:
+        raise ValueError('query_embedding_failed (retryable): missing or invalid query vectors') from exc
     # Keep all scoped scores: the wrapper's truncated ties follow storage order,
     # and a candidate's best cosine can come from a query it did not hit.
     scores = filtered_topk(store, vectors, len(allow), allow, exclude)

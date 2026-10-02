@@ -66,7 +66,7 @@ def test_input_truncation(setup):
     assert len(body['body']) == 1500
     assert body['comments'] == [dict(idx=i, text='c'*300) for i in range(10)]
     assert '#1 ' + 's'*250 in tasks[0].instructions
-    assert '#2 ' + 'z'*200 in tasks[0].instructions and 'z'*201 not in tasks[0].instructions
+    assert '#2 ' not in tasks[0].instructions and 'z'*200 not in tasks[0].instructions
 
 
 def test_situation_from_dims_when_present(setup):

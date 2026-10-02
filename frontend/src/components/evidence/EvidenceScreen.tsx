@@ -6,7 +6,7 @@ import { StaleBanner } from '../versions/StageVersion';
 import { useVersion } from '../versions/VersionProvider';
 import { useStageCompletionRefresh } from '../versions/useStageCompletionRefresh';
 import * as api from '@/lib/api/evidence';
-import { addKnownInsight } from '@/lib/api/known';
+import { addKnownInsight, getKnownInsights } from '@/lib/api/known';
 import { getSegmentContexts, getSegmentPersonas, getSegmentStatus } from '@/lib/api/segment';
 import { displayError } from '@/lib/api/errors';
 import type { EvidenceContextResponse, EvidenceItemView, EvidencePersonaResponse, EvidenceStatus, EvidenceTab, SegmentPersona } from '@/lib/types';
@@ -29,7 +29,7 @@ type Persona = Pick<SegmentPersona,'id'|'clusterId'|'name'|'flags'>;
 type ViewProps = {
   sid:string;version?:string;status:EvidenceStatus | null;personas:Persona[];selectedPersona:string;selectedContext:string;
   tab:EvidenceTab;detail:EvidenceContextResponse | null;personaEvidence:EvidencePersonaResponse | null;
-  ready:boolean;readonly:boolean;busy:boolean;error:string;flags?:Record<string,string[]>;added?:string[];
+  ready:boolean;readonly:boolean;busy:boolean;error:string;flags?:Record<string,string[]>;added?:string[];knownNumbers?:Record<string,number>;
   onPersona:(id:string)=>void;onContext:(id:string)=>void;onTab:(tab:EvidenceTab)=>void;
   onStart:()=>void;onRetry:(id:string)=>void;onSkip:(id:string)=>void;onRefresh:(id:string)=>void;
   onAdded:(docId:string)=>void;onNext:()=>void;onReload?:()=>void;
@@ -42,8 +42,8 @@ export function EvidenceScreenView(p:ViewProps) {
   const disabled = p.readonly || p.busy || status?.status === 'stale';
   const before = !status || ['none','stale'].includes(status.status);
   const done = !!status && status.status === 'done' && canBuildPersona(status);
-  const cards = (items:EvidenceItemView[]) => items.map(item => <EvidenceCard key={item.docId} item={item} readonly={disabled} added={p.added?.includes(item.docId)} onAdd={p.onAdded}/>);
-  const content = detail && detail.tab === p.tab ? <div className="space-y-3">
+  const cards = (items:EvidenceItemView[]) => items.map(item => <EvidenceCard key={item.docId} item={item} knownNumber={item.knownMatch ? p.knownNumbers?.[item.knownMatch] : undefined} readonly={disabled} added={p.added?.includes(item.docId)} onAdd={p.onAdded}/>);
+  const content = status?.status === 'stale' ? <Card>다시 실행 후 열람할 수 있습니다.</Card> : detail && detail.tab === p.tab ? <div className="space-y-3">
     {p.tab === 'new' && detail.excludedKnown > 0 && <Banner actions={<Button onClick={() => p.onTab('all')}>전체 탭에서 보기</Button>}>{excludedMessage(detail.excludedKnown)}</Banner>}
     {detail.items.length ? cards(detail.items) : <p>{p.tab === 'new' && (selected?.counts.all ?? 0) > 0 ? 'Known Insight를 빼니 남는 원문이 없습니다. 전체 탭에서 보세요.' : '이 Context에서 근거로 쓸 원문을 찾지 못했습니다.'}</p>}
   </div> : <div role="status" aria-label="근거 불러오는 중"><Skeleton height={120}/></div>;
@@ -52,11 +52,12 @@ export function EvidenceScreenView(p:ViewProps) {
       {before ? <Button variant="primary" disabled={!status || !p.ready || p.readonly || p.busy} onClick={p.onStart}>근거 탐색 실행</Button> : <Button variant="primary" disabled={!done || p.readonly || p.busy} title={!done ? '모든 Context가 끝나야 합니다' : undefined} onClick={p.onNext}>페르소나 만들기</Button>}
     </header>
     {!p.ready && <Banner>{prerequisites}</Banner>}
-    {status?.status === 'stale' && <Banner tone="warning">{staleCopy}</Banner>}
+    {status?.status === 'stale' && status.run !== null && <Banner tone="warning">{staleCopy}</Banner>}
+    {status?.status === 'partial' && <Banner tone="warning">일부 Context의 근거를 찾지 못했습니다. 실패한 Context를 다시 시도하거나 건너뛰고 진행하세요.</Banner>}
     {p.error && <Banner tone="danger" actions={<Button onClick={p.onReload}>새로고침</Button>}>{p.error}</Banner>}
     {status?.reason && <Banner tone="warning">{status.reason}</Banner>}
     {status && ['interrupted','failed'].includes(status.status) && <Banner actions={<Button disabled={disabled || !p.ready} onClick={p.onStart}>이어서 진행</Button>}>근거 탐색이 중단되었습니다.</Banner>}
-    {status?.status === 'running' && <div role="status"><p>Context {completedCount}/{rows.length} · 태깅 호출 {Number(status.stage7?.tag_calls ?? 0)}회</p><ProgressBar label="근거 탐색 진행" value={rows.length ? completedCount : undefined} max={rows.length}/><p>끝난 Context부터 열어 볼 수 있습니다.</p></div>}
+    {status?.status === 'running' && <div role="status"><p>Context {completedCount}/{rows.length} · 태깅 호출 {status.stage7?.tag_calls ?? 0}회</p><ProgressBar label="근거 탐색 진행" value={rows.length ? completedCount : undefined} max={rows.length}/><p>끝난 Context부터 열어 볼 수 있습니다.</p></div>}
     <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
       <aside className="min-w-0 space-y-4"><Card size="sm"><nav aria-label="Persona 목록" className="space-y-3"><h2 className="ds-t-label">Persona</h2>
         {Array.from(new Set(p.personas.map(row => row.clusterId))).map(cluster => <div key={cluster} className="space-y-2"><h3>{cluster}</h3>{p.personas.filter(row => row.clusterId === cluster).map(persona => {
@@ -67,10 +68,10 @@ export function EvidenceScreenView(p:ViewProps) {
       </nav></Card><ContextList rows={rows.filter(row => row.personaId === p.selectedPersona)} selected={p.selectedContext} disabled={disabled} flags={p.flags} onSelect={p.onContext} onRetry={p.onRetry} onSkip={p.onSkip} onRefresh={p.onRefresh}/></aside>
       <section className="min-w-0 space-y-4" aria-label="Context 근거">{selected?.status === 'done' ? <><h2 className="ds-t-card">{selected.id} · {selected.name}</h2>
         <Tabs label="근거 탭" value={p.tab} onChange={value => p.onTab(value as EvidenceTab)} items={[{value:'all',label:'전체',count:selected.counts.all ?? 0,content:p.tab === 'all' ? content : null},{value:'new',label:'새 발견',count:selected.counts.new ?? 0,content:p.tab === 'new' ? content : null}]}/>
-        {detail && <><QueryPanel queries={detail.queries} failed={detail.queryFailed}/>{detail.undifferentiated.length > 0 && <Badge tone="warning">⚠ 미분화 후보 · 원문 {detail.undifferentiated.length}건</Badge>}
+        {status?.status !== 'stale' && detail && <><QueryPanel queries={detail.queries} failed={detail.queryFailed}/>{detail.undifferentiated.length > 0 && <Badge tone="warning">⚠ 미분화 후보 · 원문 {detail.undifferentiated.length}건</Badge>}
           <details className="ds-card space-y-3"><summary>반례 {detail.counter.length} · 희소 {detail.rare.length}</summary>{cards(detail.counter)}{cards(detail.rare)}</details></>}
       </> : <Card>완료된 Context를 선택하세요.</Card>}
-      <details className="ds-card space-y-3"><summary>Persona 근거 · Desire 검증 · 쓰는 제품 · 수단</summary>{p.personaEvidence ? <>{cards(p.personaEvidence.desireSupport)}{p.personaEvidence.artifacts.map((artifact,i) => <p key={i}>{Object.values(artifact).filter(v => typeof v === 'string').join(' · ')}</p>)}</> : <p>완료된 근거가 없습니다.</p>}</details>
+      <details className="ds-card space-y-3"><summary>Persona 근거 · Desire 검증 · 쓰는 제품 · 수단</summary>{status?.status === 'stale' ? <p>다시 실행 후 열람할 수 있습니다.</p> : p.personaEvidence ? <>{cards(p.personaEvidence.desireSupport)}{p.personaEvidence.artifacts.map((artifact,i) => <p key={i}>{`${artifact.name} · ${artifact.mention_count}건`}</p>)}</> : <p>완료된 근거가 없습니다.</p>}</details>
       </section>
     </div>
   </div>;
@@ -92,6 +93,8 @@ export function EvidenceScreen({sid,version,readonly = false}: {sid:string;versi
   const [busy,setBusy] = useState(false);
   const [added,setAdded] = useState<string[]>([]);
   const [revision,setRevision] = useState(0);
+  const [knownNumbers,setKnownNumbers] = useState<Record<string,number>>({});
+  const autoStarted = useRef(false);
   const active = useRef(true);
   const generation = useRef<string | null>(null);
   const request = useRef(0);
@@ -147,14 +150,21 @@ export function EvidenceScreen({sid,version,readonly = false}: {sid:string;versi
     if(selectedPersona && status?.run && status.status !== 'stale') void api.getEvidencePersona(sid,selectedPersona,version).then(result => {if(!cancelled) setPersonaEvidence(result);}).catch(e => {if(!cancelled) setError(displayError(e));});
     return () => {cancelled = true;};
   },[sid,version,selectedPersona,personaCompleted,status?.run,status?.status,revision]);
+  useEffect(() => {
+    let cancelled = false;
+    void getKnownInsights(sid,version).then(({items}) => {
+      if(!cancelled) setKnownNumbers(Object.fromEntries(items.map((item,i) => [item.id,i+1])));
+    }).catch(() => {if(!cancelled) setKnownNumbers({});});
+    return () => {cancelled = true;};
+  },[sid,version,revision,status]);
   useStageCompletionRefresh(status?.status === 'done' ? status.run : null);
-  async function mutate(work:()=>Promise<unknown>) {
+  const mutate = useCallback(async (work:()=>Promise<unknown>) => {
     if(blocked || lock.current) return;
     lock.current = true; request.current++; setBusy(true); setError('');
     try {await work(); if(active.current) {await loadStatus();setRevision(n => n+1);}}
     catch(e) {if(active.current) {setError(displayError(e));await loadStatus().catch(() => {});}}
     finally {lock.current = false; if(active.current) setBusy(false);}
-  }
+  },[blocked,loadStatus]);
   const actions = evidenceActions(sid,version,status?.run ?? '');
   async function add(docId:string) {
     if(!status?.run || status.status === 'stale') return;
@@ -166,8 +176,18 @@ export function EvidenceScreen({sid,version,readonly = false}: {sid:string;versi
       // Keep every completed row marked until the user requests recalculation (D-223).
     });
   }
-  function start() {if(!ready || status?.status === 'running') return; void mutate(() => api.startEvidence(sid,status?.status === 'stale' ? {fresh:true} : {},version));}
-  return <>{readonly && <Banner>{version} · 읽기 전용</Banner>}<StaleBanner stage="stage7" session={view.session}/><EvidenceScreenView sid={sid} version={version} status={status} personas={personas} flags={flags} selectedPersona={selectedPersona} selectedContext={chosen?.id ?? ''} tab={tab} detail={detail} personaEvidence={personaEvidence} ready={ready} readonly={blocked} busy={busy} error={error} added={added}
+  const start = useCallback(() => {
+    if(!status || !ready || status.status === 'running') return;
+    void mutate(() => api.startEvidence(sid,status.status === 'stale' ? {fresh:true} : {},version));
+  },[status,ready,mutate,sid,version]);
+  useEffect(() => {
+    if(autoStarted.current || !status || !ready || typeof window === 'undefined') return;
+    if(new URLSearchParams(window.location.search).get('start') !== '1') return;
+    autoStarted.current = true;
+    router.replace('/pipeline/evidence',{scroll:false});
+    if(!blocked) start();
+  },[status,ready,blocked,router,start]);
+  return <>{readonly && <Banner>{version} · 읽기 전용</Banner>}<StaleBanner stage="stage7" session={view.session}/><EvidenceScreenView sid={sid} version={version} status={status} personas={personas} flags={flags} selectedPersona={selectedPersona} selectedContext={chosen?.id ?? ''} tab={tab} detail={detail} personaEvidence={personaEvidence} ready={ready} readonly={blocked} busy={busy} error={error} added={added} knownNumbers={knownNumbers}
     onPersona={id => {setDetail(null);setPersonaEvidence(null);setPersona(id);setContext('');setTab('new');}} onContext={id => {setDetail(null);setContext(id);setTab('new');}} onTab={next => {setDetail(null);setTab(next);}} onStart={start}
     onRetry={id => {if(status?.run && status.status !== 'stale') void mutate(() => actions.retry(id));}} onSkip={id => {if(status?.run && status.status !== 'stale') void mutate(() => actions.skip(id));}}
     onRefresh={id => {if(status?.run && status.status !== 'stale') void mutate(async () => {await actions.refresh(id);});}} onAdded={docId => void add(docId)}

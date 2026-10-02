@@ -50,7 +50,7 @@ function LabelingScreen({sid}: {sid: string}) {
   useEffect(() => {
     let active = true;
     void getEvidenceStatus(sid, version).then(result => {
-      const count = result.stage7?.irrelevant;
+      const count = result.stage7?.relevant_false;
       if (active) setIrrelevant(typeof count === 'number' && Number.isFinite(count) && count > 0 ? count : 0);
     }).catch(() => { if (active) setIrrelevant(0); });
     return () => { active = false; };

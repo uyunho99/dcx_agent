@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { evidenceContextFixture, evidenceItemFixture } from '../evidence/evidenceFixtures';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 const hooks = vi.hoisted(() => ({slots: [] as any[], cursor: 0, effects: [] as (() => void)[]}));
 vi.mock('react', async () => ({...await vi.importActual('react'),
@@ -51,7 +52,7 @@ it('opens three candidate sources lazily from evidence without a create action',
  let details=draw();
  expect(textOf(details)).toContain('새 Context 후보 — 원문 3건');
  expect(getEvidenceContext).not.toHaveBeenCalled();
- vi.mocked(getEvidenceContext).mockResolvedValue({undifferentiated:['d1','d2','d3'],items:[],counter:[],rare:[1,2,3].map(i=>({docId:`d${i}`,text:`후보 원문 ${i}`}))} as any);
+ vi.mocked(getEvidenceContext).mockResolvedValue({...evidenceContextFixture,tab:'all',undifferentiated:['d1','d2','d3'],items:[],rare:[1,2,3].map(i=>({...evidenceItemFixture,docId:`d${i}`,text:`후보 원문 ${i}`,role:'rare'}))});
  await details.props.onToggle({currentTarget:{open:true}}); await tick();
  details=draw();
  expect(getEvidenceContext).toHaveBeenCalledWith('s','C1','all','v1');
@@ -62,13 +63,13 @@ it('opens three candidate sources lazily from evidence without a create action',
  expect(getEvidenceContext).toHaveBeenCalledTimes(1);
  expect(nodes(ContextLayer({...props,contexts:[context]} as any)).some(n=>n.type===candidate.type)).toBe(false);
 });
-it('navigates completed clustering to evidence without starting a run here',async()=>{
+it('navigates completed clustering with a one-shot start signal',async()=>{
  state.poll={...status,status:'done',confirm:{clusters:'1/1',personas:'1/1',contexts:'1/1'}};
  const draw=()=>render(()=>SegmentScreen({sid:'s',version:'v1'}));
  draw();await tick();draw();await tick();
  const button=nodes(draw()).find(n=>n.props?.children==='근거 탐색 실행');
  expect(button.props.disabled).toBe(false);
  button.props.onClick();
- expect(push).toHaveBeenCalledWith('/pipeline/evidence');
+ expect(push).toHaveBeenCalledWith('/pipeline/evidence?start=1');
  expect(startEvidence).not.toHaveBeenCalled();
 });

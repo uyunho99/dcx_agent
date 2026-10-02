@@ -9,6 +9,7 @@ const path = (sid: string, suffix: string, version?: string) => versionQuery(`/e
 const contextPath = (id: string) => `/contexts/${encodeURIComponent(id)}`;
 
 export const startEvidence = (sid: string, body: EvidenceRunRequest = {}, version?: string) => contextRequest<EvidenceRunResponse>(path(sid, '/run', version), 'POST', body);
+// Preserve stage7 report keys and quoteSource/noveltyShown wire fields (D-266).
 export const getEvidenceStatus = (sid: string, version?: string) => contextRequest<EvidenceStatus>(path(sid, '/status', version));
 export const getEvidenceContext = (sid: string, id: string, tab: EvidenceTab = 'all', version?: string) => contextRequest<EvidenceContextResponse>(path(sid, `${contextPath(id)}?tab=${encodeURIComponent(tab)}`, version));
 export const getEvidencePersona = (sid: string, id: string, version?: string) => contextRequest<EvidencePersonaResponse>(path(sid, `/personas/${encodeURIComponent(id)}`, version));

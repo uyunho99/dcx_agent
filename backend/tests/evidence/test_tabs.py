@@ -159,7 +159,10 @@ def test_novelty_once_with_final_ten_core_five_and_known():
     task = run.call_args.args[0]
     assert task.task == 'evidence.novelty'
     payload = json.loads(task.attachments[0].body)
-    assert payload['new_rows'] == rows[:10] and payload['core_reps'] == reps
+    assert [r['doc_id'] for r in payload['new_rows']] == [r['doc_id'] for r in rows[:10]]
+    assert [r['body'] for r in payload['new_rows']] == [r['body'] for r in rows[:10]]
+    assert [r['doc_id'] for r in payload['core_reps']] == [r['doc_id'] for r in reps]
+    assert all('tagProbs' not in r for r in payload['new_rows'])
     assert payload['known_items'] == known
 
 

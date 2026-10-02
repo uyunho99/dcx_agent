@@ -138,7 +138,7 @@ def generate_queries(sid: str, persona: dict, contexts: list[dict], one_liner: s
         if not issues:
             break
 
-    failed_ids = set(context_ids) if any(cid is None for cid, _ in issues) else {cid for cid, _ in issues}
+    failed_ids = set(context_ids) if out is None else {cid for cid, _ in issues if cid is not None}
     origin = 'llm' if calls == 1 else 'regen'
     context_rows = {}
     for context in contexts:
@@ -154,4 +154,11 @@ def generate_queries(sid: str, persona: dict, contexts: list[dict], one_liner: s
         persona_rows = [dict(dim=f'desire_check_{index}', text=text.strip(), origin=origin)
                         for index, text in enumerate(out.persona_query['desire_check'], 1)]
         persona_rows.append(dict(dim='artifact', text=out.persona_query['artifact'][0].strip(), origin=origin))
+    if not persona_rows:
+        goals = persona.get('goals') or persona.get('goal') or []
+        if isinstance(goals, str):
+            goals = [goals]
+        text = ' '.join([persona.get('desire') or persona.get('name') or 'Desire', *goals])
+        persona_rows = [dict(dim=dim, text=text, origin='fallback')
+                        for dim in ('desire_check_1', 'desire_check_2', 'artifact')]
     return QueryResult(persona_rows, context_rows, [cid for cid in context_ids if cid in failed_ids], calls)

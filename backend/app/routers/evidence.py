@@ -6,7 +6,8 @@ from pydantic import BaseModel, ConfigDict, StringConstraints
 
 from app.context import store as sessions
 from app.context.versions import version_dir
-from app.evidence import assemble, pipeline
+from app.evidence import assemble, pipeline, generation
+from app.evidence.cache import known_snapshot
 from app.evidence.cache import TagCache, prompt_version
 from app.evidence.store import EvidenceStore
 from app.label.overview import session
@@ -70,7 +71,8 @@ def status(sid: str, version: str | None = None):
     snapshot = store.snapshot()
     evidence = data.get('evidence', {})
     states = {r['context_id']: r for r in snapshot.contexts}
-    known_ids = {i['id'] for i in pipeline._known(sid, data['version'])}
+    known = pipeline._known(sid, data['version'])
+    known_ids = {i['id'] for i in known}
     rows = []
     for context in SegmentStore.open(sid, data['version']).contexts():
         cid = context['context_id']
@@ -81,9 +83,9 @@ def status(sid: str, version: str | None = None):
         rows.append(dict(id=cid, personaId=context['persona_id'], name=context.get('name') or context.get('name_draft') or cid,
                          status=row.get('status', 'queued'), coverage=row.get('coverage'), counts=public_counts,
                          error=row.get('error'), knownChanged=bool(row.get('status') == 'done' and
-                         (counts.get('knownChanged') or set(counts.get('knownIds', [])) != known_ids))))
+                         (counts.get('knownChanged') or set(counts.get('knownIds', [])) != known_ids or counts.get('knownSnapshot', {}) != known_snapshot(known)))))
     result = dict(status=evidence.get('status', 'none'), run=snapshot.run,
-                  progress=evidence.get('progress', 0), contexts=rows)
+                  progress=evidence.get('progress', 0), contexts=rows, tagCalls=(evidence.get('detail') or {}).get('tagCalls', 0))
     work = next((w for w in reversed(runner.status(sid)) if w['kind'] == 'evidence' and w['version'] == data['version']), None)
     reason = evidence.get('reason')
     if work and work['state'] != 'done' and result['status'] != 'stale':
@@ -95,18 +97,21 @@ def status(sid: str, version: str | None = None):
     report = _report(sid, data, 'stage_7.json')
     if report is not None:
         result['stage7'] = report
+        result['tagCalls'] = max(result['tagCalls'], report.get('tag_calls', 0))
     return result
 
 
 def _source(sid, data, seg, ids):
     """Load only requested originals and cached tags; read routes need no vectors."""
+    generation.check_read(sid, data['version'], data)
     docs = {d['doc_id']: d for d in assemble._documents(seg) if d['doc_id'] in ids}
+    data, tag_pver = generation.inputs(sid, data['version'], data)
     root = prepared_root(sid, data)
     if root is not None:
         for doc_id, original in assemble._load_docs(root, ids).items():
             docs[doc_id] = {**docs.get(doc_id, {}), **original}
     ref = data.get('prep', {}).get('derivedRef')
-    tags = pipeline._project(TagCache.open(sid, ref['prepKey'], prompt_version('tag')), ids,
+    tags = pipeline._project(TagCache.open(sid, ref['prepKey'], tag_pver), ids,
                              pipeline._known(sid, data['version'])) if ref else {}
     if data.get('training', {}).get('exportRef'):
         from app.known.filter import read_export
@@ -117,15 +122,7 @@ def _source(sid, data, seg, ids):
 
 
 def _view(row, docs, tags, role='support'):
-    doc_id = row['doc_id']
-    doc, tag = docs.get(doc_id, {}), tags.get(doc_id, {})
-    item = assemble._item(doc_id, {doc_id: doc}, {doc_id: tag}, role=role, novelty=row.get('novelty'))
-    quote = item['quote'] or dict(field='body', idx=None, text='', start=None, end=None, verified=False)
-    return dict(docId=doc_id, source=item['source'], location={k: quote.get(k) for k in ('field', 'idx')},
-                quote={k: quote.get(k) for k in ('text', 'start', 'end', 'verified')},
-                text=(doc.get('body') or doc.get('title') or '')[:600], tags=item['tags'], band=doc.get('band'),
-                novelty=row.get('novelty'), noveltyReason=row.get('novelty_reason'), knownMatch=item['known_match'],
-                rare=doc.get('band') == 'edge' and bool(tag.get('pain_point') or tag.get('unmet_need')), role=role)
+    return assemble.item_view(row, docs, tags, role)
 
 
 @router.get('/contexts/{context_id}')
@@ -137,13 +134,12 @@ def context(sid: str, context_id: str, tab: Literal['all', 'new'] = 'all', versi
     if context is None:
         raise sessions.StoreError('Context not found', 404, 'not_found')
     state = next((r for r in snapshot.contexts if r['context_id'] == context_id), {})
-    if state.get('status') != 'done':
+    if state.get('status') != 'done' and 'undifferentiated_candidate' not in (context.get('flags') or []):
         raise sessions.StoreError('Context not ready', 409, 'not_ready')
     pool = [r for r in snapshot.candidates if r['context_id'] == context_id]
     selected = [r for r in snapshot.selected if r['context_id'] == context_id and r['tab'] == tab]
     docs, tags = _source(sid, data, seg, {r['doc_id'] for r in pool + selected})
-    polarities = [t['polarity'] for t in tags.values() if t.get('relevant') and t.get('polarity') is not None]
-    counter = assemble.counter_evidence(pool, tags, context_mean=sum(polarities)/len(polarities) if polarities else None)
+    counter = assemble.counter_evidence(pool, tags, context_mean=assemble.context_polarity_mean(pool, tags))
     rare = assemble.rare_evidence(pool, tags, docs)
     counts = state.get('counts') or {}
     return dict(context={k: v for k, v in context.items() if k != 'centroid'}, tab=tab,
@@ -191,6 +187,11 @@ def skip(sid: str, context_id: str, body: Generation, version: str | None = None
 def package(sid: str, version: str | None = None):
     data, store = _open(sid, version)
     snapshot = store.snapshot()
+    generation.check_read(sid, data['version'], data)
+    if _report(sid, data, 'package_dirty.json'):
+        with sessions.locked(sid):
+            generation.check(sid, data['version'], store, snapshot.run)
+            pipeline._assemble(sid, data['version'])
     result = _report(sid, data, 'package.json')
     if data.get('evidence', {}).get('status') != 'done' or not snapshot.contexts or any(r['status'] not in ('done', 'skipped') for r in snapshot.contexts) or result is None:
         raise sessions.StoreError('Evidence package not ready', 409, 'not_ready')

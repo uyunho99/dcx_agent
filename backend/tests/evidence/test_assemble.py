@@ -7,7 +7,7 @@ import pytest
 from app.context import store as sessions
 from app.context.versions import version_dir
 from app.evidence import assemble as assembly
-from app.evidence.cache import TagCache, prompt_version
+from app.evidence.cache import TagCache, prompt_version, known_key
 from app.evidence.package import EvidencePackage
 from app.evidence.store import EvidenceStore
 from app.model.infer import prepared_root
@@ -107,7 +107,7 @@ def persisted(data_dir):
                          situation={'state': '태그 상황', 'emotion': None, 'barrier': None}, situation_origin='tag',
                          quotes=[dict(field='body', idx=None, start=0, end=9, text='정말 불편해요.', verified=True)]) for i in range(7)}
     cache.put_tags(tags, 'fake')
-    cache.put_known({('d0', 'ki_1'): True, ('d1', 'deleted'): True}, 'fake')
+    cache.put_known({('d0', known_key(session['knownInsights'][0])): True, ('d1', 'deleted'): True}, 'fake')
     VectorStore(root).write_shard([f'd{i}' for i in range(8)], np.tile([1., 0], (8, 1)), [False]*8)
     return sid, version, base, seg, ev
 
@@ -202,4 +202,5 @@ def test_assembly_with_real_stage6_fixture(data_dir):
     assert len(package.personas) == len(seg.personas())
     assert sum(p.persona_evidence.metrics.doc_count for p in package.personas) == len(seg.docs(limit=100000))
     assert all(c.action for p in package.personas for c in p.context_evidence)
-    assert all(p.persona_evidence.quality['cohesion'] is None for p in package.personas)
+    assert all(p.persona_evidence.quality['cohesion'] is not None for p in package.personas)
+    assert [p.persona_evidence.quality.model_dump() for p in package.personas] == [p['quality'] for p in seg.personas()]

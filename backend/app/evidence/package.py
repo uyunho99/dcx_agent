@@ -55,8 +55,24 @@ class PersonaMetrics(PackageModel):
     provisional: list[str]
 
 
+class ContextQuality(PackageModel):
+    cohesion: float | None
+    boundary: float | None
+    stability: float | None
+    npmi: float | None
+
+
+class PersonaQuality(PackageModel):
+    cohesion: float | None
+    boundary: float | None
+    stability_ari: float | None
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+
 class ContextMetrics(PersonaMetrics):
-    quality: dict[str, float | None]
+    quality: ContextQuality
 
 
 class ContextEvidence(PackageModel):
@@ -83,7 +99,7 @@ class PersonaEvidence(PackageModel):
     desire_support: list[EvidenceItem]
     artifacts: list[Artifact]
     metrics: PersonaMetrics
-    quality: dict
+    quality: PersonaQuality
 
 
 class PersonaBlock(PackageModel):

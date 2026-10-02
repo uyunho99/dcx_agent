@@ -159,7 +159,13 @@ def _restart(data, target, stage):
         data.get('completion', {}).pop('evidenceDone', None)
         shutil.rmtree(target / 'evidence', ignore_errors=True)
         if 'evidence' in data:
-            data['evidence'] = {'status': 'stale'}
+            data['evidence'] = {'status': 'none'}
+        if (target / 'segment/segment.sqlite').exists():
+            from app.segment.store import SegmentStore
+            from app.evidence.assemble import append_context_flag
+            seg = SegmentStore(target)
+            for row in seg.contexts():
+                append_context_flag(seg, row['context_id'], 'undifferentiated_candidate', present=False)
     if stage <= 8:
         shutil.rmtree(target / 'persona', ignore_errors=True)
         for key in ('persona', 'insight'):

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { canBuildPersona, excludedMessage, highlight, locationLabel, rowBadge } from './evidenceView';
+import { evidenceStatusFixture, evidenceContextFixture, evidenceItemFixture } from './evidenceFixtures';
 import * as api from '../../lib/api/evidence';
 import type { EvidenceContextState } from '../../lib/types';
 
@@ -52,7 +53,7 @@ describe('evidence display contract', () => {
 
 describe('evidence API wire contract (offline fetch)', () => {
   it('encodes IDs, tabs and versions and preserves response envelopes', async () => {
-    const envelopes = [{status:'done',contexts:[]}, {context:{id:'C'},tab:'new',items:[],counter:[],rare:[],excludedKnown:2,queries:[],queryFailed:false,undifferentiated:[]}, {desireSupport:[],artifacts:[]}, {schema:'evidence-package/1',version:'v2',params:{},personas:[]}];
+    const envelopes = [{...evidenceStatusFixture,status:'done'}, evidenceContextFixture, {desireSupport:[evidenceItemFixture],artifacts:[{name:'리모컨',mention_count:12}]}, {schema:'evidence-package/1',version:'v2',params:{},personas:[]}];
     const fetcher = vi.fn();
     for (const envelope of envelopes) fetcher.mockResolvedValueOnce({ok:true,json:async()=>envelope});
     vi.stubGlobal('fetch', fetcher);
@@ -67,18 +68,19 @@ describe('evidence API wire contract (offline fetch)', () => {
     }
   });
   it('defaults to the all tab and omits absent version queries', async () => {
-    const fetcher = vi.fn().mockResolvedValue({ok:true,json:async()=>({})});
+    const fetcher = vi.fn().mockResolvedValueOnce({ok:true,json:async()=>evidenceContextFixture}).mockResolvedValueOnce({ok:true,json:async()=>evidenceStatusFixture});
     vi.stubGlobal('fetch', fetcher);
     await api.getEvidenceContext('s', 'C');
     await api.getEvidenceStatus('s');
     expect(fetcher.mock.calls.map(([url]) => url)).toEqual(['/evidence/s/contexts/C?tab=all','/evidence/s/status']);
   });
   it('sends exact write bodies, preserving generation run separately from worker runId', async () => {
-    const fetcher = vi.fn().mockResolvedValue({ok:true,json:async()=>({runId:'worker'})});
+    const fetcher = vi.fn();
+    for(const response of [{runId:'worker'},{runId:'worker'},evidenceContextFixture,evidenceStatusFixture]) fetcher.mockResolvedValueOnce({ok:true,json:async()=>response});
     vi.stubGlobal('fetch', fetcher);
     expect(await api.startEvidence('s', {fresh:true,contexts:['C']}, 'v2')).toEqual({runId:'worker'});
     await api.startEvidence('s');
-    await api.refreshEvidenceNew('s /', 'C/0', {run:'generation'}, 'v 2');
+    expect(await api.refreshEvidenceNew('s /', 'C/0', {run:'generation'}, 'v 2')).toEqual(evidenceContextFixture);
     await api.skipEvidenceContext('s /', 'C/0', {run:'generation'}, 'v 2');
     expect(fetcher.mock.calls.map(([url, init]) => [url,init.method,JSON.parse(init.body)])).toEqual([
       ['/evidence/s/run?version=v2','POST',{fresh:true,contexts:['C']}],

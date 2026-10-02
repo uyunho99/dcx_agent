@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.config import settings
 from app.evidence import params
+from app.evidence.cache import known_key
 from app.evidence.quotes import locate
 from app.known.store import list_known
 from app.llm import registry
@@ -166,11 +167,11 @@ def _situation(values):
 
 def _pairs(rows, known):
     result = {}
-    labels = {f'#{i}': item['id'] for i, item in enumerate(known, 1)}
+    labels = {f'#{i}': known_key(item) for i, item in enumerate(known, 1)}
     for doc_id, row in rows.items():
         match = row['known_match']
         if match == 'none':
-            result.update({(doc_id, item['id']): False for item in known})
+            result.update({(doc_id, known_key(item)): False for item in known})
         elif match in labels:
             # A single match cannot establish negatives for other Known items.
             result[doc_id, labels[match]] = True
@@ -180,7 +181,7 @@ def _pairs(rows, known):
 def tag_documents(sid, doc_ids, *, docs, dims_by_id, known_items, cache,
                   run_task=registry.run_task, concurrency=None) -> TagResult:
     ids = list(dict.fromkeys(doc_ids))
-    known = _known_rows(known_items)
+    known = [i for i in _known_rows(known_items) if i['type'] == 'statement']
     cached = cache.get_tags(ids)
     pending = [i for i in ids if i not in cached]
     inputs = {i: _input(docs[i], dims_by_id.get(i) or docs[i].get('context_dims')) for i in pending}
@@ -209,26 +210,27 @@ def tag_documents(sid, doc_ids, *, docs, dims_by_id, known_items, cache,
     if pairs:
         cache.put_known(pairs, model)
     tags = {i: (rows[i] if i in rows else cached[i]) for i in ids if i in rows or i in cached}
-    judgments = cache.get_known(tags, [item['id'] for item in known])
+    judgments = cache.get_known(tags, [known_key(item) for item in known])
     for doc_id, row in tags.items():
-        row['known_match'] = next((item['id'] for item in known if judgments.get((doc_id, item['id']))), 'none')
+        row['known_match'] = next((item['id'] for item in known if judgments.get((doc_id, known_key(item)))), 'none')
     missing = [i for i in ids if i not in tags]
     return TagResult(tags, calls, len(cached), len(missing), missing,
                      dict(Counter(r['reason_code'] for r in tags.values() if not r['relevant'])), len(lazy))
 
 
-def judge_known(sid, doc_ids, ki_ids, *, cache, run_task=registry.run_task, concurrency=None):
+def judge_known(sid, doc_ids, ki_ids, *, cache, run_task=registry.run_task, concurrency=None, known_items=None):
     """Judge only absent pairs using cached prepared excerpts and current KI text.
 
-    Caller handles deletion with TagCache.drop_known. Missing/failed responses
-    remain unjudged (absent), never cached as False.
+    Deleted items are ignored without deleting shared cache rows. Content
+    fingerprints distinguish edits. Missing responses remain unjudged.
     """
-    known = {item.id: item.model_dump() for item in list_known(sid)}
+    items = _known_rows(known_items) if known_items is not None else [item.model_dump() for item in list_known(sid)]
+    known = {item['id']: item for item in items if item['type'] == 'statement'}
     wanted = [i for i in dict.fromkeys(ki_ids) if i in known]
     tags = cache.get_tags(doc_ids)
-    result = cache.get_known(tags, wanted)
+    result = cache.get_known(tags, [known_key(known[i]) for i in wanted])
     for ki_id in wanted:
-        pending = [i for i in tags if (i, ki_id) not in result]
+        pending = [i for i in tags if (i, known_key(known[ki_id])) not in result]
         inputs = {i: tags[i].get('_input', tags[i]) for i in pending}
         rows, _ = _collect(sid, pending, inputs, [known[ki_id]], run_task, concurrency)
         pairs = _pairs(rows, [known[ki_id]])

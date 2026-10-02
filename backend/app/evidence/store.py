@@ -171,6 +171,15 @@ class EvidenceStore:
             db.execute(f'INSERT INTO contexts ({columns}) VALUES ({placeholders}) '
                        f'ON CONFLICT(context_id) DO UPDATE SET {updates}', tuple(values.values()))
 
+    def patch_counts(self, context_id, **fields):
+        """Merge only owned counters against the current row in one transaction."""
+        with self._db(write=True) as db:
+            row = db.execute('SELECT counts_json FROM contexts WHERE context_id=?', (context_id,)).fetchone()
+            if row:
+                counts = {**json.loads(row['counts_json'] or '{}'), **fields}
+                db.execute('UPDATE contexts SET counts_json=? WHERE context_id=?',
+                           (json.dumps(counts), context_id))
+
     def contexts(self) -> list[dict]:
         return self._list('contexts')
 

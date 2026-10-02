@@ -1,3 +1,4 @@
+import { evidenceStatusFixture, stage7Fixture } from '@/components/evidence/evidenceFixtures';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { afterEach, expect, it, vi } from 'vitest';
 const hooks = vi.hoisted(() => ({slots: [] as any[], cursor: 0, effects: [] as (() => void)[]}));
@@ -68,7 +69,7 @@ it('refreshes the session once when both judges complete, including while review
 
 it('shows the stage7 irrelevant count as information only', async () => {
  vi.useFakeTimers();
- vi.mocked(getEvidenceStatus).mockResolvedValue({stage7:{irrelevant:7}} as any);
+ vi.mocked(getEvidenceStatus).mockResolvedValue({...evidenceStatusFixture,stage7:stage7Fixture});
  vi.mocked(getLabelOverview).mockResolvedValue({started:true,queue:{total:0}} as any);
  render(); await vi.advanceTimersByTimeAsync(0);
  const banner=render().find(n=>n.type==='Banner');
@@ -78,7 +79,7 @@ it('shows the stage7 irrelevant count as information only', async () => {
  expect(getEvidenceStatus).toHaveBeenCalledWith('s','v1');
  expect(banner.props.actions).toBeUndefined();
 });
-it.each([{}, {stage7:{irrelevant:0}}, null])('preserves legacy labeling when evidence is absent, zero, or unavailable: %s', async evidence => {
+it.each([{status:'none',run:null,progress:0,contexts:[]}, {...evidenceStatusFixture,stage7:{...stage7Fixture,relevant_false:0}}, null])('preserves legacy labeling when evidence is absent, zero, or unavailable: %s', async evidence => {
  vi.useFakeTimers();
  if(evidence) vi.mocked(getEvidenceStatus).mockResolvedValue(evidence as any);
  else vi.mocked(getEvidenceStatus).mockRejectedValue(new Error('not found'));

@@ -31,7 +31,7 @@ def run(api):
 
 
 def item_contract(item):
-    assert set(item) == {'docId','source','location','quote','text','tags','band','novelty','noveltyReason','knownMatch','rare','role'}
+    assert set(item) == {'docId','source','location','quote','text','tags','band','novelty','noveltyReason','knownMatch','rare','role','quoteSource','noveltyShown'}
     assert set(item['quote']) == {'text','start','end','verified'}
     assert set(item['location']) == {'field','idx'}
     assert len(item['text']) <= 600

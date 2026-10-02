@@ -151,7 +151,7 @@ def test_stage5_to_stage7_offline(client, data_dir, monkeypatch, offline_worker)
     # Design 4.8, plus implementation diagnostics; independent contract list.
     counters = {'coverage_supplements', 'query_gen_fail', 'new_expansions',
                 'rare_fallback', 'dpp_fill', 'untagged', 'lazy_dims', 'llm_calls',
-                'cache_hits', 'relevant_false'}
+                'cache_hits', 'relevant_false', 'tag_calls', 'act_mismatch', 'persona_query_fail'}
     distributions = {'coverage', 'band_exposure_ratios', 'novelty_distribution',
                      'escalation_candidates', 'reason_code', 'known_match_distribution'}
     assert set(report) == counters | distributions | {'per_tab_counts', 'params'}
@@ -204,7 +204,10 @@ def test_stage5_to_stage7_offline(client, data_dir, monkeypatch, offline_worker)
     refreshed = ok(client.post(base + f'/contexts/{cid}/refresh-new', json={'run': fresh['run']}))
     assert refreshed['tab'] == 'new' and refreshed['excludedKnown'] >= 1
     assert doc_id not in [r['docId'] for r in refreshed['items']]
-    assert ok(client.get(base + f'/contexts/{cid}', params={'tab': 'all'}))['items'] == details[cid, 'all']['items']
+    after_all = ok(client.get(base + f'/contexts/{cid}', params={'tab': 'all'}))['items']
+    assert [i['docId'] for i in after_all] == [i['docId'] for i in details[cid, 'all']['items']]
+    removed = next(i for i in after_all if i['docId'] == doc_id)
+    assert removed['novelty'] is None and removed['noveltyShown'] is False
     assert calls == []
     assert_package(client, fixture, contexts)
     assert offline_worker == []

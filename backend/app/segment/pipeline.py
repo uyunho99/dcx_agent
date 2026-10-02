@@ -65,7 +65,8 @@ def _session(sid, version, values, *, reset=False):
         data = sessions.read_json(path)
         if reset:
             data['segment'] = {}
-            data['evidence'] = {'status': 'stale'}
+            if data.get('evidence', {}).get('status', 'none') != 'none':
+                data['evidence'] = {'status': 'stale'}
             data.setdefault('completion', {}).pop('evidenceDone', None)
             data.setdefault('completion', {}).pop('segmentDone', None)
             data.get('drafts', {}).pop('segment', None)
@@ -441,6 +442,9 @@ def _quality(source, state, store, pulse):
         state['l2'][cid]['ari'] = par
         for persona in state['personas']:
             if persona['cluster_id'] == cid:
+                members = [i for i in ids if doc_rows[i]['persona_id'] == persona['persona_id']]
+                persona['quality'] = dict(cohesion=quality.cohesion(source.vectors[[source.index[i] for i in members]]),
+                    boundary=quality.boundary(vectors, [doc_rows[i]['persona_id'] for i in ids], target_label=persona['persona_id']), stability_ari=par)
                 persona['flags'] = list(dict.fromkeys(persona['flags'] + quality.flags(ari=par, level='L2')))
                 _save_row(store, 'personas', 'persona_id', persona)
     for row in state['contexts']:

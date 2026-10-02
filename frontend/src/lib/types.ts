@@ -231,19 +231,25 @@ export type EvidenceState = 'none' | 'running' | 'done' | 'failed' | 'interrupte
 export type EvidenceRole = 'support' | 'counter' | 'rare';
 export type EvidenceLocation = { field: 'title' | 'body' | 'comment'; idx: number | null };
 export type EvidenceQuote = { text: string; start: number | null; end: number | null; verified: boolean };
+/** Quote offsets are Unicode code points into quoteSource.text (D-258/D-266). */
+export type EvidenceQuoteSource = EvidenceLocation & { text: string };
 export type EvidenceItemView = {
-  docId: string; source: string; location: EvidenceLocation; quote: EvidenceQuote;
+  docId: string; source: string; location: EvidenceLocation; quote: EvidenceQuote; quoteSource: EvidenceQuoteSource;
   text: string; tags: string[]; band: SegmentBand | null; novelty: string | null;
-  noveltyReason: string | null; knownMatch: string | null; rare: boolean; role: EvidenceRole;
+  noveltyShown: boolean; noveltyReason: string | null; knownMatch: string | null; rare: boolean; role: EvidenceRole;
 };
 export type EvidenceQuery = { dim: string; text: string; origin: 'llm' | 'regen' | 'fallback' };
 export type EvidenceContextStatus = {
   id: string; personaId: string; name: string; status: EvidenceContextState;
   coverage: number | null; counts: Record<string, number>; error: string | null; knownChanged: boolean;
 };
+export type EvidenceStageReport = {
+  tag_calls: number; relevant_false: number;
+  [key: string]: unknown;
+};
 export type EvidenceStatus = {
   status: EvidenceState; run: string | null; progress: number; contexts: EvidenceContextStatus[];
-  stage7?: Record<string, unknown>; reason?: string;
+  stage7?: EvidenceStageReport; reason?: string;
 };
 export type EvidenceRunRequest = { fresh?: boolean; contexts?: string[] };
 export type EvidenceRunResponse = { runId: string };
@@ -255,7 +261,7 @@ export type EvidenceContextResponse = {
   counter: EvidenceItemView[]; rare: EvidenceItemView[]; excludedKnown: number;
   queries: EvidenceQuery[]; queryFailed: boolean; undifferentiated: string[];
 };
-export type EvidenceArtifact = Record<string, unknown>;
+export type EvidenceArtifact = { name: string; mention_count: number };
 export type EvidencePersonaResponse = { desireSupport: EvidenceItemView[]; artifacts: EvidenceArtifact[] };
 export type EvidenceItem = {
   doc_id: string; source: string; quote: (EvidenceLocation & EvidenceQuote) | null;

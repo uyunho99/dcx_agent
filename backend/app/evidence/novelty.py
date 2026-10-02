@@ -62,7 +62,12 @@ def judge_novelty(sid, context, new_rows, core_reps, known_items, *,
     if len(new_rows) > params.SELECT_N or len(core_reps) > params.NOVELTY_CORE_REPS:
         raise ValueError('novelty requires final new-tab <= 10 and core representatives <= 5')
     known = [i.model_dump() if isinstance(i, BaseModel) else dict(i) for i in known_items]
-    payload = dict(context=context, new_rows=new_rows, core_reps=core_reps, known_items=known)
+    from app.evidence.tagging import _input
+    def excerpt(row):
+        return dict(doc_id=row['doc_id'], **_input(row, row.get('context_dims')),
+                    quotes=row.get('quotes') or [], pain_point=row.get('pain_point'), unmet_need=row.get('unmet_need'))
+    payload = dict(context=context, new_rows=[excerpt(r) for r in new_rows],
+                   core_reps=[excerpt(r) for r in core_reps], known_items=known)
     task = LLMTask(task='evidence.novelty', sid=sid,
                    instructions=Path(__file__).with_name('prompts').joinpath('novelty.v1.md').read_text(encoding='utf-8'),
                    attachments=[Attachment(title='Context novelty cross-check', body=json.dumps(payload, ensure_ascii=False))],

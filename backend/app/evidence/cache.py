@@ -36,6 +36,16 @@ def prompt_version(name: str, *, prompt_dir: Path | None = None) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()[:12]
 
 
+def known_key(item):
+    text = item.get('text') or item.get('summary') or ''
+    fingerprint = hashlib.sha256(json.dumps([item.get('type'), text, item.get('doc_id')], ensure_ascii=False).encode()).hexdigest()
+    return item['id'] + ':' + fingerprint
+
+
+def known_snapshot(items):
+    return {item['id']: known_key(item) for item in items}
+
+
 class TagCache:
     def __init__(self, path):
         self.path = Path(path)

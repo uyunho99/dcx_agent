@@ -16,8 +16,8 @@ import numpy as np
 
 from app.context import store as sessions
 from app.context.versions import version_dir
-from app.evidence import params
-from app.evidence.cache import TagCache, prompt_version
+from app.evidence import params, generation
+from app.evidence.cache import TagCache, prompt_version, known_key
 from app.evidence.package import EvidencePackage
 from app.evidence.quotes import locate
 from app.evidence.rerank import quality
@@ -38,6 +38,11 @@ def _documents(store):
         if len(batch) < 1000:
             return result
         offset += len(batch)
+
+
+def context_polarity_mean(pool, tags):
+    return _mean(tags[i].get('polarity') for i in {r['doc_id'] for r in pool}
+                 if i in tags and tags[i].get('relevant'))
 
 
 def counter_evidence(candidates, tags, *, context_mean):
@@ -81,7 +86,7 @@ def undifferentiated_candidate(rare_candidates, vectors):
     return []
 
 
-def append_context_flag(store_seg, context_id, flag):
+def append_context_flag(store_seg, context_id, flag, *, present=True):
     """Append under a writer lock without replacing confirmations or other flags."""
     with sqlite3.connect(store_seg.path, timeout=30) as db:
         db.execute('BEGIN IMMEDIATE')
@@ -89,8 +94,9 @@ def append_context_flag(store_seg, context_id, flag):
         if row is None:
             raise ValueError(f'Unknown Context: {context_id}')
         flags = json.loads(row[0] or '[]')
-        if flag not in flags:
-            flags.append(flag)
+        updated = [f for f in flags if f != flag] + ([flag] if present else [])
+        if updated != flags:
+            flags = updated
             db.execute('UPDATE contexts SET flags_json=? WHERE context_id=?',
                        (json.dumps(flags, ensure_ascii=False), context_id))
 
@@ -149,8 +155,8 @@ def _context_metrics(context, docs, ranges):
     importance, satisfaction = result['importance'], result['satisfaction']
     result['odi'] = None if importance is None or satisfaction is None else importance + max(importance-satisfaction, 0.)
     result['provisional'] = ['odi']
-    result['quality'] = {k: v for k, v in (context.get('quality') or {}).items()
-                         if v is None or isinstance(v, (int, float))}
+    result['quality'] = {k: (context.get('quality') or {}).get(k)
+                         for k in ('cohesion', 'boundary', 'stability', 'npmi')}
     return result
 
 
@@ -173,7 +179,7 @@ def persona_metrics(contexts, docs):
 
 
 _COUNTERS = ('coverage_supplements', 'query_gen_fail', 'new_expansions', 'rare_fallback',
-             'dpp_fill', 'untagged', 'lazy_dims', 'llm_calls', 'cache_hits', 'relevant_false')
+             'dpp_fill', 'untagged', 'lazy_dims', 'llm_calls', 'cache_hits', 'relevant_false', 'tag_calls', 'act_mismatch', 'persona_query_fail')
 _DISTRIBUTIONS = ('coverage', 'band_exposure_ratios', 'novelty_distribution', 'escalation_candidates',
                   'reason_code', 'known_match_distribution')
 
@@ -214,13 +220,16 @@ def _load_docs(root, wanted):
                     row = json.loads(line)
                     if row['doc_id'] in wanted:
                         result[row['doc_id']] = row
+                        if len(result) == len(wanted):
+                            return result
     return result
 
 
 def _item(doc_id, docs, tags, *, role='support', tabs=('all',), novelty=None):
     doc, tag = docs[doc_id], tags[doc_id]
     quotes = tag.get('quotes') or []
-    quote = locate(quotes[0], doc) if quotes else None
+    located = [locate(q, doc) for q in quotes]
+    quote = next((q for q in located if q['verified']), located[0] if located else None)
     probabilities = doc.get('tagProbs') or {}
     return dict(doc_id=doc_id, source=doc.get('source') or '', quote=quote,
                 tags=[dim for dim in ('sense', 'feel', 'think', 'act', 'relate', 'outcome')
@@ -229,11 +238,26 @@ def _item(doc_id, docs, tags, *, role='support', tabs=('all',), novelty=None):
                 tab=list(tabs), role=role, dist_centroid=doc.get('dist_centroid'), combo_rarity=doc.get('combo_rarity'))
 
 
+def item_view(row, docs, tags, role='support'):
+    doc_id = row['doc_id']
+    doc, tag = docs.get(doc_id, {}), tags.get(doc_id, {})
+    item = _item(doc_id, {doc_id:doc}, {doc_id:tag}, role=role, novelty=row.get('novelty'))
+    quote = item['quote'] or dict(field='body', idx=None, text='', start=None, end=None, verified=False)
+    from app.evidence.quotes import quote_source
+    return dict(docId=doc_id, source=item['source'], location={k:quote.get(k) for k in ('field','idx')},
+                quote={k:quote.get(k) for k in ('text','start','end','verified')},
+                quoteSource=quote_source(quote, doc), noveltyShown=row.get('novelty') in params.NOVELTY_SHOW,
+                text=(doc.get('body') or doc.get('title') or '')[:600], tags=item['tags'], band=doc.get('band'),
+                novelty=row.get('novelty'), noveltyReason=row.get('novelty_reason'), knownMatch=item['known_match'],
+                rare=doc.get('band') == 'edge' and bool(tag.get('pain_point') or tag.get('unmet_need')), role=role)
+
+
 def assemble(sid: str, version: str) -> EvidencePackage:
     base = version_dir(sid, version)
     session = sessions.read_json(base / 'session.json')
     if session is None:
         raise sessions.StoreError('Session not found', 404, 'not_found')
+    generation.check_read(sid, version, session)
     seg, evidence = SegmentStore.open(sid, version), EvidenceStore.open(sid, version)
     snapshot = evidence.snapshot()
     if snapshot.run is None:
@@ -241,6 +265,7 @@ def assemble(sid: str, version: str) -> EvidencePackage:
     used_params = {name: getattr(params, name) for name in vars(params) if name.isupper()}
     used_params.update(snapshot.params)
     used_params = json.loads(json.dumps(used_params))
+    session, tag_pver = generation.inputs(sid, version, session)
     root = prepared_root(sid, session)
     seg_docs = _documents(seg)
     docs = {d['doc_id']: d for d in seg_docs}
@@ -252,23 +277,25 @@ def assemble(sid: str, version: str) -> EvidencePackage:
         for row in read_export(sid, session):
             if row['doc_id'] in docs:
                 docs[row['doc_id']]['tagProbs'] = row.get('tagProbs')
-    cache = TagCache.open(sid, session['prep']['derivedRef']['prepKey'], prompt_version('tag'))
+    cache = TagCache.open(sid, session['prep']['derivedRef']['prepKey'], tag_pver)
     tags = cache.get_tags(docs)
-    known = [k.id for k in read_known(session)]
-    judgments = cache.get_known(tags, known)
+    known = [k.model_dump() for k in read_known(session) if k.type == 'statement']
+    judgments = cache.get_known(tags, [known_key(k) for k in known])
     for doc_id, tag in tags.items():
-        tag['known_match'] = next((ki for ki in known if judgments.get((doc_id, ki))), 'none')
+        tag['known_match'] = next((ki['id'] for ki in known if judgments.get((doc_id, known_key(ki)))), 'none')
     contexts = seg.contexts()
     ranges = session_minmax(seg)
     status = {c['context_id']: c for c in snapshot.contexts}
     counts = {key: sum((c.get('counts') or {}).get(key, 0) for c in snapshot.contexts)
               for key in _COUNTERS}
     counts.update(coverage={}, escalation_candidates={})
+    counts['persona_query_fail'] = len({r['owner'] for r in snapshot.queries if r['owner'].startswith('persona:') and r['origin']=='fallback'})
     # Counts tied to tagging are distinct documents in this run's candidate or
     # persona-support pool, never every old entry in the shared cache.
     attempted = {r['doc_id'] for r in snapshot.candidates + snapshot.persona_support + snapshot.selected}
     observed = [tags[i] for i in sorted(attempted) if i in tags]
     counts['untagged'] = len(attempted - tags.keys())
+    counts['act_mismatch'] = sum(bool((docs[i].get('tagProbs') or {}).get('act', 0) >= .5) != bool((tags[i].get('context_dims') or {}).get('activity_response')) for i in attempted if i in tags and tags[i].get('relevant'))
     counts['relevant_false'] = sum(t.get('relevant') is False for t in observed)
     counts['reason_code'] = dict(Counter(t.get('reason_code') or 'other' for t in observed if t.get('relevant') is False))
     counts['per_tab_counts'] = dict(Counter(r['tab'] for r in snapshot.selected))
@@ -279,8 +306,8 @@ def assemble(sid: str, version: str) -> EvidencePackage:
     counts['known_match_distribution'] = dict(Counter(tags.get(r['doc_id'], {}).get('known_match', 'none') for r in snapshot.selected))
     blocks = []
     stage6 = sessions.read_json(base / 'segment/stage_6.json') or {}
-    # L1 cluster quality is not a Persona measurement. Stage six currently
-    # reports L2 stability only; keep unavailable Persona measurements null.
+    # Old stage-six runs lack Persona quality columns; use their report
+    # stability as a fallback, leaving genuinely unavailable values null.
     persona_quality = {r['id']: dict(cohesion=r.get('cohesion'), boundary=r.get('boundary'),
                                     stability_ari=r.get('ari')) for r in stage6.get('personas', [])}
     for persona in seg.personas():
@@ -295,14 +322,15 @@ def assemble(sid: str, version: str) -> EvidencePackage:
             ids, values = VectorStore(root).get([r['doc_id'] for r in rare])
             escalation = undifferentiated_candidate(rare, dict(zip(ids, values)))
             flags = list(context.get('flags') or [])
+            append_context_flag(seg, cid, 'undifferentiated_candidate', present=bool(escalation))
+            flags = [f for f in flags if f != 'undifferentiated_candidate']
             if escalation:
-                append_context_flag(seg, cid, 'undifferentiated_candidate')
                 if 'undifferentiated_candidate' not in flags:
                     flags.append('undifferentiated_candidate')
                 counts['escalation_candidates'][cid] = escalation
             state = status.get(cid)
             if state:
-                evidence.set_context(cid, pid, state['status'], counts={**(state.get('counts') or {}), 'undifferentiated': escalation})
+                evidence.patch_counts(cid, undifferentiated=escalation)
             counts['coverage'][cid] = dict(covered=state.get('coverage') if state else None, total=6)
             selected = [r for r in snapshot.selected if r['context_id'] == cid and r['doc_id'] in assigned
                         and (tags.get(r['doc_id']) or {}).get('relevant')]
@@ -313,10 +341,10 @@ def assemble(sid: str, version: str) -> EvidencePackage:
                 item = support.setdefault(row['doc_id'], _item(row['doc_id'], docs, tags, tabs=()))
                 if row['tab'] not in item['tab']:
                     item['tab'].append(row['tab'])
-                if row.get('novelty'):
+                if row['tab'] == 'new' and row.get('novelty'):
                     item['novelty'] = row['novelty']
             context_tags = [tags[i] for i in sorted(assigned) if i in tags and tags[i].get('relevant')]
-            mean = _mean(t.get('polarity') for t in context_tags)
+            mean = context_polarity_mean(candidates, tags)
             counter = counter_evidence(candidates, tags, context_mean=mean)
             situation, origin = _situation(context, context_tags)
             context_blocks.append(dict(context_id=cid, context_name=context.get('name') or '',
@@ -332,9 +360,11 @@ def assemble(sid: str, version: str) -> EvidencePackage:
             desire_support=[_item(r['doc_id'], docs, tags) for r in desire],
             artifacts=artifacts(sorted(persona_ids), tags, (session.get('projectContext') or {}).get('bk') or session.get('bk')),
             metrics=persona_metrics([c['metrics'] for c in context_blocks], persona_docs),
-            quality=persona_quality.get(pid, dict(cohesion=None, boundary=None, stability_ari=None))),
+            quality={key: (persona.get('quality') or {}).get(key, persona_quality.get(pid, {}).get(key))
+                     for key in ('cohesion', 'boundary', 'stability_ari')}),
             context_evidence=context_blocks))
     package = EvidencePackage.model_validate(dict(schema='evidence-package/1', version=version, params=used_params, personas=blocks))
     sessions.write_json(base / 'evidence/package.json', package.model_dump(by_alias=True, mode='json'))
     sessions.write_json(base / 'evidence/stage_7.json', stage_report(counts, used_params))
+    (base / 'evidence/package_dirty.json').unlink(missing_ok=True)
     return package

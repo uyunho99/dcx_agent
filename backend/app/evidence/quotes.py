@@ -23,3 +23,15 @@ def locate(quote: dict, doc: dict) -> dict:
     if start >= 0:
         result.update(start=spans[start][0], end=spans[start + len(needle) - 1][1], verified=True)
     return result
+
+
+def quote_source(quote, doc):
+    """Exact original field paired with Python code-point quote offsets."""
+    field, idx = quote.get('field', 'body'), quote.get('idx')
+    text = ''
+    if field in ('title', 'body'):
+        text = doc.get(field) or ''
+    elif field == 'comment' and isinstance(idx, int) and not isinstance(idx, bool) and 0 <= idx < len(doc.get('comments') or []):
+        comment = doc['comments'][idx]
+        text = (comment.get('text') or '') if isinstance(comment, dict) else str(comment)
+    return dict(field=field, idx=idx, text=text)
