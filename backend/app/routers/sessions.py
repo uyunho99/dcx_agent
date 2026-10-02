@@ -3,6 +3,7 @@ import sqlite3
 from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
+from functools import lru_cache
 
 from app.config import settings
 from app.context import stale, store, versions
@@ -14,6 +15,33 @@ from app.jobs.manager import job_manager
 from app.models.schemas import SessionSaveRequest
 
 router = APIRouter()
+
+
+def _file_stamp(path):
+    try:
+        stat = path.stat()
+        return (stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+    except FileNotFoundError:
+        return None
+
+
+@lru_cache(maxsize=128)
+def _persona_sources_match(sid, selected, root, stamps):
+    """Reuse expensive package hashing/SQLite reads only while source files match."""
+    from app.persona.store import PersonaStore
+    from app.persona.pipeline import _confirmed_matches, _digest
+    from app.persona.package import load_package, PackageMissing
+    cards = PersonaStore.open(sid, selected).read('cards')
+    if not cards:
+        return True
+    try:
+        package = load_package(sid, selected)
+    except PackageMissing:
+        return False
+    digest = _digest(package)
+    return (cards.get('package_run') == package.run and
+            cards.get('package_hash', digest) == digest and
+            _confirmed_matches(sid, selected, package))
 
 
 def _completion(sid, data, version=None):
@@ -60,15 +88,12 @@ def _completion(sid, data, version=None):
             return False
         selected = version or data.get('version')
         if selected:
-            from app.persona.store import PersonaStore
-            from app.persona.pipeline import _confirmed_matches, _digest
-            from app.persona.package import load_package
-            cards = PersonaStore.open(sid, selected).read('cards')
-            if cards:
-                package = load_package(sid, selected)
-                return (cards.get('package_run') == package.run and
-                        cards.get('package_hash', _digest(package)) == _digest(package) and
-                        _confirmed_matches(sid, selected, package))
+            root = versions.version_dir(sid, selected)
+            from app.segment.store import SegmentStore
+            segment = SegmentStore.open(sid, selected).path
+            paths = (root / 'persona/cards.json', root / 'evidence/package.json',
+                     segment, Path(str(segment) + '-wal'), Path(str(segment) + '-journal'))
+            return _persona_sources_match(sid, selected, str(root), tuple(_file_stamp(p) for p in paths))
         return True
 
     def insight_done():

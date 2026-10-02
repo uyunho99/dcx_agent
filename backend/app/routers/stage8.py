@@ -129,13 +129,15 @@ def persona_status(sid: str, version: str | None = None):
         if pipeline.mark_stale_if_changed(sid, data['version']):
             data, store = _open(sid, data['version'])
     try:
-        load_package(sid, data['version'])
+        package = load_package(sid, data['version'])
         has_package = True
+        evidence_required = not pipeline._confirmed_matches(sid, data['version'], package)
     except PackageMissing:
         has_package = False
+        evidence_required = True
     state = data.get('persona', {})
     cards = store.read('cards') or {}
-    result = dict(package=has_package, status=state.get('status', 'none'), run=cards.get('run', state.get('run')),
+    result = dict(package=has_package, evidence_required=evidence_required, status=state.get('status', 'none'), run=cards.get('run', state.get('run')),
                   progress=state.get('progress', 0), personas=[
                       dict(id=pid, status=row['status'], error=row.get('error'))
                       for pid, row in cards.get('personas', {}).items()])
@@ -255,13 +257,14 @@ def _insight_worker(sid, data):
     reason = state.get('reason')
     run_id = state.get('run')
     mode, target = state.get('mode'), state.get('target')
-    if work:
+    # A reset removes the pipeline run; old terminal supervisor rows are history.
+    if work and ((run_id and work.get('runId') == run_id) or work['state'] in ('running', 'paused')):
         same = work.get('runId') == run_id
         run_id = work.get('runId')
         # Supervisor detects crashes even when the pipeline never got to write.
-        if work['state'] != 'done' or not same:
+        if not (same and status == 'done') and (work['state'] != 'done' or not same):
             status = work['state']
-        reason = work.get('error') or (reason if same else None)
+        reason = reason if same else None
         if not same:
             mode, target = None, None
         from app.work.status import database_path, transaction
@@ -275,6 +278,8 @@ def _insight_worker(sid, data):
         status = 'running'
     if status not in ('idle', 'running', 'done', 'failed', 'interrupted'):
         status = 'idle'
-    if status in ('failed', 'interrupted') and not reason:
+    if status in ('failed', 'interrupted') and (not isinstance(reason, str) or not any('가' <= c <= '힣' for c in reason)):
         reason = insights.FAILURE_COPY if status == 'failed' else '작업이 중단되었습니다. 이어서 진행하세요.'
+    if status in ('idle', 'running', 'done'):
+        reason = None
     return dict(status=status, reason=reason, runId=run_id, mode=mode, target=target)

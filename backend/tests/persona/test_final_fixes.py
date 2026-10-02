@@ -126,10 +126,10 @@ def test_uses_preparation_embedder(ready, monkeypatch, operation):
 @pytest.mark.parametrize('status', ['failed', 'interrupted'])
 def test_worker_contract(ready, monkeypatch, status):
     session = ready[0]
-    sessions.update_session(session.sid, {'insight': {'status': status, 'reason': 'failure reason',
+    sessions.update_session(session.sid, {'insight': {'status': status, 'reason': '실패 사유',
                              'run': 'work', 'mode': 'concept', 'target': 'I1'}})
     monkeypatch.setattr(stage8.runner, 'status', lambda sid: [])
-    assert stage8.get_insights(session.sid)['worker'] == dict(status=status, reason='failure reason',
+    assert stage8.get_insights(session.sid)['worker'] == dict(status=status, reason='실패 사유',
                                            runId='work', mode='concept', target='I1')
 
 
@@ -342,7 +342,7 @@ def test_dimension_mismatch_has_clear_worker_reason(ready, monkeypatch):
     (ready[1].path / 'insights.json').unlink()
     with pytest.raises(insights.InsightError):
         insight_pipeline.run(context(ready, mode='derive'))
-    assert 'dimension' in sessions.load_session(ready[0].sid)['insight']['reason'].lower()
+    assert sessions.load_session(ready[0].sid)['insight']['reason'] == insights.FAILURE_COPY
     assert ready[1].read('insights') is None
 
 
@@ -352,6 +352,7 @@ def test_worker_contract_uses_durable_supervisor(ready, status):
     import os
     import time
     sid = ready[0].sid
+    sessions.update_session(sid, {'insight': {'run': 'durable', 'status': 'running'}})
     with transaction(sid) as db:
         db.execute('''INSERT INTO runs
             (run_id,version,kind,args_json,pid,state,heartbeat_at,started_at,error)
@@ -359,7 +360,7 @@ def test_worker_contract_uses_durable_supervisor(ready, status):
             json.dumps({'mode': 'concept', 'target': 'I2'}), os.getpid(), status,
             time.time(), time.time(), 'durable failure' if status != 'running' else None))
     result = stage8.get_insights(sid)['worker']
-    assert result == dict(status=status, reason='durable failure' if status != 'running' else None,
+    assert result == dict(status=status, reason=(insights.FAILURE_COPY if status == 'failed' else '작업이 중단되었습니다. 이어서 진행하세요.') if status != 'running' else None,
                          runId='durable', mode='concept', target='I2')
 
 

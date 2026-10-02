@@ -17,7 +17,7 @@ function Shape({ index }: { index: number }) {
 }
 export type OpportunityMapProps = { map: PersonaMap; highlightedId?: string | null; selectedPersonaId?: string | null; onHighlight?: (id: string | null) => void; onOpenCard?: (personaId: string, contextId: string) => void };
 export function OpportunityMap({ map, highlightedId, selectedPersonaId, onHighlight, onOpenCard }: OpportunityMapProps) {
-  const [chosen, setChosen] = useState<string[]>([]);
+  const [hiddenPersonas, setHiddenPersonas] = useState<string[]>([]);
   // Derive presentation order from stable IDs, independent of incoming point order.
   const members = new Map<string, Set<string>>();
   const overlapCounts = new Map<string, number>();
@@ -27,10 +27,11 @@ export function OpportunityMap({ map, highlightedId, selectedPersonaId, onHighli
     const position = `${point.i}:${point.s}`;
     overlapCounts.set(position, (overlapCounts.get(position) ?? 0) + 1);
   }
-  const clusters = [...members.keys()].sort();
-  const personaGroups = new Map(clusters.map(cluster => [cluster, [...members.get(cluster)!].sort()]));
+  const clusters = [...members.keys()].sort((a,b) => a.localeCompare(b, undefined, {numeric:true}));
+  const legend = new Map((map.legend ?? []).map(row => [row.cluster_id, row]));
+  const personaGroups = new Map(clusters.map(cluster => [cluster, [...members.get(cluster)!].sort((a,b) => a.localeCompare(b, undefined, {numeric:true}))]));
   const personas = (cluster: string) => personaGroups.get(cluster)!;
-  const toggle = (ids: string[]) => setChosen(current => ids.every(id => current.includes(id)) ? current.filter(id => !ids.includes(id)) : [...new Set([...current,...ids])]);
+  const toggle = (ids: string[]) => setHiddenPersonas(current => ids.every(id => current.includes(id)) ? current.filter(id => !ids.includes(id)) : [...new Set([...current,...ids])]);
   const summary = (['A','B','C','D','E','F'] as PersonaZone[]).map(zone => `${zoneName(zone)} ${formatCount(map.points.filter(p => p.zone === zone).length)}개`).join(', ');
   const lines = [ [[0,map.base.s_line],[1,map.base.s_line]], map.base.diag1, map.base.diag2 ];
   return <figure style={{ margin: 0, minWidth: 0 }}><figcaption className="ds-t-label">Opportunity Map · Context {formatCount(map.points.length)}개 · 기회 <ProvisionalBadge/></figcaption>
@@ -38,21 +39,25 @@ export function OpportunityMap({ map, highlightedId, selectedPersonaId, onHighli
       <path d="M60 20V340H540" fill="none" stroke="var(--ink)"/>
       {lines.map((line,index) => <line key={index} data-baseline={index} x1={x(line[0][0])} y1={y(line[0][1])} x2={x(line[1][0])} y2={y(line[1][1])} stroke="var(--line-strong)" strokeDasharray="4 4"/>)}
       <text x={300} y={380} textAnchor="middle" fill="var(--ink)">중요도</text><text x={18} y={180} transform="rotate(-90 18 180)" textAnchor="middle" fill="var(--ink)">만족도</text>
-      {map.points.map(point => {
-        const cluster = clusters.indexOf(point.cluster_id); const tone = personas(point.cluster_id).indexOf(point.persona_id) % 3;
+      {map.points.filter(point => !hiddenPersonas.includes(point.persona_id)).map(point => {
+        const entry = legend.get(point.cluster_id);
+        const shape = entry?.shape ?? point.shape ?? shapes[clusters.indexOf(point.cluster_id)] ?? 'circle';
+        const cluster = shapes.indexOf(shape);
+        const tone = entry?.personas.find(p => p.persona_id === point.persona_id)?.tone ?? (typeof point.tone === 'string' ? point.tone : tones[Number(point.tone) % tones.length]);
+        const clusterLabel = entry?.cluster_label;
         const highlighted = highlightedId === point.context_id;
-        const selected = selectedPersonaId === point.persona_id || chosen.includes(point.persona_id);
-        const color = `var(${selected ? '--blue' : tones[tone]})`;
+        const selected = selectedPersonaId === point.persona_id;
+        const color = `var(${selected ? '--blue' : tone})`;
         const count = overlapCounts.get(`${point.i}:${point.s}`)!;
-        return <g key={point.context_id} data-context-id={point.context_id} data-highlighted={highlighted} data-shape={shapes[cluster] || 'circle'} transform={`translate(${x(point.i)} ${y(point.s)})`} fill={point.counter ? 'none' : color} stroke={color} strokeWidth={highlighted ? 3 : 2} style={{cursor:'pointer'}} onMouseEnter={() => onHighlight?.(point.context_id)} onMouseLeave={() => onHighlight?.(null)} onClick={() => {onHighlight?.(point.context_id); onOpenCard?.(point.persona_id,point.context_id);}}>
+        return <g key={point.context_id} data-context-id={point.context_id} data-highlighted={highlighted} data-shape={shape} transform={`translate(${x(point.i)} ${y(point.s)})`} fill={point.counter ? 'none' : color} stroke={color} strokeWidth={highlighted ? 3 : 2} style={{cursor:'pointer'}} onMouseEnter={() => onHighlight?.(point.context_id)} onMouseLeave={() => onHighlight?.(null)} onClick={() => {onHighlight?.(point.context_id); onOpenCard?.(point.persona_id,point.context_id);}}>
           <title>{`${point.context_id} · ${point.persona_id} · ${zoneName(point.zone)} · 기회 ${formatMetric(point.odi)} (잠정)${point.counter ? " · 반례" : ""}${count > 1 ? ` · 겹친 Context ${formatCount(count)}개` : ""}`}</title>
           {highlighted && <circle r={13} fill="none" strokeDasharray="3 2"/>}<Shape index={cluster}/>
-          {point.star && <text x={-5} y={-14} fill={color} stroke="none">★</text>}{cluster >= 5 && <text x={12} y={4} fill={color} stroke="none" fontSize={11}>{point.cluster_id}</text>}
+          {point.star && <text x={-5} y={-14} fill={color} stroke="none">★</text>}{clusterLabel && <text x={12} y={4} fill={color} stroke="none" fontSize={11}>{clusterLabel}</text>}
         </g>;
       })}
       {(['A','B','C','D','E','F'] as PersonaZone[]).map(zoneName).map((label, index) => <text key={label} x={60 + (index % 3) * 160} y={410 + Math.floor(index / 3) * 24} fontSize={12} fill="var(--ink)">{label}</text>)}
     </svg>
-    <div aria-label="클러스터와 Persona 범례">{clusters.map((cluster,index) => <div key={cluster} style={{display:'flex', flexWrap:'wrap',gap:8,marginTop:8}}><button type="button" className="ds-chip" aria-pressed={personas(cluster).every(id => chosen.includes(id))} onClick={() => toggle(personas(cluster))}>{symbols[index] || '●'} {cluster}</button>{personas(cluster).map(persona => <button type="button" className="ds-chip" key={persona} aria-label={`Persona ${persona}`} aria-pressed={chosen.includes(persona)} onClick={() => toggle([persona])}>{persona}</button>)}</div>)}</div>
+    <div aria-label="클러스터와 Persona 범례">{clusters.map((cluster) => <div key={cluster} style={{display:'flex', flexWrap:'wrap',gap:8,marginTop:8}}><button type="button" className="ds-chip" aria-pressed={personas(cluster).every(id => !hiddenPersonas.includes(id))} onClick={() => toggle(personas(cluster))}>{symbols[shapes.indexOf(legend.get(cluster)?.shape ?? shapes[clusters.indexOf(cluster)])] || '●'} {cluster}</button>{personas(cluster).map(persona => <button type="button" className="ds-chip" key={persona} aria-label={`Persona ${persona}`} aria-pressed={!hiddenPersonas.includes(persona)} onClick={() => toggle([persona])}>{legend.get(cluster)?.personas.find(p => p.persona_id === persona)?.persona_name ?? persona}</button>)}</div>)}</div>
     <p className="ds-t-caption">속 빈 모양 · 반례 Context / ★ 몰랐고 기회도 큰 지점 · 겹친 점은 아래 Context 표에서 각각 확인할 수 있습니다.</p>
   </figure>;
 }

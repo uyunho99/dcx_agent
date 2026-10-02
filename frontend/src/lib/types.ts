@@ -238,6 +238,7 @@ export type PersonaRunRequest = { fresh?: boolean; personas?: string[] };
 export type PersonaRunResponse = { runId: string };
 export type PersonaRetryRequest = { run: string };
 export type PersonaStatus = {
+  package: boolean; evidence_required?: boolean;
   status: PersonaState; run: string | null; progress: number;
   personas: { id: string; status: PersonaState; error: unknown | null }[];
   stage8?: Record<string, unknown> | null;
@@ -269,7 +270,8 @@ export type PersonaMapPoint = {
 export type PersonaMap = {
   points: PersonaMapPoint[];
   base: { s_line: number; diag1: [[number, number], [number, number]]; diag2: [[number, number], [number, number]] };
-  legend: unknown;
+  legend: { cluster_id: string; shape: string; cluster_label: string | null;
+    personas: {persona_id: string; persona_name: string; tone: string}[] }[];
 };
 // The tree's node/link envelope is deliberately opaque in the published contract.
 export type PersonaTree = Record<string, unknown>;

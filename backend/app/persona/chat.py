@@ -4,7 +4,7 @@ from pathlib import Path
 
 from app.context import store as sessions
 from app.known import store as known
-from app.persona.source import Source
+from app.persona.source import Source, require_persona
 from app.llm.base import Attachment, LLMTask
 from app.persona import concepts, insights, prescribe
 from app.persona.insight_pipeline import serialized, publish_status
@@ -31,6 +31,7 @@ def _concept_draft(item):
 
 
 def edit(sid, version, target: str, message: str, *, run_task=None) -> dict:
+    require_persona(sessions.assert_writable(sid, version))
     with serialized(sid):
         source = Source(sid, version)
         source.check()
@@ -104,6 +105,7 @@ def edit(sid, version, target: str, message: str, *, run_task=None) -> dict:
 
 
 def revert(sid, version, target: str, revision: int) -> dict:
+    require_persona(sessions.assert_writable(sid, version))
     with serialized(sid):
         source = Source(sid, version)
         source.check()

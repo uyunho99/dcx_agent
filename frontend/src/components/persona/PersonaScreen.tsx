@@ -22,7 +22,7 @@ const tabs = ['8-A CCM', '8-B 수렴', '8-C 속성', '8-D 처방', '구조 트�
 const record = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 const rows = (value: unknown): Record<string, unknown>[] => Array.isArray(value) ? value.map(record) : [];
 const label = (value: unknown): string => displayValue(value, '근거 부족');
-const needsEvidence = (cause: unknown) => cause instanceof ApiError && ['evidence_required','not_ready'].includes(cause.kind ?? '');
+const needsEvidence = (cause: unknown) => cause instanceof ApiError && cause.kind === 'evidence_required';
 const grade = (value: unknown): PersonaGrade | null => value === 'observed' || value === 'inferred' || value === 'speculated' ? value : null;
 const running = (status?: string) => ['queued', 'running', 'paused'].includes(status ?? '');
 const statusLabel = (status?: string) => ({done:'완료',failed:'실패',running:'진행 중',queued:'대기',pending:'대기',stale:'갱신 필요',interrupted:'중단',paused:'일시 정지'}[status ?? ''] ?? '대기');
@@ -61,7 +61,7 @@ export function PersonaScreen({sid, version, readonly = false}: Props) {
       ]);
       const [cards, map, tree, identities] = results;
       const failures = results.filter(result => result.status === 'rejected');
-      const missingEvidence = cards.status === 'rejected' && needsEvidence(cards.reason) && (cards.reason.kind === 'evidence_required' || ['none','idle'].includes(status.status));
+      const missingEvidence = status.package === false || (cards.status === 'rejected' && needsEvidence(cards.reason));
       const result: Snapshot = {status,
         cards:cards.status === 'fulfilled' ? cards.value : {run:status.run,personas:{}},
         map:map.status === 'fulfilled' ? map.value : null,
@@ -73,7 +73,7 @@ export function PersonaScreen({sid, version, readonly = false}: Props) {
       if (!failures.length) {cacheKey.current = key; cache.current = result;}
       setError('');
       return result;
-    } catch (cause) {setPending(false);const message = displayError(cause);setError(message);if(needsEvidence(cause) || message.includes(missingCopy)) setMissing(true);throw cause;}
+    } catch (cause) {setPending(false);const message = displayError(cause);setError(message);if(needsEvidence(cause)) setMissing(true);throw cause;}
   }, [sid, version]);
   const {data, refresh} = usePolling({fetcher,interval:3000,enabled:true});
   const status = data?.status;
@@ -97,7 +97,7 @@ export function PersonaScreen({sid, version, readonly = false}: Props) {
     if (blocked || lock.current) return;
     lock.current = true;setBusy(true);setError('');setNotice('');
     try {await action();cacheKey.current = '';setPending(waitForPoll);refresh();}
-    catch (cause) {const message = displayError(cause);setError(message);if(needsEvidence(cause) || message.includes(missingCopy)) setMissing(true);}
+    catch (cause) {const message = displayError(cause);setError(message);if(needsEvidence(cause)) setMissing(true);}
     finally {lock.current = false;setBusy(false);}
   }
   const evidence = (contextId: string | null, field: string) => {
@@ -117,11 +117,24 @@ export function PersonaScreen({sid, version, readonly = false}: Props) {
   });
   const prescription = current?.prescription;
   const constraints = prescription?.constraint ?? current?.constraint ?? [];
+  const supportValues = Object.values(record(current?.traceable_support ?? card.traceable_support)).filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+  // Equal-weight mean across Context support ratios; empty support is zero.
+  const support = supportValues.length ? supportValues.reduce((sum, value) => sum + value, 0) / supportValues.length : 0;
+  const confidence = support >= .7 ? '상' : support >= .4 ? '중' : '하';
+  const constraintSummary = prescription?.blocked || constraints.some(c => c.verdict === 'violates') ? '✕ blocked' : constraints.some(c => c.verdict === 'review') ? '⚠ review' : prescription ? '✓ ok' : '—';
   const contextRows = data?.map?.points.map(point => ({...point,persona_name:name(point.persona_id),name:String(rows(body(point.persona_id).contexts).find(c => c.context_id === point.context_id)?.context_name ?? point.context_id)})) ?? [];
   const highlightedRow = contextRows.find(row => row.context_id === highlighted);
-  if (missing || data?.missing) return <section className="ds-card space-y-4"><p>{missingCopy}</p><Button onClick={() => router.push('/pipeline/evidence')}>근거 탐색으로</Button></section>;
+  if (status?.package === false || missing || data?.missing) return <section className="ds-card space-y-4"><p>{missingCopy}</p><Button onClick={() => router.push('/pipeline/evidence')}>근거 탐색으로</Button></section>;
+  if (status?.evidence_required) return <section className="ds-card space-y-4"><p>근거 탐색을 다시 실행한 뒤 페르소나를 만드세요.</p><Button onClick={() => router.push('/pipeline/evidence')}>근거 탐색으로</Button></section>;
+  const start = () => {
+    if (complete) return router.push('/pipeline/insights');
+    if (blocked) return;
+    const fresh = status?.status === 'stale';
+    if (fresh && !globalThis.confirm('페르소나를 다시 만들면 인사이트와 컨셉도 지워집니다. 계속할까요?')) return;
+    return mutate(() => api.startPersona(sid, fresh ? {fresh:true} : {}, version), true);
+  };
   return <section className="space-y-5 min-w-0">
-    <header className="flex flex-wrap items-start justify-between gap-4"><div><p className="ds-eyebrow">8단계 · 페르소나</p><h1 className="ds-t-screen">{view === 'map' ? '세션 전체에서 어느 Context가 기회인가' : chosen ? name(chosen) : 'Persona 카드'}</h1>{readonly && <p>{version} · 읽기 전용</p>}</div><Button variant="primary" disabled={blocked || !status} onClick={() => complete ? router.push('/pipeline/insights') : mutate(() => api.startPersona(sid,status?.status === 'stale' ? {fresh:true} : {},version),true)}>{complete ? '인사이트 도출' : '페르소나 만들기'}</Button></header>
+    <header className="flex flex-wrap items-start justify-between gap-4"><div><p className="ds-eyebrow">8단계 · 페르소나</p><h1 className="ds-t-screen">{view === 'map' ? '세션 전체에서 어느 Context가 기회인가' : chosen ? name(chosen) : 'Persona 카드'}</h1>{readonly && <p>{version} · 읽기 전용</p>}</div><Button variant="primary" disabled={blocked || !status} onClick={start}>{complete ? '인사이트 도출' : status?.status === 'stale' ? '페르소나 다시 만들기' : '페르소나 만들기'}</Button></header>
     {(error || data?.error) && <div role="alert">{error || data?.error} <Button onClick={() => {cacheKey.current='';refresh();}}>다시 불러오기</Button></div>}
     {notice && <p role="status">{notice}</p>}
     {(pending || running(status?.status)) && <p role="status">페르소나를 만들고 있습니다. {Math.round((status?.progress ?? 0) * 100)}% · 화면을 닫아도 계속됩니다.</p>}
@@ -133,9 +146,15 @@ export function PersonaScreen({sid, version, readonly = false}: Props) {
         <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(160px,1fr)]"><OpportunityMap map={data.map} highlightedId={highlighted} selectedPersonaId={selected || null} onHighlight={setHighlighted} onOpenCard={openCard}/><aside className="ds-card" aria-label="선택 Context 상세">{highlightedRow ? <><h2>{highlightedRow.name}</h2><p>{highlightedRow.persona_name} · {zoneName(highlightedRow.zone)} · 기회 {formatMetric(highlightedRow.odi)}</p><Button onClick={() => openCard(highlightedRow.persona_id,highlightedRow.context_id)}>카드 열기</Button></> : <p>점을 가리키거나 아래 표에서 Context를 고르세요.</p>}</aside></div>
         <div className="overflow-x-auto"><ContextTable rows={contextRows} highlightedId={highlighted} onHighlight={setHighlighted} onOpenCard={openCard}/></div>
       </> : <p>페르소나를 만들면 전체 맵과 Context를 확인할 수 있습니다.</p> : !chosen ? <p>아직 페르소나 카드가 없습니다.</p> : <>
-        <header className="ds-card space-y-2"><h2 className="ds-t-card">{name(chosen)} {current?.scope?.verdict === 'outside' && <Badge title={current.scope.reason}>FUTURE</Badge>}</h2><p>{`근거 ${formatCount(Number(metrics.doc_count ?? identity(chosen)?.docs))}건 · 작성자 ${formatCount(Number(metrics.author_count ?? identity(chosen)?.authors))}명 · Context ${formatCount(contexts.length)}개`}</p><p>Desire · {label(identity(chosen)?.desire ?? card.desire)}</p><p>Goal · {label(identity(chosen)?.goals ?? card.goal)}</p></header>
+        <header className="ds-card space-y-2"><h2 className="ds-t-card">{name(chosen)} {current?.scope?.verdict === 'outside' && <Badge title={current.scope.reason}>FUTURE</Badge>}</h2><p>{`근거 ${formatCount(Number(metrics.doc_count ?? identity(chosen)?.docs))}건 · 작성자 ${formatCount(Number(metrics.author_count ?? identity(chosen)?.authors))}명 · Context ${formatCount(contexts.length)}개`}</p><p>신뢰도 {confidence} · 처방 · 제약 {constraintSummary}</p><p>Desire · {label(identity(chosen)?.desire ?? card.desire)}</p><p>Goal · {label(identity(chosen)?.goals ?? card.goal)}</p></header>
         {state === 'failed' ? <div role="alert"><p>이 페르소나 카드를 만들지 못했습니다.</p><Button disabled={blocked || !status?.run} onClick={() => mutate(() => api.retryPersonaCard(sid,chosen,{run:status!.run!},version),true)}>다시 만들기</Button></div> : !current?.card ? <p role="status">{statusLabel(state)} · 카드가 준비되면 표시됩니다.</p> : <>
-          <div role="tablist" aria-label="Persona 상세" className="flex flex-wrap gap-2">{tabs.map(item => <Button key={item} role="tab" id={`persona-tab-${tabs.indexOf(item)}`} aria-controls="persona-panel" aria-selected={tab === item} onClick={() => setTab(item)}>{item}</Button>)}</div>
+          <div role="tablist" aria-label="Persona 상세" className="flex flex-wrap gap-2">{tabs.map(item => <Button key={item} role="tab" id={`persona-tab-${tabs.indexOf(item)}`} aria-controls="persona-panel" aria-selected={tab === item} tabIndex={tab === item ? 0 : -1} onKeyDown={event => {
+            const index = tabs.indexOf(item);
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : event.key === 'ArrowRight' ? (index + 1) % tabs.length : event.key === 'ArrowLeft' ? (index + tabs.length - 1) % tabs.length : null;
+            if (next === null) return;
+            event.preventDefault();setTab(tabs[next]);
+            event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
+          }} onClick={() => setTab(item)}>{item}</Button>)}</div>
           <div role="tabpanel" id="persona-panel" aria-labelledby={`persona-tab-${tabs.indexOf(tab)}`} className="ds-card min-w-0 space-y-4">
             {tab === '8-A CCM' && <><p>각 칸은 개인이 아니라 그 Context에서 관측되는 담론입니다. 칸을 누르면 근거 원문이 펼쳐집니다.</p><CCMTable contexts={ccm}/></>}
             {tab === '8-B 수렴' && <><p role="note">의도 ≠ 행동</p><GradeMark grade="speculated"/><p>{label(record(card.intent).text)}</p><p>수렴 Context · {label(record(card.intent).basis_context_ids)}</p><p>유보 Context · {label(record(card.intent).reserved_context_ids)}</p></>}

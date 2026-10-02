@@ -17,6 +17,11 @@ from app.context.versions import version_dir
 _NAMES = frozenset(('cards', 'map', 'tree', 'insights', 'concepts', 'stage_8'))
 
 
+def _concept_identity(row):
+    # Relative ranks and session aggregates are not concept source identity.
+    return {key: row.get(key) for key in ('id', 'title', 'pain_point', 'context_ids')} if row else None
+
+
 class PersonaStore:
     def __init__(self, sid: str, path: Path, version=None):
         self.sid = sid
@@ -98,7 +103,7 @@ class PersonaStore:
         active = {row.get('id'): row for row in items}
         for concept in document.get('items', []):
             key = concept.get('insight_id', concept.get('id'))
-            if key not in active or old.get(key) != active[key]:
+            if key not in active or _concept_identity(old.get(key)) != _concept_identity(active[key]):
                 concept['outdated'] = True
         sessions.write_json(self._file('concepts'), document)
 
@@ -122,6 +127,6 @@ class PersonaStore:
                            if row.get('id') == key), None)
             if revision == insights.get('revision'):
                 source = active.get(key)
-            if (key not in active or source != active[key] or
+            if (key not in active or _concept_identity(source) != _concept_identity(active[key]) or
                     concept.get('context_ids') != active[key].get('context_ids')):
                 concept['outdated'] = True

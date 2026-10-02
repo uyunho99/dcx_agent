@@ -153,7 +153,7 @@ describe('insight API wire contract (offline)', () => {
   });
 
   it.each(['persona_required', 'not_found'])('propagates %s errors', async kind => {
-    const message = '요청에 실패했습니다. 다시 시도하세요.';
+    const message = kind === 'persona_required' ? '페르소나를 만든 뒤 인사이트를 도출할 수 있습니다.' : '요청에 실패했습니다. 다시 시도하세요.';
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 409, json: async () => ({ error: { kind, message } }) }));
     await expect(insight.startInsight('s', { mode: 'derive' })).rejects.toThrow(message);
   });

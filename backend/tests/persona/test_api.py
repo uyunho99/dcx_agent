@@ -51,7 +51,7 @@ def test_run_409_without_package(api):
 
 def test_persona_routes(api):
     base = f'/persona/{api.sid}'
-    assert ok(api.client.get(base + '/status')) == dict(package=True, status='none', run=None, progress=0, personas=[])
+    assert ok(api.client.get(base + '/status')) == dict(package=True, evidence_required=False, status='none', run=None, progress=0, personas=[])
     for suffix in ('cards', 'cards/missing', 'map', 'tree'):
         error(api.client.get(base + '/' + suffix), 409, 'not_ready')
     generate(api)

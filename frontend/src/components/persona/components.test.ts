@@ -30,7 +30,7 @@ function nodes(node: ReactNode, match: (e: ReactElement<Record<string, unknown>>
 }
 const html = (node: ReactNode) => renderToStaticMarkup(node);
 const point = (id: string, odi = 1): PersonaContextRow => ({ context_id: id, name: `이름 ${id}`, persona_id: 'P1', cluster_id: 'CL1', i: .5, s: .5, odi, zone: 'B', star: true, counter: false, shape: 'circle', tone: 0 });
-const map = (points: PersonaContextRow[]): PersonaMap => ({ points, base: { s_line: .5, diag1: [[0,.4],[1,1]], diag2: [[.6,0],[1,1]] }, legend: {} });
+const map = (points: PersonaContextRow[]): PersonaMap => ({ points, base: { s_line: .5, diag1: [[0,.4],[1,1]], diag2: [[.6,0],[1,1]] }, legend: [...new Set(points.map(p=>p.cluster_id))].map((cluster_id,index)=>({cluster_id,shape:['circle','square','triangle','diamond','pentagon'][index] ?? 'circle',cluster_label:index>=5?cluster_id:null,personas:[...new Set(points.filter(p=>p.cluster_id===cluster_id).map(p=>p.persona_id))].map((persona_id,n)=>({persona_id,persona_name:persona_id,tone:['--ink-strong','--ink','--line-strong'][n%3]}))})) });
 const contexts: CCMContext[] = Array.from({ length: 10 }, (_, n) => ({ id: `C${n}`, name: '긴Context이름'.repeat(20), counter: n === 9, cells: { action: { text: '긴문자'.repeat(50), grade: 'observed', evidence: '근거 원문' } } }));
 
 it('renders grades with distinct shapes and text, including missing evidence and provisional copy', () => {
@@ -92,8 +92,8 @@ it('renders cluster shapes, hollow counters, stars, baselines and toggling legen
   for (const shape of ['circle','square','triangle','diamond','pentagon']) expect(out).toContain(`data-shape="${shape}"`);
   expect(out).toContain('fill="none"'); expect(out).toContain('★'); expect(out).toContain('CL5'); expect(out.match(/data-baseline=/g)).toHaveLength(3);
   const chip = nodes(tree, e => e.type === 'button' && e.props['aria-label'] === 'Persona P0')[0];
-  (chip.props.onClick as () => void)(); tree = draw(OpportunityMap, props, false); expect(html(tree)).toContain('var(--blue)');
-  expect(nodes(tree, e => e.props['aria-label'] === 'Persona P0')[0].props['aria-pressed']).toBe(true);
+  (chip.props.onClick as () => void)(); tree = draw(OpportunityMap, props, false); expect(nodes(tree, e => e.props['data-context-id'] === 'C0')).toHaveLength(0);
+  expect(nodes(tree, e => e.props['aria-label'] === 'Persona P0')[0].props['aria-pressed']).toBe(false);
 });
 it('renders hierarchy sizes, radar raw and percentile, bars mean, journey distribution and revisions', () => {
   expect(html(createElement(HierarchyTree, { root: { id:'product', name:'제품', doc_count:10, children:[{id:'CL1',name:'Cluster',doc_count:4}] } }))).toContain('문서 10건');
@@ -121,21 +121,22 @@ it('shows evidence only while expanded and associates the button with its panel'
   const panel=nodes(tree,e=>e.props.id===`${button.props['aria-controls']}`)[0];
   expect(panel.props.hidden).toBe(false); expect(panel.props.children).toBe('근거 원문');
 });
-it('cycles persona tones and removes blue when the persona legend is toggled off', () => {
+it('uses backend persona tones and toggles visibility', () => {
   const points=Array.from({length:4},(_,n)=>({...point(`C${n}`),persona_id:`P${n}`}));
   const props={map:map(points)}; let tree=draw(OpportunityMap,props);
   for (const tone of ['--ink-strong','--ink','--line-strong']) expect(html(tree)).toContain(`var(${tone})`);
   expect(html(tree)).not.toContain('var(--blue)');
   const chip=()=>nodes(tree,e=>e.props['aria-label']==='Persona P0')[0];
   (chip().props.onClick as ()=>void)(); tree=draw(OpportunityMap,props,false);
-  expect(chip().props['aria-pressed']).toBe(true);
+  expect(chip().props['aria-pressed']).toBe(false);
+  expect(nodes(tree,e=>e.props['data-context-id']==='C0')).toHaveLength(0);
   (chip().props.onClick as ()=>void)(); tree=draw(OpportunityMap,props,false);
-  expect(chip().props['aria-pressed']).toBe(false); expect(html(tree)).not.toContain('var(--blue)');
+  expect(chip().props['aria-pressed']).toBe(true); expect(nodes(tree,e=>e.props['data-context-id']==='C0')).toHaveLength(1);
 });
 it('toggles a whole cluster and marks an externally selected persona blue', () => {
   const props={map:map([point('C1')])}; let tree=draw(OpportunityMap,props);
   const cluster=nodes(tree,e=>e.type==='button')[0]; (cluster.props.onClick as ()=>void)();
-  tree=draw(OpportunityMap,props,false); expect(nodes(tree,e=>e.type==='button').every(e=>e.props['aria-pressed'])).toBe(true);
+  tree=draw(OpportunityMap,props,false); expect(nodes(tree,e=>e.type==='button').every(e=>!e.props['aria-pressed'])).toBe(true);
   expect(html(draw(OpportunityMap,{...props,selectedPersonaId:'P1'}))).toContain('var(--blue)');
 });
 it('sorts every Context column using the shared sorter without mutating input', () => {

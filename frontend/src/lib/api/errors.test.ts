@@ -46,3 +46,10 @@ it('explains unfinished crawl conflicts through the display helper',()=>{
  expect(message).toBe('크롤링 수집을 끝낸 뒤 새 버전을 만드세요.');
  expect(displayError(new Error(message), '새 버전을 만들지 못했습니다.')).toBe(message);
 });
+
+it('N2 keeps crawl code copy ahead of broad conflict kind',()=>{
+ expect(responseError({error:{kind:'conflict',code:'no_paused_detail',message:'No channel'}},409)).toBe('차단 또는 파싱 오류로 멈춘 상세 수집 채널이 없습니다.');
+});
+it.each(['stale','evidence_required','persona_required'])('N2 maps stage-eight kind %s with unknown code',kind=>{
+ expect(responseError({error:{kind,code:'unknown',message:'Internal message'}},409)).not.toBe('요청에 실패했습니다. 다시 시도하세요.');
+});

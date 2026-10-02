@@ -5,6 +5,8 @@ export class ApiError extends Error {
  constructor(message: string, public kind: string | undefined, public status: number) {super(message);}
 }
 const messages: Record<string, string> = {
+ evidence_required: '근거 탐색을 마친 뒤 페르소나를 만들 수 있습니다.',
+ persona_required: '페르소나를 만든 뒤 인사이트를 도출할 수 있습니다.',
  stale: '결과가 바뀌어 수정할 수 없습니다. 페르소나를 다시 만드세요.',
  no_paused_detail: '차단 또는 파싱 오류로 멈춘 상세 수집 채널이 없습니다.',
  other_channels_unfinished: '다른 채널에도 수집할 URL이 남아 있습니다. 이어서 진행한 뒤 다시 시도하세요.',
@@ -25,7 +27,7 @@ const messages: Record<string, string> = {
 };
 export function responseError(data: {error?: {code?: string; kind?: string; message?: string}; detail?: string | {msg?: string}[]}, status: number): string {
  if(status === 409 && (data.error?.code === 'version_conflict' || data.error?.message?.includes('다른 버전이 활성화되었습니다')) && typeof window !== 'undefined') window.dispatchEvent(new Event('dcx-version-conflict'));
- const code = data.error?.kind ?? data.error?.code ?? '';
+ const code = [data.error?.code, data.error?.kind].find(key => key && Object.hasOwn(messages, key)) ?? '';
  if (Object.hasOwn(messages, code)) return messages[code];
  const message = data.error?.message ?? (typeof data.detail === 'string' ? data.detail : '');
  return hasHangul(message) ? message : genericError;

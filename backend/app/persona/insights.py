@@ -153,5 +153,7 @@ def confirm(sid, version, ids) -> list[str]:
         if not isinstance(ids, list) or any(not isinstance(i, str) or i not in available for i in ids):
             raise sessions.StoreError('Unknown insight ID', 400, 'validation')
         confirmed = list(dict.fromkeys(ids))
-        sessions._update_locked(sid, {'insight': {'confirmed': confirmed, 'confirmed_ids': confirmed}})
+        state = sessions.load_session(sid).get('insight', {})
+        hidden = [i for i in state.get('confirmed_ids', state.get('confirmed', [])) if i not in available]
+        sessions._update_locked(sid, {'insight': {'confirmed': confirmed, 'confirmed_ids': hidden + confirmed}})
     return confirmed
