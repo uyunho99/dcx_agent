@@ -1,0 +1,67 @@
+{
+ "verdict": "PASS",
+ "head": "91c8ac7713db372d635a6bf8d40ac40244aa70e2",
+ "fingerprint": "9fb68d45673c81ff8c1b9198e46a635b6e3f0d0b7fb5a1555b9fa94225018e7b",
+ "commands": [
+  {
+   "command": "브라우저 QA(내장 브라우저, 1360×900) — 가짜 LLM 8313/3313",
+   "exitCode": 0
+  },
+  {
+   "command": "실제 LLM R3 생성 — 8314",
+   "exitCode": 0
+  }
+ ],
+ "findings": [],
+ "resolved": [
+  {
+   "id": "QA5-1",
+   "summary": "R4 확정 후 크롤링 버튼 비활성",
+   "fix": "91adacc"
+  }
+ ],
+ "scenarios": [
+  {
+   "id": "QA1",
+   "url": "http://localhost:3313/pipeline/keywords",
+   "result": "PASS",
+   "evidence": "새 세션 s4b42171…(가짜 LLM): R1 생성 · 전체 승인 · 저장(API) 직후 coverage status=loading/source=autocomplete → 화면 \"다음 라운드 생성\" 클릭 → R3 생성(제목 \"R3 수렴 · 균형 결과 60개\", promptVersion r3.v3), 세션 step=r3, keywordRounds 키 [1,3](R2 기록 없음). 커버리지 계산이 2초 안에 끝나 loading 중 버튼 비활성은 화면에서 직접 관찰 못 함(조건식 nextRound(round)===3 && coverageLoading은 코드 리뷰 · 서버 409 테스트로 확인)"
+  },
+  {
+   "id": "QA2",
+   "url": "http://localhost:3313/pipeline/keywords",
+   "result": "PASS",
+   "evidence": "세라젬 복사본(R1 확정 · R2 미확정 134개 · step r2): 화면이 \"R1 초기 발산 결과 87개\"로 열림, 검토할 라운드 목록 [R1]만, 다음 라운드 생성 → R3 60개(r3.v3), 이후 목록 [R1, R3], 단계 표시 R1 완료 · R2 다가올 단계 · R3 현재. 저장 파일의 R2 134개는 그대로. 스크린샷 docs/development/kw-skip-r2/qa/QA2-serajem-r3.jpg"
+  },
+  {
+   "id": "QA3",
+   "url": "http://localhost:8313/keywords/s89d92341bdb340b0bd7a5943a1c86dc7/rounds/2",
+   "result": "PASS",
+   "evidence": "POST rounds/2 · rounds/2?regenerate=true · rounds/2/commit 모두 HTTP 409 {\"kind\":\"round_locked\",\"message\":\"R2는 사용하지 않습니다. R1 다음은 R3입니다\"}"
+  },
+  {
+   "id": "QA4",
+   "url": "http://localhost:3313/pipeline/keywords",
+   "result": "PASS",
+   "evidence": "단계 표시 5칸(R1 초기 발산 · R2 인접 확장 · R3 수렴 · 균형 · R4 재발산 · 최종) · 버튼(생성하기 · 다음 라운드 생성 · 크롤링 설정하기) · 레이아웃 클래스 변경 없음(DOM 확인 + page.tsx diff가 조건식 · 배지 숫자만 변경). 운영 화면(3400) 직접 비교는 사용자 운영 데이터 변경 위험으로 하지 않음"
+  },
+  {
+   "id": "QA5",
+   "url": "http://localhost:3313/pipeline/keywords",
+   "result": "PASS",
+   "evidence": "1차: R4 확정 후 \"크롤링 설정하기\" 비활성(결함, T5로 수정). 재시험: 활성 → 클릭 시 /pipeline/crawling 이동, \"확정 키워드 190개로 목록을 수집합니다\"(R1 70 + R3 60 + R4 60)"
+  },
+  {
+   "id": "QA6",
+   "url": "http://localhost:8313/keywords/s89d92341bdb340b0bd7a5943a1c86dc7/events",
+   "result": "PASS",
+   "evidence": "T6 반영 후 세라젬 복사본에 방향 지시 이벤트 저장 → feedback_md에 \"QA 방향 확인\" 포함, 미확정 R2 거절 단어 \"시골집개구리소리\" 미포함"
+  },
+  {
+   "id": "QA-L1",
+   "url": "http://localhost:8314 (실제 LLM, 사용자 .env, 세라젬 별도 복사본)",
+   "result": "PASS",
+   "evidence": "보고용: R3(r3.v3) 60개 생성. 축 분포 행동 24 · 물리 18 · 심리 18(R1 승인은 물리 27 · 심리 20 · 행동 20). R2와 같은 단어는 시골집외풍 1개. 집 설비 · 환경 단어 비중은 R2 31/134(23%) → R3 25/60(42%) — R1의 가장 큰 주제(집 냉기 · 설비)로 수렴한 결과. 심리(텃세 · 외로움 · 해방감 · 정착의지) · 생활 전환(퇴직 · 매각 · 읍내이사) 단어가 새로 나옴. 전체 목록 docs/development/kw-skip-r2/qa/QA-L1-serajem-r2-vs-r3.json"
+  }
+ ]
+}
