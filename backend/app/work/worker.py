@@ -104,8 +104,13 @@ def _segment(context: Context):
     run(context)
 
 
+def _evidence(context: Context):
+    from app.evidence.pipeline import run
+    run(context)
+
+
 KINDS: dict[str, Callable[[Context], None]] = {
-    'prep': _prep, 'judge': _judge, 'train': _train, 'infer': _infer, 'monitor': _monitor, 'segment': _segment}
+    'prep': _prep, 'judge': _judge, 'train': _train, 'infer': _infer, 'monitor': _monitor, 'segment': _segment, 'evidence': _evidence}
 
 
 def execute(context: Context):

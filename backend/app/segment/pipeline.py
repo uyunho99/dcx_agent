@@ -65,6 +65,8 @@ def _session(sid, version, values, *, reset=False):
         data = sessions.read_json(path)
         if reset:
             data['segment'] = {}
+            data['evidence'] = {'status': 'stale'}
+            data.setdefault('completion', {}).pop('evidenceDone', None)
             data.setdefault('completion', {}).pop('segmentDone', None)
             data.get('drafts', {}).pop('segment', None)
         data.setdefault('segment', {}).update(values)

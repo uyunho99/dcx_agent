@@ -66,6 +66,8 @@ def _completion(sid, data, version=None):
         ("exportDone", export_done),
         ("clustersDone", clusters_done),
         ("segmentDone", segment_done),
+        ("evidenceDone", lambda: data.get("evidence", {}).get("status") == "done"
+         and "stage7" not in data.get("stale", {})),
     ):
         try:
             result[field] = compute()
