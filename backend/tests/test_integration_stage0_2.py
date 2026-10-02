@@ -30,7 +30,8 @@ CTX = dict(bk='에어컨', oneLiner='시원한 공기', researchQuestion={'text'
            constraints=[], positioning={'price': 'value', 'market': 'new'}, channels=['fixture'],
            productCategory={'l1': '가전', 'source': 'user'})
 KEY_FIELDS = [name for name in type(settings).model_fields
-              if 'key' in name or 'secret' in name or name in ('naver_client_id', 'searchad_customer_id')]
+              if name != 'keyword_locked_rounds'
+              and ('key' in name or 'secret' in name or name in ('naver_client_id', 'searchad_customer_id'))]
 
 
 @pytest.fixture
@@ -47,6 +48,9 @@ def offline(data_dir, monkeypatch):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     module.write_corpus(corpus, 200)
+    # Keep all 200 reviews reachable after R2 is skipped, using R1 fixture terms.
+    corpus.write_text(corpus.read_text(encoding='utf-8').replace('냉방2단어', '냉방1단어'),
+                      encoding='utf-8')
     monkeypatch.setattr(settings, 'fixture_corpus_path', str(corpus))
     fake_dir = data_dir / 'fake_llm'
     fake_dir.mkdir()
@@ -85,6 +89,8 @@ def full_flow(client, offline, default_config=False):
     category = request('POST', '/context/category-suggest', json={'bk': CTX['bk'], 'oneLiner': CTX['oneLiner']})
     sid = request('POST', '/context', json={**CTX, 'productCategory': category})['sid']
     for n in range(1, 5):
+        if rounds.locked(n):
+            continue
         request('POST', f'/keywords/{sid}/rounds/{n}')
         state = request('GET', f'/keywords/{sid}/rounds/{n}')
         assert state['status'] == 'done' and len(state['keywords']) == MIN_COUNT[n]
@@ -183,7 +189,7 @@ def test_integrations_never_exposes_configured_secrets(client, offline, monkeypa
     assert all(external_requests.values()), 'Both configured HTTP clients must be exercised'
     assert responses[0]['source'] == 'shopping'
     round_states = [body for body in responses if 'keywords' in body and body.get('status') == 'done']
-    assert len(round_states) == 4
+    assert [state['round'] for state in round_states] == [1, 3, 4]
     assert all(kw['volume']['source'] == 'searchad' and kw['volume']['monthly'] == 50
                for state in round_states for kw in state['keywords'])
     assert all(sentinel not in json.dumps(responses) for sentinel in sentinels)

@@ -100,6 +100,44 @@ def test_pending_locked_round_hidden_in_version_view(client):
     assert store.load_session('test') == before
 
 
+@pytest.mark.parametrize('event_type', ['approve', 'reject', 'move', 'unreject'])
+def test_events_with_pending_locked_round(client, event_type):
+    finish_r1(client)
+    saved = store.load_session('test')
+    target = saved['keywordRounds']['1']['keywords'][0]
+    initial_status = 'rejected' if event_type in ('approve', 'unreject') else 'approved'
+    for keywords in (saved['keywords'], saved['keywordRounds']['1']['keywords']):
+        for kw in keywords:
+            if kw['id'] == target['id']:
+                kw.update(status=initial_status, reject={'tags': ['old'], 'note': 'old'}
+                          if initial_status == 'rejected' else None)
+    pending = {'id': 'k_r2g1_0001', 'kw': '가짜중복', 'axis': 'physical',
+               'sub': 'space', 'round': 2, 'origin': 'llm', 'status': 'pending'}
+    saved['keywordRounds']['2'] = {'round': 2, 'gen': 1,
+        'job': {'status': 'done', 'gen': 1}, 'committed': False, 'keywords': [pending]}
+    store.update_session('test', saved)
+    before = store.read_json(store.session_dir('test') / 'session.json')
+    body = {'round': 1, 'type': event_type, 'kwId': target['id']}
+    if event_type == 'move':
+        body['to'] = {'axis': 'psychological', 'sub': 'emotion'}
+    elif event_type == 'reject':
+        body.update(tags=['irrelevant'], note='범위 밖')
+    response = client.post('/keywords/test/events', json=body)
+    assert response.status_code == 200, response.text
+    after = store.read_json(store.session_dir('test') / 'session.json')
+    assert after['keywordRounds']['2'] == before['keywordRounds']['2']
+    assert after['keywordRounds']['2']['keywords'][0]['status'] == 'pending'
+    for keywords in (after['keywords'], after['keywordRounds']['1']['keywords']):
+        updated = next(kw for kw in keywords if kw['id'] == target['id'])
+        if event_type == 'move':
+            assert (updated['axis'], updated['sub']) == ('psychological', 'emotion')
+            assert updated['status'] == initial_status
+        else:
+            assert updated['status'] == ('rejected' if event_type == 'reject' else 'approved')
+            assert updated['reject'] == ({'tags': ['irrelevant'], 'note': '범위 밖'}
+                                         if event_type == 'reject' else None)
+
+
 def test_committed_locked_round_kept(client, backend, monkeypatch):
     finish_r1(client)
     kw = seed_r2(committed=True)

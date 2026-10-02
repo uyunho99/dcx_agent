@@ -144,8 +144,8 @@ def event(sid: str, body: EventRequest, version: str | None = None):
                 else:
                     kw['status'] = 'rejected' if ev.type == 'reject' else 'approved'
                     kw['reject'] = {'tags': ev.tags, 'note': ev.note} if ev.type == 'reject' else None
-                return {'keywords': [all_kws[k['id']] for k in data.get('keywords', [])],
-                        'keywordRounds': {n: {'keywords': [all_kws[k['id']] for k in r.get('keywords', [])]}
+                return {'keywords': [all_kws.get(k['id'], k) for k in data.get('keywords', [])],
+                        'keywordRounds': {n: {'keywords': [all_kws.get(k['id'], k) for k in r.get('keywords', [])]}
                                           for n, r in data.get('keywordRounds', {}).items()}}
             store._update_locked(sid, patch(data), confirm_stage='stage1')
         if ev.type == 'direction':
