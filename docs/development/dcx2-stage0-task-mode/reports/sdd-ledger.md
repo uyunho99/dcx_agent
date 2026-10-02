@@ -56,3 +56,5 @@ Task T6: minor (deferred): 페르소나 줄 key가 seed.text(서버 중복 데�
 Task T6: minor (deferred): 과제 유형 전환 시 입력 중인 직접 입력 글자 사라짐(저장값은 유지)
 Task T6: fix round 1/5 (1 addressed, 0 open; commits a87b1f2..cbe7727)
 Task T6: complete (commits 0d509ac..cbe7727, review clean)
+Final review (opus): With fixes. Important 1: 예전 임시 저장본 analysisGoal {choice:"", note:"메모"}가 null로 안 바뀌어 저장 불가. Minor 2(머지 전 수정 권고): 예전 세션 배너가 form.taskMode와 무관하게 "탐색·기획형" 문구. 나머지 deferred minor는 모두 acceptable 판정. harness retry → build
+Final fix: codex a30127024513c140e, commit b428144, re-review both ADDRESSED. Final review complete.
