@@ -162,3 +162,11 @@
 - QA-L1 속도(호출당 약 15초) 기준 합성 세션 약 75분 → 약 20분. 테스트로 순차 · 동시 결과 동일을 고정.
 ### D-251 `evidence.sqlite` 표 구조 · 질의 임베딩 `input_type` 인자 · 필터 강제 검색 래퍼 · 판단 (Claude)
 - 설계가 비워 둔 저장 구조를 6개 표(meta · queries · candidates · selected · contexts · persona_support)로 정함. `Embedder.embed(texts, input_type='document')` 하위 호환 인자. 7단계는 `allow=None`이면 오류를 내는 래퍼만 사용(AC-06).
+
+## 묶음 ② 계획 (2026-10-02)
+
+### D-252 실패 Context가 남으면 7단계 상태는 `partial`, 모두 완료 또는 "건너뛰고 진행"이면 `done` · 판단 (Claude)
+- D-223("페르소나 만들기"는 전부 완료 또는 실패 행 건너뛰기 확정까지 잠김)을 상태값으로 표현. `evidenceDone`은 `done`일 때만.
+### D-253 태깅 응답 누락 문서는 1회 재시도 후 `untagged`로 후보에서 제외하고 수를 기록 · 판단 (Claude)
+### D-254 인용 위치의 댓글 번호는 6단계 입력(prepared) 순서 기준 · 판단 (Claude)
+### D-255 "페르소나 만들기"는 묶음 ③ 합류 전까지 `/pipeline/personas` 이동만 · 판단 (Claude)
