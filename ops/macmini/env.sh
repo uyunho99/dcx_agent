@@ -1,0 +1,17 @@
+#!/bin/bash
+# Source before lib.sh. DCX_PATH is an explicit test/installation override.
+export PATH="${DCX_PATH:-/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin}"
+export APP_ROOT="${APP_ROOT:-$HOME/srv/dcx-agent}"
+SHARED="$APP_ROOT/shared"
+HISTORY="$SHARED/deploy-history"
+FAILED="$SHARED/last-failed-sha"
+export DCX_API_PORT="${DCX_API_PORT:-8400}"
+export DCX_WEB_PORT="${DCX_WEB_PORT:-3400}"
+export AUTHOR_SALT_PATH="${AUTHOR_SALT_PATH:-$SHARED/data/.author_salt}"
+export DCX_REPO_URL="${DCX_REPO_URL:-https://github.com/uyunho99/dcx_agent.git}"
+export DCX_CI_API="${DCX_CI_API:-https://api.github.com/repos/uyunho99/dcx_agent/actions/workflows/ci.yml/runs}"
+export DCX_HEALTH_API="${DCX_HEALTH_API:-http://127.0.0.1:$DCX_API_PORT/health}"
+export DCX_HEALTH_WEB="${DCX_HEALTH_WEB:-http://127.0.0.1:$DCX_WEB_PORT/pipeline/start}"
+DCX_HEALTH_TIMEOUT="${DCX_HEALTH_TIMEOUT:-120}"
+MAINTENANCE="$SHARED/maintenance"
+DCX_LAUNCH_LABEL="${DCX_LAUNCH_LABEL:-ai.person-a.dcx-agent}"

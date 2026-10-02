@@ -119,6 +119,7 @@ def keywords(sid: str, version: str | None = None):
     data = store.read_json(path / 'session.json')
     if data is None:
         raise store.StoreError('세션이 없습니다', 404, 'not_found')
+    data['keywordRounds'] = rounds.visible_rounds(data.get('keywordRounds', {}))
     data['coverage'] = rounds.coverage_status(data.get('coverage') or {})
     feedback = path / 'keyword_feedback.md'
     return {key: data.get(key, {}) for key in ('keywordRounds', 'coverage')} | {
@@ -148,8 +149,8 @@ def event(sid: str, body: EventRequest, version: str | None = None):
                 else:
                     kw['status'] = 'rejected' if ev.type == 'reject' else 'approved'
                     kw['reject'] = {'tags': ev.tags, 'note': ev.note} if ev.type == 'reject' else None
-                return {'keywords': [all_kws[k['id']] for k in data.get('keywords', [])],
-                        'keywordRounds': {n: {'keywords': [all_kws[k['id']] for k in r.get('keywords', [])]}
+                return {'keywords': [all_kws.get(k['id'], k) for k in data.get('keywords', [])],
+                        'keywordRounds': {n: {'keywords': [all_kws.get(k['id'], k) for k in r.get('keywords', [])]}
                                           for n, r in data.get('keywordRounds', {}).items()}}
             data = store._update_locked(sid, patch(data), confirm_stage='stage1')
         if ev.type == 'direction':

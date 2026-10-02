@@ -1,0 +1,133 @@
+FFFFF..................................                                  [100%]
+=================================== FAILURES ===================================
+_________________________ test_four_distinct_templates _________________________
+
+state = RoundInputs(context_md='## 0-A 프로젝트 개요\n- 리서치 질문: 어떤 상황에서 어려움을 겪는가?\n', feedback_md=None, approved=[], distribution={}...ws=[], project_type='renewal', channels=['youtube'], target_scope_text='초기 대상', product_category='제품군', task_mode=None)
+
+    def test_four_distinct_templates(state):
+>       assert PROMPT_VERSION == {1: "r1.v3", 2: "r2.v2", 3: "r3.v3", 4: "r4.v3"}
+E       AssertionError: assert {1: 'r1.v3', ...', 4: 'r4.v2'} == {1: 'r1.v3', ...', 4: 'r4.v3'}
+E         
+E         Omitting 2 identical items, use -vv to show
+E         Differing items:
+E         {3: 'r3.v2'} != {3: 'r3.v3'}
+E         {4: 'r4.v2'} != {4: 'r4.v3'}
+E         Use -v to get more diff
+
+tests/keywords/test_prompts.py:26: AssertionError
+___________________ test_r3_v3_converges_with_light_balance ____________________
+
+state = RoundInputs(context_md='## 0-A 프로젝트 개요\n- 리서치 질문: 어떤 상황에서 어려움을 겪는가?\n', feedback_md=None, approved=[], distribution={}...ws=[], project_type='renewal', channels=['youtube'], target_scope_text='초기 대상', product_category='제품군', task_mode=None)
+
+    def test_r3_v3_converges_with_light_balance(state):
+        text = build_round_task("sid", 3, state).instructions
+        for phrase in (
+            "주제 묶음", "약 7할", "약 3할", "가장 적은 축", "맥락어만 바꾼 변형",
+            "커버리지가 없으면 검색량을 추정하지 않는다",
+            "거절 사유에 해당하는 표현과 과거 0건 키워드의 반복을 피한다",
+        ):
+>           assert phrase in text
+E           assert '주제 묶음' in '## 임무\n프롬프트 버전: r3.v2\n리서치 질문: 어떤 상황에서 어려움을 겪는가?\n제품 분류: 제품군. 이 제품군 안에서 부족한 축을 보완하며 수렴·균형을 맞춘다.\n첨부 project_context.m...다):\n{"keywords": [{"kw": "string", "axis": "physical|psychological|behavioral", "sub": "string", "why": "string"}]}\n'
+
+tests/keywords/test_prompts.py:52: AssertionError
+_________________________ test_r4_v3_final_divergence __________________________
+
+state = RoundInputs(context_md='## 0-A 프로젝트 개요\n- 리서치 질문: 어떤 상황에서 어려움을 겪는가?\n', feedback_md=None, approved=[], distribution={'...ws=[], project_type='renewal', channels=['youtube'], target_scope_text='초기 대상', product_category='제품군', task_mode=None)
+
+    def test_r4_v3_final_divergence(state):
+        state = replace(
+            state, rejection_signals="거절X: 사유",
+            distribution={"physical": 0.5, "psychological": 0.3, "behavioral": 0.2},
+        )
+        text = build_round_task("sid", 4, state).instructions
+        for phrase in (
+            "대체 · 결합 · 응용", "역발상", "제거", "극단 사용자", "인접어",
+            "맥락어만 바꾼 변형", "세 축에 고르게",
+        ):
+>           assert phrase in text
+E           assert '대체 · 결합 · 응용' in '## 임무\n프롬프트 버전: r4.v2\n리서치 질문: 어떤 상황에서 어려움을 겪는가?\n제품 분류: 제품군. 이 제품군 안에서 기존 발상의 사각지대를 탐색한다.\n첨부 project_context.md 전체와...다):\n{"keywords": [{"kw": "string", "axis": "physical|psychological|behavioral", "sub": "string", "why": "string"}]}\n'
+
+tests/keywords/test_prompts.py:66: AssertionError
+_______________________ test_v3_keeps_shared_sections[3] _______________________
+
+round_number = 3
+
+    @pytest.mark.parametrize("round_number", [3, 4])
+    def test_v3_keeps_shared_sections(round_number):
+        templates = Path(build_round_task.__globals__["__file__"]).with_name("prompts")
+        marker = "## 키워드 형태 규칙".encode("utf-8")
+        old = (templates / f"r{round_number}.v2.md").read_bytes()
+>       new = (templates / f"r{round_number}.v3.md").read_bytes()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/keywords/test_prompts.py:77: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1019: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/Users/persona1/Desktop/dcx_agent-kw-skip-r2/backend/app/keywords/prompts/r3.v3.md')
+mode = 'rb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/Users/persona1/Desktop/dcx_agent-kw-skip-r2/backend/app/keywords/prompts/r3.v3.md'
+
+/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1013: FileNotFoundError
+_______________________ test_v3_keeps_shared_sections[4] _______________________
+
+round_number = 4
+
+    @pytest.mark.parametrize("round_number", [3, 4])
+    def test_v3_keeps_shared_sections(round_number):
+        templates = Path(build_round_task.__globals__["__file__"]).with_name("prompts")
+        marker = "## 키워드 형태 규칙".encode("utf-8")
+        old = (templates / f"r{round_number}.v2.md").read_bytes()
+>       new = (templates / f"r{round_number}.v3.md").read_bytes()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/keywords/test_prompts.py:77: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1019: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/Users/persona1/Desktop/dcx_agent-kw-skip-r2/backend/app/keywords/prompts/r4.v3.md')
+mode = 'rb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/Users/persona1/Desktop/dcx_agent-kw-skip-r2/backend/app/keywords/prompts/r4.v3.md'
+
+/opt/homebrew/Cellar/python@3.12/3.12.14/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1013: FileNotFoundError
+=============================== warnings summary ===============================
+app/config.py:12
+  /Users/persona1/Desktop/dcx_agent-kw-skip-r2/backend/app/config.py:12: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class Settings(BaseSettings):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/keywords/test_prompts.py::test_four_distinct_templates - Asserti...
+FAILED tests/keywords/test_prompts.py::test_r3_v3_converges_with_light_balance
+FAILED tests/keywords/test_prompts.py::test_r4_v3_final_divergence - assert '...
+FAILED tests/keywords/test_prompts.py::test_v3_keeps_shared_sections[3] - Fil...
+FAILED tests/keywords/test_prompts.py::test_v3_keeps_shared_sections[4] - Fil...
+5 failed, 34 passed, 1 warning in 0.13s

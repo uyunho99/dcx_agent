@@ -1,0 +1,56 @@
+
+> frontend@0.1.0 test
+> vitest run src/lib/logic/roundUi.test.ts
+
+
+ RUN  v3.2.7 /Users/persona1/Desktop/dcx_agent-kw-skip-r2/frontend
+
+(node:18306) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ src/lib/logic/roundUi.test.ts (11 tests | 2 failed) 4ms
+   × has no following round after R4 while skipping locked R2 2ms
+     → (0 , followingRound) is not a function
+   × allows committed R4 to advance when its own state is not used as the next round 0ms
+     → (0 , followingRound) is not a function
+   ✓ skips locked R2 when advancing 0ms
+   ✓ allows initial start and disables every mutation during running 0ms
+   ✓ requires commit before advancing through all four rounds 0ms
+   ✓ allows failed retries and only R4 additional generation after commit 0ms
+   ✓ requires explicit regeneration permission for committed rounds 0ms
+   ✓ locks failed and mismatched generations while keeping retries available 0ms
+   ✓ requires saving dirty decisions before regeneration 0ms
+   ✓ permits restart regeneration and protects existing next rounds 0ms
+   ✓ tags directions saved at commit with the upcoming generation 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/logic/roundUi.test.ts > has no following round after R4 while skipping locked R2
+TypeError: (0 , followingRound) is not a function
+ ❯ src/lib/logic/roundUi.test.ts:4:10
+      2| import { roundUi, directionRound, nextRound, prevRound, followingRound…
+      3| it('has no following round after R4 while skipping locked R2', () => {
+      4|   expect(followingRound(1)).toBe(3);
+       |          ^
+      5|   expect(followingRound(3)).toBe(4);
+      6|   expect(followingRound(4)).toBeUndefined();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/lib/logic/roundUi.test.ts > allows committed R4 to advance when its own state is not used as the next round
+TypeError: (0 , followingRound) is not a function
+ ❯ src/lib/logic/roundUi.test.ts:15:21
+     13| 
+     14|   const rounds = { '4': current } as Record<string, typeof current>;
+     15|   const following = followingRound(current.round);
+       |                     ^
+     16|   const nextState = following === undefined ? undefined : rounds[Strin…
+     17|   const ui = roundUi({ ...current, nextRound: nextState });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 9 passed (11)
+   Start at  19:53:57
+   Duration  321ms (transform 23ms, setup 0ms, collect 14ms, tests 4ms, environment 0ms, prepare 40ms)
+

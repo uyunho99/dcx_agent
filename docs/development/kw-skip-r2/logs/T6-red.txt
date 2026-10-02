@@ -1,0 +1,171 @@
+FFF...FFF...                                                             [100%]
+=================================== FAILURES ===================================
+__________________ test_pending_locked_feedback_hidden[write] __________________
+
+client = <starlette.testclient.TestClient object at 0x11a4cd880>
+surface = 'write'
+
+    @pytest.mark.parametrize('surface', ['write', 'r3_inputs', 'preview'])
+    def test_pending_locked_feedback_hidden(client, surface):
+        finish_r1(client)
+        seed_feedback()
+        path = store.session_dir('test') / 'keyword_events.jsonl'
+        before = path.read_bytes()
+        text = write_feedback_md('test')
+        if surface == 'r3_inputs':
+            text = rounds._inputs('test', store.load_session('test'), 3).feedback_md
+        elif surface == 'preview':
+            response = client.get('/keywords/test')
+            assert response.status_code == 200
+            text = response.json()['feedback_md']
+>       assert '숨은후보' not in text
+E       AssertionError: assert '숨은후보' not in '## 방향 지시\n-...ical/sense\n'
+E         
+E         '숨은후보' is contained here:
+E           기타 · 1건
+E           - 숨은후보
+E           
+E           ## 원하는 방향
+E           - 수동추가 (추가, 라운드 2)...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+tests/keywords/test_round_lock_feedback.py:45: AssertionError
+________________ test_pending_locked_feedback_hidden[r3_inputs] ________________
+
+client = <starlette.testclient.TestClient object at 0x119858da0>
+surface = 'r3_inputs'
+
+    @pytest.mark.parametrize('surface', ['write', 'r3_inputs', 'preview'])
+    def test_pending_locked_feedback_hidden(client, surface):
+        finish_r1(client)
+        seed_feedback()
+        path = store.session_dir('test') / 'keyword_events.jsonl'
+        before = path.read_bytes()
+        text = write_feedback_md('test')
+        if surface == 'r3_inputs':
+            text = rounds._inputs('test', store.load_session('test'), 3).feedback_md
+        elif surface == 'preview':
+            response = client.get('/keywords/test')
+            assert response.status_code == 200
+            text = response.json()['feedback_md']
+>       assert '숨은후보' not in text
+E       AssertionError: assert '숨은후보' not in '## 방향 지시\n-...ical/sense\n'
+E         
+E         '숨은후보' is contained here:
+E           기타 · 1건
+E           - 숨은후보
+E           
+E           ## 원하는 방향
+E           - 수동추가 (추가, 라운드 2)...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+tests/keywords/test_round_lock_feedback.py:45: AssertionError
+_________________ test_pending_locked_feedback_hidden[preview] _________________
+
+client = <starlette.testclient.TestClient object at 0x119f2a240>
+surface = 'preview'
+
+    @pytest.mark.parametrize('surface', ['write', 'r3_inputs', 'preview'])
+    def test_pending_locked_feedback_hidden(client, surface):
+        finish_r1(client)
+        seed_feedback()
+        path = store.session_dir('test') / 'keyword_events.jsonl'
+        before = path.read_bytes()
+        text = write_feedback_md('test')
+        if surface == 'r3_inputs':
+            text = rounds._inputs('test', store.load_session('test'), 3).feedback_md
+        elif surface == 'preview':
+            response = client.get('/keywords/test')
+            assert response.status_code == 200
+            text = response.json()['feedback_md']
+>       assert '숨은후보' not in text
+E       AssertionError: assert '숨은후보' not in '## 방향 지시\n-...ical/sense\n'
+E         
+E         '숨은후보' is contained here:
+E           기타 · 1건
+E           - 숨은후보
+E           
+E           ## 원하는 방향
+E           - 수동추가 (추가, 라운드 2)...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+tests/keywords/test_round_lock_feedback.py:45: AssertionError
+______ test_hidden_restoration_does_not_cancel_visible_rejection[approve] ______
+
+client = <starlette.testclient.TestClient object at 0x11a8f7c80>
+event_type = 'approve'
+
+    @pytest.mark.parametrize('event_type', ['approve', 'unreject'])
+    def test_hidden_restoration_does_not_cancel_visible_rejection(client, event_type):
+        finish_r1(client)
+        keyword = store.load_session('test')['keywords'][0]
+        append_event('test', KeywordEvent(ts=store.now(), round=1, type='reject',
+                                        kwId=keyword['id'], kw=keyword['kw']))
+        seed_feedback()
+        # Same spelling, different ID: a hidden candidate cannot restore a visible keyword.
+        append_event('test', KeywordEvent(ts=store.now(), round=2, type=event_type,
+                                        kwId='k_r2g1_0001', kw=keyword['kw']))
+>       assert keyword['kw'] in write_feedback_md('test')
+E       AssertionError: assert '냉방1단어0' in '## 방향 지시\n- 라운드 2: 방향X\n\n## 거절 사유\n- 없음\n\n## 원하는 방향\n- 수동추가 (추가, 라운드 2)\n- 숨은후보 (이동 승인, 라운드 2)\n\n## 오분류 이동\n- 숨은후보: ?/? → physical/sense\n'
+E        +  where '## 방향 지시\n- 라운드 2: 방향X\n\n## 거절 사유\n- 없음\n\n## 원하는 방향\n- 수동추가 (추가, 라운드 2)\n- 숨은후보 (이동 승인, 라운드 2)\n\n## 오분류 이동\n- 숨은후보: ?/? → physical/sense\n' = write_feedback_md('test')
+
+tests/keywords/test_round_lock_feedback.py:73: AssertionError
+_____ test_hidden_restoration_does_not_cancel_visible_rejection[unreject] ______
+
+client = <starlette.testclient.TestClient object at 0x11a8f7d40>
+event_type = 'unreject'
+
+    @pytest.mark.parametrize('event_type', ['approve', 'unreject'])
+    def test_hidden_restoration_does_not_cancel_visible_rejection(client, event_type):
+        finish_r1(client)
+        keyword = store.load_session('test')['keywords'][0]
+        append_event('test', KeywordEvent(ts=store.now(), round=1, type='reject',
+                                        kwId=keyword['id'], kw=keyword['kw']))
+        seed_feedback()
+        # Same spelling, different ID: a hidden candidate cannot restore a visible keyword.
+        append_event('test', KeywordEvent(ts=store.now(), round=2, type=event_type,
+                                        kwId='k_r2g1_0001', kw=keyword['kw']))
+>       assert keyword['kw'] in write_feedback_md('test')
+E       AssertionError: assert '냉방1단어0' in '## 방향 지시\n- 라운드 2: 방향X\n\n## 거절 사유\n- 없음\n\n## 원하는 방향\n- 수동추가 (추가, 라운드 2)\n\n## 오분류 이동\n- 숨은후보: ?/? → physical/sense\n'
+E        +  where '## 방향 지시\n- 라운드 2: 방향X\n\n## 거절 사유\n- 없음\n\n## 원하는 방향\n- 수동추가 (추가, 라운드 2)\n\n## 오분류 이동\n- 숨은후보: ?/? → physical/sense\n' = write_feedback_md('test')
+
+tests/keywords/test_round_lock_feedback.py:73: AssertionError
+__________ test_manual_round_ignores_pending_locked_round[pending-1] ___________
+
+client = <starlette.testclient.TestClient object at 0x11a8f7500>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x11a8f74d0>
+state = 'pending', expected = 1
+
+    @pytest.mark.parametrize('state,expected', [('pending', 1), ('committed', 2), ('unlocked', 2), ('empty', 1)])
+    def test_manual_round_ignores_pending_locked_round(client, monkeypatch, state, expected):
+        if state != 'empty':
+            finish_r1(client)
+            seed_feedback(committed=state == 'committed')
+        if state == 'unlocked':
+            monkeypatch.setattr(settings, 'keyword_locked_rounds', [])
+        response = client.post('/keywords/test/manual', json={
+            'kw': '저소음', 'axis': 'physical', 'sub': 'sense'})
+        assert response.status_code == 200, response.text
+        keyword = next(k for k in store.load_session('test')['keywords']
+                       if k['id'] == response.json()['id'])
+>       assert keyword['round'] == expected
+E       assert 2 == 1
+
+tests/keywords/test_round_lock_feedback.py:88: AssertionError
+=============================== warnings summary ===============================
+app/config.py:12
+  /Users/persona1/Desktop/dcx_agent-kw-skip-r2/backend/app/config.py:12: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class Settings(BaseSettings):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/keywords/test_round_lock_feedback.py::test_pending_locked_feedback_hidden[write]
+FAILED tests/keywords/test_round_lock_feedback.py::test_pending_locked_feedback_hidden[r3_inputs]
+FAILED tests/keywords/test_round_lock_feedback.py::test_pending_locked_feedback_hidden[preview]
+FAILED tests/keywords/test_round_lock_feedback.py::test_hidden_restoration_does_not_cancel_visible_rejection[approve]
+FAILED tests/keywords/test_round_lock_feedback.py::test_hidden_restoration_does_not_cancel_visible_rejection[unreject]
+FAILED tests/keywords/test_round_lock_feedback.py::test_manual_round_ignores_pending_locked_round[pending-1]
+6 failed, 6 passed, 1 warning in 5.19s

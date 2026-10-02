@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 import tempfile
 
-from app.context.store import assert_writable, locked, session_dir
+from app.context.store import assert_writable, locked, read_json, session_dir
 from app.keywords.events import KeywordEvent, REJECT_TAGS, load_events
 from app.keywords.normalize import norm_key
 
@@ -99,10 +99,23 @@ def render_feedback_md(events: list[KeywordEvent]) -> str:
 
 
 def write_feedback_md(sid: str, *, directory=None) -> str:
+    # Imported here because rounds uses this writer for event persistence.
+    from app.keywords.rounds import locked as round_locked
+
     with locked(sid) if directory is None else nullcontext():
         assert_writable(sid)
         directory = directory or session_dir(sid)
-        text = render_feedback_md(load_events(sid, directory=directory))
+        data = read_json(directory / "session.json") or {}
+        kept_ids = {kw.get("id") for kw in data.get("keywords", [])}
+        hidden_ids = {kw["id"]
+                      for number, state in data.get("keywordRounds", {}).items()
+                      if round_locked(int(number)) and not state.get("committed")
+                      for kw in state.get("keywords", []) if kw.get("id")} - kept_ids
+        # Use keyword membership, not the event's possibly historical round tag.
+        # Directions and manual additions remain valid user input in every round.
+        events = [ev for ev in load_events(sid, directory=directory)
+                  if ev.type in ("direction", "add") or ev.kwId not in hidden_ids]
+        text = render_feedback_md(events)
         fd, name = tempfile.mkstemp(prefix=".keyword-feedback-", suffix=".tmp", dir=directory)
         temporary = Path(name)
         try:

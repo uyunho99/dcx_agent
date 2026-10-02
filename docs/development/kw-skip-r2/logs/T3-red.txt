@@ -1,0 +1,41 @@
+
+> frontend@0.1.0 test
+> vitest run src/lib/logic/roundUi.test.ts
+
+
+ RUN  v3.2.7 /Users/persona1/Desktop/dcx_agent-kw-skip-r2/frontend
+
+(node:95655) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ src/lib/logic/roundUi.test.ts (9 tests | 1 failed) 4ms
+   × skips locked R2 when advancing 2ms
+     → (0 , nextRound) is not a function
+   ✓ allows initial start and disables every mutation during running 1ms
+   ✓ requires commit before advancing through all four rounds 0ms
+   ✓ allows failed retries and only R4 additional generation after commit 0ms
+   ✓ requires explicit regeneration permission for committed rounds 0ms
+   ✓ locks failed and mismatched generations while keeping retries available 0ms
+   ✓ requires saving dirty decisions before regeneration 0ms
+   ✓ permits restart regeneration and protects existing next rounds 0ms
+   ✓ tags directions saved at commit with the upcoming generation 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/logic/roundUi.test.ts > skips locked R2 when advancing
+TypeError: (0 , nextRound) is not a function
+ ❯ src/lib/logic/roundUi.test.ts:4:10
+      2| import { roundUi, directionRound, nextRound, prevRound, LOCKED_ROUNDS …
+      3| it('skips locked R2 when advancing', () => {
+      4|   expect(nextRound(1)).toBe(3);
+       |          ^
+      5|   expect(nextRound(3)).toBe(4);
+      6|   expect(nextRound(4)).toBe(4);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 8 passed (9)
+   Start at  19:34:38
+   Duration  288ms (transform 19ms, setup 0ms, collect 14ms, tests 4ms, environment 0ms, prepare 47ms)
+
