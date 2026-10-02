@@ -77,7 +77,7 @@ it('unlocks navigation only after done or skipped and navigates via callback', (
 it('renders Unicode quote, source, location and known match', () => {
  const item: EvidenceItemView={...evidenceItemFixture};
  const html=renderToStaticMarkup(createElement(EvidenceCard,{item,readonly:false,onAdd:vi.fn(),knownNumber:2}));
- for(const text of ['<mark>인용</mark>','댓글 3','새로움 high · 잠정','Feel','Known Insight #2와 같은 내용','Known Insight에 추가']) expect(html).toContain(text);
+ for(const text of ['<mark>인용</mark>','댓글 3','새로움 높음 · 잠정','Feel','Known Insight와 같은 내용 #2','Known Insight에 추가']) expect(html).toContain(text);
 });
 it('adds sidebar evidence path and completion 7 while retaining legacy branch', () => {
  expect(completedThrough({completion:{evidenceDone:true,segmentDone:true}})).toBe(7);
@@ -156,4 +156,31 @@ it('offers resume after a prompt upgrade on a completed screen',()=>{
  const p={...props(),status:{...status,status:'done' as const},error:'근거 프롬프트가 바뀌었습니다. 이어서 진행을 눌러 다시 계산하세요.'};
  const resume=button(EvidenceScreenView(p),'이어서 진행');
  expect(resume).toBeDefined();(resume.props.onClick as ()=>void)();expect(p.onStart).toHaveBeenCalledOnce();
+});
+
+ it.each([['very_high','매우 높음'],['high','높음'],['medium','보통'],['low','낮음'],['none','없음']])('localizes novelty %s when shown', (novelty,label) => {
+ const html=renderToStaticMarkup(createElement(EvidenceCard,{item:{...evidenceItemFixture,novelty,noveltyShown:true},readonly:false,onAdd:vi.fn()}));
+ expect(html).toContain(`새로움 ${label} · 잠정`);
+ });
+ it('renders only the dimensions present in the lowercase API tags', () => {
+ const html=renderToStaticMarkup(createElement(EvidenceCard,{item:{...evidenceItemFixture,tags:['sense','think','outcome']},readonly:false,onAdd:vi.fn()}));
+ for(const label of ['Sense','Think','Outcome']) expect(html).toContain(`>${label}<`);
+ for(const label of ['sense','think','outcome','Feel','Act','Relate']) expect(html).not.toContain(`>${label}<`);
+ });
+ it.each([null,2])('badges handed documents on all with KI display number %s', number => {
+ const item={...evidenceItemFixture,knownMatch:'none',known:{handed:true,kiId:'ki_second'}};
+ const p={...props(),tab:'all' as const,detail:{...detail,tab:'all' as const,items:[item]},knownNumbers:number?{ki_second:number}:{}};
+ const html=renderToStaticMarkup(createElement(EvidenceScreenView,p));
+ expect(html).toContain('Known Insight와 같은 내용'+(number?' #2':''));
+ expect(html).toContain('Known Insight에 추가됨');
+ });
+it('renders all six design dimension names from API keys',()=>{
+ const item={...evidenceItemFixture,tags:['sense','feel','think','act','relate','outcome']};
+ const html=renderToStaticMarkup(createElement(EvidenceCard,{item,readonly:false,onAdd:vi.fn()}));
+ for(const label of ['Sense','Feel','Think','Act','Relate','Outcome']) expect(html).toContain(`>${label}<`);
+});
+it('does not badge an unhanded document with no known match',()=>{
+ const item={...evidenceItemFixture,knownMatch:'none',known:{handed:false,kiId:null}};
+ const html=renderToStaticMarkup(createElement(EvidenceCard,{item,readonly:false,onAdd:vi.fn()}));
+ expect(html).not.toContain('Known Insight와 같은 내용');
 });

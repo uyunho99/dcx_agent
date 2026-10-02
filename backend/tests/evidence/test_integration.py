@@ -283,3 +283,14 @@ def test_qa_script_default_fake_echo_full_worker(client, data_dir, monkeypatch, 
         source['vectors'])) for p in source['seg'].personas())
     print('QA_FIX1_ELIGIBLE_PERSONAS=' + str(eligible))
     assert metrics['undifferentiated'] > 0 or eligible == 0
+
+    # Browser QA regression: sequential refreshes must monotonically clear rows.
+    calls_before = status['stage7']['llm_calls']
+    doc = details[0]['items'][0]['docId']
+    ok(client.post(f'/known/{sid}', json={'type':'doc','doc_id':doc}), 201)
+    for index, row in enumerate(status['contexts']):
+        ok(client.post(f'/evidence/{sid}/contexts/{row["id"]}/refresh-new', json={'run':status['run']}))
+        current = ok(client.get(f'/evidence/{sid}/status'))
+        assert not next(r for r in current['contexts'] if r['id']==row['id'])['knownChanged']
+        assert sum(r['knownChanged'] for r in current['contexts']) == len(details)-index-1
+        assert current['stage7']['llm_calls'] == calls_before

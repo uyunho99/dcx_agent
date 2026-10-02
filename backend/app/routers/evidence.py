@@ -122,8 +122,8 @@ def _source(sid, data, seg, ids):
     return docs, tags
 
 
-def _view(row, docs, tags, role='support'):
-    return assemble.item_view(row, docs, tags, role)
+def _view(row, docs, tags, role='support', *, known_items=()):
+    return assemble.item_view(row, docs, tags, role, known_items=known_items)
 
 
 @router.get('/contexts/{context_id}')
@@ -140,12 +140,13 @@ def context(sid: str, context_id: str, tab: Literal['all', 'new'] = 'all', versi
     pool = [r for r in snapshot.candidates if r['context_id'] == context_id]
     selected = [r for r in snapshot.selected if r['context_id'] == context_id and r['tab'] == tab]
     docs, tags = _source(sid, data, seg, {r['doc_id'] for r in pool + selected})
+    known = pipeline._known(sid, data['version'])
     counter = assemble.counter_evidence(pool, tags, context_mean=assemble.context_polarity_mean(pool, tags))
     rare = assemble.rare_evidence(pool, tags, docs)
     counts = state.get('counts') or {}
     return dict(context={k: v for k, v in context.items() if k != 'centroid'}, tab=tab,
-                items=[_view(r, docs, tags, r['role']) for r in selected],
-                counter=[_view(r, docs, tags, 'counter') for r in counter], rare=[_view(r, docs, tags, 'rare') for r in rare],
+                items=[_view(r, docs, tags, r['role'], known_items=known) for r in selected],
+                counter=[_view(r, docs, tags, 'counter', known_items=known) for r in counter], rare=[_view(r, docs, tags, 'rare', known_items=known) for r in rare],
                 excludedKnown=counts.get('excludedKnown', 0),
                 queries=[{k: r[k] for k in ('dim', 'text', 'origin')} for r in snapshot.queries if r['owner'] == 'context:'+context_id],
                 queryFailed=bool(counts.get('query_gen_fail')), undifferentiated=counts.get('undifferentiated', []))
@@ -161,7 +162,8 @@ def persona(sid: str, persona_id: str, version: str | None = None):
     ids = {d['doc_id'] for d in assemble._documents(seg) if d['persona_id'] == persona_id}
     docs, tags = _source(sid, data, seg, ids)
     support = assemble.desire_support([r for r in snapshot.persona_support if r['persona_id'] == persona_id], tags)
-    return dict(desireSupport=[_view(r, docs, tags) for r in support],
+    known = pipeline._known(sid, data['version'])
+    return dict(desireSupport=[_view(r, docs, tags, known_items=known) for r in support],
                 artifacts=assemble.artifacts(sorted(ids), tags, (data.get('projectContext') or {}).get('bk') or data.get('bk')))
 
 

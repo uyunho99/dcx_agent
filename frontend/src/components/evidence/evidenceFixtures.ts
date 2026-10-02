@@ -17,8 +17,8 @@ export const evidenceItemFixture: EvidenceItemView = {
   docId:'d',source:'youtube',location:{field:'comment',idx:2},
   quoteSource:{field:'comment',idx:2,text:'😀 인용 끝'},
   quote:{text:'인용',start:2,end:4,verified:true},text:'별개의 본문 미리보기',
-  tags:['Feel'],band:'edge',novelty:'high',noveltyShown:true,
-  noveltyReason:'새로운 이유',knownMatch:'ki_second',rare:true,role:'support',
+  tags:['feel'],band:'edge',novelty:'high',noveltyShown:true,
+  known:{handed:false,kiId:'ki_second'},noveltyReason:'새로운 이유',knownMatch:'ki_second',rare:true,role:'support',
 };
 export const evidenceContextFixture: EvidenceContextResponse = {
   context:{context_id:'C1',persona_id:'P',name:'상황',name_draft:'상황',

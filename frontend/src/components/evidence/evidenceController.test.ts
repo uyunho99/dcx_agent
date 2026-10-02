@@ -42,13 +42,14 @@ it('loads new by default, switches to all, and discards a late response for a pr
  p.onTab('all');render();p=render();p.onContext('C2');render();await vi.advanceTimersByTimeAsync(0);p=render();expect(p.detail.context.context_id).toBe('C2');
  resolve({...evidenceContextFixture,context:{...evidenceContextFixture.context,context_id:'C1'},tab:'all'});await vi.advanceTimersByTimeAsync(0);expect(render().detail.context.context_id).toBe('C2');
 });
-it('adds KI during running, leaves completed Contexts marked until explicitly recalculated',async()=>{
+it('adds KI then immediately refreshes its Context and leaves other completed Contexts marked',async()=>{
  const p=await load();
  vi.mocked(addKnownInsight).mockResolvedValue(knownInsightsFixture[0]);
  vi.mocked(api.refreshEvidenceNew).mockResolvedValue(evidenceContextFixture);
- vi.mocked(api.getEvidenceStatus).mockResolvedValue({status:'running',run:'gen',progress:50,contexts:[{...row('C1'),knownChanged:true},{...row('C2'),knownChanged:true}]} as any);
+ vi.mocked(api.getEvidenceStatus).mockResolvedValue({status:'running',run:'gen',progress:50,contexts:[row('C1'),{...row('C2'),knownChanged:true}]} as any);
  p.onAdded('doc');await vi.advanceTimersByTimeAsync(0);const next=render();
- expect(addKnownInsight).toHaveBeenCalledWith('s',{type:'doc',doc_id:'doc'},'v2');expect(api.refreshEvidenceNew).not.toHaveBeenCalled();expect(next.status.contexts.every((c:any)=>c.knownChanged)).toBe(true);
+ expect(addKnownInsight).toHaveBeenCalledWith('s',{type:'doc',doc_id:'doc'},'v2');expect(api.refreshEvidenceNew).toHaveBeenCalledExactlyOnceWith('s','C1',{run:'gen'},'v2');expect(next.status.contexts.map((c:any)=>c.knownChanged)).toEqual([false,true]);
+ expect(vi.mocked(addKnownInsight).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(api.refreshEvidenceNew).mock.invocationCallOrder[0]);
  next.onRefresh('C2');await vi.advanceTimersByTimeAsync(0);expect(api.refreshEvidenceNew).toHaveBeenLastCalledWith('s','C2',{run:'gen'},'v2');
 });
 it('does not mutate a historical version while allowing evidence browsing',async()=>{
@@ -115,4 +116,25 @@ it('does not reload Known Insights on unchanged-run status polling',async()=>{
  vi.mocked(api.getEvidenceStatus).mockResolvedValue({...evidenceStatusFixture,run:'gen',tagCalls:90,contexts:[row('C1'),row('C2')]});
  await vi.advanceTimersByTimeAsync(3000);render();await vi.advanceTimersByTimeAsync(0);
  expect(getKnownInsights).toHaveBeenCalledTimes(count);
+});
+
+it('refreshes the Context where add started even if selection changes while saving',async()=>{
+ let p=await load('done');p.onContext('C2');p=render();
+ let saved!: (value:typeof knownInsightsFixture[number])=>void;
+ vi.mocked(addKnownInsight).mockImplementationOnce(()=>new Promise(resolve=>{saved=resolve;}));
+ vi.mocked(api.refreshEvidenceNew).mockResolvedValue({...evidenceContextFixture,context:{...evidenceContextFixture.context,context_id:'C2'}});
+ p.onAdded('doc');p.onContext('C1');render();
+ saved(knownInsightsFixture[0]);await vi.advanceTimersByTimeAsync(0);
+ expect(api.refreshEvidenceNew).toHaveBeenCalledExactlyOnceWith('s','C2',{run:'gen'},'v2');
+});
+it('clears only the refreshed row from authoritative status after manual recalculation',async()=>{
+ await load('done');
+ vi.mocked(api.getEvidenceStatus).mockResolvedValue({...evidenceStatusFixture,status:'done',run:'gen',contexts:[{...row('C1'),knownChanged:true},{...row('C2'),knownChanged:true}]});
+ await vi.advanceTimersByTimeAsync(3000);const p=render();
+ vi.mocked(api.refreshEvidenceNew).mockResolvedValue(evidenceContextFixture);
+ vi.mocked(api.getEvidenceStatus).mockResolvedValue({...evidenceStatusFixture,status:'done',run:'gen',contexts:[row('C1'),{...row('C2'),knownChanged:true}]});
+ p.onRefresh('C1');await vi.advanceTimersByTimeAsync(0);
+ expect(render().status.contexts.map((c:any)=>c.knownChanged)).toEqual([false,true]);
+ await vi.advanceTimersByTimeAsync(3000);
+ expect(render().status.contexts.map((c:any)=>c.knownChanged)).toEqual([false,true]);
 });

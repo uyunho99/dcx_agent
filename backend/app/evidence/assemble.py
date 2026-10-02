@@ -238,17 +238,21 @@ def _item(doc_id, docs, tags, *, role='support', tabs=('all',), novelty=None):
                 tab=list(tabs), role=role, dist_centroid=doc.get('dist_centroid'), combo_rarity=doc.get('combo_rarity'))
 
 
-def item_view(row, docs, tags, role='support'):
+def item_view(row, docs, tags, role='support', *, known_items=()):
     doc_id = row['doc_id']
     doc, tag = docs.get(doc_id, {}), tags.get(doc_id, {})
     item = _item(doc_id, {doc_id:doc}, {doc_id:tag}, role=role, novelty=row.get('novelty'))
+    handed = next((i['id'] for i in known_items if i.get('type') == 'doc'
+                   and i.get('origin', i.get('from')) == 'rag' and i.get('doc_id') == doc_id), None)
+    match = item['known_match']
     quote = item['quote'] or dict(field='body', idx=None, text='', start=None, end=None, verified=False)
     from app.evidence.quotes import quote_source
     return dict(docId=doc_id, source=item['source'], location={k:quote.get(k) for k in ('field','idx')},
                 quote={k:quote.get(k) for k in ('text','start','end','verified')},
                 quoteSource=quote_source(quote, doc), noveltyShown=row.get('novelty') in params.NOVELTY_SHOW,
                 text=(doc.get('body') or doc.get('title') or '')[:600], tags=item['tags'], band=doc.get('band'),
-                novelty=row.get('novelty'), noveltyReason=row.get('novelty_reason'), knownMatch=item['known_match'],
+                novelty=row.get('novelty'), noveltyReason=row.get('novelty_reason'), knownMatch=match,
+                known=dict(handed=handed is not None, kiId=handed or (match if match != 'none' else None)),
                 rare=doc.get('band') == 'edge' and bool(tag.get('pain_point') or tag.get('unmet_need')), role=role)
 
 

@@ -541,7 +541,7 @@ def _context_response(ev, source, context_id, known):
     docs = source['docs']
 
     def view(selected, role='support'):
-        return assemble.item_view(selected, docs, tags, role)
+        return assemble.item_view(selected, docs, tags, role, known_items=known)
 
     counter = assemble.counter_evidence(pool, tags, context_mean=assemble.context_polarity_mean(pool, tags))
     rare = assemble.rare_evidence(pool, tags, docs)

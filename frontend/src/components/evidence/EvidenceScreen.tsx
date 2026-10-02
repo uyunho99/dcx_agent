@@ -42,7 +42,7 @@ export function EvidenceScreenView(p:ViewProps) {
   const disabled = p.readonly || p.busy || status?.status === 'stale';
   const before = !status || ['none','stale'].includes(status.status);
   const done = !!status && status.status === 'done' && canBuildPersona(status);
-  const cards = (items:EvidenceItemView[]) => items.map(item => <EvidenceCard key={item.docId} item={item} knownNumber={item.knownMatch ? p.knownNumbers?.[item.knownMatch] : undefined} readonly={disabled} added={p.added?.includes(item.docId)} onAdd={p.onAdded}/>);
+  const cards = (items:EvidenceItemView[]) => items.map(item => <EvidenceCard key={item.docId} item={item} knownNumber={p.knownNumbers?.[item.known?.kiId ?? item.knownMatch ?? '']} readonly={disabled} added={p.added?.includes(item.docId)} onAdd={p.onAdded}/>);
   const content = status?.status === 'stale' ? <Card>다시 실행 후 열람할 수 있습니다.</Card> : detail && detail.tab === p.tab ? <div className="space-y-3">
     {p.tab === 'new' && detail.excludedKnown > 0 && <Banner actions={<Button onClick={() => p.onTab('all')}>전체 탭에서 보기</Button>}>{excludedMessage(detail.excludedKnown)}</Banner>}
     {detail.items.length ? cards(detail.items) : <p>{p.tab === 'new' && (selected?.counts.all ?? 0) > 0 ? 'Known Insight를 빼니 남는 원문이 없습니다. 전체 탭에서 보세요.' : '이 Context에서 근거로 쓸 원문을 찾지 못했습니다.'}</p>}
@@ -167,13 +167,13 @@ export function EvidenceScreen({sid,version,readonly = false}: {sid:string;versi
   },[blocked,loadStatus]);
   const actions = evidenceActions(sid,version,status?.run ?? '');
   async function add(docId:string) {
-    if(!status?.run || status.status === 'stale') return;
+    if(!status?.run || status.status === 'stale' || !chosenId) return;
+    const contextId = chosenId;
     await mutate(async () => {
       await actions.add(docId);
       if(!active.current) return;
       setAdded(previous => [...previous,docId]);
-      setStatus(previous => previous ? {...previous,contexts:previous.contexts.map(row => row.status === 'done' ? {...row,knownChanged:true} : row)} : previous);
-      // Keep every completed row marked until the user requests recalculation (D-223).
+      await actions.refresh(contextId);
     });
   }
   const start = useCallback(() => {

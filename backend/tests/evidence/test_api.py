@@ -31,7 +31,9 @@ def run(api):
 
 
 def item_contract(item):
-    assert set(item) == {'docId','source','location','quote','text','tags','band','novelty','noveltyReason','knownMatch','rare','role','quoteSource','noveltyShown'}
+    assert set(item) == {'docId','source','location','quote','text','tags','band','novelty','noveltyReason','knownMatch','rare','role','quoteSource','noveltyShown','known'}
+    assert set(item['known']) == {'handed', 'kiId'}
+    assert type(item['known']['handed']) is bool
     assert set(item['quote']) == {'text','start','end','verified'}
     assert set(item['location']) == {'field','idx'}
     assert len(item['text']) <= 600
@@ -219,3 +221,32 @@ def test_live_tag_calls_from_worker_pulses_and_completed_report(api):
     assert done['tagCalls'] == done['stage7']['tag_calls'] > 0
     sessions.update_session(api.sid, {'evidence': {'status':'running', 'detail':{'tagCalls':2}}})
     assert ok(api.client.get(api.base + '/status'))['tagCalls'] == 2
+
+
+def test_handed_and_semantic_known_api_fields_and_refresh_isolation(api):
+    from app.evidence.cache import TagCache, prompt_version, known_key
+    generation = run(api)
+    detail = ok(api.client.get(api.base+'/contexts/c0?tab=all'))
+    handed, matched, plain = [r['docId'] for r in detail['items'][:3]]
+    response = api.client.post(f'/known/{api.sid}', json={'type':'doc','doc_id':handed})
+    assert response.status_code == 201
+    added = response.json()
+    statement = dict(id='ki_statement', type='statement', text='이미 아는 내용')
+    sessions.update_session(api.sid, {'knownInsights':[added, statement]})
+    cache = TagCache.open(api.sid, 'p_0123456789ab', prompt_version('tag'))
+    cache.put_known({(doc, known_key(statement)):doc == matched for doc in api.docs}, 'fake')
+    items = {r['docId']:r for r in ok(api.client.get(api.base+'/contexts/c0?tab=all'))['items']}
+    assert items[handed]['knownMatch'] == 'none'
+    assert items[handed]['known'] == {'handed':True, 'kiId':added['id']}
+    assert items[matched]['knownMatch'] == statement['id']
+    assert items[matched]['known'] == {'handed':False, 'kiId':statement['id']}
+    assert items[plain]['known'] == {'handed':False, 'kiId':None}
+    api.calls.clear()
+    for cid, remaining in [('c0',2),('c1',1),('c2',0),('c0',0)]:
+        refreshed = ok(api.client.post(api.base+f'/contexts/{cid}/refresh-new', json={'run':generation}))
+        for item in refreshed['items']+refreshed['counter']+refreshed['rare']:
+            item_contract(item)
+        states = ok(api.client.get(api.base+'/status'))['contexts']
+        assert not next(r for r in states if r['id']==cid)['knownChanged']
+        assert sum(r['knownChanged'] for r in states) == remaining
+    assert api.calls == []

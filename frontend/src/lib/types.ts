@@ -236,6 +236,7 @@ export type EvidenceQuoteSource = EvidenceLocation & { text: string };
 export type EvidenceItemView = {
   docId: string; source: string; location: EvidenceLocation; quote: EvidenceQuote; quoteSource: EvidenceQuoteSource;
   text: string; tags: string[]; band: SegmentBand | null; novelty: string | null;
+  known: { handed: boolean; kiId: string | null };
   noveltyShown: boolean; noveltyReason: string | null; knownMatch: string | null; rare: boolean; role: EvidenceRole;
 };
 export type EvidenceQuery = { dim: string; text: string; origin: 'llm' | 'regen' | 'fallback' };
