@@ -697,3 +697,42 @@ def test_partial_naver_limits_preserve_defaults(env, monkeypatch):
         assert run.limiters['naver_blog'].concurrency == 1
     finally:
         run.close('stopped')
+
+
+@pytest.mark.parametrize('intervals', [None, {'fixture': 2}])
+def test_resume_requeues_blocked_lists(env, intervals):
+    root, _ = prepared(env)
+    with closing(CrawlQueue(root / 'queue.sqlite')) as q:
+        q.add_list_tasks([KwMeta('alpha', 'a', 's', 0)], ['other'])
+        q.connection.execute("UPDATE list_tasks SET status='failed', attempts=3, last_error='AdapterBlocked'")
+        q.connection.execute("UPDATE list_tasks SET last_error='ValueError' WHERE kw='beta'")
+    response = env.client.post('/crawl/S/resume', json={'min_interval_s': intervals} if intervals else {})
+    assert response.status_code == 200
+    with closing(CrawlQueue(root / 'queue.sqlite')) as q:
+        rows = {(r['kw'], r['source']): (r['status'], r['attempts'])
+                for r in q.connection.execute('SELECT * FROM list_tasks')}
+    assert rows == {('alpha', 'fixture'): ('pending', 0),
+                    ('beta', 'fixture'): ('failed', 3), ('alpha', 'other'): ('failed', 3)}
+
+
+def test_resume_no_duplicate_tasks(env, monkeypatch):
+    root, _ = prepared(env)
+    with closing(CrawlQueue(root / 'queue.sqlite')) as q:
+        q.connection.execute("UPDATE list_tasks SET status='failed', attempts=3, last_error='AdapterBlocked'")
+    assert env.client.post('/crawl/S/resume').status_code == 200
+    assert env.client.post('/crawl/S/resume').status_code == 200
+    assert len(env.calls) == 1
+    seen = []
+    class Ready:
+        def list_page(self, kw, cursor):
+            seen.append((kw, cursor))
+            return ListPage([], None, 0)
+    monkeypatch.setitem(REGISTRY, 'fixture', Ready)
+    with closing(CrawlQueue(root / 'queue.sqlite')) as q:
+        q.connection.execute("UPDATE runs SET status='done'")
+    worker.run_list('S', collection=root)
+    assert seen == [('alpha', None), ('beta', None)]
+    with closing(CrawlQueue(root / 'queue.sqlite')) as q:
+        assert q.connection.execute('SELECT count(*) FROM list_tasks').fetchone()[0] == 2
+        assert {r[0] for r in q.connection.execute('SELECT status FROM list_tasks')} == {'done'}
+    assert env.client.post('/crawl/S/resume').status_code == 409

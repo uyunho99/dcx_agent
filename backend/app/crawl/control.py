@@ -242,9 +242,13 @@ def start_detail(sid, snapshot_id, version=None):
 def _unfinished_run(queue, run):
     if not run:
         return False
-    # Completed lists await gate review; only unfinished detail completion needs recovery.
+    # Completed lists await gate review unless legacy blocked failures remain.
     if run['kind'] == 'list':
-        return run['status'] != 'done'
+        if run['status'] != 'done':
+            return True
+        with closing(CrawlQueue.open_readonly(queue.path)) as db:
+            return db.execute("""SELECT 1 FROM list_tasks
+                WHERE status='failed' AND last_error='AdapterBlocked' LIMIT 1""").fetchone() is not None
     return not report.can_finalize(queue, run)
 
 
@@ -282,6 +286,8 @@ def resume(sid, version=None, min_interval_s=None):
                 state.pop('stopReason', None)
                 store.write_json(root / 'manifest.json', manifest)
                 store.write_json(root / 'worker_state.json', state)
+            if not _live(queue) and run['kind'] == 'list':
+                queue.requeue_blocked_lists(min_interval_s or manifest['channels'])
             result = _spawn(sid, root, queue, run['kind'], manifest.get('snapshotId'))
         return {'step': 'crawl-' + run['kind']}, result
     return _mutate(sid, perform, version)

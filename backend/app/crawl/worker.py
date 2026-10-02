@@ -24,6 +24,7 @@ from app.crawl.errors import safe_error
 from app.context.store import load_session, read_json, write_json
 from app.crawl.adapters import REGISTRY, available_sources, managed_adapter
 from app.crawl.adapters.naver_common import NaverAdapter
+from app.crawl.adapters.community import DEFAULT_INTERVAL_S
 from app.crawl.adapters.base import AdapterBlocked, FetchedDoc, ListItem, ListPage
 from app.crawl.filters import FilterConfig, check_doc, check_list
 from app.crawl.hashing import author_hash
@@ -128,7 +129,7 @@ class _Run:
                  if s in ('naver_blog', 'naver_cafe') and isinstance(a, NaverAdapter)}
         if naver:
             limiter = ChannelLimiter(1, max(
-                (self.limiters[s].min_interval_s for s in naver), default=0.5))
+                DEFAULT_INTERVAL_S, *(self.limiters[s].min_interval_s for s in naver)))
             limiter.blocked = False
             for adapter in naver.values():
                 adapter.search_limiter = limiter
@@ -306,7 +307,7 @@ def run_list(sid, *, collection=None, keywords=None, sources=None, filters=None,
                         dispatch.append(task)
                 for task, page, error in run.execute(dispatch, adapters, 'list', stop):
                     if error:
-                        run.q.mark_list_failed(task, _error(error))
+                        run.q.mark_list_failed(task, _error(error), blocked=isinstance(error, AdapterBlocked))
                         continue
                     remaining = run.list_remaining(task)
                     items = page.items if remaining is None else page.items[:remaining]
@@ -470,7 +471,8 @@ def run_detail(sid, snapshot_id, *, collection=None, filters=None, limiters=None
                 if error:
                     last_error = _error(error)
                     result = run.q.mark_failed_attempt(row.url_norm, row.source, last_error,
-                                                      max_attempts=3, backoff_s=backoff_s)
+                                                      max_attempts=3, backoff_s=backoff_s,
+                                                      blocked=isinstance(error, AdapterBlocked))
                     if result != 'exhausted':
                         continue
                 fallback = row.exhausted or error is not None

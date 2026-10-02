@@ -656,3 +656,43 @@ def test_lease_sources_filter(queue):
     assert [r.source for r in rows] == ['naver_blog']
     assert queue.connection.execute("SELECT attempts FROM urls WHERE source='fixture'").fetchone()[0] == 0
     assert [r.source for r in queue.lease_urls(snap, 10, 30)] == ['fixture']
+
+
+@pytest.mark.parametrize('prior_attempts', [0, 2])
+def test_blocked_list_failure_keeps_attempts(queue, prior_attempts):
+    queue.add_list_tasks([KwMeta('A', 'a', 's', 0)], ['fixture'])
+    queue.connection.execute('UPDATE list_tasks SET attempts=?', (prior_attempts,))
+    for _ in range(4):
+        task = queue.next_list_task()
+        queue.mark_list_failed(task, 'AdapterBlocked', blocked=True)
+        row = queue.connection.execute('SELECT * FROM list_tasks').fetchone()
+        assert (row['status'], row['attempts'], row['last_error'], row['lease_run_id']) == (
+            'pending', prior_attempts, 'AdapterBlocked', None)
+
+
+@pytest.mark.parametrize('prior_attempts', [0, 2])
+def test_detail_blocks_preserve_attempts_on_resume(queue, monkeypatch, prior_attempts):
+    add(queue, 'A', 0, ['fixture://aircon/1'])
+    snap = queue.take_snapshot()
+    queue.connection.execute('UPDATE urls SET attempts=?', (prior_attempts,))
+    now = [1000.0]
+    monkeypatch.setattr(queue_module.time, 'time', lambda: now[0])
+    queue.finish_run(queue.run_id, 'done')
+    for _ in range(4):
+        run = queue.register_run('detail')
+        row, = queue.lease_urls(snap, 1, 60)
+        assert row.attempts == prior_attempts + 1 and not row.exhausted
+        assert queue.mark_failed_attempt(row.url_norm, row.source, 'AdapterBlocked',
+                                         backoff_s=5, blocked=True) == 'pending'
+        saved = queue.connection.execute('SELECT * FROM urls').fetchone()
+        assert (saved['status'], saved['attempts'], saved['exhausted']) == ('pending', prior_attempts, 0)
+        assert saved['last_error'] == 'AdapterBlocked'
+        assert saved['lease_until'] is None and saved['lease_run_id'] is None
+        assert saved['retry_at'] == now[0] + 5
+        assert queue.lease_urls(snap, 1, 60) == []
+        queue.finish_run(run, 'paused')
+        now[0] += 5
+    queue.register_run('detail')
+    row, = queue.lease_urls(snap, 1, 60)
+    queue.mark_done(row.url_norm, row.source, 1)
+    assert queue.counts()['done'] == 1

@@ -66,6 +66,10 @@ def test_search_block_stops_host(tmp_path, monkeypatch, fake_time, status, kind)
                     return []
                 monkeypatch.setattr(adapter, 'fetch', fetch)
             worker.run_detail('S', snapshot, collection=tmp_path, backoff_s=0)
+        with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+            table = 'list_tasks' if kind == 'list' else 'urls'
+            assert {tuple(r) for r in q.connection.execute(
+                f'SELECT status, attempts, last_error FROM {table}')} == {('pending', 0, 'AdapterBlocked')}
         state = store.read_json(tmp_path / 'worker_state.json')
         assert {c['status'] for c in state['channels'].values()} == {'paused_blocked'}
         assert len(calls) == 1
@@ -131,9 +135,9 @@ def test_article_hosts_use_channel_limiter(fake_time, cls, host):
     (SOURCES, {}, 0.5),
     (SOURCES, {'naver_blog': {'min_interval_s': 0.7},
                'naver_cafe': {'min_interval_s': 1.2}}, 1.2),
-    (('naver_blog',), {'naver_blog': {'min_interval_s': 0.2}}, 0.2),
+    (('naver_blog',), {'naver_blog': {'min_interval_s': 0.2}}, 0.5),
     (('naver_cafe',), {}, 0.5),
-    (SOURCES, {s: {'min_interval_s': 0} for s in SOURCES}, 0),
+    (SOURCES, {s: {'min_interval_s': 0} for s in SOURCES}, 0.5),
 ])
 def test_worker_shared_limiter_configuration(tmp_path, monkeypatch, fake_time, kind, sources, options, expected):
     store.write_json(tmp_path / 'manifest.json', {'config': {'perChannel': options}})
@@ -168,3 +172,11 @@ def test_other_blocks_keep_twenty_consecutive_rule(tmp_path):
         assert run.active('naver_cafe')
     finally:
         run.close('done')
+
+
+@pytest.mark.parametrize('kind', ['list', 'detail'])
+@pytest.mark.parametrize('interval,expected', [(0, 0.5), (2, 2)])
+def test_shared_search_limiter_floor_with_zero_config(tmp_path, monkeypatch, fake_time, kind, interval, expected):
+    test_worker_shared_limiter_configuration(
+        tmp_path, monkeypatch, fake_time, kind, SOURCES,
+        {s: {'min_interval_s': interval} for s in SOURCES}, expected)

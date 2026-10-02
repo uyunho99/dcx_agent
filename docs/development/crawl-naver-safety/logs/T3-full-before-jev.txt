@@ -1,0 +1,99 @@
+........................................................................ [  4%]
+........................................................................ [  8%]
+........................................................................ [ 12%]
+........................................................................ [ 16%]
+........................................................................ [ 20%]
+........................................................................ [ 24%]
+........................................................................ [ 28%]
+........................................................................ [ 32%]
+........................................................................ [ 36%]
+........................................................................ [ 40%]
+........................................................................ [ 44%]
+........................................................................ [ 48%]
+........................................................................ [ 52%]
+........................................................................ [ 56%]
+........................................................................ [ 60%]
+........................................................................ [ 64%]
+............................FF.......................................... [ 68%]
+........................................................................ [ 72%]
+........................................................................ [ 76%]
+........................................................................ [ 80%]
+........................................................................ [ 85%]
+........................................................................ [ 89%]
+........................................................................ [ 93%]
+........................................................................ [ 97%]
+..................................................                       [100%]
+=================================== FAILURES ===================================
+_____________ test_clients_share_per_key_rate_with_fake_clock[60] ______________
+
+answer = {'model': 'jev-1.13.0', 'answers': {'anchor': {'type': 'noul', 'noul': 0.96}, 'sense': {'type': 'noul', 'noul': 0.12},...noul', 'noul': 0.8}, 'think': {'type': 'noul', 'noul': 0.3}, ...}, 'usage': {'input_tokens': 100, 'output_tokens': 50}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x118451f10>, rate = 60
+
+    @pytest.mark.parametrize('rate', [60, 120])
+    def test_clients_share_per_key_rate_with_fake_clock(answer, monkeypatch, rate):
+        now = [1000.0]
+        starts = []
+        def sleep(delay):
+            now[0] += delay
+        def limiter(concurrency, min_interval_s):
+            return ChannelLimiter(concurrency, min_interval_s, clock=lambda: now[0], sleep=sleep)
+        monkeypatch.setattr(ChannelLimiter, 'wait_start', REAL_WAIT_START)
+        monkeypatch.setattr(jev, 'ChannelLimiter', limiter)
+        monkeypatch.setattr(jev.settings, 'jev_rate_per_min', rate)
+        def handle(request):
+            starts.append(now[0])
+            return httpx.Response(200, json=answer)
+        with JevClient(['shared-secret'], 'jev-latest', transport=httpx.MockTransport(handle)) as first:
+            with JevClient(['shared-secret'], 'jev-latest', transport=httpx.MockTransport(handle)) as second:
+                for i in range(rate + 2):
+                    (first if i % 2 == 0 else second).judge(DOC, '맥락')
+>       assert all(b - a >= 60 / rate for a, b in zip(starts, starts[1:]))
+E       assert False
+E        +  where False = all(<generator object test_clients_share_per_key_rate_with_fake_clock.<locals>.<genexpr> at 0x109d6f920>)
+
+tests/label/test_jev.py:322: AssertionError
+_____________ test_clients_share_per_key_rate_with_fake_clock[120] _____________
+
+answer = {'model': 'jev-1.13.0', 'answers': {'anchor': {'type': 'noul', 'noul': 0.96}, 'sense': {'type': 'noul', 'noul': 0.12},...noul', 'noul': 0.8}, 'think': {'type': 'noul', 'noul': 0.3}, ...}, 'usage': {'input_tokens': 100, 'output_tokens': 50}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x118b3bb30>
+rate = 120
+
+    @pytest.mark.parametrize('rate', [60, 120])
+    def test_clients_share_per_key_rate_with_fake_clock(answer, monkeypatch, rate):
+        now = [1000.0]
+        starts = []
+        def sleep(delay):
+            now[0] += delay
+        def limiter(concurrency, min_interval_s):
+            return ChannelLimiter(concurrency, min_interval_s, clock=lambda: now[0], sleep=sleep)
+        monkeypatch.setattr(ChannelLimiter, 'wait_start', REAL_WAIT_START)
+        monkeypatch.setattr(jev, 'ChannelLimiter', limiter)
+        monkeypatch.setattr(jev.settings, 'jev_rate_per_min', rate)
+        def handle(request):
+            starts.append(now[0])
+            return httpx.Response(200, json=answer)
+        with JevClient(['shared-secret'], 'jev-latest', transport=httpx.MockTransport(handle)) as first:
+            with JevClient(['shared-secret'], 'jev-latest', transport=httpx.MockTransport(handle)) as second:
+                for i in range(rate + 2):
+                    (first if i % 2 == 0 else second).judge(DOC, '맥락')
+>       assert all(b - a >= 60 / rate for a, b in zip(starts, starts[1:]))
+E       assert False
+E        +  where False = all(<generator object test_clients_share_per_key_rate_with_fake_clock.<locals>.<genexpr> at 0x1192de0a0>)
+
+tests/label/test_jev.py:322: AssertionError
+=============================== warnings summary ===============================
+app/config.py:12
+  /Users/persona1/Desktop/dcx_agent-crawl/backend/app/config.py:12: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class Settings(BaseSettings):
+
+tests/context/test_session_completion.py::test_clustering_publishes_version_local_completion_surviving_restart[stage3]
+  /Users/persona1/Desktop/dcx_agent-crawl/backend/.venv/lib/python3.12/site-packages/joblib/externals/loky/backend/context.py:134: UserWarning: Could not find the number of physical cores for the following reason:
+  invalid literal for int() with base 10: ''
+  Returning the number of logical cores instead. You can silence this warning by setting LOKY_MAX_CPU_COUNT to the number of cores you want to use.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/label/test_jev.py::test_clients_share_per_key_rate_with_fake_clock[60]
+FAILED tests/label/test_jev.py::test_clients_share_per_key_rate_with_fake_clock[120]
+2 failed, 1776 passed, 1 deselected, 2 warnings in 277.59s (0:04:37)

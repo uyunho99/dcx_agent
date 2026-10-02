@@ -166,7 +166,8 @@ def test_retry_exhaustion(status):
 def test_key_rotation_and_per_key_limit(answer, monkeypatch):
     limits, keys = [], []
     class Limiter:
-        def __init__(self, concurrency, min_interval_s):
+        def __init__(self, concurrency, min_interval_s, *, jitter):
+            assert jitter == 0
             self.starts = 0
             limits.append(self)
             assert min_interval_s == .5
@@ -266,7 +267,8 @@ def test_state_without_truncation():
 def test_configured_rate(answer, monkeypatch):
     intervals = []
     class Limiter:
-        def __init__(self, concurrency, min_interval_s):
+        def __init__(self, concurrency, min_interval_s, *, jitter):
+            assert jitter == 0
             intervals.append(min_interval_s)
         def __enter__(self):
             pass
@@ -307,8 +309,9 @@ def test_clients_share_per_key_rate_with_fake_clock(answer, monkeypatch, rate):
     starts = []
     def sleep(delay):
         now[0] += delay
-    def limiter(concurrency, min_interval_s):
-        return ChannelLimiter(concurrency, min_interval_s, clock=lambda: now[0], sleep=sleep)
+    def limiter(concurrency, min_interval_s, *, jitter):
+        assert jitter == 0
+        return ChannelLimiter(concurrency, min_interval_s, jitter=jitter, clock=lambda: now[0], sleep=sleep)
     monkeypatch.setattr(ChannelLimiter, 'wait_start', REAL_WAIT_START)
     monkeypatch.setattr(jev, 'ChannelLimiter', limiter)
     monkeypatch.setattr(jev.settings, 'jev_rate_per_min', rate)

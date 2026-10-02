@@ -29,7 +29,7 @@ def _limiter_for(key: str, rate: float) -> ChannelLimiter:
     fingerprint = hashlib.sha256(key.encode('utf-8')).hexdigest()
     with _limiter_pool_lock:
         if fingerprint not in _limiter_pool:
-            _limiter_pool[fingerprint] = ChannelLimiter(concurrency=1, min_interval_s=60 / rate)
+            _limiter_pool[fingerprint] = ChannelLimiter(concurrency=1, min_interval_s=60 / rate, jitter=0)
         return _limiter_pool[fingerprint]
 
 
