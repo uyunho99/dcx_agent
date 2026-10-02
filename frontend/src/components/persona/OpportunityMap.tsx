@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import type { PersonaMap, PersonaZone } from '../../lib/types';
-import { zoneName } from './personaView';
+import { zoneName, formatMetric, formatCount } from './personaView';
 import { ProvisionalBadge } from './ProvisionalBadge';
 const shapes = ['circle','square','triangle','diamond','pentagon'];
 const symbols = ['●','■','▲','◆','⬟'];
@@ -31,9 +31,9 @@ export function OpportunityMap({ map, highlightedId, selectedPersonaId, onHighli
   const personaGroups = new Map(clusters.map(cluster => [cluster, [...members.get(cluster)!].sort()]));
   const personas = (cluster: string) => personaGroups.get(cluster)!;
   const toggle = (ids: string[]) => setChosen(current => ids.every(id => current.includes(id)) ? current.filter(id => !ids.includes(id)) : [...new Set([...current,...ids])]);
-  const summary = (['A','B','C','D','E','F'] as PersonaZone[]).map(zone => `${zone} ${zoneName(zone)} ${map.points.filter(p => p.zone === zone).length}개`).join(', ');
+  const summary = (['A','B','C','D','E','F'] as PersonaZone[]).map(zone => `${zoneName(zone)} ${formatCount(map.points.filter(p => p.zone === zone).length)}개`).join(', ');
   const lines = [ [[0,map.base.s_line],[1,map.base.s_line]], map.base.diag1, map.base.diag2 ];
-  return <figure style={{ margin: 0, minWidth: 0 }}><figcaption className="ds-t-label">Opportunity Map · Context {map.points.length}개 · 기회 <ProvisionalBadge/></figcaption>
+  return <figure style={{ margin: 0, minWidth: 0 }}><figcaption className="ds-t-label">Opportunity Map · Context {formatCount(map.points.length)}개 · 기회 <ProvisionalBadge/></figcaption>
     <svg viewBox="0 0 600 450" role="img" aria-label={`Opportunity Map: ${summary}`} style={{ width:'100%',display:'block' }}>
       <path d="M60 20V340H540" fill="none" stroke="var(--ink)"/>
       {lines.map((line,index) => <line key={index} data-baseline={index} x1={x(line[0][0])} y1={y(line[0][1])} x2={x(line[1][0])} y2={y(line[1][1])} stroke="var(--line-strong)" strokeDasharray="4 4"/>)}
@@ -45,12 +45,12 @@ export function OpportunityMap({ map, highlightedId, selectedPersonaId, onHighli
         const color = `var(${selected ? '--blue' : tones[tone]})`;
         const count = overlapCounts.get(`${point.i}:${point.s}`)!;
         return <g key={point.context_id} data-context-id={point.context_id} data-highlighted={highlighted} data-shape={shapes[cluster] || 'circle'} transform={`translate(${x(point.i)} ${y(point.s)})`} fill={point.counter ? 'none' : color} stroke={color} strokeWidth={highlighted ? 3 : 2} style={{cursor:'pointer'}} onMouseEnter={() => onHighlight?.(point.context_id)} onMouseLeave={() => onHighlight?.(null)} onClick={() => {onHighlight?.(point.context_id); onOpenCard?.(point.persona_id,point.context_id);}}>
-          <title>{`${point.context_id} · ${point.persona_id} · ${point.zone} ${zoneName(point.zone)} · 기회 ${point.odi} (잠정)${point.counter ? " · 반례" : ""}${count > 1 ? ` · 겹친 Context ${count}개` : ""}`}</title>
+          <title>{`${point.context_id} · ${point.persona_id} · ${zoneName(point.zone)} · 기회 ${formatMetric(point.odi)} (잠정)${point.counter ? " · 반례" : ""}${count > 1 ? ` · 겹친 Context ${formatCount(count)}개` : ""}`}</title>
           {highlighted && <circle r={13} fill="none" strokeDasharray="3 2"/>}<Shape index={cluster}/>
           {point.star && <text x={-5} y={-14} fill={color} stroke="none">★</text>}{cluster >= 5 && <text x={12} y={4} fill={color} stroke="none" fontSize={11}>{point.cluster_id}</text>}
         </g>;
       })}
-      {['A 흥미', 'B 경험', 'C 경쟁', 'D 용인', 'E 방치', 'F 위험'].map((label, index) => <text key={label} x={60 + (index % 3) * 160} y={410 + Math.floor(index / 3) * 24} fontSize={12} fill="var(--ink)">{label}</text>)}
+      {(['A','B','C','D','E','F'] as PersonaZone[]).map(zoneName).map((label, index) => <text key={label} x={60 + (index % 3) * 160} y={410 + Math.floor(index / 3) * 24} fontSize={12} fill="var(--ink)">{label}</text>)}
     </svg>
     <div aria-label="클러스터와 Persona 범례">{clusters.map((cluster,index) => <div key={cluster} style={{display:'flex', flexWrap:'wrap',gap:8,marginTop:8}}><button type="button" className="ds-chip" aria-pressed={personas(cluster).every(id => chosen.includes(id))} onClick={() => toggle(personas(cluster))}>{symbols[index] || '●'} {cluster}</button>{personas(cluster).map(persona => <button type="button" className="ds-chip" key={persona} aria-label={`Persona ${persona}`} aria-pressed={chosen.includes(persona)} onClick={() => toggle([persona])}>{persona}</button>)}</div>)}</div>
     <p className="ds-t-caption">속 빈 모양 · 반례 Context / ★ 몰랐고 기회도 큰 지점 · 겹친 점은 아래 Context 표에서 각각 확인할 수 있습니다.</p>

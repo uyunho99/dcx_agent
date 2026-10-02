@@ -18,6 +18,7 @@ class LLMError(BaseModel):
     message: str
 
 class LLMResult(BaseModel):
+    attempts: int = 1
     ok: bool
     data: BaseModel | None = None
     raw: str | None = None

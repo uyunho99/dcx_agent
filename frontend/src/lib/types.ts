@@ -251,8 +251,10 @@ export type PersonaPrescription = {
 export type PersonaScope = { verdict: 'in' | 'outside'; reason: string };
 // Nested card/trace serialization is not specified by the API table. Keep those
 // payloads open instead of asserting a router-specific layout before T11 lands.
+export type PersonaCardContext = Record<string, unknown> & { context_id: string; keywords: string[] };
+export type PersonaCardBody = Record<string, unknown> & { contexts?: PersonaCardContext[]; artifacts?: { name: string; mention_count: number }[] };
 export type PersonaCard = {
-  status: PersonaState; card: Record<string, unknown> | null;
+  status: PersonaState; card: PersonaCardBody | null;
   grades?: Record<string, Record<string, PersonaGrade | null>>;
   trace?: Record<string, unknown>[]; prescription?: PersonaPrescription | null;
   constraint?: PersonaConstraint[]; scope?: PersonaScope | null; error?: unknown;
@@ -274,7 +276,7 @@ export type PersonaTree = Record<string, unknown>;
 export type PersonaContextRow = PersonaMapPoint & { name?: string; persona_name?: string };
 export type PersonaSortDirection = 'asc' | 'desc';
 
-export type InsightErrorKind = 'persona_required' | 'not_found';
+export type InsightErrorKind = 'persona_required' | 'not_found' | 'stale';
 export type InsightRunRequest = { mode: 'derive' | 'concept'; target?: string };
 export type InsightRunResponse = { runId: string };
 export type InsightTarget = 'insights' | `concept:${string}`;
@@ -292,6 +294,7 @@ export type InsightJourneyRow = {
   context_id: string; action: string; feeling: string; service: string; service_action: string; cx_4d: InsightCxDimension;
 };
 export type InsightConcept = {
+  outdated: boolean; insight_revision?: number; context_ids?: string[];
   persona_profile: unknown; basis: string; pain_points: Record<string, unknown>[];
   journey: InsightJourneyRow[]; constraint_check: PersonaConstraint[];
   [key: string]: unknown;
@@ -300,7 +303,11 @@ export type InsightConcept = {
 export type InsightRevision<T> = { revision: number; items: T[]; history: Record<string, unknown>[] };
 export type InsightBars = { bars: unknown; mean: number | null; targets: string[] };
 export type InsightRadar = Record<string, unknown>;
+export type InsightWorker = { status: 'idle' | 'running' | 'done' | 'failed' | 'interrupted'; reason: string | null; runId: string | null; mode: 'derive' | 'concept' | null; target: string | null };
 export type InsightResponse = {
+  worker: InsightWorker;
+  /** Authoritative selection loaded from the selected version session by the API client. */
+  confirmed?: string[];
   insights: InsightRevision<InsightItem>; concepts: InsightRevision<InsightConcept>;
   bars: InsightBars | null; radar: InsightRadar | null;
 };

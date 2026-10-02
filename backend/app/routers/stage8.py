@@ -4,6 +4,8 @@ Workers own inference; store/chat mutations own their session locks. Keep the
 client's nested snake_case payloads intact while exposing runId at the boundary.
 """
 from typing import Annotated, Literal
+from functools import wraps
+import json
 
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
@@ -13,6 +15,8 @@ from app.label.overview import session
 from app.persona import chat, insights, pipeline
 from app.persona.package import PackageMissing, load_package
 from app.persona.store import PersonaStore
+from app.persona.insight_pipeline import serialized
+from app.persona.source import require_persona
 from app.routers.labeling_v2 import LabelRoute
 from app.work import runner
 
@@ -89,7 +93,18 @@ def _cards(store):
                                 for pid, row in value['personas'].items()}}
 
 
+def _serialize_launch(function):
+    @wraps(function)
+    def launch(sid, *args, **kwargs):
+        # Covers the idle check through durable registration for both kinds.
+        # Distinct from session/inference locks; inline test workers are safe.
+        with serialized(sid, '.stage8-launch.lock'):
+            return function(sid, *args, **kwargs)
+    return launch
+
+
 @router.post('/persona/{sid}/run')
+@_serialize_launch
 def start_persona(sid: str, body: PersonaRun = PersonaRun(), version: str | None = None):
     with sessions.locked(sid):
         data, _ = _open(sid, version, writable=True)
@@ -113,9 +128,14 @@ def persona_status(sid: str, version: str | None = None):
     else:
         if pipeline.mark_stale_if_changed(sid, data['version']):
             data, store = _open(sid, data['version'])
+    try:
+        load_package(sid, data['version'])
+        has_package = True
+    except PackageMissing:
+        has_package = False
     state = data.get('persona', {})
     cards = store.read('cards') or {}
-    result = dict(status=state.get('status', 'none'), run=cards.get('run', state.get('run')),
+    result = dict(package=has_package, status=state.get('status', 'none'), run=cards.get('run', state.get('run')),
                   progress=state.get('progress', 0), personas=[
                       dict(id=pid, status=row['status'], error=row.get('error'))
                       for pid, row in cards.get('personas', {}).items()])
@@ -143,6 +163,7 @@ def persona_card(sid: str, item_id: str, version: str | None = None):
 
 
 @router.post('/persona/{sid}/cards/{item_id}/retry')
+@_serialize_launch
 def retry_persona(sid: str, item_id: str, body: Retry, version: str | None = None):
     with sessions.locked(sid):
         data, store = _open(sid, version, writable=True)
@@ -166,11 +187,11 @@ def persona_tree(sid: str, version: str | None = None):
 
 
 def _persona_required(data):
-    if data.get('persona', {}).get('status') != 'done' or 'stage8' in data.get('stale', {}):
-        raise sessions.StoreError('페르소나를 만든 뒤 인사이트를 도출할 수 있습니다.', 409, 'persona_required')
+    require_persona(data)
 
 
 @router.post('/insight/{sid}/run')
+@_serialize_launch
 def start_insight(sid: str, body: InsightRun, version: str | None = None):
     data, _ = _open(sid, version, writable=True)
     # This helper owns its mutation lock; reconcile before the locked gate.
@@ -189,7 +210,7 @@ def start_insight(sid: str, body: InsightRun, version: str | None = None):
 
 @router.get('/insight/{sid}')
 def get_insights(sid: str, version: str | None = None):
-    _, store = _open(sid, version)
+    data, store = _open(sid, version)
     docs = {name: store.read(name) or dict(revision=0, items=[], history=[])
             for name in ('insights', 'concepts')}
     items = docs['insights']['items']
@@ -200,7 +221,7 @@ def get_insights(sid: str, version: str | None = None):
                     mean=items[0].get('opportunity_mean'),
                     targets=[row['id'] for row in items if row.get('default_target')])
         radar = {row['id']: row['radar'] for row in items if 'radar' in row}
-    return {**docs, 'bars': bars, 'radar': radar}
+    return {**docs, 'bars': bars, 'radar': radar, 'worker': _insight_worker(sid, data)}
 
 
 @router.post('/insight/{sid}/concept/{item_id}')
@@ -224,3 +245,36 @@ def revert_insight(sid: str, body: Revert, version: str | None = None):
 def confirm_insights(sid: str, body: Confirm, version: str | None = None):
     data, _ = _open(sid, version, writable=True)
     return {'confirmed': insights.confirm(sid, data['version'], body.ids)}
+
+
+def _insight_worker(sid, data):
+    state = data.get('insight', {})
+    work = next((w for w in reversed(runner.status(sid))
+                 if w['kind'] == 'insight' and w['version'] == data['version']), None)
+    status = state.get('status', 'idle')
+    reason = state.get('reason')
+    run_id = state.get('run')
+    mode, target = state.get('mode'), state.get('target')
+    if work:
+        same = work.get('runId') == run_id
+        run_id = work.get('runId')
+        # Supervisor detects crashes even when the pipeline never got to write.
+        if work['state'] != 'done' or not same:
+            status = work['state']
+        reason = work.get('error') or (reason if same else None)
+        if not same:
+            mode, target = None, None
+        from app.work.status import database_path, transaction
+        if database_path(sid).exists():
+            with transaction(sid) as db:
+                row = db.execute('SELECT args_json FROM runs WHERE run_id=?', (run_id,)).fetchone()
+            if row:
+                args = json.loads(row[0])
+                mode, target = args.get('mode'), args.get('target')
+    if status == 'paused':
+        status = 'running'
+    if status not in ('idle', 'running', 'done', 'failed', 'interrupted'):
+        status = 'idle'
+    if status in ('failed', 'interrupted') and not reason:
+        reason = insights.FAILURE_COPY if status == 'failed' else '작업이 중단되었습니다. 이어서 진행하세요.'
+    return dict(status=status, reason=reason, runId=run_id, mode=mode, target=target)

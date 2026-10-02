@@ -14,6 +14,7 @@ from app.persona.store import PersonaStore
 
 @pytest.fixture
 def store(data_dir):
+    sessions.update_session('persona-test', {'sid': 'persona-test', 'schemaVersion': 2})
     return PersonaStore.open('persona-test', 'v1')
 
 

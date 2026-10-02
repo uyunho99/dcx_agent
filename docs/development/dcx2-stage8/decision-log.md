@@ -31,3 +31,14 @@
 - Context별 author_count를 더하면 여러 Context에 쓴 같은 작성자가 두 번 센다. segment.sqlite docs의 author_hash로 근거 doc_id 기준 중복 제거.
 ### D-311 레이더 백분위는 중간 순위(midrank) 0~100 · 판단 (Claude, T8 Codex 선택 수용)
 - `100 × (아래 수 + 0.5 × 같은 수) / N`. 같은 값은 같은 순위, 하나뿐이면 50.
+
+## 최종 리뷰 반영 (2026-10-02)
+
+### D-312 최종 리뷰(opus · Codex) 지적은 백엔드 · 프론트 두 수정 묶음으로 동시에 고친다 · 판단 (Claude)
+- 공유 계약: `GET /insight/{sid}` 응답에 `worker: {status: 'idle'|'running'|'done'|'failed'|'interrupted', reason: string|null, runId: string|null, mode: 'derive'|'concept'|null, target: string|null}` 추가. 카드 응답 Context마다 `keywords: string[]`, Persona에 `artifacts: [{name, mention_count}]`(패키지 값 그대로).
+- 오래된(stale) 결과에서 "페르소나 만들기"는 `fresh: true`로 보낸다(C1).
+### D-313 인사이트를 채팅 수정 · 되돌리기로 바꾸면 그 인사이트의 컨셉은 "다시 만들기 필요"로 표시하고 화면에서 숨긴다 · 판단 (Claude, 리뷰 I5 · Codex 3)
+- 컨셉에 `insight_revision`과 `context_ids`를 기록하고, 현재 인사이트와 다르면 `outdated: true`. 다시 만들기 전까지 8-F는 안내 문구만.
+### D-314 단계 결과가 stale이면 채팅 · 되돌리기 · 확정도 409 `stale` · 판단 (Claude, Codex 5)
+### D-315 구역 이름은 화면 전체에서 "A Exciting"처럼 글자 + 설계의 영문 이름 하나로 통일 · 판단 (Claude, 리뷰 Minor)
+### D-316 보류: "8부터 다시" 버전 선택 UI(② 소유 파일, T17에서), 인사이트 도출 프롬프트 크기 축소(실세션 확인 D-247 때 측정 후) · 판단 (Claude)

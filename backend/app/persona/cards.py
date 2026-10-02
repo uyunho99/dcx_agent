@@ -121,7 +121,8 @@ def _call(sid, name, payload, schema, runner):
     task = LLMTask(task=f'persona.{name}', sid=sid, instructions=prompt,
                    attachments=[Attachment(title='관찰 근거', body=json.dumps(payload, ensure_ascii=False))],
                    output_schema=schema)
-    attempts = 1 if runner is registry.run_task else 2
+    attempts = 1 if (runner is registry.run_task or
+        getattr(getattr(runner, '__self__', runner), 'retries_schema', False)) else 2
     for _ in range(attempts):
         try:
             result = runner(task)
@@ -172,7 +173,12 @@ def generate_card(sid, block: PersonaBlock, *, run_task=None) -> CardResult:
             situation_origin=c.situation_origin,
             counter_context='counter_context' in c.flags) for c in chunk],
             evidence={key: _evidence_payload(ref) for key, ref in local_refs.items()})
-        data, error = _call(sid, 'card', payload, _card_schema(ids, local_refs), runner)
+        if local_refs:
+            data, error = _call(sid, 'card', payload, _card_schema(ids, local_refs), runner)
+        else:
+            data = {'contexts': [dict(context_id=cid, **{field: dict(text=None, cite=[])
+                                                       for field in FIELDS}) for cid in ids]}
+            error = None
         if error:
             return CardResult('failed', error=error)
         generated = {row['context_id']: row for row in data['contexts']}
@@ -189,7 +195,7 @@ def generate_card(sid, block: PersonaBlock, *, run_task=None) -> CardResult:
                 if cell['text'] is None:
                     cell['cite'] = []
                 cell['cite'] = [mapping[cite] for cite in cell['cite']]
-            row.update(action=context.action, context_name=context.context_name,
+            row.update(keywords=list(context.keywords), action=context.action, context_name=context.context_name,
                        situation_origin=context.situation_origin, metrics=context.metrics.model_dump())
             rows.append(row)
     ids = [c.context_id for c in block.context_evidence]
@@ -198,15 +204,16 @@ def generate_card(sid, block: PersonaBlock, *, run_task=None) -> CardResult:
         contexts=[{key: row[key] for key in ('context_id', *FIELDS)} for row in rows],
         counter_context_ids=[c.context_id for c in block.context_evidence if 'counter_context' in c.flags],
         evidence={key: _evidence_payload(ref) for key, ref in refs.items()})
-    summary, error = _call(sid, 'summary', payload, _summary_schema(ids, refs), runner)
-    if error:
-        return CardResult('failed', error=error)
-    if not refs:
+    if refs:
+        summary, error = _call(sid, 'summary', payload, _summary_schema(ids, refs), runner)
+        if error:
+            return CardResult('failed', error=error)
+    else:
         summary = dict(intent=dict(text=None, basis_context_ids=[], reserved_context_ids=[]),
             usage_context=dict(text=None, cite=[]), jtbd=dict(text=None, cite=[]),
             journey=dict(pre_purchase=None, purchase=None, post_purchase=None),
             sensitivity=dict(price=None, brand=None, feature=None), values=None, decision_style=None)
-    card = dict(**identity, contexts=rows, **summary, intent_warning='의도 ≠ 행동',
+    card = dict(**identity, artifacts=[a.model_dump() for a in persona.artifacts], contexts=rows, **summary, intent_warning='의도 ≠ 행동',
                 metrics=persona.metrics.model_dump(), quality=persona.quality.model_dump())
     card.update(grade_card(card, refs))
     return CardResult('done', card=card)

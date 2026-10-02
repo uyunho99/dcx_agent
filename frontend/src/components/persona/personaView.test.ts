@@ -54,7 +54,7 @@ describe('persona presentation contract', () => {
 
   it('uses the six exact zone names', () => {
     expect((['A', 'B', 'C', 'D', 'E', 'F'] as const).map(zoneName)).toEqual([
-      'Exciting', 'Experiencing', 'Competitive', 'Forgiven', 'Dangling', 'At-risk',
+      'A Exciting', 'B Experiencing', 'C Competitive', 'D Forgiven', 'E Dangling', 'F At-risk',
     ]);
   });
 
@@ -112,12 +112,13 @@ describe('persona API wire contract (offline)', () => {
 describe('insight API wire contract (offline)', () => {
   it('reads the root insight envelope and previous-session suggestions', async () => {
     const envelope = { insights: { revision: 1, items: [], history: [] }, concepts: { revision: 0, items: [], history: [] }, bars: {}, radar: {} };
-    const fetcher = mockResponse(envelope);
-    expect(await insight.getInsights('s /', 'v 2')).toBe(envelope);
+    const fetcher = vi.fn(async (url: string) => ({ok:true,json:async () => url.startsWith('/session/') ? {data:{insight:{confirmed:[]}}} : envelope}));
+    vi.stubGlobal('fetch',fetcher);
+    expect(await insight.getInsights('s /', 'v 2')).toEqual({...envelope,confirmed:[]});
     await insight.getKnownSuggestions('s /', 'v 2');
     await insight.getInsights('s');
     expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
-      '/insight/s%20%2F?version=v%202', '/known/s%20%2F/suggestions?version=v%202', '/insight/s',
+      '/insight/s%20%2F?version=v%202', '/session/s%20%2F?version=v%202', '/known/s%20%2F/suggestions?version=v%202', '/insight/s', '/session/s',
     ]);
   });
 

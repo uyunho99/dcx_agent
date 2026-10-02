@@ -120,7 +120,8 @@ def test_package_to_insights_offline(client, data_dir, monkeypatch, offline):
     assert [h['by'] for h in history] == ['generate', 'chat', 'revert']
     assert history[0]['items'] == history[2]['items'] == original['insights']['items']
     assert history[1]['items'] == edited['items']
-    assert final['concepts'] == concepts
+    assert final['concepts']['history'] == concepts['history']
+    assert final['concepts']['items'][0]['outdated'] is True
     assert final['bars'] == original['bars'] and final['radar'] == original['radar']
     chat = [json.loads(line) for line in (root / 'persona/chat.jsonl').read_text().splitlines()]
     assert len(chat) == 1 and chat[0]['ok'] and chat[0]['revision'] == 2

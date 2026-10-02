@@ -9,7 +9,7 @@ import type { InsightResponse } from '@/lib/types';
 vi.mock('next/navigation', () => ({ usePathname: () => '/pipeline/insights', redirect: vi.fn() }));
 vi.mock('@/components/DirtyProvider', () => ({useDirty: () => ({confirmNavigation: () => true})}));
 import StepBar from '@/components/StepBar';
-const snapshot: InsightResponse = {insights:{revision:2,items:[],history:[]},concepts:{revision:1,items:[],history:[]},bars:null,radar:null};
+const snapshot: InsightResponse = {worker:{status:"idle",reason:null,runId:null,mode:null,target:null},insights:{revision:2,items:[],history:[]},concepts:{revision:1,items:[],history:[]},bars:null,radar:null};
 function setup(ok = false) {
  const api = {chatInsight:vi.fn().mockResolvedValue({ok,revision:3}),getInsights:vi.fn().mockResolvedValue(snapshot),revertInsight:vi.fn().mockResolvedValue({revision:3}),confirmInsights:vi.fn().mockResolvedValue({confirmed:['I1']})};
  const publish = vi.fn(); const confirmed = vi.fn();
@@ -50,7 +50,7 @@ it('links insight sidebar and reports completion at 8/9', () => {
 import { ConceptDetail } from './InsightScreen';
 import { addSuggestedKnownInsight } from '@/lib/api/insight';
 it('renders synthetic persona, quoted evidence location, journey and all four CX dimensions', () => {
- const html = renderToStaticMarkup(createElement(ConceptDetail,{concept:{persona_profile:{text:'프로필'},basis:'근거 45건',pain_points:[{quote:'실제 인용',channel:'cafe',location:{field:'body',idx:1},context_id:'C1'}],journey:[{context_id:'C1',action:'행동',feeling:'불편',service:'서비스',service_action:'변화',cx_4d:'정신적'}],constraint_check:[{constraint:'예산',verdict:'review',reason:'확인 필요'}]}}));
+ const html = renderToStaticMarkup(createElement(ConceptDetail,{concept:{outdated:false,persona_profile:{text:'프로필'},basis:'근거 45건',pain_points:[{quote:'실제 인용',channel:'cafe',location:{field:'body',idx:1},context_id:'C1'}],journey:[{context_id:'C1',action:'행동',feeling:'불편',service:'서비스',service_action:'변화',cx_4d:'정신적'}],constraint_check:[{constraint:'예산',verdict:'review',reason:'확인 필요'}]}}));
  for(const expected of ['합성값','실제 인용','cafe','body','C1','4D-CX','정신적 1','물리적 0','문화적 0','시스템 0','⚠ 검토']) expect(html).toContain(expected);
 });
 it('suggestion API explicitly sends prev_session only when invoked', async () => {

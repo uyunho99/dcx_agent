@@ -51,7 +51,7 @@ def test_run_409_without_package(api):
 
 def test_persona_routes(api):
     base = f'/persona/{api.sid}'
-    assert ok(api.client.get(base + '/status')) == dict(status='none', run=None, progress=0, personas=[])
+    assert ok(api.client.get(base + '/status')) == dict(package=True, status='none', run=None, progress=0, personas=[])
     for suffix in ('cards', 'cards/missing', 'map', 'tree'):
         error(api.client.get(base + '/' + suffix), 409, 'not_ready')
     generate(api)
@@ -86,7 +86,8 @@ def test_insight_routes(api, monkeypatch):
     error(api.client.post(base + '/run', json={'mode': 'derive'}), 409, 'persona_required')
     empty = ok(api.client.get(base))
     assert empty == dict(insights=dict(revision=0, items=[], history=[]),
-                         concepts=dict(revision=0, items=[], history=[]), bars=None, radar=None)
+                         concepts=dict(revision=0, items=[], history=[]), bars=None, radar=None,
+                         worker=dict(status='idle', reason=None, runId=None, mode=None, target=None))
     generate(api)
     assert ok(api.client.post(base + '/run', json={'mode': 'derive'})) == {'runId': 'worker-1'}
     item = dict(id='I1', title='Title', pain_point='Pain', context_ids=['C1'], known_ki_id=None,
@@ -133,7 +134,7 @@ def test_insight_checks_changed_source_without_status_poll(api):
     package = sessions.read_json(api.root / 'evidence/package.json')
     package['run'] = 'changed-evidence'
     sessions.write_json(api.root / 'evidence/package.json', package)
-    error(api.client.post(f'/insight/{api.sid}/run', json={'mode': 'derive'}), 409, 'persona_required')
+    error(api.client.post(f'/insight/{api.sid}/run', json={'mode': 'derive'}), 409, 'stale')
 
 
 def test_pending_cards_and_worker_status(api):

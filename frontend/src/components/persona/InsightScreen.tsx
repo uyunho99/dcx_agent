@@ -12,9 +12,10 @@ import { OpportunityBars } from './OpportunityBars';
 import { JourneyTable } from './JourneyTable';
 import { RevisionList } from './RevisionList';
 import { createInsightActions } from './insightActions';
+import { displayValue } from './personaView';
 
 const record = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
-const text = (value: unknown): string => typeof value === 'string' ? value : value == null ? '' : typeof value === 'object' ? Object.entries(record(value)).map(([key,val]) => `${key}: ${text(val)}`).join(' · ') : String(value);
+const text = displayValue;
 const number = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : null;
 function radarValues(value: unknown): RadarValues {
  const row = record(value); const raw = record(row.raw); const percentile = record(row.percentile);
@@ -35,29 +36,32 @@ export function InsightScreen({sid,version,readonly = false,initialConfirmed = [
  const [selected,setSelected] = useState(''); const [target,setTarget] = useState<InsightTarget>('insights');
  const [preview,setPreview] = useState<number | null>(null); const [busy,setBusy] = useState(false); const lock = useRef(false);
  const [error,setError] = useState(''); const [retry,setRetry] = useState(0);
- const [pending,setPending] = useState<{kind:'insights'|'concepts'; revision:number} | null>(null);
- const disabled = readonly || busy || !!pending;
+ const [pending,setPending] = useState<{runId:string; mode:'derive'|'concept'; target?:string} | null>(null);
+ const worker = data?.worker;
+ const running = worker?.status === 'running';
+ const stopped = worker?.status === 'failed' || worker?.status === 'interrupted';
+ const disabled = readonly || busy || !!pending || running;
  useStageCompletionRefresh(data?.insights.revision ? `insight:${data.insights.revision}` : null);
  useEffect(() => {
   let active = true;
-  api.getInsights(sid,version).then(result => {if(active) {setData(result);setSelected(result.bars?.targets[0] ?? result.insights.items.find(item => record(item).default_target)?.id ?? '');setError('');}}).catch(cause => {if(active) setError(displayError(cause));});
+  api.getInsights(sid,version).then(result => {if(active) {setData(result);setConfirmed(result.confirmed ?? []);setSelected(result.bars?.targets[0] ?? result.insights.items.find(item => record(item).default_target)?.id ?? '');setError('');}}).catch(cause => {if(active) setError(displayError(cause));});
   return () => {active = false;};
  },[sid,version,retry]);
  useEffect(() => {
-  if (!pending) return;
+  if (!pending && !running) return;
   let active = true; let count = 0;
   const timer = setInterval(async () => {
    try {
     const result = await api.getInsights(sid,version);
     if (!active) return;
-    setData(result);
-    if(result[pending.kind].revision > pending.revision) {setPending(null);return;}
+    setData(result);setConfirmed(result.confirmed ?? []);
+    if (result.worker && result.worker.status !== 'running' && (!pending || result.worker.runId === pending.runId)) {setPending(null);return;}
     if (++count >= 120) {setPending(null);setError('처리 상태를 확인하지 못했습니다. 다시 불러오세요.');}
    } catch(cause) {if(active) {setPending(null);setError(displayError(cause));}}
   },3000);
   return () => {active = false;clearInterval(timer);};
- },[sid,version,pending]);
- const actions = createInsightActions(sid,version,api,result => {setData(result);setPreview(null);},setConfirmed);
+ },[sid,version,pending,running]);
+ const actions = createInsightActions(sid,version,api,result => {setData(result);setConfirmed(result.confirmed ?? []);setPreview(null);},setConfirmed);
  async function mutate(action: () => Promise<unknown>) {
   if(disabled || lock.current) return;
   lock.current = true;setBusy(true);setError('');
@@ -76,11 +80,12 @@ export function InsightScreen({sid,version,readonly = false,initialConfirmed = [
  const bars = Array.isArray(rawBars) ? rawBars.map(value => {const row = record(value); return {id:text(row.id),label:currentItems.find(item => item.id === row.id)?.title ?? text(row.id),value:number(row.odi ?? row.value) ?? 0};}) : metricItems.flatMap(item => {const value = number(record(item).odi);return value === null ? [] : [{id:item.id,label:item.title,value}];});
  const mean = (historicalInsights ? null : data?.bars?.mean) ?? number(record(metricItems[0]).opportunity_mean);
  return <div className="space-y-5">
-  <header className="ds-actions"><h1 className="ds-t-title">인사이트</h1>{!currentItems.length && <Button variant="primary" disabled={disabled} onClick={() => void mutate(async () => {await api.startInsight(sid,{mode:'derive'},version);setPending({kind:'insights',revision:data?.insights.revision ?? 0});})}>인사이트 도출</Button>}</header>
-  {readonly && <p>읽기 전용</p>}{pending && <p role="status">처리 중…</p>}
+  <header className="ds-actions"><h1 className="ds-t-title">인사이트</h1>{!currentItems.length && <Button variant="primary" disabled={disabled} onClick={() => void mutate(async () => {const run = await api.startInsight(sid,{mode:'derive'},version);setPending({runId:run.runId,mode:'derive'});})}>인사이트 도출</Button>}</header>
+  {readonly && <p>읽기 전용</p>}{(pending || running) && <p role="status">처리 중…</p>}
   {error && <div role="alert">{error}<Button onClick={() => setRetry(value => value+1)}>다시 불러오기</Button></div>}
   {!data && !error && <p role="status">불러오는 중…</p>}
-  {data && !currentItems.length && !pending && <p role="status">인사이트를 만들지 못했습니다. 다시 시도하세요.</p>}
+  {stopped && !pending && <div role="alert"><p>{worker.mode === 'concept' ? '컨셉을 만들지 못했습니다. 다시 시도하세요.' : '인사이트를 만들지 못했습니다. 다시 시도하세요.'}</p>{worker.reason && <p>{worker.reason}</p>}<Button disabled={disabled} onClick={() => void mutate(async () => {const mode = worker.mode ?? 'derive';const run = await api.startInsight(sid,{mode,...(worker.target ? {target:worker.target} : {})},version);setPending({runId:run.runId,mode,target:worker.target ?? undefined});})}>{worker.status === 'interrupted' ? '이어서 진행' : '다시 시도'}</Button></div>}
+  {data && !currentItems.length && !pending && !running && !stopped && <p role="status">페르소나를 바탕으로 인사이트를 도출하세요.</p>}
   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
    <main className="lg:col-span-2 min-w-0 space-y-5">
     {preview !== null && <p role="status">판 {preview} 보기 <Button onClick={() => setPreview(null)}>현재 판으로</Button></p>}
@@ -92,10 +97,10 @@ export function InsightScreen({sid,version,readonly = false,initialConfirmed = [
      <label><input type="checkbox" checked={confirmed.includes(item.id)} disabled={disabled || preview !== null} onChange={event => {const ids = event.target.checked ? [...confirmed,item.id] : confirmed.filter(id => id !== item.id);void mutate(async () => {await actions.confirm(ids);await refreshSessionAfterStage();});}}/> 확정</label>
     </article>)}
     <OpportunityBars bars={bars} mean={mean}/>
-    {selected && <section className="space-y-3"><h2>선택 인사이트 · {currentItems.find(item => item.id === selected)?.title}</h2>{concept ? <ConceptDetail concept={concept}/> : <Button disabled={disabled || preview !== null} onClick={() => void mutate(async () => {await api.createInsightConcept(sid,selected,version);setPending({kind:'concepts',revision:data?.concepts.revision ?? 0});})}>선택 컨셉 만들기</Button>}</section>}
+    {selected && <section className="space-y-3"><h2>선택 인사이트 · {currentItems.find(item => item.id === selected)?.title}</h2>{concept && !concept.outdated ? <ConceptDetail concept={concept}/> : <>{concept?.outdated && <p>인사이트가 바뀌어 컨셉을 다시 만들어야 합니다.</p>}<Button disabled={disabled || preview !== null} onClick={() => void mutate(async () => {const run = await api.createInsightConcept(sid,selected,version);setPending({runId:run.runId,mode:'concept',target:selected});})}>{concept?.outdated ? '컨셉 다시 만들기' : '선택 컨셉 만들기'}</Button></>}</section>}
    </main>
    <aside className="min-w-0 space-y-5" aria-label="인사이트 수정">
-    <label>채팅 대상 <select className="ds-inp" value={target} disabled={busy || !!pending} onChange={event => {setTarget(event.target.value as InsightTarget);setPreview(null);}}><option value="insights">인사이트 목록</option><option value={`concept:${selected}`} disabled={!concept}>선택 컨셉</option></select></label>
+    <label>채팅 대상 <select className="ds-inp" value={target} disabled={busy || !!pending || running} onChange={event => {setTarget(event.target.value as InsightTarget);setPreview(null);}}><option value="insights">인사이트 목록</option><option value={`concept:${selected}`} disabled={!concept || concept.outdated}>선택 컨셉</option></select></label>
     <div style={{height:420}}><ChatPanel key={target} initialMessage="수정할 내용을 알려 주세요." readonly={disabled} onSend={async message => {if(disabled || lock.current) return '처리 중입니다.';let reply = '';await mutate(async () => {reply = await actions.chat(target,message);});return reply;}}/></div>
     <RevisionList revisions={history.flatMap(row => typeof row.revision === 'number' ? [{revision:row.revision,message:text(row.message),by:text(row.by),createdAt:text(row.at ?? row.createdAt)}] : [])} currentRevision={revisions?.revision ?? 0} busy={disabled} onView={setPreview} onRevert={revision => void mutate(() => actions.revert(target,revision))}/>
    </aside>

@@ -21,6 +21,8 @@ from app.persona.package import load_package
 @pytest.fixture
 def ready(env, monkeypatch):
     session, store, rows, _ = env
+    from app.config import settings
+    monkeypatch.setattr(settings, 'embed_backend', 'fake')
     monkeypatch.setattr(chat, 'get_embedder', lambda: Embedder())
     monkeypatch.setattr(insight_pipeline, 'get_embedder', lambda: Embedder())
     backend = FakeBackend(responses=fake_persona_backend(load_package(session.sid, session.version)).responses)

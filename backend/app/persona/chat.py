@@ -3,7 +3,8 @@ import json
 from pathlib import Path
 
 from app.context import store as sessions
-from app.llm import registry
+from app.known import store as known
+from app.persona.source import Source
 from app.llm.base import Attachment, LLMTask
 from app.persona import concepts, insights, prescribe
 from app.persona.insight_pipeline import serialized, publish_status
@@ -31,8 +32,10 @@ def _concept_draft(item):
 
 def edit(sid, version, target: str, message: str, *, run_task=None) -> dict:
     with serialized(sid):
-        sessions.assert_writable(sid, version)
+        source = Source(sid, version)
+        source.check()
         store = PersonaStore.open(sid, version)
+        store.guard = source.check
         if run_task is None:
             from app.persona.pipeline import _Calls
             run_task = _Calls(store.path, lambda: None).run_task
@@ -67,7 +70,8 @@ def edit(sid, version, target: str, message: str, *, run_task=None) -> dict:
                         or any(not set(row['context_ids']) <= available or
                                len(set(row['context_ids'])) != len(row['context_ids']) for row in items)):
                     raise ValueError('Invalid insight references')
-                insights.recompute(sid, version, items, package=package, embedder=get_embedder())
+                embedder = known.session_embedder(sid, sessions.assert_writable(sid, version), get_embedder)
+                insights.recompute(sid, version, items, package=package, embedder=embedder)
             else:
                 if (any(n not in refs for n in draft['pain_points']) or
                         any(row['context_id'] not in insight['context_ids'] for row in draft['journey'])):
@@ -77,19 +81,22 @@ def edit(sid, version, target: str, message: str, *, run_task=None) -> dict:
                 project = sessions.load_session(sid).get('projectContext', {})
                 checked = prescribe.check_constraints(sid, concept, project, run_task=run_task)
                 violations = [row for row in checked if row['verdict'] == 'violates']
-                concept.update(constraint_check=checked, blocked=bool(violations),
+                concept.update(insight_revision=store.read('insights')['revision'],
+                               context_ids=list(insight['context_ids']), outdated=False,
+                               constraint_check=checked, blocked=bool(violations),
                                represcribed=False, regenerated=False)
                 if violations:
                     concept['message'] = '\n'.join(
                         f"사내 제약 '{row['constraint']}'를 지키는 처방을 만들지 못했습니다." for row in violations)
                 items = [concept if row['id'] == insight_id else row for row in current['items']]
+            source.check()
+            revision = store.new_revision(name, items, by='chat', message=message)
+            publish_status(sid, version, 'done', before_publish=source.check)
+            outcome = {'ok': True, 'revision': revision}
+        except sessions.StoreError:
+            raise
         except Exception:
             outcome = {'ok': False, 'message': FAILURE_COPY}
-        else:
-            sessions.assert_writable(sid, version)
-            revision = store.new_revision(name, items, by='chat', message=message)
-            publish_status(sid, version, 'done')
-            outcome = {'ok': True, 'revision': revision}
         store.append_chat(dict(at=sessions.now(), target=target, message=message,
                                **{k: v for k, v in outcome.items() if k != 'message'},
                                **({'reason': FAILURE_COPY} if not outcome['ok'] else {})))
@@ -98,8 +105,10 @@ def edit(sid, version, target: str, message: str, *, run_task=None) -> dict:
 
 def revert(sid, version, target: str, revision: int) -> dict:
     with serialized(sid):
-        sessions.assert_writable(sid, version)
+        source = Source(sid, version)
+        source.check()
         store = PersonaStore.open(sid, version)
+        store.guard = source.check
         name, insight_id = _target(target)
         if insight_id is None:
             number = store.revert(name, revision)
@@ -111,5 +120,5 @@ def revert(sid, version, target: str, revision: int) -> dict:
                 raise sessions.StoreError('Revision not found', 404, 'not_found')
             items = [row for row in current.get('items', []) if row['id'] != insight_id]
             number = store.new_revision(name, [*items, item], by='revert', message=None)
-        publish_status(sid, version, 'done')
+        publish_status(sid, version, 'done', before_publish=source.check)
         return {'revision': number}

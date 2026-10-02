@@ -55,8 +55,21 @@ def _completion(sid, data, version=None):
         return data.get("segment", {}).get("status") == "done"
 
     def persona_done():
-        return (data.get("persona", {}).get("status") == "done"
-                and "stage8" not in data.get("stale", {}))
+        if (data.get("persona", {}).get("status") != "done"
+                or "stage8" in data.get("stale", {})):
+            return False
+        selected = version or data.get('version')
+        if selected:
+            from app.persona.store import PersonaStore
+            from app.persona.pipeline import _confirmed_matches, _digest
+            from app.persona.package import load_package
+            cards = PersonaStore.open(sid, selected).read('cards')
+            if cards:
+                package = load_package(sid, selected)
+                return (cards.get('package_run') == package.run and
+                        cards.get('package_hash', _digest(package)) == _digest(package) and
+                        _confirmed_matches(sid, selected, package))
+        return True
 
     def insight_done():
         if "stage8" in data.get("stale", {}) or "stage9" in data.get("stale", {}):

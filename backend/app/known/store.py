@@ -222,7 +222,9 @@ def suggestions(sid, version=None):
             if row['id'] in confirmed:
                 candidates.append((at, path.name, row['id'], dict(sessionId=path.name,
                     insightId=row['id'], title=row['title'], painPoint=row['pain_point'])))
-    seen, result = set(), []
+    seen = {item if isinstance(item, str) else item.get('text', '')
+            for item in data.get('knownInsights', [])}
+    result = []
     for _, _, _, row in sorted(candidates, key=lambda value: value[:3], reverse=True):
         if row['title'] in seen:
             continue

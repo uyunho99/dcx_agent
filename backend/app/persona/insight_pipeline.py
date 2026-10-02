@@ -7,6 +7,7 @@ from contextlib import contextmanager
 import fcntl
 
 from app.context import store as sessions
+from app.known import store as known
 from app.context.versions import version_dir
 from app.llm import registry
 from app.persona.insights import derive
@@ -17,10 +18,10 @@ from app.segment.pipeline import LLM_REASON
 
 
 @contextmanager
-def serialized(sid):
+def serialized(sid, name='.insight.lock'):
     root = sessions.root_dir(sid)
     root.mkdir(parents=True, exist_ok=True)
-    with (root / '.insight.lock').open('a') as lock:
+    with (root / name).open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         try:
             yield
@@ -28,9 +29,11 @@ def serialized(sid):
             fcntl.flock(lock, fcntl.LOCK_UN)
 
 
-def publish_status(sid, version, status, **values):
+def publish_status(sid, version, status, *, before_publish=None, **values):
     with sessions.locked(sid):
         sessions.assert_writable(sid, version)
+        if before_publish is not None:
+            before_publish()
         path = version_dir(sid, version) / 'session.json'
         data = sessions.read_json(path)
         state = data.setdefault('insight', {})
@@ -41,7 +44,8 @@ def publish_status(sid, version, status, **values):
             current = PersonaStore.open(sid, version).read('insights') or {}
             state.update(revision=current.get('revision', 0), savedAt=sessions.now())
             available = {row['id'] for row in current.get('items', [])}
-            state['confirmed'] = [i for i in state['confirmed'] if i in available]
+            state.setdefault('confirmed_ids', list(state['confirmed']))
+            state['confirmed'] = [i for i in state['confirmed_ids'] if i in available]
             if state['revision'] and 'stage8' not in data.get('stale', {}):
                 data.setdefault('completion', {})['insightDone'] = True
         sessions.write_json(path, data)
@@ -63,8 +67,8 @@ def run(context):
     with serialized(sid):
         data = sessions.assert_writable(sid, version)
         store = PersonaStore.open(sid, version)
-        if data.get('persona', {}).get('status') != 'done' or 'stage8' in data.get('stale', {}):
-            raise sessions.StoreError('Persona required', 409, 'persona_required')
+        from app.persona.source import Source
+        source = Source(sid, version)
         mode = context.args.get('mode', 'derive')
         if mode not in ('derive', 'concept'):
             raise sessions.StoreError('Invalid insight mode', 400, 'validation')
@@ -75,7 +79,7 @@ def run(context):
         if mode == 'concept' and (not isinstance(targets, list) or not targets or
                 any(not isinstance(i, str) or i not in ids for i in targets)):
             raise sessions.StoreError('Unknown insight target', 400, 'validation')
-        publish_status(sid, version, 'running', run=context.run_id, reason=None)
+        publish_status(sid, version, 'running', run=context.run_id, reason=None, mode=mode, target=target)
 
         def pulse():
             if context.should_stop():
@@ -83,7 +87,7 @@ def run(context):
             context.heartbeat(0, {'mode': mode})
             if context.should_stop():
                 raise _Stopped()
-            sessions.assert_writable(sid, version)
+            source.check()
 
         from app.persona.pipeline import _Calls
         calls = _Calls(store.path, lambda: None)
@@ -103,22 +107,26 @@ def run(context):
             pulse()
             if mode == 'derive':
                 if not current.get('revision'):
-                    derive(sid, version, run_task=call, embedder=get_embedder())
+                    derive(sid, version, run_task=call,
+                        embedder=known.session_embedder(
+                            sid, data, get_embedder), before_publish=source.check)
             else:
                 for insight_id in dict.fromkeys(targets):
                     pulse()
                     done = {row.get('insight_id', row.get('id'))
-                            for row in (store.read('concepts') or {}).get('items', [])}
+                            for row in (store.read('concepts') or {}).get('items', [])
+                            if not row.get('outdated')}
                     if insight_id not in done:
-                        make_concept(sid, version, insight_id, run_task=call)
+                        make_concept(sid, version, insight_id, run_task=call, before_publish=source.check)
             pulse()
-            publish_status(sid, version, 'done')
+            publish_status(sid, version, 'done', before_publish=source.check)
             context.heartbeat(1, {'mode': mode})
         except _Stopped:
             publish_status(sid, version, 'interrupted')
         except _Unavailable:
             publish_status(sid, version, 'interrupted', reason=LLM_REASON)
             raise
-        except Exception:
-            publish_status(sid, version, 'failed')
+        except Exception as exc:
+            from app.persona.insights import FAILURE_COPY
+            publish_status(sid, version, 'failed', reason=str(exc) or FAILURE_COPY)
             raise

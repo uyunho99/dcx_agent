@@ -12,7 +12,7 @@ import sqlite3
 from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.context import store as sessions
 from app.llm import registry
@@ -27,7 +27,7 @@ Text = Annotated[str, Field(min_length=1)]
 
 
 class _Output(BaseModel):
-    model_config = ConfigDict(extra='forbid', strict=True, str_strip_whitespace=True)
+    model_config = ConfigDict(extra='ignore', strict=True, str_strip_whitespace=True)
 
 
 class JourneyRow(_Output):
@@ -47,6 +47,13 @@ class ConceptOut(_Output):
     # the separate persona.constraint_check call owns the final verdicts.
     constraint_check: list[prescriptions.ConstraintVerdict] = Field(default_factory=list)
 
+    @field_validator('pain_points')
+    @classmethod
+    def distinct_evidence(cls, value):
+        if len(set(value)) != len(value):
+            raise ValueError('Pain points must cite three distinct evidence numbers')
+        return value
+
 
 class ConceptError(RuntimeError):
     """Concept generation or evidence validation failed; no revision was saved."""
@@ -59,6 +66,8 @@ def _generate(sid, payload, run_task):
                    output_schema=ConceptOut)
     try:
         result = run_task(task)
+    except sessions.StoreError:
+        raise
     except Exception as exc:
         raise ConceptError('insight.concept: backend failed') from exc
     if not result.ok or not isinstance(result.data, ConceptOut):
@@ -139,7 +148,7 @@ def _validated_draft(sid, payload, context_ids, refs, regenerated, run_task):
         payload = {**payload, 'previous_concept': draft, 'invalid_context_ids': invalid}
 
 
-def make_concept(sid, version, insight_id, *, run_task=None) -> dict:
+def make_concept(sid, version, insight_id, *, run_task=None, before_publish=None) -> dict:
     """Generate one target, repair invalid contexts once, check and save a revision.
 
     A constraint violation allows one new concept and a fresh check, just as in
@@ -149,6 +158,7 @@ def make_concept(sid, version, insight_id, *, run_task=None) -> dict:
     """
     run_task = registry.run_task if run_task is None else run_task
     store = PersonaStore.open(sid, version)
+    store.guard = before_publish
     insight = next((row for row in (store.read('insights') or {}).get('items', [])
                     if row.get('id') == insight_id), None)
     if insight is None:
@@ -176,7 +186,9 @@ def make_concept(sid, version, insight_id, *, run_task=None) -> dict:
         if violations and attempt == 0:
             payload = {**payload, 'previous_concept': draft, 'violations': violations}
             continue
-        concept.update(constraint_check=checked, blocked=bool(violations),
+        concept.update(insight_revision=store.read('insights')['revision'],
+                       context_ids=list(insight['context_ids']), outdated=False,
+                       constraint_check=checked, blocked=bool(violations),
                        represcribed=bool(attempt), regenerated=regenerated)
         if violations:
             concept['message'] = '\n'.join(

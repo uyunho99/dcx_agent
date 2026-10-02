@@ -123,6 +123,8 @@ def mark_stale_if_changed(sid, version):
 
 
 class _Calls:
+    retries_schema = True
+
     def __init__(self, root, pulse):
         self.root, self.pulse = root, pulse
         self.counts = sessions.read_json(root / 'llm_calls.json') or {}
@@ -131,12 +133,14 @@ class _Calls:
     def run_task(self, task):
         self.pulse()
         name = task.task.split('.')[-1]
-        self.counts[name] = self.counts.get(name, 0) + 1
-        sessions.write_json(self.root / 'llm_calls.json', self.counts)
         try:
             result = registry.run_task(task)
         except (TimeoutError, ConnectionError):
             result = failure('backend', 'Provider unavailable')
+        self.counts[name] = self.counts.get(name, 0) + getattr(result, 'attempts', 1)
+        # root is version-local: all accounting writes obey version immutability.
+        store = PersonaStore(task.sid, self.root, self.root.parent.name)
+        store.write_aux('llm_calls', self.counts)
         self.results.append(None if result.ok else result.error.kind if result.error else 'unknown')
         return result
 
@@ -197,6 +201,22 @@ def refresh_report(sid, version):
 
 
 def run(context):
+    from app.persona.insight_pipeline import serialized
+    # Announce a reset before waiting on inference, so a pending chat cannot
+    # report success against the generation about to be removed.
+    if context.args.get('fresh'):
+        with sessions.locked(context.sid):
+            sessions.assert_writable(context.sid, context.version)
+            path = version_dir(context.sid, context.version) / 'session.json'
+            data = sessions.read_json(path)
+            data.setdefault('persona', {}).update(reset_epoch=str(uuid.uuid4()), status='running')
+            data.setdefault('completion', {}).pop('personaDone', None)
+            sessions.write_json(path, data)
+    with serialized(context.sid):
+        return _run(context)
+
+
+def _run(context):
     sid, version = context.sid, context.version
     root = version_dir(sid, version) / 'persona'
     with sessions.locked(sid):
@@ -211,7 +231,7 @@ def run(context):
         return
     store = PersonaStore.open(sid, version)
     ids = [b.persona_evidence.persona_id for b in package.personas]
-    selected = context.args.get('personas')
+    selected = None if context.args.get('fresh') else context.args.get('personas')
     if selected is not None and (not isinstance(selected, list) or not set(selected) <= set(ids)):
         raise sessions.StoreError('Unknown Persona', 400, 'validation')
     if context.args.get('fresh'):
@@ -223,7 +243,6 @@ def run(context):
             data.pop('insight', None)
             data.get('completion', {}).pop('insightDone', None)
             sessions.write_json(path, data)
-    root.mkdir(parents=True, exist_ok=True)
     cards = store.read('cards') or {'personas': {}}
     rows = cards['personas']
     for pid in ids:
@@ -236,7 +255,7 @@ def run(context):
     cards.update(run=run_id, package_run=getattr(package, 'run', None), package_hash=signature)
     checkpoint = dict(run=run_id, done=done, package_run=cards['package_run'], package_hash=signature)
     store.write('cards', cards)
-    sessions.write_json(root / 'checkpoint.json', checkpoint)
+    store.write_aux('checkpoint', checkpoint)
     _session(sid, version, dict(status='running', run=run_id, progress=0, reason=None))
     project = sessions.read_json(version_dir(sid, version) / 'session.json').get('projectContext', {})
     active = None
@@ -288,7 +307,7 @@ def run(context):
             store.write('cards', cards)
             if row['status'] == 'done':
                 checkpoint['done'].append(active)
-            sessions.write_json(root / 'checkpoint.json', checkpoint)
+            store.write_aux('checkpoint', checkpoint)
         if calls.results and all(kind in ('backend', 'timeout') for kind in calls.results):
             _session(sid, version, dict(status='interrupted', reason=LLM_REASON))
             raise _LLMUnavailable()

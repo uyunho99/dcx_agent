@@ -98,7 +98,7 @@ it('renders cluster shapes, hollow counters, stars, baselines and toggling legen
 it('renders hierarchy sizes, radar raw and percentile, bars mean, journey distribution and revisions', () => {
   expect(html(createElement(HierarchyTree, { root: { id:'product', name:'제품', doc_count:10, children:[{id:'CL1',name:'Cluster',doc_count:4}] } }))).toContain('문서 10건');
   const radar = html(createElement(Radar, { values: { Computed:{raw:.4,percentile:80}, Connected:{raw:.3,percentile:50}, Shared:{raw:.2,percentile:10} } }));
-  for (const word of ['Computed','Connected','Shared','0.4','80']) expect(radar).toContain(word);
+  for (const word of ['맞춤형 서비스가 필요해','실시간으로 직접 보고 싶어','함께 즐기고 싶어','0.40','80']) expect(radar).toContain(word);
   expect(html(createElement(OpportunityBars, { bars:[{id:'I1',label:'인사이트',value:2}], mean:1 }))).toContain('평균 1');
   const journey = html(createElement(JourneyTable, { rows:[{context_id:'C1',action:'행동',feeling:'감정',service:'서비스',service_action:'처방행동',cx_4d:'정신적'}] }));
   for (const word of ['AS-IS','TO-BE','⚪','처방','정신적 1','물리적 0','문화적 0','시스템 0']) expect(journey).toContain(word);
@@ -175,7 +175,7 @@ it('keeps hover emphasis neutral, reserves blue for selected personas, and label
   const dot = nodes(tree, e => e.props['data-context-id'] === 'C1')[0];
   expect(dot.props.stroke).toBe('var(--ink-strong)');
   const labels = nodes(tree, e => e.type === 'text').map(e => html(e)).join('');
-  for (const label of ['A 흥미', 'B 경험', 'C 경쟁', 'D 용인', 'E 방치', 'F 위험']) expect(labels).toContain(label);
+  for (const label of ['A Exciting', 'B Experiencing', 'C Competitive', 'D Forgiven', 'E Dangling', 'F At-risk']) expect(labels).toContain(label);
   const selected = draw(OpportunityMap, { ...props, selectedPersonaId: 'P1' });
   expect(nodes(selected, e => e.props['data-context-id'] === 'C1')[0].props.stroke).toBe('var(--blue)');
 });

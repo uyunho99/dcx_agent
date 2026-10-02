@@ -1,10 +1,10 @@
 import type { ProjectContext, SessionInfo } from "@/lib/types";
-import { responseError, versionQuery } from "./errors";
+import { ApiError, responseError, versionQuery } from "./errors";
 const API = process.env.NEXT_PUBLIC_API_URL || "";
 export async function contextRequest<T>(path: string, method = "GET", body?: unknown): Promise<T> {
   const response = await fetch(`${API}${path}`, { method, headers: { "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
   const data = await response.json();
-  if (!response.ok || data.status === "error" || data.status === "not_found") throw new Error(responseError(data, response.status));
+  if (!response.ok || data.status === "error" || data.status === "not_found") throw new ApiError(responseError(data, response.status), data.error?.kind ?? data.error?.code, response.status);
   return data as T;
 }
 export const createContext = (context: ProjectContext) => contextRequest<{sid: string}>("/context", "POST", context);

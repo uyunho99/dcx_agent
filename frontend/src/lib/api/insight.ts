@@ -1,5 +1,6 @@
 import { contextRequest } from './context';
 import { versionQuery } from './errors';
+import { getVersionSession } from './versions';
 import type {
   InsightChatRequest, InsightChatResponse, InsightConfirmRequest, InsightConfirmResponse,
   InsightResponse, InsightRevertRequest, InsightRevertResponse, InsightRunRequest,
@@ -9,7 +10,12 @@ import type {
 const path = (sid: string, suffix: string, version?: string) => versionQuery(`/insight/${encodeURIComponent(sid)}${suffix}`, version);
 const knownPath = (sid: string, suffix: string, version?: string) => versionQuery(`/known/${encodeURIComponent(sid)}${suffix}`, version);
 export const startInsight = (sid: string, body: InsightRunRequest, version?: string) => contextRequest<InsightRunResponse>(path(sid, '/run', version), 'POST', body);
-export const getInsights = (sid: string, version?: string) => contextRequest<InsightResponse>(path(sid, '', version));
+export const getInsights = async (sid: string, version?: string): Promise<InsightResponse> => {
+ const result = await contextRequest<InsightResponse>(path(sid, '', version));
+ const {data} = await getVersionSession(sid, version);
+ const ids = (data.insight as {confirmed?: string[]} | undefined)?.confirmed ?? [];
+ return {...result, confirmed: ids.filter(id => result.insights.items.some(item => item.id === id))};
+};
 export const createInsightConcept = (sid: string, id: string, version?: string) => contextRequest<InsightRunResponse>(path(sid, `/concept/${encodeURIComponent(id)}`, version), 'POST');
 export const chatInsight = (sid: string, body: InsightChatRequest, version?: string) => contextRequest<InsightChatResponse>(path(sid, '/chat', version), 'POST', body);
 export const revertInsight = (sid: string, body: InsightRevertRequest, version?: string) => contextRequest<InsightRevertResponse>(path(sid, '/revert', version), 'POST', body);

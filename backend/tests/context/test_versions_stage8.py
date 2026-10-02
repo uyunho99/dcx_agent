@@ -7,7 +7,10 @@ from app.routers.sessions import _completion
 
 @pytest.fixture
 def completed(data_dir):
-    sid = 'completed-persona'
+    from tests.fixtures.evidence_package import write_session_with_package
+    from app.persona.package import load_package
+    sid = write_session_with_package(data_dir).sid
+    package = load_package(sid, 'v1')
     store.update_session(sid, dict(schemaVersion=2, segment={'status': 'done'},
         evidence={'status': 'done'}, persona={'status': 'done'}, insight={'status': 'done'},
         completion=dict(segmentDone=True, personaDone=True, insightDone=True)))
@@ -15,7 +18,7 @@ def completed(data_dir):
     for name in ('segment', 'evidence'):
         store.write_json(root / name / 'keep.json', {'keep': True})
     persona = PersonaStore.open(sid, 'v1')
-    persona.write('cards', {'run': 'r1', 'personas': {'P1': {'status': 'done', 'card': {'persona_name': 'name'}}}})
+    persona.write('cards', {'run': 'r1', 'package_run': package.run, 'personas': {'P1': {'status': 'done', 'card': {'persona_name': 'name'}}}})
     persona.write('stage_8', {'cards': 1, 'failed': 0, 'grades': {'observed': 2}, 'llm_calls': {'card': 1}})
     persona.new_revision('insights', [{'id': 'I1'}], by='derive', message=None)
     return sid

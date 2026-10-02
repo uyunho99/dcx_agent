@@ -192,8 +192,8 @@ def test_multiple_personas_keep_evidence_namespaces(case, monkeypatch):
     assert result['basis'] == '근거 8건 · 작성자 0명에서 종합'
 
 
-@pytest.mark.parametrize('mutation', ['cx_4d', 'basis', 'profile_grade'])
-def test_schema_rejects_invalid_or_code_owned_values(case, monkeypatch, mutation):
+@pytest.mark.parametrize('mutation', ['cx_4d', 'profile_grade'])
+def test_schema_rejects_invalid_values(case, monkeypatch, mutation):
     _, _, draft = runner(case, monkeypatch)
     if mutation == 'cx_4d':
         draft['journey'][0]['cx_4d'] = '경제적'

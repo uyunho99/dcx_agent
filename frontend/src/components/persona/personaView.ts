@@ -37,10 +37,25 @@ export function sortContexts<T extends { context_id: string }>(rows: readonly T[
 const zoneNames: Record<PersonaZone, string> = {
   A: 'Exciting', B: 'Experiencing', C: 'Competitive', D: 'Forgiven', E: 'Dangling', F: 'At-risk',
 };
-export const zoneName = (zone: PersonaZone): string => zoneNames[zone];
+export const zoneName = (zone: PersonaZone): string => `${zone} ${zoneNames[zone]}`;
 
 export function cxCounts(rows: readonly { cx_4d: InsightCxDimension }[]): Record<InsightCxDimension, number> {
   const counts: Record<InsightCxDimension, number> = { 정신적: 0, 물리적: 0, 문화적: 0, 시스템: 0 };
   for (const row of rows) counts[row.cx_4d] += 1;
   return counts;
+}
+
+export const formatMetric = (value: number | null | undefined): string => value != null && Number.isFinite(value) ? value.toFixed(2) : '—';
+export const formatCount = (value: number | null | undefined): string => value != null && Number.isFinite(value) ? Math.round(value).toLocaleString('ko-KR') : '—';
+const fieldNames: Record<string,string> = {pre_purchase:'구매 전',purchase:'구매',post_purchase:'구매 후',price:'가격',brand:'브랜드',function:'기능',feature:'기능',features:'기능',functional:'기능',body:'본문',title:'제목',field:'항목',idx:'번호',start:'시작',end:'끝',text:'내용',name:'이름',mention_count:'언급 수',doc_count:'문서 수',author_count:'작성자 수',satisfaction:'만족도',importance:'중요도',odi:'기회',i:'중요도',s:'만족도',Computed:'맞춤형 서비스',Connected:'실시간 연결',Shared:'공유 경험'};
+export function displayValue(value: unknown, empty = ''): string {
+ if (value == null) return empty;
+ if (typeof value === 'number') return value >= 0 && value <= 1 ? formatMetric(value) : formatCount(value);
+ if (Array.isArray(value)) return value.map(item => displayValue(item,empty)).join(' · ');
+ if (typeof value === 'object') {
+  const row = value as Record<string,unknown>;
+  if ('text' in row) return displayValue(row.text,empty);
+  return Object.entries(row).map(([key,item]) => `${fieldNames[key] ?? '항목'}: ${typeof item === 'number' && ['mention_count','doc_count','author_count','idx','start','end'].includes(key) ? formatCount(item) : displayValue(item,empty)}`).join(' · ');
+ }
+ return fieldNames[String(value)] ?? String(value);
 }

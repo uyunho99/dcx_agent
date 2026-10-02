@@ -4,6 +4,7 @@ Calculated fields live on each item (radar, odi, opportunity_mean,
 default_target, known_badge) so revision/revert retains a coherent snapshot.
 """
 import json
+from contextlib import closing
 from pathlib import Path
 import sqlite3
 from typing import Annotated
@@ -41,8 +42,8 @@ class DeriveOut(BaseModel):
 
 
 class InsightError(RuntimeError):
-    def __init__(self):
-        super().__init__(FAILURE_COPY)
+    def __init__(self, reason=None):
+        super().__init__(reason or FAILURE_COPY)
 
 
 def opportunity_bars(insights, odi_by_context) -> dict:
@@ -56,7 +57,7 @@ def opportunity_bars(insights, odi_by_context) -> dict:
 
 def _centroids(sid, version, ids):
     path = version_dir(sid, version) / 'segment' / 'segment.sqlite'
-    with sqlite3.connect(path.as_uri() + '?mode=ro', uri=True) as db:
+    with closing(sqlite3.connect(path.as_uri() + '?mode=ro', uri=True)) as db:
         rows = db.execute('SELECT context_id, centroid FROM contexts').fetchall()
     vectors = {cid: np.frombuffer(blob, dtype=np.float32).copy()
                for cid, blob in rows if cid in ids and blob is not None}
@@ -65,8 +66,9 @@ def _centroids(sid, version, ids):
     return vectors
 
 
-def derive(sid, version, *, run_task=None, embedder) -> int:
+def derive(sid, version, *, run_task=None, embedder, before_publish=None) -> int:
     store = PersonaStore.open(sid, version)
+    store.guard = before_publish
     cards = store.read('cards')
     if cards is None:
         raise InsightError()
@@ -85,6 +87,8 @@ def derive(sid, version, *, run_task=None, embedder) -> int:
                        output_schema=DeriveOut)
         try:
             result = run_task(task)
+        except sessions.StoreError:
+            raise
         except Exception as exc:
             raise InsightError() from exc
         if not result.ok or not isinstance(result.data, DeriveOut):
@@ -107,11 +111,20 @@ def derive(sid, version, *, run_task=None, embedder) -> int:
 def recompute(sid, version, items, *, package=None, embedder):
     """Hydrate validated text with version-local, code-owned metrics in place."""
     package = package or load_package(sid, version)
+    data = sessions.read_json(version_dir(sid, version) / 'session.json') or {}
+    known = data.get('knownInsights', [])
+    known_ids = {row.get('id') if isinstance(row, dict) else f'ki_legacy_{i}'
+                 for i, row in enumerate(known)}
+    for item in items:
+        if item.get('known_ki_id') not in known_ids:
+            item['known_ki_id'] = None
     contexts = {c.context_id: c for b in package.personas for c in b.context_evidence}
     try:
         selected = {cid for item in items for cid in item['context_ids']}
         centroids = _centroids(sid, version, selected)
         axes = embed_axes(embedder)
+        if axes.ndim != 2 or any(v.shape != (axes.shape[1],) for v in centroids.values()):
+            raise InsightError('Preparation embedding dimension does not match Context centroids')
         weights = {cid: c.metrics.doc_count for cid, c in contexts.items()}
         for item in items:
             item['radar'] = radar({cid: centroids[cid] for cid in item['context_ids']}, weights, axes)
@@ -133,11 +146,12 @@ def recompute(sid, version, items, *, package=None, embedder):
 def confirm(sid, version, ids) -> list[str]:
     """Replace the user's confirmed selection; reject unknown IDs atomically."""
     with sessions.locked(sid):
-        sessions.assert_writable(sid, version)
+        from app.persona.source import Source
+        Source(sid, version).check()
         current = PersonaStore.open(sid, version).read('insights') or {}
         available = {item['id'] for item in current.get('items', [])}
         if not isinstance(ids, list) or any(not isinstance(i, str) or i not in available for i in ids):
             raise sessions.StoreError('Unknown insight ID', 400, 'validation')
         confirmed = list(dict.fromkeys(ids))
-        sessions._update_locked(sid, {'insight': {'confirmed': confirmed}})
+        sessions._update_locked(sid, {'insight': {'confirmed': confirmed, 'confirmed_ids': confirmed}})
     return confirmed

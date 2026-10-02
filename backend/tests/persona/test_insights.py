@@ -109,6 +109,7 @@ def test_confirm_sets_session(env, monkeypatch):
     session, store, rows, _ = env
     runner(monkeypatch, [rows])
     derive(session.sid, session.version, embedder=Embedder())
+    sessions.update_session(session.sid, {'persona': {'status': 'done'}})
     assert confirm(session.sid, session.version, ['I1', 'I3']) == ['I1', 'I3']
     assert sessions.load_session(session.sid)['insight']['confirmed'] == ['I1', 'I3']
     with pytest.raises(sessions.StoreError):
