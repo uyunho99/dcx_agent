@@ -28,7 +28,7 @@ from app.context.stale import clear_stale
 from app.context.versions import version_dir
 from app.llm import registry
 from app.llm.base import validate
-from app.segment import ctfidf, dims, drafts, inputs, l1, l2, l3, params, quality, signals
+from app.segment import ctfidf, dims, drafts, inputs, l1, l2, l3, params, quality, signals, stopwords
 from app.segment.store import SegmentStore
 
 STEPS = ('load', 'L1', 'L2', 'L3', 'quality', 'dims', 'drafts')
@@ -236,7 +236,8 @@ def run(context):
         store.write_layers()
         with store._db(write=True) as db:
             db.execute('DELETE FROM meta')
-        checkpoint = {'done': [], 'k': context.args.get('k')}
+        checkpoint = {'done': [], 'k': context.args.get('k'),
+                      'stopwords': stopwords.stopwords_signature()}
     if resume and 'drafts' in checkpoint.get('done', []):
         with store._db() as db:
             row = db.execute("SELECT value FROM meta WHERE key='draft_flags'").fetchone()
@@ -246,6 +247,10 @@ def run(context):
     checkpoint['run'] = run_id
     _write(root / 'checkpoint.json', checkpoint)
     all_params = {k: v for k, v in vars(params).items() if k.isupper()}
+    # Resumes retain the list signature that produced their stored keywords.
+    # Legacy checkpoints have no signature; do not relabel their old results.
+    if 'stopwords' in checkpoint:
+        all_params['stopwords'] = checkpoint['stopwords']
     _session(sid, version, dict(status='running', run=run_id, params=all_params, reason=None, detail={}), reset=not resume)
     state = sessions.read_json(root / 'state.json') or {'warnings': []}
     source = None
@@ -320,9 +325,10 @@ def run(context):
                 grouped = defaultdict(list)
                 for doc_id, label in zip(source.ids, state['labels']):
                     grouped[f'CL{label}'].append(doc_id)
-                keywords = ctfidf.ctfidf({key: [source.nouns[i] for i in ids] for key, ids in grouped.items()}, params.CTFIDF_TOP)
                 session = sessions.read_json(version_dir(sid, version) / 'session.json')
                 state['bk'] = session.get('projectContext', {}).get('bk', '')
+                keywords = ctfidf.ctfidf({key: [source.nouns[i] for i in ids] for key, ids in grouped.items()},
+                                         params.CTFIDF_TOP, bk=state['bk'])
                 for cluster_id, ids in grouped.items():
                     pulse()
                     result = l2.personas(ids, source.nouns, state['bk'])
@@ -349,7 +355,7 @@ def run(context):
                         continue
                     ids = grouped[pid]
                     result = l3.contexts(ids, source.tokens, vectors,
-                        sentiment_by_id={i: sig[i]['sentiment'] for i in ids})
+                        sentiment_by_id={i: sig[i]['sentiment'] for i in ids}, bk=state['bk'])
                     state['l3'][pid] = dict(scan=result.scan, topic_ids=result.topic_ids)
                     if 'granularity_exceeded' in result.flags:
                         persona['flags'] = list(dict.fromkeys(persona['flags'] + ['granularity_exceeded']))

@@ -170,3 +170,8 @@
 ### D-253 태깅 응답 누락 문서는 1회 재시도 후 `untagged`로 후보에서 제외하고 수를 기록 · 판단 (Claude)
 ### D-254 인용 위치의 댓글 번호는 6단계 입력(prepared) 순서 기준 · 판단 (Claude)
 ### D-255 "페르소나 만들기"는 묶음 ③ 합류 전까지 `/pipeline/personas` 이동만 · 판단 (Claude)
+
+## 묶음 ② 구현 (2026-10-02)
+
+### D-256 Voyage 문서 임베딩 요청은 기존 그대로(input_type 없음), 질의만 `input_type='query'` · 판단 (Claude, T2 Codex 질문)
+- 저장된 3단계 문서 벡터가 input_type 없이 만들어졌다. 지금부터 'document'를 보내면 새로 임베딩한 문서와 기존 문서가 서로 다른 방식이 된다. 비용: 나중에 전부 'document'로 다시 임베딩하려면 3단계 재실행.

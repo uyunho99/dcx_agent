@@ -104,7 +104,7 @@ def test_network_view_limit():
 def test_empty_graph_single_persona():
     # 1 / 201 falls below .005; repeated tokens must not inflate edge weight.
     nouns = {str(i): [] for i in range(201)}
-    nouns['0'] = ['a', 'b'] * 100
+    nouns['0'] = ['aa', 'bb'] * 100
     result = l2.personas(list(nouns), nouns, '')
     assert len(result.communities) == 1
     assert set(result.assign.values()) == {0}

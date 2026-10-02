@@ -6,7 +6,7 @@ from math import fsum
 
 import networkx as nx
 
-from app.segment import params
+from app.segment import params, stopwords
 
 
 @dataclass
@@ -135,7 +135,7 @@ def personas(cluster_ids: list[str], nouns: dict, bk: str) -> PersonaResult:
     ids = sorted(set(cluster_ids))
     frequencies = Counter()
     for doc_id in ids:
-        frequencies.update(word for word in set(nouns.get(doc_id, ())) if word and word != bk)
+        frequencies.update(word for word in set(nouns.get(doc_id, ())) if not stopwords.is_stopword(word, bk))
     vocabulary = set(sorted(frequencies, key=lambda w: (-frequencies[w], w))[:params.L2_VOCAB])
     # Repeated noun profiles are common; aggregate them before pair counting
     # and document scoring, keeping the expensive graph work vocabulary-bound.

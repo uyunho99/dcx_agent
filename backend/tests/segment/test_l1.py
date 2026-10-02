@@ -145,7 +145,7 @@ def test_ctfidf_distinguishes():
 
 def test_ctfidf_empty_and_ties():
     assert ctfidf({}, 10) == {}
-    assert ctfidf({'empty': [[], []], 'a': [['z', 'a']]}, 10) == {'empty': [], 'a': ['a', 'z']}
+    assert ctfidf({'empty': [[], []], 'a': [['zz', 'aa']]}, 10) == {'empty': [], 'a': ['aa', 'zz']}
     assert ctfidf({'a': [['word']]}, 0) == {'a': []}
     with pytest.raises(ValueError):
         ctfidf({'a': []}, -1)
@@ -169,7 +169,7 @@ def test_suggest_small_input():
 
 def test_ctfidf_uses_corpus_term_frequency():
     # Equal document frequencies, unequal corpus TF: class-based IDF must
-    # penalize y enough that z wins in class a despite its lower local count.
-    groups = {'a': [['y'] * 4 + ['z'] * 3],
-              'b': [['y'] * 100 + ['z']]}
-    assert ctfidf(groups, 2)['a'] == ['z', 'y']
+    # penalize yy enough that zz wins in class a despite its lower local count.
+    groups = {'a': [['yy'] * 4 + ['zz'] * 3],
+              'b': [['yy'] * 100 + ['zz']]}
+    assert ctfidf(groups, 2)['a'] == ['zz', 'yy']
