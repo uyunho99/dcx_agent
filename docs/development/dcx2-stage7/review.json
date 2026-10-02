@@ -1,0 +1,35 @@
+{
+  "verdict": "PASS",
+  "head": "d267b5f6da0ad09a07b1d62677018cb0e2eddf86",
+  "fingerprint": "baecd6c1d18f5e78315b97c52cd98e1ae9839d7897103b77270609a330219e26",
+  "commands": [
+    {"command": "backend/.venv/bin/python -m pytest backend/tests -q  (2006 passed, 3 deselected)", "exitCode": 0},
+    {"command": "npm --prefix frontend test  (560 passed)", "exitCode": 0},
+    {"command": "npm --prefix frontend run lint", "exitCode": 0},
+    {"command": "npm --prefix frontend run build", "exitCode": 0}
+  ],
+  "findings": [],
+  "reviews": [
+    {"scope": "Controller per-task diff review T1-T16 (69dcf91..a92f2f3)", "result": "fix rounds: T1 domain stopwords, T8 short DPP fill (D-257); others accepted", "evidence": "docs/development/dcx2-stage7/reports/sdd-ledger.md"},
+    {"scope": "Final whole-branch review, Claude opus (69dcf91..a92f2f3)", "result": "Ready with fixes: Critical 1, Important 8, Minor 11", "evidence": "docs/development/dcx2-stage7/reports/final-review1.md"},
+    {"scope": "Codex read-only branch review (69dcf91..a92f2f3)", "result": "Important 7, Minor 2", "evidence": "docs/development/dcx2-stage7/reports/codex-branch-review1.md"},
+    {"scope": "Fix wave 99a8c22 + scoped re-review (opus)", "result": "28/29 addressed, 1 partial (live tag count) fixed by D-268; new N1 Important fixed in 8f19da9", "evidence": "docs/development/dcx2-stage7/reports/final-rereview1.md; final-fix-backend-report.md; final-fix-frontend-report.md; final-fix2-report.md"},
+    {"scope": "QA fixes 937fc01, 60a0647, d267b5f", "result": "controller diff review + full suites; real-LLM verification by controller", "evidence": "docs/development/dcx2-stage7/reports/qa-fix1-report.md; qa-fix2-report.md; qa-fix3-report.md"}
+  ],
+  "resolvedFindings": [
+    "opus C1 package missing 2.4 fields: 99a8c22 (stage-8 reader relaxation in bundle 3 T17, D-259)",
+    "opus I1, Codex 3/4 Known Insight judgement gaps: 99a8c22 (D-261)",
+    "opus I2 stale on stage-6 rerun without evidence: 99a8c22 (D-260)",
+    "opus I3/I4, Codex 8 tag_calls / relevant_false contract: 99a8c22, 937fc01",
+    "opus I5, Codex 5 quote offsets vs field: 99a8c22 (quoteSource)",
+    "opus I6/I7/I8: 99a8c22",
+    "Codex 1/2/6/7 publication races, generation snapshot, embedding failure: 99a8c22 (D-262, D-263)",
+    "re-review N1 package.json not rebuilt after refresh-new: 8f19da9",
+    "QA-L2 real LLM returned empty tag lists (doc IDs not in prompt): d267b5f (D-272)"
+  ],
+  "deferred": [
+    "8단계부터 다시 version option: bundle 3 T17 (D-316)",
+    "Captured sanitised real-LLM tag response fixture for offline regression (low risk)",
+    "Tag cache shared across versions by design; per-model since D-270"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "verdict": "PASS",
+  "head": "d267b5f6da0ad09a07b1d62677018cb0e2eddf86",
+  "fingerprint": "baecd6c1d18f5e78315b97c52cd98e1ae9839d7897103b77270609a330219e26",
+  "commands": [
+    {"command": "backend uvicorn :8320 (STORAGE=local, fake LLM/embed) + frontend next dev :3320; QA-L2 real default LLM on :8323 (data copy)", "exitCode": 0},
+    {"command": "backend/.venv/bin/python backend/tests/scripts/make_segment_qa.py <dir> --confirm-all [--fail-context CL0-P0-C1]", "exitCode": 0}
+  ],
+  "scenarios": [
+    {"id": "QA-E1", "url": "http://localhost:3320/pipeline/evidence", "result": "PASS", "evidence": "docs/development/dcx2-stage7/qa/qa-report-2026-10-02.md (QA-E1)"},
+    {"id": "QA-E2", "url": "http://localhost:3320/pipeline/evidence", "result": "PASS", "evidence": "docs/development/dcx2-stage7/qa/qa-report-2026-10-02.md (QA-E2)"},
+    {"id": "QA-E3", "url": "http://localhost:3320/pipeline/evidence", "result": "PASS", "evidence": "docs/development/dcx2-stage7/qa/qa-report-2026-10-02.md (QA-E3)"},
+    {"id": "QA-E4", "url": "http://localhost:3320/pipeline/evidence", "result": "PASS", "evidence": "docs/development/dcx2-stage7/qa/qa-report-2026-10-02.md (QA-E4)"},
+    {"id": "QA-E5", "url": "http://localhost:3320/pipeline/evidence", "result": "PASS", "evidence": "docs/development/dcx2-stage7/qa/qa-report-2026-10-02.md (QA-E5)"},
+    {"id": "QA-E6", "url": "http://localhost:3320/pipeline/evidence", "result": "PASS", "evidence": "docs/development/dcx2-stage7/qa/qa-report-2026-10-02.md (QA-E6)"},
+    {"id": "QA-E7", "url": "http://localhost:3320/pipeline/labeling", "result": "PASS", "evidence": "docs/development/dcx2-stage7/qa/qa-report-2026-10-02.md (QA-E7)"},
+    {"id": "QA-E8", "url": "http://localhost:3320/pipeline/compare?a=v1&b=v2", "result": "PASS", "evidence": "docs/development/dcx2-stage7/qa/qa-report-2026-10-02.md (QA-E8)"},
+    {"id": "QA-E9", "url": "http://localhost:3320/pipeline/evidence", "result": "PASS", "evidence": "docs/development/dcx2-stage7/qa/qa-report-2026-10-02.md (QA-E9)"},
+    {"id": "QA-R2", "url": "http://localhost:3320/pipeline/evidence", "result": "PASS", "evidence": "docs/development/dcx2-stage7/qa/qa-report-2026-10-02.md (QA-R2)"},
+    {"id": "QA-L2", "url": "http://localhost:8323/evidence/segment-synth-cfcc8d85d6f0/status", "result": "PASS", "evidence": "docs/development/dcx2-stage7/qa/qa-report-2026-10-02.md (QA-L2); docs/development/dcx2-stage7/reports/qa-fix3-report.md (controller verification)"}
+  ],
+  "resolvedFindings": [
+    "QA fake responses mismatch: 937fc01",
+    "live tag-call count: 937fc01",
+    "KI add immediate recompute, all-tab badge, novelty/dims labels: 60a0647",
+    "stage-7 compare table, navigation after restart, failure hook, real-LLM empty tag lists, all-untagged failure, model in cache key: d267b5f"
+  ],
+  "deferred": ["8단계부터 다시 option (bundle 3 T17, D-316)"],
+  "findings": []
+}
