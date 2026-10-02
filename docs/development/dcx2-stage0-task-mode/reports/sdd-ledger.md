@@ -58,3 +58,4 @@ Task T6: fix round 1/5 (1 addressed, 0 open; commits a87b1f2..cbe7727)
 Task T6: complete (commits 0d509ac..cbe7727, review clean)
 Final review (opus): With fixes. Important 1: 예전 임시 저장본 analysisGoal {choice:"", note:"메모"}가 null로 안 바뀌어 저장 불가. Minor 2(머지 전 수정 권고): 예전 세션 배너가 form.taskMode와 무관하게 "탐색·기획형" 문구. 나머지 deferred minor는 모두 acceptable 판정. harness retry → build
 Final fix: codex a30127024513c140e, commit b428144, re-review both ADDRESSED. Final review complete.
+QA round 1 FAIL (ISSUE-001 Medium, ISSUE-002 Low) → harness retry → codex a58990496a29d2d66 fix → commit (QA fix1). Ruling: 저장 버튼을 invalid일 때도 켜 두는 변경(SaveBar valid=true)은 02-design 5.2 '저장 · 키워드 생성 시작 실패 시 첫 오류 칸으로 스크롤 · 포커스'에 맞으므로 수용 — 기존 화면은 저장을 비활성으로 막았음 — 틀리면 저장 버튼 비활성 신호가 사라진 것만 되돌리면 됨
