@@ -1,6 +1,6 @@
 {
   "verdict": "PASS",
-  "head": "d267b5f6da0ad09a07b1d62677018cb0e2eddf86",
+  "head": "d02c626361b91f8ea931ebce7a375f7027786684",
   "fingerprint": "baecd6c1d18f5e78315b97c52cd98e1ae9839d7897103b77270609a330219e26",
   "commands": [
     {"command": "backend uvicorn :8320 (STORAGE=local, fake LLM/embed) + frontend next dev :3320; QA-L2 real default LLM on :8323 (data copy)", "exitCode": 0},
