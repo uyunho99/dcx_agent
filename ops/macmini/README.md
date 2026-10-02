@@ -19,7 +19,7 @@ sudo APP_ROOT="$HOME/srv/dcx-agent" /bin/bash ops/macmini/install.sh
 
 첫 설치는 main 머리 커밋을 정식 빌드합니다. 손 clone의 가상환경을 이동해 재사용하지 않습니다. 빌드는 대상 사용자로 실행하고, 서버 키를 빌드 환경에 싣지 않습니다. `shared/maintenance` hold 파일로 api/web 시작을 막고 서버와 릴리스 Python 작업자를 종료한 다음 sessions와 work를 스냅샷으로 저장합니다. 새 current를 연결하고 잡을 등록한 뒤 hold를 제거합니다. 상태 확인이 성공해야 손 clone을 삭제하고 fetch용 clone으로 교체합니다. 실패하면 손 clone과 스냅샷을 보존하며 로그를 확인해야 합니다. 실제 설치·재부팅 검증은 별도의 운영 QA입니다.
 
-설치가 쓰는 runtime 설정은 다음과 같습니다. 포트를 바꾸면 두 localhost URL도 함께 바뀝니다.
+운영 공개 접속은 Cloudflare 터널을 통해 `https://dcx.person-a.ai` → `127.0.0.1:3400`(웹), `https://dcx-api.person-a.ai` → `127.0.0.1:8400`(API)로 연결됩니다. 브라우저가 사용할 API 주소는 공개 HTTPS 주소여야 합니다. 설치가 쓰는 운영 runtime 기본값은 다음과 같습니다.
 
 ```dotenv
 AUTHOR_SALT_PATH=/배포루트/shared/data/.author_salt
@@ -27,9 +27,13 @@ STORAGE=local
 LOCAL_DATA_DIR=/배포루트/shared/data
 LABEL_GPT_BACKEND=codex_exec
 JEV_BACKEND=fake
-CORS_ORIGINS=http://localhost:3400
-NEXT_PUBLIC_API_URL=http://localhost:8400
+CORS_ORIGINS=https://dcx.person-a.ai,http://localhost:3400
+NEXT_PUBLIC_API_URL=https://dcx-api.person-a.ai
 ```
+
+설치 시 `DCX_PUBLIC_API_URL`과 `DCX_PUBLIC_WEB_URL` 환경변수로 공개 API·웹 주소를 바꿀 수 있습니다. 웹 주소는 CORS에 지정 웹 포트의 localhost origin과 함께 들어갑니다. 예: `sudo APP_ROOT="$HOME/srv/dcx-agent" DCX_PUBLIC_API_URL=https://api.example.com DCX_PUBLIC_WEB_URL=https://example.com /bin/bash ops/macmini/install.sh`. `--qa`는 이 공개 주소 환경변수를 사용하지 않고 `NEXT_PUBLIC_API_URL=http://localhost:8401`, `CORS_ORIGINS=http://localhost:3401`을 기본값으로 사용합니다. QA 포트 변경 시 localhost URL도 함께 바뀝니다.
+
+기존 `shared/runtime.env`에 `NEXT_PUBLIC_API_URL` 또는 `CORS_ORIGINS`가 있으면 각 값을 환경변수·기본값보다 우선하여 보존합니다. 일반 설치 계획과 `--dry-run` 모두 실제 사용할 두 값을 출력합니다. 기존 localhost 설정도 보존되므로 공개 주소로 전환할 때는 운영자가 해당 값을 직접 수정해야 합니다.
 
 운영 스크립트는 `$APP_ROOT/ops/`에 복사되어 코드 롤백과 독립적으로 남습니다. `ops_outdated: true` 로그가 나오면 새 릴리스의 `ops/macmini/install.sh`로 재설치합니다. 기존 current가 있으면 설치기는 코드를 바꾸지 않고 스크립트·잡을 갱신합니다. NEXT_PUBLIC 값 변경은 프론트 재빌드가 필요하므로 다른 커밋을 정식 배포해야 합니다.
 

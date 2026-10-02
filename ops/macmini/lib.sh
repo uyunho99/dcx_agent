@@ -149,11 +149,28 @@ build_release() { # sha
         fi
     else
         # Constraints and interpreter version are part of the cache identity.
-        key="$(set -o pipefail; (cat "$release_dir/backend/requirements.txt" && cat "$release_dir/backend/constraints.txt" && python3.12 --version) | sha256)" || { rm -rf "$release_dir"; return 1; }
+        key="$(set -o pipefail; (
+            cat "$release_dir/backend/requirements.txt" &&
+            if [[ -f "$release_dir/backend/constraints.txt" ]]; then
+                cat "$release_dir/backend/constraints.txt" && python3.12 --version
+            else
+                python3.12 --version && printf '%s\n' 'no-constraints'
+            fi
+        ) | sha256)" || { rm -rf "$release_dir"; return 1; }
         venv="$SHARED/venvs/$key"
         if [[ ! -f "$venv/.complete" ]]; then
             rm -rf "$venv"
-            if ! clean_build 'python3.12 -m venv "$1" && "${DCX_PIP_CMD:-$1/bin/pip}" install -r "$2/backend/requirements.txt" -c "$2/backend/constraints.txt"' "$venv" "$release_dir"; then
+            if ! clean_build '
+                python3.12 -m venv "$1" || exit 1
+                pip="${DCX_PIP_CMD:-$1/bin/pip}"
+                requirements="$2/backend/requirements.txt"
+                constraints="$2/backend/constraints.txt"
+                if [[ -f "$constraints" ]]; then
+                    "$pip" install -r "$requirements" -c "$constraints"
+                else
+                    "$pip" install -r "$requirements"
+                fi
+            ' "$venv" "$release_dir"; then
                 rm -rf "$venv" "$release_dir"
                 return 1
             fi

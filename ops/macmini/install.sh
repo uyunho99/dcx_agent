@@ -44,12 +44,40 @@ for port in "$DCX_API_PORT" "$DCX_WEB_PORT"; do
 done
 [[ "$DCX_API_PORT" != "$DCX_WEB_PORT" ]] || exit 2
 validate_service_ports || exit 2
+# Resolve once so the reviewed plan and installed configuration agree. Read
+# operator values as dotenv data, never execute runtime.env as shell code.
+public_urls="$(python3.12 - "$SHARED/runtime.env" "$qa" "$DCX_API_PORT" "$DCX_WEB_PORT" <<'PY'
+import os, pathlib, re, shlex, sys
+runtime, qa, api, web = sys.argv[1:]
+config = {'NEXT_PUBLIC_API_URL': 'http://localhost:'+api,
+          'CORS_ORIGINS': 'http://localhost:'+web}
+if qa != 'true':
+    config['NEXT_PUBLIC_API_URL'] = os.environ.get('DCX_PUBLIC_API_URL') or 'https://dcx-api.person-a.ai'
+    config['CORS_ORIGINS'] = (os.environ.get('DCX_PUBLIC_WEB_URL') or 'https://dcx.person-a.ai')+',http://localhost:'+web
+try:
+    lines = pathlib.Path(runtime).read_text().splitlines()
+except FileNotFoundError:
+    lines = []
+for line in lines:
+    match = re.match(r'^\s*(?:export\s+)?(NEXT_PUBLIC_API_URL|CORS_ORIGINS)\s*=\s*(.*?)\s*$', line)
+    if match:
+        config[match[1]] = ' '.join(shlex.split(match[2], comments=True))
+print(config['NEXT_PUBLIC_API_URL'])
+print(config['CORS_ORIGINS'])
+print('.')  # Sentinel preserves an explicitly empty CORS value in Bash.
+PY
+)"
+public_urls="${public_urls%$'\n.'}"
+public_api_url="${public_urls%%$'\n'*}"
+cors_origins="${public_urls#*$'\n'}"
 printf '만들 경로: %s/{repo,releases,shared/data,shared/venvs,shared/snapshots,ops,logs}\n' "$APP_ROOT"
 printf '등록 위치: %s\n' "$destination"
 for job in deploy api web; do printf '잡: %s.%s\n' "$DCX_LAUNCH_LABEL" "$job"; done
 printf '내릴 포트: %s %s (api/web pid 자손 및 릴리스 Python 작업자 포함)\n' "$DCX_WEB_PORT" "$DCX_API_PORT"
 printf '%s\n' '건드리지 않음: 3000 3310 3311 8310 8311' 'main 머리 커밋을 정식 빌드해 첫 릴리스로 · 손 clone은 설치 후 삭제'
 printf 'runtime.env: AUTHOR_SALT_PATH=%s/shared/data/.author_salt\n' "$APP_ROOT"
+printf 'runtime.env: NEXT_PUBLIC_API_URL=%s\n' "$public_api_url"
+printf 'runtime.env: CORS_ORIGINS=%s\n' "$cors_origins"
 if ! $dry; then
     if ! $qa || [[ "${DCX_INSTALL_ASSUME_YES:-0}" != 1 ]]; then
         printf '진행하려면 y 입력: '
@@ -86,9 +114,9 @@ log() {
 }
 # Render templates structurally: XML metacharacters and spaces stay valid.
 render() {
-    python3.12 - "$HERE" "$1" "$APP_ROOT" "$TARGET_USER" "$TARGET_HOME" "$DCX_LAUNCH_LABEL" "$INSTALL_DOMAIN" "$DCX_API_PORT" "$DCX_WEB_PORT" "$qa" <<'PY'
+    python3.12 - "$HERE" "$1" "$APP_ROOT" "$TARGET_USER" "$TARGET_HOME" "$DCX_LAUNCH_LABEL" "$INSTALL_DOMAIN" "$DCX_API_PORT" "$DCX_WEB_PORT" "$qa" "$public_api_url" "$cors_origins" <<'PY'
 import pathlib, plistlib, shlex, sys
-here,out,root,user,home,label,domain,api,web,qa=sys.argv[1:]
+here,out,root,user,home,label,domain,api,web,qa,public_api,cors=sys.argv[1:]
 out=pathlib.Path(out); out.mkdir(parents=True,exist_ok=True)
 values={'__APP_ROOT__':root,'__USER__':user,'__HOME__':home,'__LABEL__':label,'__DOMAIN__':domain,'__API_PORT__':api,'__WEB_PORT__':web}
 def fill(x):
@@ -104,7 +132,7 @@ for job in ('deploy','api','web'):
     if qa=='true': data.pop('UserName')
     (out/(label+'.'+job+'.plist')).write_bytes(plistlib.dumps(data,sort_keys=False))
 config={'AUTHOR_SALT_PATH':root+'/shared/data/.author_salt','STORAGE':'local','LOCAL_DATA_DIR':root+'/shared/data',
-        'LABEL_GPT_BACKEND':'codex_exec','JEV_BACKEND':'fake','CORS_ORIGINS':'http://localhost:'+web,'NEXT_PUBLIC_API_URL':'http://localhost:'+api}
+        'LABEL_GPT_BACKEND':'codex_exec','JEV_BACKEND':'fake','CORS_ORIGINS':cors,'NEXT_PUBLIC_API_URL':public_api}
 (out/'runtime.env').write_text(''.join(k+'='+shlex.quote(v)+'\n' for k,v in config.items()))
 (out/'launch.env').write_text(''.join('export '+k+'='+shlex.quote(v)+'\n' for k,v in {
     'DCX_LAUNCH_LABEL':label,'DCX_API_PORT':api,'DCX_WEB_PORT':web,

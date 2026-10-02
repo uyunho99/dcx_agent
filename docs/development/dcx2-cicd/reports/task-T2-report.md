@@ -131,3 +131,17 @@ Addressed all seven re-review findings without changing backend/app or frontend,
 ### Remaining validation limits
 
 The warning is the existing Pydantic class-based configuration deprecation. Linux execution and real launchd/server integration remain unverified on this macOS host. Tests use temporary roots, fake process inventories, and only test-created children for signal delivery. The installer failure test stops before registration and uses a temporary HOME; no actual LaunchAgents/LaunchDaemons directory or real server was modified. Failed-data backups deliberately accumulate for operator review/cleanup. The broader backend/frontend suites were not run in this round.
+
+## Fix round 3 (missing constraints)
+
+Older release commits may legitimately omit `backend/constraints.txt`. `build_release` now hashes requirements, the Python version, and the literal `no-constraints` marker for those releases, and installs with only `pip install -r`. Releases with constraints retain their existing hash inputs and `-c` installation behavior. Successful deploy records include a boolean `constraints` field derived from the release, including cached builds and recovery finalization.
+
+The regression uses the production build path with real venv creation and fake pip/npm in temporary roots. It builds a constrained commit, removes constraints in another commit, deploys that commit, and verifies successful completion, distinct venv paths, the exact unconstrained pip arguments, and `constraints:false` logging.
+
+TDD evidence:
+
+- Before the fix: targeted regression **1 failed, 77 deselected**, reproducing the missing `constraints.txt` error (3.27s).
+- After the fix: `backend/.venv/bin/python -m pytest backend/tests/ops/test_deploy.py -q -p no:cacheprovider` → **78 passed, 1 warning**, 122.18s.
+- `/bin/bash -n ops/macmini/lib.sh ops/macmini/deploy.sh` and `git diff --check` → **PASS**.
+
+The warning is the existing Pydantic class-based configuration deprecation. Real package downloads and live deployment remain untested. No protected roots, launchd directories, running servers, or concurrent installer-task files were modified by this task. No changes were staged or committed, and no agents were dispatched.

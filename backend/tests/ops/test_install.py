@@ -22,7 +22,7 @@ def test_install_dry_run(macmini, tmp_path, qa):
     m = macmini
     forbid_services(m)
     out = tmp_path/'render & space'
-    before = (m.root/'shared/runtime.env').read_bytes()
+    (m.root/'shared/runtime.env').unlink()
     r = run(m, 'install.sh', '--dry-run', '--output-dir', str(out), *(['--qa'] if qa else []),
             DCX_API_PORT='' if qa else '18400', DCX_WEB_PORT='' if qa else '13400')
     assert r.returncode == 0, r.stderr
@@ -54,12 +54,16 @@ def test_install_dry_run(macmini, tmp_path, qa):
             assert d['ThrottleInterval'] == 10
         if sys.platform == 'darwin':
             subprocess.run(['/usr/bin/plutil', '-lint', str(p)], check=True, capture_output=True)
+    api_url = 'http://localhost:'+api if qa else 'https://dcx-api.person-a.ai'
+    cors = 'http://localhost:'+web if qa else 'https://dcx.person-a.ai,http://localhost:'+web
+    assert f'NEXT_PUBLIC_API_URL={api_url}' in r.stdout
+    assert f'CORS_ORIGINS={cors}' in r.stdout
     runtime = (out/'runtime.env').read_text()
     for value in ('STORAGE=local', 'LABEL_GPT_BACKEND=codex_exec', 'JEV_BACKEND=fake',
-                  f'CORS_ORIGINS=http://localhost:{web}', f'NEXT_PUBLIC_API_URL=http://localhost:{api}',
+                  f'CORS_ORIGINS={cors}', f'NEXT_PUBLIC_API_URL={api_url}',
                   f'AUTHOR_SALT_PATH={m.root}/shared/data/.author_salt', f'LOCAL_DATA_DIR={m.root}/shared/data'):
         assert value in runtime
-    assert (m.root/'shared/runtime.env').read_bytes() == before
+    assert not (m.root/'shared/runtime.env').exists()
     assert not (m.root/'ops').exists()
 
 
@@ -188,9 +192,57 @@ def test_install_failure_clears_own_hold(macmini, tmp_path):
     (m.root/'shared/data/.author_salt').write_text('test-salt')
     home = tmp_path/'home'
     home.mkdir()
+    existing_urls = 'NEXT_PUBLIC_API_URL=https://operator-api.test\nCORS_ORIGINS=https://operator.test\n'
+    (m.root/'shared/runtime.env').write_text(existing_urls)
     r = run(m, 'install.sh', '--qa', HOME=str(home), DCX_INSTALL_ASSUME_YES='1')
     assert r.returncode != 0
     assert not (m.root/'shared/maintenance').exists()
     assert not (m.root/'shared/deploy.lock').exists()
     assert (m.root/'ops').exists(), 'must reach actual installation before injected failure'
     assert not (home/'Library').exists()
+    for value in existing_urls.splitlines():
+        assert value in (m.root/'shared/runtime.env').read_text()
+        assert value in r.stdout
+
+
+@pytest.mark.parametrize('qa', [False, True])
+@pytest.mark.parametrize('override', [False, True])
+def test_install_public_url_overrides(macmini, tmp_path, qa, override):
+    m = macmini
+    forbid_services(m)
+    (m.root/'shared/runtime.env').unlink()
+    out = tmp_path/'render'
+    r = run(m, 'install.sh', '--dry-run', '--output-dir', str(out),
+            *(['--qa'] if qa else []), DCX_API_PORT='', DCX_WEB_PORT='',
+            HOME=str(m.root.parent), APP_ROOT=str(m.root.parent/'srv/dcx-agent'),
+            DCX_PUBLIC_API_URL='https://api.example.test' if override else '',
+            DCX_PUBLIC_WEB_URL='https://web.example.test' if override else '')
+    assert r.returncode == 0, r.stderr
+    api = 'http://localhost:8401' if qa else 'https://api.example.test'
+    cors = 'http://localhost:3401' if qa else 'https://web.example.test,http://localhost:3400'
+    if not qa and not override:
+        api = 'https://dcx-api.person-a.ai'
+        cors = 'https://dcx.person-a.ai,http://localhost:3400'
+    for value in (f'NEXT_PUBLIC_API_URL={api}', f'CORS_ORIGINS={cors}'):
+        assert value in r.stdout
+        assert value in (out/'runtime.env').read_text()
+
+
+@pytest.mark.parametrize('qa', [False, True])
+@pytest.mark.parametrize('cors', ['https://operator.test,http://localhost:9999', ''])
+def test_install_existing_public_urls_preserved(macmini, tmp_path, qa, cors):
+    m = macmini
+    forbid_services(m)
+    runtime = m.root/'shared/runtime.env'
+    original = f"export NEXT_PUBLIC_API_URL = 'https://operator-api.test' # keep\nCORS_ORIGINS='{cors}'\n"
+    runtime.write_text(original)
+    out = tmp_path/'render'
+    r = run(m, 'install.sh', '--dry-run', '--output-dir', str(out), *(['--qa'] if qa else []),
+            DCX_PUBLIC_API_URL='https://ignored-api.test', DCX_PUBLIC_WEB_URL='https://ignored-web.test')
+    assert r.returncode == 0, r.stderr
+    import shlex
+    rendered = dict(line.split('=', 1) for line in (out/'runtime.env').read_text().splitlines())
+    for key, value in [('NEXT_PUBLIC_API_URL', 'https://operator-api.test'), ('CORS_ORIGINS', cors)]:
+        assert shlex.split(rendered[key]) == [value]
+        assert f'{key}={value}' in r.stdout
+    assert runtime.read_text() == original

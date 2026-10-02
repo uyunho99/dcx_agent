@@ -11,13 +11,14 @@ clear_stale_hold
 trap 'log error "\"line\":$LINENO"' ERR
 
 finish_success() {
-    local last ops_outdated=false
+    local last ops_outdated=false constraints=true
     last="$(tail -n 1 "$HISTORY" 2>/dev/null | awk '{print $1}' || true)"
     if [[ "$last" != "$sha" ]]; then
         printf '%s %s\n' "$sha" "$snapshot" >> "$HISTORY" || return 1
     fi
     diff -rq "$HERE" "$APP_ROOT/releases/$sha/ops/macmini" >/dev/null 2>&1 || ops_outdated=true
-    log deployed "\"ops_outdated\":$ops_outdated" || return 1
+    [[ -f "$APP_ROOT/releases/$sha/backend/constraints.txt" ]] || constraints=false
+    log deployed "\"ops_outdated\":$ops_outdated,\"constraints\":$constraints" || return 1
     rm -f "$SHARED/deploy-state" || return 1
     prune_releases
 }

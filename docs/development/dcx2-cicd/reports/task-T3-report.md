@@ -34,3 +34,13 @@ T3 소유 파일 구현 완료. T2 파일은 변경하지 않았으며 git add/c
 3. **실기 검증 범위:** 실제 sudo/launchctl/프로세스 종료, 로그인 전 부팅, QA 에이전트 등록은 금지 범위에 따라 실행하지 않았습니다. 설치기의 real-mode는 미리보기·취소 경로와 구분되어 있으며 테스트는 real-mode 작업 경계에 진입하지 않습니다. 위 권한 문제 해결 후 별도 운영 QA가 필요합니다.
 
 외부 참조 ops 파일은 읽기만 했습니다. `/Users/persona1/srv/*`, `~/Library/LaunchAgents`, `/Library/LaunchDaemons` 또는 실행 중인 서버에 쓰기/제어 작업을 하지 않았습니다.
+
+## Fix round 3 (public URLs)
+
+- 운영 신규 설치는 `NEXT_PUBLIC_API_URL=https://dcx-api.person-a.ai`, `CORS_ORIGINS=https://dcx.person-a.ai,http://localhost:3400`을 기본값으로 사용합니다. `DCX_PUBLIC_API_URL` / `DCX_PUBLIC_WEB_URL`로 설치 시 변경할 수 있으며 localhost CORS 포트는 지정 웹 포트를 따릅니다. QA 기본값은 localhost 8401/3401입니다.
+- 기존 `shared/runtime.env`의 두 값은 빈 값까지 보존하고 환경변수보다 우선합니다. 파일을 shell로 실행하지 않고 dotenv 데이터로 읽으며, 일반 설치 계획·dry-run·실제 렌더에 동일한 값을 사용합니다.
+- 한국어 README에 Cloudflare 터널 매핑, 공개 주소 override, 기존 값 보존 및 프론트 재빌드 필요성을 문서화했습니다.
+- TDD RED: 설치 테스트 **8 failed, 14 passed**. 구현 후 설치 테스트 **22 passed**. 기본 포트와 실제 설치의 등록 전 실패 경로에서도 값 보존을 추가 검증했습니다.
+- 전체 ops 검증: `backend/.venv/bin/python -m pytest backend/tests/ops -q -p no:cacheprovider` → **120 passed, 1 warning**, 162.37초. 경고는 기존 Pydantic class Config deprecation입니다. `/bin/bash -n ops/macmini/install.sh` 및 `git diff --check` 통과.
+- 이 작업의 변경은 install.sh, README.md, test_install.py, 본 보고서 네 파일입니다. 작업 중 별도로 나타난 deploy.sh/lib.sh/test_deploy.py 변경은 수정하지 않았습니다. 실제 운영 경로·launchd 디렉터리·실행 중인 서버를 건드리지 않았으며 git add/commit 및 에이전트 위임도 하지 않았습니다.
+- Concern: 기존 localhost 값도 요구사항대로 보존하므로 해당 설정이 있는 운영 환경은 운영자가 공개 주소로 수정하고 프론트를 재빌드해야 합니다. 실제 터널/운영 배포 검증은 수행하지 않았습니다.

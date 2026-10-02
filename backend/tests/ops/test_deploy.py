@@ -165,6 +165,32 @@ def test_venv_hash_and_cleanup(macmini):
     assert (m.root / f"releases/{c}/backend/.venv").resolve() != first
 
 
+def test_missing_constraints_builds_with_distinct_venv(macmini):
+    m = macmini
+    m.env["DCX_BUILD_CMD"] = ""
+    m.lib(f'build_release "{m.b}"')
+    constrained = (m.root / f"releases/{m.b}/backend/.venv").resolve()
+    (m.src / "backend/constraints.txt").unlink()
+    m.b = m.commit("without constraints")
+    m.git("-C", str(m.src), "push", m.env["DCX_REPO_URL"], "main")
+    m.ci()
+
+    code, record = m.run_deploy()
+    assert code == 0, m.output
+    assert record["decision"] == "deployed"
+    assert record["constraints"] is False
+    assert m.current == m.b
+    release = m.root / f"releases/{m.b}"
+    unconstrained = (release / "backend/.venv").resolve()
+    assert unconstrained != constrained
+    assert (unconstrained / ".complete").is_file()
+    assert (release / ".built").is_file()
+    calls = (m.root / "pip-calls").read_text().splitlines()
+    assert len(calls) == 2
+    assert " -c " in calls[0]
+    assert calls[1] == f"install -r {release}/backend/requirements.txt"
+
+
 def test_secrets_not_in_build_env(macmini):
     m = macmini
     assert m.run_deploy(OPENAI_API_KEY="sk-test")[0] == 0
