@@ -96,6 +96,7 @@ function StartScreen() {
   const router = useRouter();
   const store = useSessionStore();
   const [form, setForm] = useState<ProjectContext>(empty);
+  const [isPositioningOpen, setIsPositioningOpen] = useState(() => positioningOpen(empty.taskMode, empty.positioning));
   const [saved, setSaved] = useState<ProjectContext>(empty);
   const [returned, setReturned] = useState<ProjectContext | null>(null);
   const [busy, setBusy] = useState(false);
@@ -123,6 +124,7 @@ function StartScreen() {
       let draft = mergeStartForm(null);
       try { const raw = localStorage.getItem(localDraft); if (raw) draft = mergeStartForm(JSON.parse(raw)); } catch { /* Storage is optional; use the empty form. */ }
       setForm(draft); setSaved(draft);
+      setIsPositioningOpen(positioningOpen(draft.taskMode, draft.positioning));
       setReturned(null); return;
     }
     if (legacy) return;
@@ -131,6 +133,7 @@ function StartScreen() {
       if (!active) return;
       const value = mergeStartForm(data.draft || data.projectContext);
       setForm(value); setSaved(value); setReturned(data.projectContext);
+      setIsPositioningOpen(positioningOpen(value.taskMode, value.positioning));
     }).catch((e) => { if(active) { setLoadError(true); setMessage(displayError(e, "입력값을 불러오지 못했습니다. 세션을 다시 여세요.")); } }).finally(() => {if(active) setLoading(false);});
     return () => { active = false; };
   }, [store.sid, legacy, reload, version]);
@@ -227,7 +230,10 @@ function StartScreen() {
           <Card className="space-y-3">
             <h2 id="task-mode-heading" className="ds-t-card">과제 유형 *</h2>
             <p className="ds-t-caption">프로젝트 성격(브랜딩 · 리뉴얼 등)과는 따로 고릅니다.</p>
-            <ChoiceCards aria-labelledby="task-mode-heading" aria-describedby="task-mode-summary" value={form.taskMode || "explore"} onChange={value => update("taskMode", value as ProjectContext["taskMode"])} options={[
+            <ChoiceCards aria-labelledby="task-mode-heading" aria-describedby="task-mode-summary" value={form.taskMode || "explore"} onChange={value => {
+              if (value === "metric" && form.taskMode !== "metric") setIsPositioningOpen(positioningOpen("metric", form.positioning));
+              update("taskMode", value as ProjectContext["taskMode"]);
+            }} options={[
               {value: "metric", label: labels.taskMode.metric, description: "외부·사내 평가 지표를 올리는 과제입니다. 예: 환자경험평가 점수 개선"},
               {value: "explore", label: labels.taskMode.explore, description: "아직 드러나지 않은 맥락과 기회를 찾는 과제입니다. 예: 새 주거 컨셉 발굴"},
             ]} />
@@ -254,7 +260,7 @@ function StartScreen() {
             </fieldset>
             <div className="grid gap-6 md:grid-cols-2">
               <ListInput label="사내 제약" value={form.constraints} onChange={value => update("constraints", value)} />
-              {form.taskMode === "metric" ? <details open={positioningOpen(form.taskMode, form.positioning)} className="space-y-3"><summary className="ds-t-label">브랜드 포지셔닝 (선택)</summary>{positioning}</details> : <div className="space-y-3"><h3 className="ds-t-label">브랜드 포지셔닝 (선택)</h3>{positioning}</div>}
+              {form.taskMode === "metric" ? <details open={isPositioningOpen} onToggle={event => setIsPositioningOpen(event.currentTarget.open)} className="space-y-3"><summary className="ds-t-label">브랜드 포지셔닝 (선택)</summary>{positioning}</details> : <div className="space-y-3"><h3 className="ds-t-label">브랜드 포지셔닝 (선택)</h3>{positioning}</div>}
             </div>
             <div className="grid gap-6 md:grid-cols-2">
               <fieldset className="min-w-0" aria-labelledby="channels-heading" aria-describedby={errors.channels ? "channels-error" : undefined} tabIndex={-1} aria-invalid={!!errors.channels || undefined}><h3 id="channels-heading" className="ds-t-label">수집 채널 *</h3><ChoiceChips multiple label="수집 채널" options={options(labels.channels).filter(option => INTERNAL_TOOLS || option.value !== "fixture")} value={form.channels} onChange={value => update("channels", value)} />{errors.channels && <p id="channels-error" className="ds-err">{errors.channels}</p>}</fieldset>
