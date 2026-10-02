@@ -206,7 +206,7 @@ class ProjectContext(BaseModel):
     @field_validator("analysisGoal", mode="before")
     @classmethod
     def empty_goal(cls, value):
-        if isinstance(value, dict) and value.get("choice") == "" and value.get("note", "") == "":
+        if isinstance(value, dict) and value.get("choice") == "":
             return None
         return value
 

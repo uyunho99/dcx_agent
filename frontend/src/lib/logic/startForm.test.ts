@@ -50,6 +50,11 @@ describe("task-mode defaults and migration", () => {
     merged.analysisGoal!.note = "changed";
     expect(goal.note).toBe("x");
   });
+  it("normalizes a legacy goal with a note but no choice", () => {
+    const merged = mergeStartForm({ ...minimal(), taskMode: undefined, analysisGoal: { choice: "", note: "메모" } });
+    expect(merged.analysisGoal).toBeNull();
+    expect(validateStartForm(merged).valid).toBe(true);
+  });
   it("normalizes null server defaults and blank legacy goals", () => {
     const merged = mergeStartForm({ ...minimal(), taskMode: null, personaSeeds: null, positioning: { price: null, market: null }, analysisGoal: { choice: "", note: "" } });
     expect(merged.taskMode).toBe("explore");

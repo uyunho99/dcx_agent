@@ -74,6 +74,18 @@ def test_empty_goal_is_none():
         ProjectContext(**data)
 
 
+def test_goal_with_note_but_no_choice_is_none():
+    data = context_data() | {'analysisGoal': {'choice': '', 'note': '메모'}}
+    assert ProjectContext(**(data | {'taskMode': 'explore'})).analysisGoal is None
+
+
+@pytest.mark.parametrize('mode_fields', [{}, {'taskMode': None}])
+def test_legacy_goal_with_note_but_no_choice_is_rejected(mode_fields):
+    data = context_data() | mode_fields | {'analysisGoal': {'choice': '', 'note': '메모'}}
+    with pytest.raises(ValidationError):
+        ProjectContext(**data)
+
+
 def test_null_task_mode_is_legacy():
     data = context_data() | {'taskMode': None}
     assert ProjectContext(**data).taskMode is None

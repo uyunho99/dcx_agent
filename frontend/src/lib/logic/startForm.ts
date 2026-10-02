@@ -39,8 +39,8 @@ export function mergeStartForm(loaded: unknown): ProjectContext {
     { name: "", source: "", item: "" },
     typeof metric === "string" ? { name: metric } : metric,
   ) as ProjectContext["keyMetrics"][number]);
-  // Old empty drafts must not submit an invalid enum choice to the backend.
-  if (form.analysisGoal?.choice === "" && !form.analysisGoal.note) form.analysisGoal = null;
+  // Old drafts without a goal choice must not submit an invalid enum, even with a note.
+  if (form.analysisGoal?.choice === "") form.analysisGoal = null;
   return form;
 }
 

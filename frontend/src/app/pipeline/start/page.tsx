@@ -222,7 +222,7 @@ function StartScreen() {
     {store.persistError && <Banner tone="danger">{store.persistError}</Banner>}
     {legacy ? <Banner tone="warning" actions={<><Button onClick={() => router.push("/pipeline/preprocess")}>전처리 화면으로</Button><Button onClick={() => store.reset()}>새 프로젝트 만들기</Button></>}>구버전 세션은 0~2단계를 편집할 수 없습니다. 3단계 이후 화면에서 결과를 확인하세요.</Banner> : <VersionStage stage="stage0">
       <header><StageVersionAction stage="stage0" /><p className="ds-eyebrow">0단계 · 입력</p><h1 className="ds-t-screen">새 프로젝트를 설정합니다</h1><p className="ds-t-body">0-A는 이후 모든 단계가 참고하는 프로젝트 개요입니다. 0-B는 분석 결과와 대조할 초기 기준선이며 전부 선택 입력입니다.</p></header>
-      {!loading && isPreTaskModeContext(returned) && <Banner tone="info">이 세션은 과제 유형이 생기기 전에 저장되었습니다. 지금은 탐색·기획형으로 표시됩니다. 저장하면 이 유형으로 저장되고, project_context.md에 과제 유형과 생각하는 페르소나 섹션이 추가됩니다.</Banner>}
+      {!loading && isPreTaskModeContext(returned) && <Banner tone="info">이 세션은 과제 유형이 생기기 전에 저장되었습니다. 지금은 {labels.taskMode[form.taskMode || "explore"]}으로 표시됩니다. 저장하면 이 유형으로 저장되고, project_context.md에 과제 유형과 생각하는 페르소나 섹션이 추가됩니다.</Banner>}
       {saveWarnings.length > 0 && <Banner tone="info">R1 키워드는 바뀌기 전 입력으로 만들었습니다. 새 입력을 반영하려면 새 버전을 만들어 0단계부터 다시 시작하세요.</Banner>}
       {loadError ? <Button onClick={() => setReload(value => value + 1)}>입력값 다시 불러오기</Button> : loading ? <div role="status">처리 중…<Skeleton /><Skeleton /><Skeleton /></div> : <div className={INTERNAL_TOOLS ? "grid gap-6 lg:grid-cols-3" : "grid gap-6"}>
         <div className={INTERNAL_TOOLS ? "lg:col-span-2 space-y-6" : "space-y-6"} ref={formRef}>
