@@ -1,6 +1,6 @@
 #!/bin/bash
 # Source before lib.sh. DCX_PATH is an explicit test/installation override.
-export PATH="${DCX_PATH:-/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin}"
+export PATH="${DCX_PATH:-/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin}"
 export APP_ROOT="${APP_ROOT:-$HOME/srv/dcx-agent}"
 SHARED="$APP_ROOT/shared"
 HISTORY="$SHARED/deploy-history"

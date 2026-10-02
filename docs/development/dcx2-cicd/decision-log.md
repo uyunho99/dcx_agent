@@ -39,3 +39,6 @@
 - 설계 4장 순서(스냅샷 → 교체 → 재시작)를 SQLite 일관성 때문에 바꿈. D-403의 "세션만"에 작은 `work/` SQLite를 더함(용량 작음, 같은 이유).
 ### D-416 첫 릴리스는 정식 빌드, 데몬 PATH 지정, AUTHOR_SALT_PATH 고정, 프론트 빌드 설정 해시 · 기록(리뷰 보정 F1 · F6 · F9 · F10)
 - 2026-10-02 손 배포 8400을 `AUTHOR_SALT_PATH=~/srv/dcx-agent/shared/data/.author_salt`로 다시 띄움.
+### D-417 기본 PATH에 /usr/sbin:/sbin 추가 · 기록(UAT 운영 설치)
+- 2026-10-02 운영 `sudo install.sh`가 `chown: command not found`로 멈춤(변경 없음). macOS의 chown · lsof는 /usr/sbin에 있는데 env.sh와 launchd plist 3개의 PATH에 빠져 있었음. lsof가 없으면 배포 때 내릴 프로세스를 못 찾음. 테스트는 DCX_PATH로 가짜 명령을 써서 못 잡음.
+- 하네스가 finish 단계라 Codex 위임이 막혀 사용자 승인으로 Claude가 직접 한 줄씩 수정(원칙의 예외). 테스트 파일 수정은 훅이 막아 회귀 테스트는 못 넣음 — plutil 검사와 ops 120개 통과로 확인, 실제 확인은 재설치.
