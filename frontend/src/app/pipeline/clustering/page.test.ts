@@ -8,6 +8,8 @@ vi.mock('react', async () => ({...await vi.importActual('react'),
  useEffect:(fn:any,deps:any[])=>{const i=hooks.cursor++;const old=hooks.slots[i];if(!old||deps.some((d,j)=>d!==old.deps[j]))hooks.effects.push(()=>{old?.cleanup?.();hooks.slots[i]={deps,cleanup:fn()};});},
 }));
 const state=vi.hoisted(()=>({session:{sid:'s',sd:{prep:{derivedRef:{prepKey:'p'}}}} as any,poll:null as any,pollOptions:null as any,view:{readonly:false,version:'v1',refreshSessionAfterStage:vi.fn().mockResolvedValue(undefined)}}));
+const dirty = vi.hoisted(() => ({register: vi.fn(), confirmNavigation: vi.fn(() => true)}));
+vi.mock('@/components/DirtyProvider', () => ({useDirty: () => dirty}));
 vi.mock('next/navigation',()=>({useRouter:()=>({push:vi.fn()})}));
 vi.mock('@/stores/useSessionStore',()=>({useSessionStore:()=>state.session}));
 vi.mock('@/components/versions/VersionProvider',()=>({useVersion:()=>state.view}));
@@ -250,4 +252,82 @@ it('shows the Korean failure reason and load document counts',async()=>{
  state.poll={...status,status:'running',step:'load',detail:{step:'load',docs:20,total:100}};
  screen();tree=screen();
  expect(textOf(nodes(tree).find(n=>n.props?.['aria-live']==='polite'))).toContain('20/100 문서');
+});
+
+
+it('marks pending edits dirty and flushes the latest draft on unmount before debounce', async () => {
+ vi.useFakeTimers();
+ let tree = await ready();
+ nodes(tree).find(n=>n.type===ClusterLayer).props.onEdit('CL0', {name:'first'});
+ tree = screen();
+ nodes(tree).find(n=>n.type===ClusterLayer).props.onEdit('CL0', {name:'latest'});
+ screen();
+ expect(dirty.register).toHaveBeenLastCalledWith(expect.any(String), true);
+ expect(patchSession).not.toHaveBeenCalled();
+ hooks.slots.forEach(slot=>slot?.cleanup?.());
+ await tick();
+ expect(patchSession).toHaveBeenCalledWith('s', {drafts:{segment:{run:'r1',edits:{CL0:{name:'latest'}}}}}, 'v1');
+ await vi.advanceTimersByTimeAsync(600);
+ expect(patchSession).toHaveBeenCalledTimes(1);
+ expect(dirty.register).toHaveBeenLastCalledWith(expect.any(String), false);
+});
+
+it('dispatches the pending PATCH during unmount with edits made before rerender', async () => {
+ vi.useFakeTimers();
+ const tree = await ready();
+ const onEdit = nodes(tree).find(n=>n.type===ClusterLayer).props.onEdit;
+ onEdit('CL0', {name:'first'});
+ onEdit('CL0', {name:'latest'});
+ onEdit('CL1', {name:'another cluster'});
+ expect(patchSession).not.toHaveBeenCalled();
+ hooks.slots.forEach(slot=>slot?.cleanup?.());
+ expect(patchSession).toHaveBeenCalledWith('s', {drafts:{segment:{run:'r1',edits:{CL0:{name:'latest'},CL1:{name:'another cluster'}}}}}, 'v1');
+ await tick();
+ await vi.advanceTimersByTimeAsync(600);
+ expect(patchSession).toHaveBeenCalledTimes(1);
+});
+
+it('registers dirty throughout the debounce and clears it after a successful PATCH', async () => {
+ vi.useFakeTimers();
+ let finish!: (value: any) => void;
+ vi.mocked(patchSession).mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
+ const tree = await ready();
+ nodes(tree).find(n=>n.type===ClusterLayer).props.onEdit('CL0', {name:'pending'});
+ expect(dirty.register).toHaveBeenLastCalledWith('segment:s:v1', true);
+ await vi.advanceTimersByTimeAsync(599);
+ expect(patchSession).not.toHaveBeenCalled();
+ expect(dirty.register).toHaveBeenLastCalledWith('segment:s:v1', true);
+ await vi.advanceTimersByTimeAsync(1);
+ expect(patchSession).toHaveBeenCalledOnce();
+ expect(dirty.register).toHaveBeenLastCalledWith('segment:s:v1', true);
+ finish({}); await tick();
+ expect(dirty.register).toHaveBeenLastCalledWith('segment:s:v1', false);
+});
+
+it('remains dirty during an in-flight autosave and after failure', async () => {
+ vi.useFakeTimers();
+ let reject!: (e: Error) => void;
+ vi.mocked(patchSession).mockImplementationOnce(()=>new Promise((_, fail)=>{reject=fail;}));
+ const tree = await ready();
+ nodes(tree).find(n=>n.type===ClusterLayer).props.onEdit('CL0', {name:'pending'});
+ screen();
+ await vi.advanceTimersByTimeAsync(600);
+ expect(dirty.register).toHaveBeenLastCalledWith(expect.any(String), true);
+ reject(new Error('offline')); await tick(); screen();
+ expect(dirty.register).toHaveBeenLastCalledWith(expect.any(String), true);
+});
+
+it('clears dirty only after the latest save completes', async () => {
+ vi.useFakeTimers();
+ let finish!: (value: any) => void;
+ vi.mocked(patchSession).mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
+ let tree = await ready();
+ nodes(tree).find(n=>n.type===ClusterLayer).props.onEdit('CL0', {name:'first'});
+ tree=screen(); await vi.advanceTimersByTimeAsync(600);
+ nodes(tree).find(n=>n.type===ClusterLayer).props.onEdit('CL0', {name:'second'});
+ screen(); finish({}); await tick();
+ expect(dirty.register).toHaveBeenLastCalledWith(expect.any(String), true);
+ await vi.advanceTimersByTimeAsync(600);
+ expect(dirty.register).toHaveBeenLastCalledWith(expect.any(String), false);
+ expect(patchSession).toHaveBeenLastCalledWith('s', {drafts:{segment:{run:'r1',edits:{CL0:{name:'second'}}}}}, 'v1');
 });

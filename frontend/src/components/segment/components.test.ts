@@ -63,6 +63,44 @@ it('handles empty channel data', () => {
   expect(html).not.toContain('한 채널 편중');
 });
 
+it('renders Korean channel names for the 6-A distribution', () => {
+  const html = renderToStaticMarkup(createElement(ChannelBar, {
+    channels: { naver_cafe: 0.2, naver_blog: 0.2, youtube: 0.2, ppomppu: 0.2, clien: 0.2 },
+  }));
+  expect(html).toContain('네이버 카페 20% · 네이버 블로그 20% · 유튜브 20% · 뽐뿌 20% · 클리앙 20%');
+});
+
+it('falls back to the raw code for an unknown channel', () => {
+  const html = renderToStaticMarkup(createElement(ChannelBar, { channels: { new_channel: 1 } }));
+  expect(html).toContain('new_channel 100%');
+});
+
+it.each(['false', 'true', undefined])('respects the crawl fixture visibility rule with internal tools set to %s', async (flag) => {
+  vi.stubEnv('NEXT_PUBLIC_INTERNAL_TOOLS', flag);
+  vi.resetModules();
+  try {
+    const { ChannelBar: ConfiguredChannelBar } = await import('./ChannelBar');
+    const html = renderToStaticMarkup(createElement(ConfiguredChannelBar, { channels: { fixture: 0.8, youtube: 0.2 } }));
+    const fixtureOnly = renderToStaticMarkup(createElement(ConfiguredChannelBar, { channels: { fixture: 1 } }));
+    expect(html).toContain('유튜브 20%');
+    if (flag === 'false') {
+      expect(html).not.toContain('fixture');
+      expect(html).not.toContain('개발용 샘플');
+      expect(html).not.toContain('width:80%');
+      expect(html).not.toContain('한 채널 편중');
+      expect(fixtureOnly).toContain('채널 정보가 없습니다.');
+    } else {
+      expect(html).toContain('개발용 샘플 80%');
+      expect(html).toContain('width:80%');
+      expect(html).toContain('한 채널 편중');
+      expect(fixtureOnly).toContain('개발용 샘플 100%');
+    }
+  } finally {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  }
+});
+
 it('exports a provisional badge with fixed Korean copy', () => {
   expect(renderToStaticMarkup(createElement(ProvisionalBadge))).toContain('잠정</span>');
 });

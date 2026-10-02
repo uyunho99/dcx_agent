@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge, Banner, Button, Card, ProgressBar } from '../ds';
 import { ProvisionalBadge } from '../ds/ProvisionalBadge';
 import { StageVersionAction, VersionStage } from '../versions/StageVersion';
+import { useDirty } from '../DirtyProvider';
 import { useVersion } from '../versions/VersionProvider';
 import { useStageCompletionRefresh } from '../versions/useStageCompletionRefresh';
 import { usePolling } from '@/lib/usePolling';
@@ -26,6 +27,8 @@ type Props = {
 };
 export function SegmentScreen({ sid, version, readonly = false }: Props) {
     const view = useVersion();
+    const { register } = useDirty();
+    const dirtyId = `segment:${sid}:${version ?? 'current'}`;
     const [status, setStatus] = useState<SegmentStatus | null>(null);
     const [layer, setLayer] = useState<SegmentLayer>('6-A');
     const [clusters, setClusters] = useState<SegmentCluster[]>([]);
@@ -48,7 +51,7 @@ export function SegmentScreen({ sid, version, readonly = false }: Props) {
     useEffect(() => { if (resetOpen)
         resetPanel.current?.focus(); }, [resetOpen]);
     function closeReset() { setResetOpen(false); resetTrigger.current?.focus(); }
-    const draftWrite = useRef<Promise<unknown>>(Promise.resolve());
+    const draftWrite = useRef<Promise<unknown> | null>(null);
     const statusEpoch = useRef(0);
     const lock = useRef(false);
     const epoch = useRef(0);
@@ -73,8 +76,49 @@ export function SegmentScreen({ sid, version, readonly = false }: Props) {
         void readDraft().catch(e => { if (active.current) setError(segmentErrorMessage(e)); });
     }, [readDraft]);
     const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    useEffect(() => { active.current = true; return () => { active.current = false; if (draftTimer.current)
-        clearTimeout(draftTimer.current); }; }, []);
+    const pendingDraft = useRef<{run: string; edits: Record<string, Edit>} | null>(null);
+    const draftRevision = useRef(0);
+    const unsaved = useRef(false);
+    const flushDraft = useCallback(() => {
+        if (draftTimer.current) clearTimeout(draftTimer.current);
+        draftTimer.current = null;
+        const pending = pendingDraft.current;
+        if (!pending) return;
+        pendingDraft.current = null;
+        const revision = draftRevision.current;
+        const save = () => patchSession(sid, { drafts: { segment: pending } }, version);
+        // Dispatch immediately when idle, but preserve ordering behind an in-flight save.
+        const write = draftWrite.current
+            ? draftWrite.current.catch(() => {}).then(save)
+            : Promise.resolve(save());
+        draftWrite.current = write;
+        void write.then(() => {
+            if (draftWrite.current === write) draftWrite.current = null;
+            if (draftRevision.current === revision) {
+                unsaved.current = false;
+                if (active.current) register(dirtyId, false);
+            }
+        }, e => {
+            if (draftWrite.current === write) draftWrite.current = null;
+            if (draftRevision.current === revision) {
+                pendingDraft.current = pending;
+                if (active.current) setError(segmentErrorMessage(e));
+            }
+        });
+    }, [sid, version, register, dirtyId]);
+    useEffect(() => {
+        active.current = true;
+        const warn = (event: BeforeUnloadEvent) => {
+            if (unsaved.current) { event.preventDefault(); event.returnValue = ''; flushDraft(); }
+        };
+        if (typeof window !== 'undefined') window.addEventListener('beforeunload', warn);
+        return () => {
+            active.current = false;
+            flushDraft();
+            register(dirtyId, false);
+            if (typeof window !== 'undefined') window.removeEventListener('beforeunload', warn);
+        };
+    }, [flushDraft, register, dirtyId]);
     const fetcher = useCallback(async () => {
         const generation = statusEpoch.current;
         try {
@@ -137,6 +181,10 @@ export function SegmentScreen({ sid, version, readonly = false }: Props) {
             return;
         if (runRef.current !== current.run) {
             runRef.current = current.run;
+            pendingDraft.current = null;
+            draftRevision.current++;
+            unsaved.current = false;
+            register(dirtyId, false);
             setLoaded(false);
             if (draftTimer.current) clearTimeout(draftTimer.current);
             setLayer('6-A');
@@ -149,7 +197,7 @@ export function SegmentScreen({ sid, version, readonly = false }: Props) {
         }
         if (!running(current) && current.run && ['review', 'done'].includes(current.status) && loadedStatus.current !== current)
             void load(current);
-    }, [current, load, savedDraft]);
+    }, [current, load, savedDraft, register, dirtyId]);
     const blocked = readonly || !!view.conflict || busy || running(current) || !current || !!error || !!pollError || savedDraft === undefined;
     const evidence = current ? canStartEvidence(current) : { allowed: false, reason: '다음 묶음에서 열립니다' };
     async function refresh() {
@@ -163,11 +211,18 @@ export function SegmentScreen({ sid, version, readonly = false }: Props) {
         try { setStatus(await fetcher()); }
         catch { /* fetcher displays a recoverable poll error */ }
     }
-    function edit(id: string, value: Edit) { if (blocked)
-        return; const next = { ...edits, [id]: { ...edits[id], ...value } }; setEdits(next); if (draftTimer.current)
-        clearTimeout(draftTimer.current); const run = current?.run; draftTimer.current = setTimeout(() => { if (!run || runRef.current !== run || !active.current)
-        return; draftWrite.current = draftWrite.current.catch(() => { }).then(() => patchSession(sid, { drafts: { segment: { run, edits: next } } }, version)); void draftWrite.current.catch(e => { if (active.current && runRef.current === run)
-        setError(segmentErrorMessage(e)); }); }, 600); }
+    function edit(id: string, value: Edit) {
+        if (blocked || !current?.run) return;
+        const previous = pendingDraft.current?.edits ?? edits;
+        const next = { ...previous, [id]: { ...previous[id], ...value } };
+        setEdits(next);
+        pendingDraft.current = {run: current.run, edits: next};
+        draftRevision.current++;
+        unsaved.current = true;
+        register(dirtyId, true);
+        if (draftTimer.current) clearTimeout(draftTimer.current);
+        draftTimer.current = setTimeout(flushDraft, 600);
+    }
     async function mutate(work: () => Promise<unknown>, ids: string[] = []) {
         if (blocked || lock.current)
             return;
@@ -180,13 +235,17 @@ export function SegmentScreen({ sid, version, readonly = false }: Props) {
         if (draftTimer.current)
             clearTimeout(draftTimer.current);
         try {
-            await draftWrite.current.catch(() => { });
+            await draftWrite.current?.catch(() => { });
             await work();
             if (!active.current)
                 return;
             const remaining = Object.fromEntries(Object.entries(edits).filter(([id]) => !ids.includes(id)));
             if (current?.run)
                 await patchSession(sid, { drafts: { segment: { run: current.run, edits: { ...remaining, ...Object.fromEntries(ids.map(id => [id, null])) } } } }, version);
+            pendingDraft.current = null;
+            draftRevision.current++;
+            unsaved.current = false;
+            register(dirtyId, false);
             const next = await fetcher();
             if (active.current) {
                 if (next.run === runRef.current) await load(next);
@@ -245,9 +304,13 @@ export function SegmentScreen({ sid, version, readonly = false }: Props) {
             clearTimeout(draftTimer.current);
         epoch.current++;
         try {
-            await draftWrite.current.catch(() => { });
+            await draftWrite.current?.catch(() => { });
             const result = await api.startSegment(sid, reset ? { k, confirmReset: true } : {}, version);
             if (active.current) {
+                pendingDraft.current = null;
+                draftRevision.current++;
+                unsaved.current = false;
+                register(dirtyId, false);
                 setResetOpen(false);
                 setEdits({});
                 setLoaded(false);
