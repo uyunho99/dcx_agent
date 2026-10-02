@@ -152,3 +152,13 @@
 ### D-248 묶음 ③ 기획 · 설계 · 계획을 ②와 병행 · 확정 (사용자, Q5)
 - ③은 별도 하네스 실행(`dcx2-stage8`)과 별도 체크아웃에서 진행하고, 가짜 Evidence Package(02-design 2.4 스키마) 픽스처로 7단계 없이 시험한다. 승인 게이트는 ② · ③ 따로.
 - 7단계 동시 호출(01 Q4): Claude 판단 — LLM 동시 호출 4개(설정값). 계획에서 확정.
+
+## 묶음 ② 설계 (2026-10-02)
+
+### D-249 불용어는 표시 · 전달 키워드에만 적용, LDA 학습 어휘는 그대로 · 판단 (Claude)
+- 적용: 6-A c-TF-IDF 키워드 · 6-B 어휘 네트워크(어휘 선정 전) · 6-C 표시 키워드 · 7단계 쿼리 키워드 · Artifact 집계. 6-A는 사용자 범위(6-B · Context · 7) 밖이지만 같은 "흔한 단어가 키워드로 보이는" 문제라 함께 적용.
+- LDA 학습 어휘를 건드리면 C_v로 고른 Context 수(D-235)가 바뀔 수 있어 제외. 틀렸을 때 비용: 목록 적용 위치 한 줄 추가.
+### D-250 7단계 LLM 동시 호출 4개(설정 `evidence_llm_concurrency`, 1이면 순차), SQLite 쓰기는 한 스레드 · 판단 (Claude)
+- QA-L1 속도(호출당 약 15초) 기준 합성 세션 약 75분 → 약 20분. 테스트로 순차 · 동시 결과 동일을 고정.
+### D-251 `evidence.sqlite` 표 구조 · 질의 임베딩 `input_type` 인자 · 필터 강제 검색 래퍼 · 판단 (Claude)
+- 설계가 비워 둔 저장 구조를 6개 표(meta · queries · candidates · selected · contexts · persona_support)로 정함. `Embedder.embed(texts, input_type='document')` 하위 호환 인자. 7단계는 `allow=None`이면 오류를 내는 래퍼만 사용(AC-06).
