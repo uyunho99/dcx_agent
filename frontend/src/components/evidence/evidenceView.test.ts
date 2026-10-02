@@ -40,6 +40,9 @@ describe('evidence display contract', () => {
   ])('leaves invalid range %s:%s unmarked', (start, end) => {
     expect(highlight('가나다', start, end)).toEqual([{text:'가나다',mark:false}]);
   });
+  it('slices backend Unicode code-point offsets after an emoji', () => {
+    expect(highlight('😀 인용 끝', 2, 4)).toEqual([{text:'😀 ',mark:false},{text:'인용',mark:true},{text:' 끝',mark:false}]);
+  });
   it('preserves empty text and exact exclusion copy', () => {
     expect(highlight('', 0, 0)).toEqual([{text:'',mark:false}]);
     expect(excludedMessage(0)).toBe('0건이 Known Insight와 같아 빠졌습니다');

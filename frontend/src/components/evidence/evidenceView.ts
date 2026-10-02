@@ -21,12 +21,13 @@ export function locationLabel({ field, idx }: EvidenceLocation): string {
 export type EvidenceHighlightSegment = { text: string; mark: boolean };
 
 export function highlight(text: string, start: number | null, end: number | null): EvidenceHighlightSegment[] {
+  const points = Array.from(text);
   if (start === null || end === null || !Number.isInteger(start) || !Number.isInteger(end)
-    || start < 0 || end > text.length || start >= end) return [{ text, mark: false }];
+    || start < 0 || end > points.length || start >= end) return [{ text, mark: false }];
   const segments: EvidenceHighlightSegment[] = [];
-  if (start > 0) segments.push({ text: text.slice(0, start), mark: false });
-  segments.push({ text: text.slice(start, end), mark: true });
-  if (end < text.length) segments.push({ text: text.slice(end), mark: false });
+  if (start > 0) segments.push({ text: points.slice(0, start).join(''), mark: false });
+  segments.push({ text: points.slice(start, end).join(''), mark: true });
+  if (end < points.length) segments.push({ text: points.slice(end).join(''), mark: false });
   return segments;
 }
 
