@@ -538,7 +538,8 @@ def add_manual(sid, kw, axis, sub, origin='manual', version=None):
         duplicate = next((k for k in _all_keywords(data) if norm_key(k.kw) == norm_key(kw)), None)
         if duplicate:
             raise Duplicate(duplicate.id)
-        keyword.round = max((int(n) for n in data.get('keywordRounds', {})), default=1)
+        keyword.round = max((int(n) for n, state in data.get('keywordRounds', {}).items()
+                             if not locked(int(n)) or state.get('committed')), default=1)
         return {'keywords': data.get('keywords', []) + [keyword.model_dump()]}
     with store.locked(sid):
         data = store.assert_writable(sid, version)
