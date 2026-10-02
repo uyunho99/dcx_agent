@@ -161,6 +161,8 @@ def _restart(data, target, stage):
             data['evidence'] = {'status': 'stale'}
     if stage <= 8:
         shutil.rmtree(target / 'persona', ignore_errors=True)
+        for key in ('personaDone', 'insightDone'):
+            data.get('completion', {}).pop(key, None)
         for key in ('persona', 'insight'):
             if key in data:
                 data[key] = {'status': 'stale'}
@@ -332,6 +334,23 @@ def compare(sid, a, b, stage) -> dict:
                             result[layer] = dict(confirmed=sum(item['confirmed'] for item in items), total=len(items), items=items)
                 return result
             left, right = segment_summary(a), segment_summary(b)
+            return dict(same=left == right, before=left, after=right)
+        if stage == 'stage8':
+            def persona_summary(v):
+                import json
+                base = version_dir(sid, v) / 'persona'
+                artifacts = {name: read_json(base / f'{name}.json') for name in
+                             ('cards', 'map', 'tree', 'stage_8', 'insights', 'concepts')}
+                cards = artifacts['cards'] or {}
+                result = dict(report=artifacts['stage_8'], run=cards.get('run'),
+                    personas={pid: row.get('status') for pid, row in cards.get('personas', {}).items()},
+                    hashes={name: hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
+                            for name, value in artifacts.items() if value is not None})
+                for name in ('insights', 'concepts'):
+                    doc = artifacts[name] or {}
+                    result[name] = dict(revision=doc.get('revision', 0), count=len(doc.get('items', [])))
+                return result
+            left, right = persona_summary(a), persona_summary(b)
             return dict(same=left == right, before=left, after=right)
         if not re.fullmatch(r'stage[0-9]+', stage):
             raise StoreError('Invalid stage', 400, 'validation')

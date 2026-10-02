@@ -54,6 +54,22 @@ def _completion(sid, data, version=None):
             return False
         return data.get("segment", {}).get("status") == "done"
 
+    def persona_done():
+        return (data.get("persona", {}).get("status") == "done"
+                and "stage8" not in data.get("stale", {}))
+
+    def insight_done():
+        if "stage8" in data.get("stale", {}) or "stage9" in data.get("stale", {}):
+            return False
+        selected = version or data.get("version")
+        if not selected:
+            selected = (store.read_json(store.root_dir(sid) / "meta.json") or {}).get("activeVersion")
+        if not selected:
+            return False
+        from app.persona.store import PersonaStore
+        insights = PersonaStore.open(sid, selected).read('insights') or {}
+        return insights.get('revision', 0) >= 1
+
     def export_done():
         export_ref = data.get("training", {}).get("exportRef")
         return isinstance(export_ref, str) and bool(export_ref.strip())
@@ -66,6 +82,8 @@ def _completion(sid, data, version=None):
         ("exportDone", export_done),
         ("clustersDone", clusters_done),
         ("segmentDone", segment_done),
+        ("personaDone", persona_done),
+        ("insightDone", insight_done),
     ):
         try:
             result[field] = compute()

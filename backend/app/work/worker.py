@@ -104,8 +104,13 @@ def _segment(context: Context):
     run(context)
 
 
+def _persona(context: Context):
+    from app.persona.pipeline import run
+    run(context)
+
+
 KINDS: dict[str, Callable[[Context], None]] = {
-    'prep': _prep, 'judge': _judge, 'train': _train, 'infer': _infer, 'monitor': _monitor, 'segment': _segment}
+    'prep': _prep, 'judge': _judge, 'train': _train, 'infer': _infer, 'monitor': _monitor, 'segment': _segment, 'persona': _persona}
 
 
 def execute(context: Context):
