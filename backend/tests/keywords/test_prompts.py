@@ -23,7 +23,7 @@ def state():
 
 
 def test_four_distinct_templates(state):
-    assert PROMPT_VERSION == {1: "r1.v1", 2: "r2.v1", 3: "r3.v1", 4: "r4.v1"}
+    assert PROMPT_VERSION == {1: "r1.v3", 2: "r2.v2", 3: "r3.v3", 4: "r4.v3"}
     assert MIN_COUNT == {1: 70, 2: 100, 3: 60, 4: 60}
     tasks = [build_round_task("sid", n, state) for n in range(1, 5)]
     assert len({task.instructions for task in tasks}) == 4
@@ -40,6 +40,43 @@ def test_four_distinct_templates(state):
         for axis, subs in AXES.items():
             assert axis in task.instructions
             assert all(sub in task.instructions for sub in subs)
+
+
+def test_r3_v3_converges_with_light_balance(state):
+    text = build_round_task("sid", 3, state).instructions
+    for phrase in (
+        "주제 묶음", "약 7할", "약 3할", "가장 적은 축", "맥락어만 바꾼 변형",
+        "커버리지가 없으면 검색량을 추정하지 않는다",
+        "거절 사유에 해당하는 표현과 과거 0건 키워드의 반복을 피한다",
+    ):
+        assert phrase in text
+    assert "부족한 축을 보완하며 수렴·균형을 맞춘다" not in text
+
+
+def test_r4_v3_final_divergence(state):
+    state = replace(
+        state, rejection_signals="거절X: 사유",
+        distribution={"physical": 0.5, "psychological": 0.3, "behavioral": 0.2},
+    )
+    text = build_round_task("sid", 4, state).instructions
+    for phrase in (
+        "대체 · 결합 · 응용", "역발상", "제거", "극단 사용자", "인접어",
+        "맥락어만 바꾼 변형", "세 축에 고르게",
+    ):
+        assert phrase in text
+    assert "축 분포:\n- physical: 0.5\n- psychological: 0.3\n- behavioral: 0.2" in text
+    assert "거절 신호:\n거절X: 사유" in text
+    assert text.index("축 분포:") < text.index("거절 신호:") < text.index("기존 승인 키워드(중복 제외):")
+
+
+@pytest.mark.parametrize("round_number", [3, 4])
+def test_v3_keeps_shared_sections(round_number):
+    templates = Path(build_round_task.__globals__["__file__"]).with_name("prompts")
+    marker = "## 키워드 형태 규칙".encode("utf-8")
+    old = (templates / f"r{round_number}.v2.md").read_bytes()
+    new = (templates / f"r{round_number}.v3.md").read_bytes()
+    assert marker in old and marker in new
+    assert new[new.index(marker):] == old[old.index(marker):]
 
 
 def test_no_role_sentence_no_domain_examples(state):
@@ -155,7 +192,7 @@ def test_templates_loaded_at_call_time_and_strict(state, monkeypatch):
     original = Path.read_text
 
     def read(path, *args, **kwargs):
-        if path.name == "r1.v1.md":
+        if path.name == "r1.v3.md":
             return "{unknown_placeholder}"
         return original(path, *args, **kwargs)
 
@@ -167,3 +204,26 @@ def test_templates_loaded_at_call_time_and_strict(state, monkeypatch):
 def test_invalid_round(state):
     with pytest.raises(ValueError):
         build_round_task("sid", 5, state)
+
+
+FORM_RULE_LINES = [
+    "- 검색어는 두 단어 이하로 쓴다: 대상·장면을 좁히는 맥락어 하나 + 사물·현상을 가리키는 핵심어 하나. 맥락어는 첨부 맥락의 대상 집단 · 생활 장면 · 제품군에서 가져오고, 한두 개에 몰지 말고 여러 맥락어를 고르게 바꿔 쓴다.\n",
+    "- 공백 제거 기준 8자 이하로 쓴다. 조사 · 어미나 \"~후 · ~때 · ~중\" 같은 수식구를 붙인 구절형은 쓰지 않는다.\n",
+    "- 맥락어 없이 일반어 핵심어 하나만 단독으로 쓰지 않는다. 검색 범위가 지나치게 넓어진다.\n",
+]
+
+
+@pytest.mark.parametrize("old,new", [("r1.v2", "r1.v3"), ("r2.v1", "r2.v2"), ("r3.v1", "r3.v2"), ("r4.v1", "r4.v2")])
+def test_short_form_templates_only_add_form_rule(old, new):
+    templates = Path(build_round_task.__globals__["__file__"]).with_name("prompts")
+    current = (templates / f"{new}.md").read_text(encoding="utf-8")
+    for line in FORM_RULE_LINES:
+        assert current.count(line) == 1
+        current = current.replace(line, "", 1)
+    assert current == (templates / f"{old}.md").read_text(encoding="utf-8")
+
+
+def test_form_rule_in_every_round(state):
+    for n in range(1, 5):
+        text = build_round_task("sid", n, state).instructions
+        assert all(line.strip() in text for line in FORM_RULE_LINES)

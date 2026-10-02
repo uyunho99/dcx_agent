@@ -120,3 +120,11 @@ def test_keyword_rejects_invalid_enumerations_and_round(field, value):
     data[field] = value
     with pytest.raises(ValidationError):
         Keyword(**data)
+
+
+def test_drops_long_phrases():
+    items = [generated("귀촌 불면"), generated("농작업 후 손 부종"), generated("비닐하우스야간점검"), generated("시골집외풍")]
+    passed, logs = clean_generated(items, [], BANNED)
+    assert passed == [generated("귀촌 불면"), generated("시골집외풍")]
+    assert "more than 2 words" in logs[0]
+    assert "longer than 8 characters" in logs[1]

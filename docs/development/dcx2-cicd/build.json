@@ -1,0 +1,38 @@
+{
+  "verdict": "PASS",
+  "head": "18c7712ece9dfc6b25f10d0bfb156be63ae64134",
+  "fingerprint": "9deb6fe454cd7a55ff9a49c8d043f75567303d489c2719138b0fc23b9ee7ebd3",
+  "commands": [
+    { "command": "backend/.venv/bin/python -m pytest backend/tests/ops -q -p no:cacheprovider  (120 passed, macOS; also DCX_BASH=/bin/bash 3.2 per fix reports)", "exitCode": 0 },
+    { "command": "GitHub Actions CI on PR #6 commit 1810ab9 (same code as head): backend full pytest on ubuntu 7m34s pass, frontend lint/test/build 52s pass", "exitCode": 0 },
+    { "command": "backend/.venv/bin/python -m pytest backend/tests -q -p no:cacheprovider at c3221fc (1580 passed); later commits change only ops/ and backend/tests/ops/", "exitCode": 0 }
+  ],
+  "findings": [],
+  "tasks": [
+    {
+      "id": "T1",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent a84c2a6c0e5a56bca (--wait --fresh --write); commit 91ffb39 by controller",
+      "red": "docs/development/dcx2-cicd/reports/task-T1-report.md RED",
+      "green": "docs/development/dcx2-cicd/reports/task-T1-report.md GREEN (full backend 1514)",
+      "review": "task review (Claude sonnet) Approved; minors in reports/sdd-ledger.md"
+    },
+    {
+      "id": "T2",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agents a5e0cd5a0346db5d2 (impl), fix round 1 (T2+T3, session-interrupted but complete), a62320af67d2eb1fd (fix round 2), ada57f724103d75c8 (fix round 3 missing constraints); commits c6a60d8, c3221fc, 2088e1e, 1810ab9 by controller",
+      "red": "docs/development/dcx2-cicd/reports/task-T2-report.md RED + each fix round",
+      "green": "docs/development/dcx2-cicd/reports/task-T2-report.md GREEN + fix rounds 1-3 (120 ops passed)",
+      "review": "task review (Claude opus): Critical launchd domain → fix round 1 re-review ADDRESSED; 3 out-of-scope risks → fix round 2 re-review ADDRESSED (1-7); production URL defaults → fix round 3"
+    },
+    {
+      "id": "T3",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent a7c2519a879b0bc95 (impl), aa1734e7bf9ef9947 (fix round 3 public URLs); commits e172cdb, 1810ab9 by controller",
+      "red": "docs/development/dcx2-cicd/reports/task-T3-report.md RED (16 failed, 1 passed)",
+      "green": "docs/development/dcx2-cicd/reports/task-T3-report.md GREEN + fix round 3",
+      "review": "covered by T2/T3 combined re-reviews (Claude opus) — install.sh, run-*.sh, dcxctl in fix diffs"
+    }
+  ],
+  "scenarios": []
+}

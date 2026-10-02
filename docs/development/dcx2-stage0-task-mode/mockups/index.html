@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>0단계 과제 유형 목업</title>
+<script src="https://unpkg.com/lucide@latest"></script><style>
+@font-face{font-family:Pretendard;font-weight:400;font-display:swap;src:url("../../dcx2-stage6-8/mockups/assets/fonts/Pretendard-Regular.otf") format("opentype")}
+@font-face{font-family:Pretendard;font-weight:600;font-display:swap;src:url("../../dcx2-stage6-8/mockups/assets/fonts/Pretendard-SemiBold.otf") format("opentype")}
+@font-face{font-family:Pretendard;font-weight:700;font-display:swap;src:url("../../dcx2-stage6-8/mockups/assets/fonts/Pretendard-Bold.otf") format("opentype")}
+@font-face{font-family:Pretendard;font-weight:800;font-display:swap;src:url("../../dcx2-stage6-8/mockups/assets/fonts/Pretendard-ExtraBold.otf") format("opentype")}
+
+/* ── 토큰: 수정본(BI) 색·레이아웃 + core 컴포넌트 액션 ── */
+:root{
+  --blue:#38B6F9; --blue-deep:#168FCC; --blue-soft:#EAF8FF; --blue-tint:#DDF4FE;
+  --ink:#676668; --ink-strong:#1c1e22; --sub:#8A8A8C; /* 키트 값 유지 (리뷰 8B) */
+  --line:#E7EAEE; --line-strong:#7f838b; --paper:#FFFFFF; --soft:#F8FCFF; --sunken:#F3F4F6;
+  --action:#0a73b5; --action-hover:#085d93; --action-soft:#e8f4fc;
+  --success:#1b7446; --success-soft:#e6f6ec; --warning:#9a5b00; --warning-soft:#fff3dc; --danger:#c62828; --danger-soft:#fdeaea;
+  --r-input:6px; --r-button:10px; --r-card:14px; --r-overlay:18px; --r-full:999px;
+  --shadow-overlay:0 8px 24px rgba(28,30,34,.12),0 1px 2px rgba(28,30,34,.06);
+  --font:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",system-ui,sans-serif;
+  --mono:"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font:400 15px/24px var(--font);letter-spacing:-.01em;color:var(--ink);background:var(--soft);-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--action);outline-offset:2px}
+/* 브라우저 기본 요소 테마 (리뷰 5A) */
+html{accent-color:var(--action);caret-color:var(--action);scrollbar-color:var(--line-strong) transparent;scrollbar-width:thin}
+::selection{background:var(--blue-tint);color:var(--ink-strong)}
+input[type=checkbox]{width:16px;height:16px;margin:0;vertical-align:middle}
+select.inp{appearance:none;padding-right:32px;background:var(--paper) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23676668' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center}
+table,.stat .v,.kv dd,.bar .v{font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* 시맨틱 스케일 */
+.t-insight{font:800 40px/52px var(--font);letter-spacing:-.04em;color:var(--ink-strong);margin:0}
+.t-screen{font:800 30px/40px var(--font);letter-spacing:-.035em;color:var(--ink-strong);margin:0}
+.t-section{font:700 24px/34px var(--font);letter-spacing:-.03em;color:var(--ink-strong);margin:0}
+.t-card{font:700 18px/27px var(--font);letter-spacing:-.02em;color:var(--ink-strong);margin:0}
+.t-body{font:400 15px/24px var(--font);letter-spacing:-.01em}
+.t-label{font:600 13px/19px var(--font);letter-spacing:-.005em}
+.t-caption{font:400 12px/18px var(--font);color:var(--sub)}
+.eyebrow{font:700 12px/18px var(--font);letter-spacing:.06em;color:var(--ink)}
+.num{font-variant-numeric:tabular-nums}
+.mono{font:400 12px/18px var(--mono)}
+
+/* 목업 전환 바 (제품 UI 아님) */
+.mockbar{position:sticky;top:0;z-index:50;display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:8px 16px;background:#1c1e22;color:#fff}
+.mockbar b{font:600 12px/18px var(--font);margin-right:8px;opacity:.8}
+.mockbar button{font:600 12px/18px var(--font);color:#fff;background:transparent;border:1px solid #55585f;border-radius:6px;padding:4px 10px;cursor:pointer}
+.mockbar button[aria-pressed=true]{background:#fff;color:#1c1e22;border-color:#fff}
+
+/* 셸 */
+.shell{display:flex;min-height:calc(100vh - 38px)}
+.side{width:224px;flex:none;background:var(--soft);border-right:1px solid var(--line);padding:28px 20px;display:flex;flex-direction:column;gap:28px}
+.side img{width:104px;height:auto}
+.side .grp{font:700 12px/18px var(--font);letter-spacing:.08em;color:var(--sub);margin:0 8px 8px}
+.nav{display:grid;gap:2px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;text-decoration:none;font:500 13px/19px var(--font);color:var(--sub)}
+.nav a .n{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font:700 11px/1 var(--font);background:var(--sunken);color:var(--sub)}
+.nav a.done .n{background:var(--success-soft);color:var(--success)}
+.nav a.on{background:var(--paper);color:var(--ink-strong);font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.nav a.on .n{background:var(--blue);color:var(--ink-strong)}
+.nav a small{margin-left:auto;font:400 11px/16px var(--font);color:var(--sub)}
+.side .foot{margin-top:auto}
+main{flex:1;min-width:0;padding:32px 32px 64px}
+.wrap{max-width:1200px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:24px;align-items:start}
+.s12{grid-column:span 12}.s3{grid-column:span 3}.s9{grid-column:span 9}.s8{grid-column:span 8}.s6{grid-column:span 6}.s4{grid-column:span 4}
+@media (max-width:1100px){.s8,.s6,.s4,.s3,.s9{grid-column:span 12}.side{width:72px;padding:20px 10px}.side img,.side .grp,.nav a span,.nav a small,.side .foot{display:none}}
+
+/* 페이지 헤더 */
+.ph{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:32px}
+.ph .eyebrow{margin-bottom:8px}
+.ph p{margin:12px 0 0;max-width:720px}
+.actions{display:flex;gap:8px;justify-content:flex-end;align-items:center}
+
+/* 카드 */
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-card);padding:24px;min-width:0}
+.card.sm{padding:16px}
+.card-h{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:24px}
+.card-h p{margin:4px 0 0}
+.card-f{display:flex;justify-content:flex-end;gap:8px;margin-top:24px;padding-top:16px;border-top:1px solid var(--line)}
+.sticky{position:sticky;top:62px}
+
+/* 버튼 */
+.btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:var(--r-button);font:600 13px/19px var(--font);cursor:pointer;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink-strong);transition:background 150ms ease-out;white-space:nowrap}
+.btn:hover{background:var(--action-soft)}
+.btn.primary{background:var(--action);color:#fff;border-color:transparent}
+.btn.primary:hover{background:var(--action-hover)}
+.btn.quiet{border-color:transparent;background:transparent;color:var(--action)}
+.btn.quiet:hover{background:var(--action-soft)}
+.btn.sm{height:28px;padding:0 10px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn svg,.ic svg{width:16px;height:16px;stroke-width:1.5}
+
+/* 폼 */
+.field{display:grid;gap:6px;margin-bottom:20px;align-content:start}
+.field:last-child{margin-bottom:0}
+.field label,.field .lab{font:600 13px/19px var(--font);color:var(--ink-strong)}
+.field .req{color:var(--danger);margin-left:2px}
+.field .hint{font:400 12px/18px var(--font);color:var(--sub)}
+.field .err{font:400 12px/18px var(--font);color:var(--danger);display:flex;gap:4px;align-items:center}
+.inp,textarea.inp{width:100%;min-height:36px;padding:7px 12px;border:1px solid var(--line-strong);border-radius:var(--r-input);font:400 14px/20px var(--font);color:var(--ink-strong);background:var(--paper)}
+textarea.inp{resize:vertical}
+.inp.error{border-color:var(--danger)}
+.inp::placeholder{color:var(--sub)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px;align-items:start}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;align-items:start}
+.row2>.field,.row3>.field{margin-bottom:0}
+.field .row2,.field .row3{margin-bottom:0}
+.card>:last-child{margin-bottom:0}
+/* 나란히 놓인 카드는 높이를 맞추고, 다음 행동은 카드 바닥에 붙인다 */
+.grid.eq{align-items:stretch}
+.card.insight{display:flex;flex-direction:column}
+.card.insight .meta{margin-bottom:20px}
+.card.insight .nextact{margin-top:auto}
+
+/* 선택 칩 (button + aria-pressed) */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{height:32px;padding:0 12px;border-radius:var(--r-button);border:1px solid var(--line);background:var(--paper);color:var(--ink);font:600 13px/19px var(--font);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed=true]{border-color:var(--blue);background:var(--blue-soft);color:var(--blue-deep)}
+.chip .x{opacity:.7}
+
+/* 배지 (분류는 Neutral) */
+.badge{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:6px;font:600 12px/18px var(--font);background:var(--sunken);color:var(--ink);white-space:nowrap}
+.badge.pill{border-radius:999px}
+.badge.success{background:var(--success-soft);color:var(--success)}
+.badge.warning{background:var(--warning-soft);color:var(--warning)}
+.badge.danger{background:var(--danger-soft);color:var(--danger)}
+.badge.info{background:var(--action-soft);color:var(--action)}
+.badge .dot{width:6px;height:6px;border-radius:999px;background:currentColor}
+
+/* 목록 입력 */
+.listin{display:grid;gap:6px}
+.listin .item{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 12px;border:1px solid var(--line);border-radius:var(--r-input);background:var(--paper);font:400 14px/20px var(--font);color:var(--ink-strong)}
+.listin .item .btn{margin-left:auto}
+.listin .add{display:flex;gap:8px;align-items:center}
+
+/* 세그먼트 */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r-button);overflow:hidden}
+.seg button{border:0;border-right:1px solid var(--line);background:var(--paper);height:32px;padding:0 14px;font:600 13px/19px var(--font);color:var(--ink);cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:var(--blue-soft);color:var(--blue-deep)}
+
+/* 토글 */
+.toggle{display:flex;align-items:flex-start;gap:12px}
+.sw{width:36px;height:20px;border-radius:999px;background:var(--line-strong);position:relative;flex:none;margin-top:2px;border:0;cursor:pointer}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:999px;background:#fff}
+.sw[aria-checked=true]{background:var(--action)}.sw[aria-checked=true]::after{left:18px}
+
+/* 라운드 스테퍼 */
+.stepper{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:24px}
+.stp{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--paper)}
+.stp .k{font:700 12px/18px var(--font);color:var(--sub)}
+.stp .v{font:600 13px/19px var(--font);color:var(--ink-strong)}
+.stp .c{font:400 12px/18px var(--font);color:var(--sub)}
+.stp.done .k{color:var(--success)}
+.stp.on{border-color:var(--blue);background:var(--blue-soft)}
+.stp.on .k{color:var(--blue-deep)}
+
+/* 탭 */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:20px}
+.tab{border:0;background:transparent;padding:10px 12px;font:600 13px/19px var(--font);color:var(--sub);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab[aria-selected=true]{color:var(--ink-strong);border-bottom-color:var(--action)}
+.tab .num{margin-left:4px;color:var(--sub);font-weight:400}
+
+/* 키워드 그룹 · 칩 */
+.kgroup{border:1px solid var(--line);border-radius:10px;margin-bottom:12px;background:var(--paper)}
+.kgroup-h{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.kgroup-h .t-label{color:var(--ink-strong)}
+.kgroup-h .btn{margin-left:auto}
+.kgroup-b{display:flex;flex-wrap:wrap;gap:8px;padding:14px;position:relative}
+.kw{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 6px 0 12px;border-radius:var(--r-button);border:1px solid var(--line);background:var(--paper);font:600 13px/19px var(--font);color:var(--ink-strong);cursor:grab}
+.kw .v{font:400 12px/18px var(--font);color:var(--sub)}
+.kw .more{border:0;background:transparent;color:var(--sub);cursor:pointer;padding:4px;display:inline-flex;min-width:24px;min-height:24px;align-items:center;justify-content:center;border-radius:6px}
+.kw .more:hover{background:var(--action-soft)}
+.listin .item .btn.quiet{min-width:24px;min-height:24px;padding:0 4px;justify-content:center}
+.kw.rej{background:var(--sunken);color:var(--sub);text-decoration:line-through;border-style:dashed}
+.kw.rej .badge{text-decoration:none}
+.kw.manual{border-color:var(--line-strong)}
+.kw.dragging{box-shadow:0 1px 2px rgba(28,30,34,.06);border-color:var(--line-strong)}
+.dropzone{border:1px dashed var(--blue);background:var(--blue-soft)}
+
+/* 팝오버 */
+.pop{position:absolute;z-index:10;width:300px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-overlay);box-shadow:var(--shadow-overlay);padding:16px}
+.pop h4{margin:0 0 4px;font:700 14px/20px var(--font);color:var(--ink-strong)}
+.pop .chips{margin:12px 0}
+.pop .kbd{font:400 11px/16px var(--mono);border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--sub)}
+
+/* 막대 */
+.bars{display:grid;gap:12px}
+.bar{display:grid;grid-template-columns:48px 1fr 44px;align-items:center;gap:10px}
+.bar .track{height:8px;background:var(--sunken);border-radius:999px;overflow:hidden}
+.bar .fill{height:100%;background:var(--ink);border-radius:999px}
+.bar .fill.hi{background:var(--blue)}
+.bar .v{text-align:right}
+
+/* 표 */
+.tbl{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper)}
+.tbl th{background:var(--sunken);text-align:left;font:600 12px/18px var(--font);color:var(--ink);padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--line);font:400 14px/20px var(--font);color:var(--ink-strong);vertical-align:middle;white-space:nowrap}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tbody tr:hover td{background:var(--soft)}
+.tbl tr.sel td{background:var(--blue-soft)}
+.tbl .r{text-align:right}
+.tbl caption{caption-side:bottom;text-align:left;padding:10px 12px;font:400 12px/18px var(--font);color:var(--sub)}
+.tbl .dim{color:var(--sub)}
+
+/* 증거 · 메타 */
+.meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font:400 12px/18px var(--font);color:var(--sub)}
+.meta .sep{width:3px;height:3px;border-radius:999px;background:var(--line-strong)}
+.nextact{margin-top:20px;padding-top:16px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.nextact .t-label{color:var(--ink-strong)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:10px 16px;margin:0}
+.kv dt{font:600 13px/19px var(--font);color:var(--ink)}
+.kv dd{margin:0;font:400 14px/20px var(--font);color:var(--ink-strong);text-align:right}
+.stat{display:grid;gap:2px}
+.stat .v{font:700 24px/34px var(--font);letter-spacing:-.03em;color:var(--ink-strong)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.progress{height:10px;background:var(--sunken);border-radius:999px;overflow:hidden}
+.progress>div{height:100%;background:var(--blue)}
+
+/* 알림 */
+.note{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:10px;background:var(--sunken);font:400 14px/20px var(--font);color:var(--ink-strong)}
+.note.warn{background:var(--warning-soft)}
+.note.warn .ic{color:var(--warning)}
+.note .ic{color:var(--ink);margin-top:2px}
+.note .actions{margin-left:auto}
+
+pre.md{margin:0;padding:14px;background:var(--soft);border:1px solid var(--line);border-radius:10px;font:400 12px/19px var(--mono);color:var(--ink-strong);white-space:pre-wrap;max-height:420px;overflow:auto}
+details summary{cursor:pointer;font:600 13px/19px var(--font);color:var(--ink-strong);list-style:none;display:flex;align-items:center;gap:6px}
+details summary::-webkit-details-marker{display:none}
+.screen{display:none}.screen.on{display:block}
+.divider{height:1px;background:var(--line);margin:20px 0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+/* 게이트 표 (리뷰 13A) */
+.chbars{display:inline-grid;grid-template-columns:repeat(4,28px);gap:4px;align-items:end;height:18px;vertical-align:middle}
+.chbars i{display:block;background:var(--ink);border-radius:2px;min-height:2px}
+.chbars i.zero{background:transparent;border:1px dashed var(--line-strong);height:16px!important}
+.tbl.sticky-h thead th{position:sticky;top:38px;z-index:2}
+.tbl.sticky-h{overflow:visible}
+.tbl tr.exp td{background:var(--soft);white-space:normal}
+.expd{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:4px 0}
+.expd .t-label{color:var(--ink-strong)}
+.tbl .tog{border:0;background:transparent;cursor:pointer;color:var(--sub);padding:2px;display:inline-flex;vertical-align:middle;min-width:24px;min-height:24px;align-items:center;justify-content:center;border-radius:6px}
+/* 상태 */
+.skel{background:var(--sunken);border-radius:6px;height:12px}
+.skel.chip{width:84px;height:32px;border-radius:10px;border:0}
+.state-label{font:700 12px/18px var(--font);letter-spacing:.06em;color:var(--sub);margin-bottom:12px}
+.empty{display:grid;justify-items:start;gap:12px;padding:8px 0}
+.empty .t-card{margin:0}
+.banner{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:10px;border:1px solid var(--line);background:var(--paper)}
+.banner.danger{background:var(--danger-soft);border-color:transparent}
+.banner.danger .ic{color:var(--danger)}
+.banner.warn{background:var(--warning-soft);border-color:transparent}
+.banner.warn .ic{color:var(--warning)}
+.banner .actions{margin-left:auto}
+.banner .ic{margin-top:2px}
+
+.tagrow{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.tagrow>.t-label{width:88px;flex:none}
+.chip .kbd{margin-right:4px}
+.lvl{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:var(--r-full);font:700 12px/18px var(--font);border:1px solid var(--line-strong);color:var(--ink-strong);background:var(--paper)}
+.lvl.core{border-color:var(--blue);background:var(--blue-soft);color:var(--blue-deep)}
+.lvl.sup{background:var(--sunken)}
+.src{display:grid;grid-template-columns:1fr auto;gap:6px 16px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-card);background:var(--paper);margin-bottom:8px}
+.src .meta{grid-column:1}.src .btn{grid-row:1/3;grid-column:2}
+.src.done{background:var(--sunken)}
+.drawer{box-shadow:var(--shadow-overlay);border-radius:var(--r-overlay)}
+.kilist{list-style:none;margin:0;padding:0}
+.kilist li{display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:center;padding:10px 0;border-top:1px solid var(--line);font:400 14px/20px var(--font);color:var(--ink-strong)}
+.kilist li .t-caption{grid-column:2}
+.note.error{background:var(--danger-soft)}.note.error .ic{color:var(--danger)}
+
+/* ── 6~8단계 추가 ── */
+.layers{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:24px}
+.layer{border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:var(--paper);text-align:left;cursor:pointer;font:inherit}
+.layer .k{font:700 12px/18px var(--font);color:var(--sub)}
+.layer .v{font:700 14px/20px var(--font);color:var(--ink-strong)}
+.layer .c{font:400 12px/18px var(--font);color:var(--sub)}
+.layer.done .k{color:var(--success)}
+.layer[aria-current=step]{border-color:var(--blue);background:var(--blue-soft)}
+.layer[aria-disabled=true]{background:var(--sunken);cursor:not-allowed}
+.layer[aria-disabled=true] .v{color:var(--sub)}
+.clrow{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px;padding:20px 0;border-top:1px solid var(--line)}
+.clrow:first-of-type{border-top:0;padding-top:0}
+.clid{font:700 12px/18px var(--mono);color:var(--sub)}
+.namefield{display:flex;gap:8px;align-items:center;margin:4px 0 10px}
+.namefield .inp{max-width:360px;font-weight:600}
+.qrow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chanbar{display:flex;height:8px;border-radius:999px;overflow:hidden;background:var(--sunken);margin:6px 0 4px}
+.chanbar i{display:block;height:100%}
+.chanbar i:nth-child(1){background:#1c1e22}.chanbar i:nth-child(2){background:#7f838b}.chanbar i:nth-child(3){background:#b9bcc2}.chanbar i:nth-child(4){background:#dfe1e5}
+.quote{font:400 14px/22px var(--font);color:var(--ink-strong);margin:0}
+.quote mark{background:var(--blue-tint);color:inherit;border-radius:3px;padding:0 2px}
+.mini{width:100%;height:auto;display:block}
+.net{background:var(--soft);border:1px solid var(--line);border-radius:10px}
+.persona-edit{border:1px solid var(--line);border-radius:var(--r-card);padding:20px;background:var(--paper);margin-bottom:16px}
+.persona-edit.confirmed{background:var(--soft)}
+.goal{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.goal .n{font:700 13px/19px var(--font);color:var(--sub);width:16px}
+.ctxcard{border:1px solid var(--line);border-radius:var(--r-card);padding:16px 20px;background:var(--paper);margin-bottom:12px}
+.ctxcard.counter{border-color:#f0c9c9}
+.ev{display:grid;grid-template-columns:28px 1fr auto;gap:4px 12px;padding:14px 0;border-top:1px solid var(--line)}
+.ev .no{font:700 13px/22px var(--font);color:var(--sub)}
+.ev .meta{grid-column:2}
+.ev .btn{grid-row:1/3;grid-column:3;align-self:start}
+.ctxlist{display:grid;gap:4px}
+.ctxlist button{display:grid;grid-template-columns:1fr auto;gap:2px 8px;text-align:left;border:1px solid transparent;border-radius:10px;background:transparent;padding:10px 12px;cursor:pointer;font:inherit}
+.ctxlist button[aria-current=true]{background:var(--paper);border-color:var(--line)}
+.ctxlist .t{font:600 13px/19px var(--font);color:var(--ink-strong)}
+.ctxlist .c{grid-column:1/3;font:400 12px/18px var(--font);color:var(--sub)}
+/* 인식론 등급: 글자 + 모양, 색만으로 구분하지 않음 */
+.gr{display:inline-flex;align-items:center;gap:4px;font:600 11px/16px var(--font);padding:1px 6px;border-radius:6px;white-space:nowrap;vertical-align:1px}
+.gr::before{content:"";width:8px;height:8px;flex:none}
+.gr.obs{background:var(--success-soft);color:var(--success)}.gr.obs::before{border-radius:999px;background:currentColor}
+.gr.inf{background:var(--warning-soft);color:var(--warning)}.gr.inf::before{transform:rotate(45deg);background:currentColor;width:7px;height:7px}
+.gr.gue{background:var(--danger-soft);color:var(--danger)}.gr.gue::before{border:1.5px solid currentColor;border-radius:999px;width:6px;height:6px}
+.ccm{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper)}
+.ccm th,.ccm td{padding:10px 12px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);vertical-align:top;font:400 13px/20px var(--font);color:var(--ink-strong);text-align:left}
+.ccm th{background:var(--sunken);font:600 12px/18px var(--font);color:var(--ink)}
+.ccm th .t{display:block;font:700 13px/19px var(--font);color:var(--ink-strong)}
+.ccm td.rl{width:104px;background:var(--soft);font:600 12px/18px var(--font);color:var(--ink)}
+.ccm tr:last-child td{border-bottom:0}.ccm th:last-child,.ccm td:last-child{border-right:0}
+.ccm .cx{display:block;margin-bottom:6px}
+.ccm .counter{background:#fffafa}
+.ccm th.counter{background:var(--danger-soft)}
+.ccm td.cell{cursor:pointer}
+.ccm td.cell:hover{background:var(--action-soft)}
+.ccm td.open{outline:2px solid var(--action);outline-offset:-2px}
+.zone{font:700 12px/18px var(--font)}
+.prov{display:inline-flex;height:18px;padding:0 6px;border-radius:5px;border:1px dashed var(--line-strong);font:600 11px/16px var(--font);color:var(--sub);align-items:center}
+.ins{border:1px solid var(--line);border-radius:var(--r-card);padding:18px 20px;background:var(--paper);display:grid;grid-template-columns:1fr 120px;gap:12px;margin-bottom:12px;cursor:pointer}
+.ins[aria-current=true]{border-color:var(--blue);box-shadow:inset 3px 0 0 var(--blue)}
+.ins .ids{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.idchip{font:600 11px/16px var(--mono);padding:2px 6px;border-radius:5px;background:var(--sunken);color:var(--ink)}
+.obar{display:grid;grid-template-columns:150px 1fr 40px;gap:10px;align-items:center;margin-bottom:8px}
+.obar .track{position:relative;height:10px;background:var(--sunken);border-radius:999px}
+.obar .fill{height:100%;border-radius:999px;background:var(--ink)}
+.obar .fill.hi{background:var(--blue)}
+.obar .avg{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--danger)}
+.jt{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;table-layout:fixed}
+.jt th,.jt td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;font:400 13px/20px var(--font);color:var(--ink-strong);text-align:left}
+.jt th{background:var(--sunken);font:600 12px/18px var(--font);color:var(--ink)}
+.jt td.tb{background:var(--soft)}
+.jt tr:last-child td{border-bottom:0}
+.chat{display:flex;flex-direction:column;gap:12px;height:100%}
+.msg{padding:10px 12px;border-radius:10px;font:400 13px/20px var(--font);color:var(--ink-strong)}
+.msg.me{background:var(--blue-soft);margin-left:24px}
+.msg.ai{background:var(--sunken);margin-right:24px}
+.rev{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--line);font:400 13px/19px var(--font)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font:400 12px/18px var(--font);color:var(--sub)}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.sw-dot{width:10px;height:10px;border-radius:999px;display:inline-block}
+
+.screen.on{display:block}
+.mode{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.mode button{all:unset;cursor:pointer;border:1px solid var(--line);border-radius:var(--r-card);padding:14px 16px;background:var(--paper);display:grid;gap:4px}
+.mode button[aria-checked=true]{border-color:var(--action);background:var(--action-soft)}
+.mode b{font:700 15px/22px var(--font);color:var(--ink-strong)}
+.sum{margin-top:10px;font:600 13px/19px var(--font);color:var(--action)}
+.kpi{display:grid;grid-template-columns:1.2fr 1.4fr 1.6fr auto;gap:8px;align-items:end}
+.kpirow,.prow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.prow .nm{font:600 14px/20px var(--font);color:var(--ink-strong);min-width:120px}
+details.pos{border:1px dashed var(--line-strong);border-radius:10px;padding:10px 14px}
+details.pos summary{cursor:pointer;font:600 13px/19px var(--font);color:var(--ink-strong)}
+.axis{display:grid;gap:6px;margin-bottom:10px}
+.chip.custom{gap:6px}
+.miss{font:400 13px/19px var(--font);color:var(--warning);margin:8px 0}
+@media (max-width:760px){.side{display:none}.mode,.row2,.row3,.kpi{grid-template-columns:1fr}.sticky{position:static}.s8,.s4{grid-column:1/-1}}
+</style></head><body>
+<div class="mockbar" role="toolbar" aria-label="목업 화면 전환"><b>0단계 과제 유형 목업 (리뷰 반영 D-315~D-320)</b>
+<button data-go="s1" aria-pressed="true">아산 · 지표 개선형</button><button data-go="s2" aria-pressed="false">세라젬 · 탐색·기획형</button><button data-go="s3" aria-pressed="false">기존 세션 열기</button></div>
+<div class="shell"><aside class="side" aria-label="파이프라인"><img src="../../dcx2-stage6-8/mockups/assets/person-a-logo.png" alt="Person A"><div><div class="grp">파이프라인</div><nav class="nav"><a href="#" class="on"><i class="n">1</i><span>시작</span></a><a href="#" class=""><i class="n">2</i><span>키워드</span></a><a href="#" class=""><i class="n">3</i><span>크롤링</span></a><a href="#" class=""><i class="n">4</i><span>전처리</span></a><a href="#" class=""><i class="n">5</i><span>라벨링</span></a><a href="#" class=""><i class="n">6</i><span>학습</span></a><a href="#" class=""><i class="n">7</i><span>클러스터링</span></a></nav></div></aside>
+<main><div class="wrap"><section class="screen" id="s1"><div class="ph"><div><div class="eyebrow">0단계 · 입력</div><h1 class="t-screen">새 프로젝트를 설정합니다</h1><p class="t-body">0-A는 이후 모든 단계가 참고하는 프로젝트 개요입니다. 0-B는 분석 결과와 대조할 초기 기준선이며 전부 선택 입력입니다.</p></div></div><div class="grid"><div class="s8"><div class="card" style="margin-bottom:24px"><h2 class="t-card" id="m-h">과제 유형 <span style="color:var(--danger)">*</span></h2><p class="t-caption">프로젝트 성격(브랜딩 · 리뉴얼 등)과는 따로 고릅니다.</p>
+<div class="mode" role="radiogroup" aria-labelledby="m-h">
+<button role="radio" aria-checked="true"><b>지표 개선형</b><span class="t-caption">외부·사내 평가 지표를 올리는 과제입니다. 예: 환자경험평가 점수 개선</span></button>
+<button role="radio" aria-checked="false"><b>탐색·기획형</b><span class="t-caption">아직 드러나지 않은 맥락과 기회를 찾는 과제입니다. 예: 새 주거 컨셉 발굴</span></button>
+</div><div class="sum">핵심 지표 필수</div></div><div class="card" style="margin-bottom:24px"><div class="card-h"><div><h2 class="t-card">0-A 프로젝트 개요</h2><p class="t-caption">필수 · 지켜지는 값. 어긋나는 결과는 막지 않고 방향성과 맞지 않을 수 있음으로 표시합니다.</p></div><span class="badge">가드레일</span></div>
+<div class="row2"><div class="field"><label>제품명 <span class="req">*</span></label><input class="inp" value="서울아산병원"><span class="hint">크롤링 검색어에는 붙지 않습니다.</span></div><div class="field"><label>한줄 정의 <span class="req">*</span></label><input class="inp" value="외래 환자의 원무 경험 개선"></div></div>
+<div class="field"><div class="lab">프로젝트 성격 <span class="req">*</span></div><div class="chips"><button class="chip" aria-pressed="false">브랜딩</button><button class="chip" aria-pressed="false">신규기획</button><button class="chip" aria-pressed="false">리뉴얼</button><button class="chip" aria-pressed="true">UX개선</button></div><input class="inp" placeholder="프로젝트 성격 보충 설명"></div>
+<div class="field"><label>리서치 질문 <span class="req">*</span></label><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm">막히는 순간 탐색하기</button><button class="btn sm">평가가 낮은 순간 탐색하기</button><button class="btn sm">불안 · 헷갈림 탐색하기</button></div><input class="inp" value="서울아산병원을 이용하는 사람들은 어느 단계, 어느 순간에 막히거나 기다리는가?"><span class="hint">템플릿을 고르면 채워지고, 자유롭게 고칠 수 있습니다. 분석 목적도 이 질문에 담으세요.</span></div>
+<div class="field"><div class="lab">핵심 지표 <span class="req">*</span></div><span class="hint">지표명은 필수입니다. 출처와 관련 설문 문항을 함께 적으면 키워드가 지표가 떨어지는 순간을 겨냥합니다.</span>
+<div class="kpi"><div class="field" style="margin:0"><label>지표명</label><input class="inp" placeholder="예: 환자경험 점수"></div><div class="field" style="margin:0"><label>출처</label><input class="inp" placeholder="예: 보건복지부 환자경험평가"></div><div class="field" style="margin:0"><label>관련 설문 문항</label><input class="inp" placeholder="예: 수납 대기 시간이 적절했다"></div><button class="btn sm" style="height:40px">지표 추가하기</button></div><div class="kpirow"><span class="t-body"><b style="color:var(--ink-strong)">환자경험 점수</b> · 보건복지부 환자경험평가 · 수납 대기 시간이 적절했다</span><button class="btn quiet sm">삭제하기</button></div></div>
+<div class="row2"><div class="field"><div class="lab">사내 제약</div><input class="inp" placeholder="한 줄씩 추가하세요."></div><details class="pos"><summary>브랜드 포지셔닝 (선택)</summary><div style="margin-top:10px"><div class="axis"><div class="lab" style="font-weight:400">가격대</div><div class="chips"><button class="chip" aria-pressed="false">프리미엄</button><button class="chip" aria-pressed="false">가성비</button><button class="chip" style="border-style:dashed">+ 직접 입력</button></div></div><div class="axis"><div class="lab" style="font-weight:400">시장 위치</div><div class="chips"><button class="chip" aria-pressed="false">시장 선도자</button><button class="chip" aria-pressed="false">시장 도전자</button><button class="chip" aria-pressed="false">신규 진입자</button><button class="chip" style="border-style:dashed">+ 직접 입력</button></div></div></div></details></div>
+<div class="row2"><div class="field"><div class="lab">수집 채널 <span class="req">*</span></div><div class="chips"><button class="chip" aria-pressed="true">네이버 카페</button><button class="chip" aria-pressed="true">네이버 블로그</button><button class="chip" aria-pressed="false">유튜브</button><button class="chip" aria-pressed="false">뽐뿌</button><button class="chip" aria-pressed="false">클리앙</button></div></div><div class="field"><div class="lab">이미 아는 것</div><input class="inp" placeholder="한 줄씩 추가하세요."></div></div></div><div class="card" style="margin-bottom:24px"><div class="card-h"><div><h2 class="t-card">생각하는 페르소나 <span class="t-caption">선택</span></h2><p class="t-caption">떠오르는 사람을 한 줄씩 적으세요. 결과는 이 목록을 넘어서도록 지시합니다.</p></div><span class="badge">시드</span></div>
+<div style="display:flex;gap:8px;margin-bottom:8px"><input class="inp" style="flex:1" placeholder="예: 초진 보호자"><button class="btn sm" style="height:40px">추가하기</button></div><div class="prow"><span class="nm">초진 보호자</span><div class="chips" role="radiogroup" aria-label="초진 보호자 디멘션"><button class="chip" aria-pressed="true">사회적 외부</button><button class="chip" aria-pressed="false">취향·활동</button><button class="chip" aria-pressed="false">동선</button><button class="chip" aria-pressed="false">바이오</button></div><button class="btn quiet sm">삭제하기</button></div><div class="prow"><span class="nm">간병인</span><div class="chips" role="radiogroup" aria-label="간병인 디멘션"><button class="chip" aria-pressed="true">사회적 외부</button><button class="chip" aria-pressed="false">취향·활동</button><button class="chip" aria-pressed="false">동선</button><button class="chip" aria-pressed="false">바이오</button></div><button class="btn quiet sm">삭제하기</button></div><div class="prow"><span class="nm">만성 통증 환자</span><div class="chips" role="radiogroup" aria-label="만성 통증 환자 디멘션"><button class="chip" aria-pressed="false">사회적 외부</button><button class="chip" aria-pressed="false">취향·활동</button><button class="chip" aria-pressed="false">동선</button><button class="chip" aria-pressed="true">바이오</button></div><button class="btn quiet sm">삭제하기</button></div><p class="miss">아직 안 적은 관점: 개인 취향·활동 · 신체 외부 동선</p>
+<label class="toggle"><input type="checkbox" checked> <span class="t-body" style="color:var(--ink-strong)">예시와 다른 페르소나를 우선 발굴</span></label></div><div class="card" style="margin-bottom:24px;opacity:.75"><div class="card-h" style="margin-bottom:0"><div><h2 class="t-card">0-B 분석 대상 · 초기 기준선</h2><p class="t-caption">선택 · 대조되는 값. (변경 없음)</p></div><span class="badge">기준선</span></div></div></div><aside class="s4"><div class="card sticky"><div class="lab" style="margin-bottom:8px">project_context.md 미리보기</div><pre class="md">## 0-A 프로젝트 개요
+
+- 제품명: 서울아산병원
+- 과제 유형: 지표 개선형 — 외부·사내 평가
+  지표를 올리는 과제. 지표가 떨어지는
+  순간을 우선 탐색
+- 한줄 정의: 외래 환자의 원무 경험 개선
+- 리서치 질문: 서울아산병원을 이용하는
+  사람들은 어느 단계, 어느 순간에 막히거나
+  기다리는가?
+- 질문 템플릿: m1
+- 프로젝트 유형: UX개선
+- 핵심 지표 (방향 지시자, 측정값 아님):
+  환자경험 점수 (출처: 보건복지부
+  환자경험평가 · 문항: 수납 대기 시간이
+  적절했다)
+- 사내 제약: 없음
+- 수집 채널: 네이버 카페, 네이버 블로그
+...
+
+## 생각하는 페르소나 · 디멘션
+
+- 초진 보호자 (사회적 외부 페르소나)
+- 간병인 (사회적 외부 페르소나)
+- 만성 통증 환자 (내부 바이오)
+- 아직 적지 않은 디멘션: 개인 취향·활동,
+  신체 외부 동선
+
+디멘션: 사회적 외부 페르소나 · 개인 취향·
+활동 · 신체 외부 동선 · 내부 바이오
+예시는 출발점일 뿐이다. 네 디멘션 각각에서
+예시와 비슷한 페르소나에 머물지 말고, 예시와
+다른 페르소나와 맥락을 우선 발굴할 것
+
+## 0-B 분석 대상 · 초기 기준선
+...</pre></div></aside></div></section><section class="screen" id="s2"><div class="ph"><div><div class="eyebrow">0단계 · 입력</div><h1 class="t-screen">새 프로젝트를 설정합니다</h1><p class="t-body">0-A는 이후 모든 단계가 참고하는 프로젝트 개요입니다. 0-B는 분석 결과와 대조할 초기 기준선이며 전부 선택 입력입니다.</p></div></div><div class="grid"><div class="s8"><div class="card" style="margin-bottom:24px"><h2 class="t-card" id="m-h">과제 유형 <span style="color:var(--danger)">*</span></h2><p class="t-caption">프로젝트 성격(브랜딩 · 리뉴얼 등)과는 따로 고릅니다.</p>
+<div class="mode" role="radiogroup" aria-labelledby="m-h">
+<button role="radio" aria-checked="false"><b>지표 개선형</b><span class="t-caption">외부·사내 평가 지표를 올리는 과제입니다. 예: 환자경험평가 점수 개선</span></button>
+<button role="radio" aria-checked="true"><b>탐색·기획형</b><span class="t-caption">아직 드러나지 않은 맥락과 기회를 찾는 과제입니다. 예: 새 주거 컨셉 발굴</span></button>
+</div><div class="sum">핵심 지표 선택</div></div><div class="card" style="margin-bottom:24px"><div class="card-h"><div><h2 class="t-card">0-A 프로젝트 개요</h2><p class="t-caption">필수 · 지켜지는 값. 어긋나는 결과는 막지 않고 방향성과 맞지 않을 수 있음으로 표시합니다.</p></div><span class="badge">가드레일</span></div>
+<div class="row2"><div class="field"><label>제품명 <span class="req">*</span></label><input class="inp" value="세라젬 모듈러 주택"><span class="hint">크롤링 검색어에는 붙지 않습니다.</span></div><div class="field"><label>한줄 정의 <span class="req">*</span></label><input class="inp" value="헬스케어를 품은 모듈러 주거"></div></div>
+<div class="field"><div class="lab">프로젝트 성격 <span class="req">*</span></div><div class="chips"><button class="chip" aria-pressed="false">브랜딩</button><button class="chip" aria-pressed="true">신규기획</button><button class="chip" aria-pressed="false">리뉴얼</button><button class="chip" aria-pressed="false">UX개선</button></div><input class="inp" placeholder="프로젝트 성격 보충 설명"></div>
+<div class="field"><label>리서치 질문 <span class="req">*</span></label><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm">사용 중 불편 탐색하기</button><button class="btn sm">비사용자의 망설임 탐색하기</button><button class="btn sm">대체 방법과 이유 탐색하기</button><button class="btn sm">드러나지 않은 맥락 탐색하기</button></div><input class="inp" value="세라젬 모듈러 주택과 관련해 사람들이 아직 말하지 않은 생활 속 맥락과 필요는 무엇인가?"><span class="hint">템플릿을 고르면 채워지고, 자유롭게 고칠 수 있습니다. 분석 목적도 이 질문에 담으세요.</span></div>
+<div class="field"><div class="lab">핵심 지표 <span class="t-caption">선택</span></div><span class="hint">선택 입력입니다. 방향을 잡는 지표가 있으면 적으세요.</span>
+<div class="kpi"><div class="field" style="margin:0"><label>지표명</label><input class="inp" placeholder="예: 환자경험 점수"></div><div class="field" style="margin:0"><label>출처</label><input class="inp" placeholder="예: 보건복지부 환자경험평가"></div><div class="field" style="margin:0"><label>관련 설문 문항</label><input class="inp" placeholder="예: 수납 대기 시간이 적절했다"></div><button class="btn sm" style="height:40px">지표 추가하기</button></div></div>
+<div class="row2"><div class="field"><div class="lab">사내 제약</div><input class="inp" placeholder="한 줄씩 추가하세요."></div><div class="field"><div class="lab">브랜드 포지셔닝 <span class="t-caption">선택</span></div><div class="axis"><div class="lab" style="font-weight:400">가격대</div><div class="chips"><button class="chip" aria-pressed="false">프리미엄</button><button class="chip" aria-pressed="false">가성비</button><button class="chip custom" aria-pressed="true">중상가 · 구독형 <span aria-label="가격대 직접 입력 지우기">✕</span></button><button class="chip" style="border-style:dashed">+ 직접 입력</button></div></div><div class="axis"><div class="lab" style="font-weight:400">시장 위치</div><div class="chips"><button class="chip" aria-pressed="false">시장 선도자</button><button class="chip" aria-pressed="false">시장 도전자</button><button class="chip" aria-pressed="true">신규 진입자</button><button class="chip" style="border-style:dashed">+ 직접 입력</button></div></div><span class="hint">고른 칩을 다시 누르면 해제됩니다.</span></div></div>
+<div class="row2"><div class="field"><div class="lab">수집 채널 <span class="req">*</span></div><div class="chips"><button class="chip" aria-pressed="true">네이버 카페</button><button class="chip" aria-pressed="false">네이버 블로그</button><button class="chip" aria-pressed="true">유튜브</button><button class="chip" aria-pressed="false">뽐뿌</button><button class="chip" aria-pressed="false">클리앙</button></div></div><div class="field"><div class="lab">이미 아는 것</div><input class="inp" placeholder="한 줄씩 추가하세요."></div></div></div><div class="card" style="margin-bottom:24px"><div class="card-h"><div><h2 class="t-card">생각하는 페르소나 <span class="t-caption">선택</span></h2><p class="t-caption">떠오르는 사람을 한 줄씩 적으세요. 결과는 이 목록을 넘어서도록 지시합니다.</p></div><span class="badge">시드</span></div>
+<div style="display:flex;gap:8px;margin-bottom:8px"><input class="inp" style="flex:1" placeholder="예: 초진 보호자"><button class="btn sm" style="height:40px">추가하기</button></div><div class="prow"><span class="nm">은퇴 준비 부부</span><div class="chips" role="radiogroup" aria-label="은퇴 준비 부부 디멘션"><button class="chip" aria-pressed="true">사회적 외부</button><button class="chip" aria-pressed="false">취향·활동</button><button class="chip" aria-pressed="false">동선</button><button class="chip" aria-pressed="false">바이오</button></div><button class="btn quiet sm">삭제하기</button></div><div class="prow"><span class="nm">홈짐 하는 맞벌이</span><div class="chips" role="radiogroup" aria-label="홈짐 하는 맞벌이 디멘션"><button class="chip" aria-pressed="false">사회적 외부</button><button class="chip" aria-pressed="true">취향·활동</button><button class="chip" aria-pressed="false">동선</button><button class="chip" aria-pressed="false">바이오</button></div><button class="btn quiet sm">삭제하기</button></div><div class="prow"><span class="nm">허리 통증 있는 50대</span><div class="chips" role="radiogroup" aria-label="허리 통증 있는 50대 디멘션"><button class="chip" aria-pressed="false">사회적 외부</button><button class="chip" aria-pressed="false">취향·활동</button><button class="chip" aria-pressed="false">동선</button><button class="chip" aria-pressed="true">바이오</button></div><button class="btn quiet sm">삭제하기</button></div><p class="miss">아직 안 적은 관점: 신체 외부 동선</p>
+<label class="toggle"><input type="checkbox" checked> <span class="t-body" style="color:var(--ink-strong)">예시와 다른 페르소나를 우선 발굴</span></label></div><div class="card" style="margin-bottom:24px;opacity:.75"><div class="card-h" style="margin-bottom:0"><div><h2 class="t-card">0-B 분석 대상 · 초기 기준선</h2><p class="t-caption">선택 · 대조되는 값. (변경 없음)</p></div><span class="badge">기준선</span></div></div></div><aside class="s4"><div class="card sticky"><div class="lab" style="margin-bottom:8px">project_context.md 미리보기</div><pre class="md">## 0-A 프로젝트 개요
+
+- 제품명: 세라젬 모듈러 주택
+- 과제 유형: 탐색·기획형 — 아직 드러나지
+  않은 맥락과 기회를 찾는 과제. 넓게 탐색
+- 한줄 정의: 헬스케어를 품은 모듈러 주거
+- 리서치 질문: 세라젬 모듈러 주택과 관련해
+  사람들이 아직 말하지 않은 생활 속 맥락과
+  필요는 무엇인가?
+- 질문 템플릿: 4
+- 프로젝트 유형: 신규기획
+- 핵심 지표 (방향 지시자, 측정값 아님): 없음
+- 사내 제약: 없음
+- 가격 포지셔닝: 중상가 · 구독형
+- 시장 포지셔닝: 신규 진입자
+...
+
+## 생각하는 페르소나 · 디멘션
+
+- 은퇴 준비 부부 (사회적 외부 페르소나)
+- 홈짐 하는 맞벌이 (개인 취향·활동)
+- 허리 통증 있는 50대 (내부 바이오)
+- 아직 적지 않은 디멘션: 신체 외부 동선
+...</pre></div></aside></div></section><section class="screen" id="s3"><div class="ph"><div><div class="eyebrow">0단계 · 입력</div><h1 class="t-screen">새 프로젝트를 설정합니다</h1><p class="t-body">0-A는 이후 모든 단계가 참고하는 프로젝트 개요입니다. 0-B는 분석 결과와 대조할 초기 기준선이며 전부 선택 입력입니다.</p></div></div><div class="banner info" style="margin-bottom:16px"><i data-lucide="info"></i><p class="t-body" style="margin:0">이 세션은 과제 유형이 생기기 전에 저장되었습니다. 지금은 탐색·기획형으로 표시됩니다. 저장하면 이 유형으로 저장되고, project_context.md에 과제 유형과 생각하는 페르소나 섹션이 추가됩니다.</p></div>
+<div class="grid"><div class="s8"><div class="card" style="margin-bottom:24px"><h2 class="t-card" id="m-h">과제 유형 <span style="color:var(--danger)">*</span></h2><p class="t-caption">프로젝트 성격(브랜딩 · 리뉴얼 등)과는 따로 고릅니다.</p>
+<div class="mode" role="radiogroup" aria-labelledby="m-h">
+<button role="radio" aria-checked="false"><b>지표 개선형</b><span class="t-caption">외부·사내 평가 지표를 올리는 과제입니다. 예: 환자경험평가 점수 개선</span></button>
+<button role="radio" aria-checked="true"><b>탐색·기획형</b><span class="t-caption">아직 드러나지 않은 맥락과 기회를 찾는 과제입니다. 예: 새 주거 컨셉 발굴</span></button>
+</div><div class="sum">핵심 지표 선택</div></div><div class="card" style="margin-bottom:24px"><div class="card-h"><div><h2 class="t-card">0-A 프로젝트 개요</h2><p class="t-caption">필수 · 지켜지는 값. 어긋나는 결과는 막지 않고 방향성과 맞지 않을 수 있음으로 표시합니다.</p></div><span class="badge">가드레일</span></div>
+<div class="row2"><div class="field"><label>제품명 <span class="req">*</span></label><input class="inp" value="LG 휘센 에어컨"><span class="hint">크롤링 검색어에는 붙지 않습니다.</span></div><div class="field"><label>한줄 정의 <span class="req">*</span></label><input class="inp" value="쾌적한 실내 환경을 만드는 제품"></div></div>
+<div class="field"><div class="lab">프로젝트 성격 <span class="req">*</span></div><div class="chips"><button class="chip" aria-pressed="false">브랜딩</button><button class="chip" aria-pressed="false">신규기획</button><button class="chip" aria-pressed="true">리뉴얼</button><button class="chip" aria-pressed="false">UX개선</button></div><input class="inp" placeholder="프로젝트 성격 보충 설명"></div>
+<div class="field"><label>리서치 질문 <span class="req">*</span></label><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm">사용 중 불편 탐색하기</button><button class="btn sm">비사용자의 망설임 탐색하기</button><button class="btn sm">대체 방법과 이유 탐색하기</button><button class="btn sm">드러나지 않은 맥락 탐색하기</button></div><input class="inp" value="LG 휘센 에어컨을 쓰는 사람들은 언제·어디서·무엇을 하다가 어떤 불편을 겪는가?"><span class="hint">템플릿을 고르면 채워지고, 자유롭게 고칠 수 있습니다. 분석 목적도 이 질문에 담으세요.</span></div>
+<div class="field"><div class="lab">핵심 지표 <span class="t-caption">선택</span></div><span class="hint">선택 입력입니다. 방향을 잡는 지표가 있으면 적으세요.</span>
+<div class="kpi"><div class="field" style="margin:0"><label>지표명</label><input class="inp" placeholder="예: 환자경험 점수"></div><div class="field" style="margin:0"><label>출처</label><input class="inp" placeholder="예: 보건복지부 환자경험평가"></div><div class="field" style="margin:0"><label>관련 설문 문항</label><input class="inp" placeholder="예: 수납 대기 시간이 적절했다"></div><button class="btn sm" style="height:40px">지표 추가하기</button></div><div class="kpirow"><span class="t-body"><b style="color:var(--ink-strong)">편의성</b></span><button class="btn quiet sm">삭제하기</button></div><div class="kpirow"><span class="t-body"><b style="color:var(--ink-strong)">만족도</b></span><button class="btn quiet sm">삭제하기</button></div></div>
+<div class="row2"><div class="field"><div class="lab">사내 제약</div><input class="inp" placeholder="한 줄씩 추가하세요."></div><div class="field"><div class="lab">브랜드 포지셔닝 <span class="t-caption">선택</span></div><div class="axis"><div class="lab" style="font-weight:400">가격대</div><div class="chips"><button class="chip" aria-pressed="true">프리미엄</button><button class="chip" aria-pressed="false">가성비</button><button class="chip" style="border-style:dashed">+ 직접 입력</button></div></div><div class="axis"><div class="lab" style="font-weight:400">시장 위치</div><div class="chips"><button class="chip" aria-pressed="true">시장 선도자</button><button class="chip" aria-pressed="false">시장 도전자</button><button class="chip" aria-pressed="false">신규 진입자</button><button class="chip" style="border-style:dashed">+ 직접 입력</button></div></div><span class="hint">고른 칩을 다시 누르면 해제됩니다.</span></div></div>
+<div class="row2"><div class="field"><div class="lab">수집 채널 <span class="req">*</span></div><div class="chips"><button class="chip" aria-pressed="true">네이버 카페</button><button class="chip" aria-pressed="false">네이버 블로그</button><button class="chip" aria-pressed="true">유튜브</button><button class="chip" aria-pressed="false">뽐뿌</button><button class="chip" aria-pressed="false">클리앙</button></div></div><div class="field"><div class="lab">이미 아는 것</div><input class="inp" placeholder="한 줄씩 추가하세요."></div></div></div><div class="card" style="margin-bottom:24px"><div class="card-h"><div><h2 class="t-card">생각하는 페르소나 <span class="t-caption">선택</span></h2><p class="t-caption">떠오르는 사람을 한 줄씩 적으세요. 결과는 이 목록을 넘어서도록 지시합니다.</p></div><span class="badge">시드</span></div>
+<div style="display:flex;gap:8px;margin-bottom:8px"><input class="inp" style="flex:1" placeholder="예: 초진 보호자"><button class="btn sm" style="height:40px">추가하기</button></div>
+<label class="toggle"><input type="checkbox" checked> <span class="t-body" style="color:var(--ink-strong)">예시와 다른 페르소나를 우선 발굴</span></label></div><div class="card" style="margin-bottom:24px;opacity:.75"><div class="card-h" style="margin-bottom:0"><div><h2 class="t-card">0-B 분석 대상 · 초기 기준선</h2><p class="t-caption">선택 · 대조되는 값. (변경 없음)</p></div><span class="badge">기준선</span></div></div></div><aside class="s4"><div class="card sticky"><div class="lab" style="margin-bottom:8px">project_context.md 미리보기</div><pre class="md">(저장 전: 기존 md 그대로.\n분석 목표 줄도 유지)</pre></div></aside></div></section></div></main></div>
+<script>
+function go(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));document.querySelectorAll('.mockbar button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.go===id));history.replaceState(null,'','#'+id);window.scrollTo(0,0)}
+document.querySelectorAll('.mockbar button').forEach(b=>b.onclick=()=>go(b.dataset.go));go(location.hash.slice(1)||'s1');if(window.lucide)lucide.createIcons();
+</script></body></html>

@@ -70,13 +70,15 @@ def commit(client, n, state=None):
 
 def through(client, n):
     for number in range(1, n + 1):
+        if rounds.locked(number):
+            continue
         assert commit(client, number, start(client, number)).status_code == 200
 
 
 def test_rounds_must_follow_order(client):
-    assert client.post('/keywords/test/rounds/2').status_code == 409
+    assert client.post('/keywords/test/rounds/3').status_code == 409
     start(client, 1)
-    assert client.post('/keywords/test/rounds/2').status_code == 409
+    assert client.post('/keywords/test/rounds/3').status_code == 409
 
 
 def test_start_is_idempotent_while_running(client, backend, monkeypatch):
@@ -110,7 +112,12 @@ def test_partial_count_flag(client):
     assert start(client, 1)['below_min'] == {'got': 42, 'min': 70}
 
 
-def test_r2_commit_triggers_coverage(client):
+@pytest.fixture
+def unlocked_rounds(monkeypatch):
+    monkeypatch.setattr(settings, 'keyword_locked_rounds', [])
+
+
+def test_r2_commit_triggers_coverage(client, unlocked_rounds):
     through(client, 2)
     assert store.load_session('test')['coverage']['source'] == 'autocomplete'
 
@@ -120,7 +127,7 @@ def test_r3_inputs_recorded(client, backend):
     start(client, 3)
     inputs = store.load_session('test')['keywordRounds']['3']['inputs']
     assert inputs == {'rejection': 'empty:no_rejections', 'coverage': 'ok',
-                      'prior_session': 'empty:no_prior_session', 'promptVersion': 'r3.v1'}
+                      'prior_session': 'empty:no_prior_session', 'promptVersion': rounds.PROMPT_VERSION[3]}
     assert [a.title for a in backend.calls[-1].attachments] == ['project_context.md', 'keyword_feedback.md']
     assert backend.calls[-1].attachments[0].body.startswith('원문 맥락')
 
@@ -185,7 +192,7 @@ def test_concurrent_round_start_single_job(client, backend, monkeypatch):
     barrier = Barrier(2)
     def request():
         barrier.wait()
-        return client.post('/keywords/test/rounds/2').json()
+        return client.post('/keywords/test/rounds/3').json()
     try:
         with ThreadPoolExecutor(2) as pool:
             results = list(pool.map(lambda _: request(), range(2)))
@@ -195,7 +202,7 @@ def test_concurrent_round_start_single_job(client, backend, monkeypatch):
         release.set()
         for thread in workers:
             thread.join(5)
-    assert len(backend.calls) == 2
+    assert [task.task for task in backend.calls if task.task.startswith('kw_round_')] == ['kw_round_1', 'kw_round_3']
 
 
 def test_llm_failure_is_persisted(client, backend, monkeypatch):
@@ -243,7 +250,7 @@ def test_direction_move_reject_feedback(client, backend):
     saved = client.get('/keywords/test').json()
     assert saved['keywords'][0]['axis'] == 'psychological'
     assert '범위 넓음' in saved['feedback_md']
-    start(client, 2)
+    start(client, 3)
     assert '범위 넓음' in backend.calls[-1].attachments[1].body
 
 
@@ -258,10 +265,9 @@ def test_connected_coverage_and_inputs(client, backend, monkeypatch):
     def related(hints):
         calls.append(hints)
         return [('냉방1단어0', 100), ('누수', 20)]
-    through(client, 1)
     monkeypatch.setattr(rounds.naver_searchad, 'related_queries', related)
-    state = start(client, 2)
-    assert commit(client, 2, state).status_code == 200
+    state = start(client, 1)
+    assert commit(client, 1, state).status_code == 200
     saved = store.load_session('test')['coverage']
     assert saved['status'] == 'connected' and saved['m1'] == pytest.approx(100 / 120)
     assert saved['m6'] == 0
@@ -422,6 +428,8 @@ def test_threaded_failure_preserves_superseding_job(client, threaded, monkeypatc
 
 @pytest.mark.parametrize('n', [1, 2, 3, 4])
 def test_regenerate_uncommitted_round(client, monkeypatch, n):
+    if n == 2:
+        monkeypatch.setattr(settings, 'keyword_locked_rounds', [])
     through(client, n - 1)
     first = start(client, n)
     before_committed = store.load_session('test')['keywords']
@@ -452,7 +460,9 @@ def test_regenerate_uncommitted_round(client, monkeypatch, n):
 
 
 @pytest.mark.parametrize('n', [1, 2, 3])
-def test_regenerate_committed_round_rejected(client, n):
+def test_regenerate_committed_round_rejected(client, n, monkeypatch):
+    if n == 2:
+        monkeypatch.setattr(settings, 'keyword_locked_rounds', [])
     through(client, n)
     before = client.get(f'/keywords/test/rounds/{n}').json()
     assert client.post(f'/keywords/test/rounds/{n}?regenerate=true').status_code == 409
@@ -460,9 +470,9 @@ def test_regenerate_committed_round_rejected(client, n):
 
 
 def test_regenerate_enforces_order(client):
-    assert client.post('/keywords/test/rounds/2?regenerate=true').status_code == 409
+    assert client.post('/keywords/test/rounds/3?regenerate=true').status_code == 409
     start(client, 1)
-    assert client.post('/keywords/test/rounds/2?regenerate=true').status_code == 409
+    assert client.post('/keywords/test/rounds/3?regenerate=true').status_code == 409
 
 
 def test_regenerate_failed_round(client, backend, monkeypatch):
@@ -470,12 +480,12 @@ def test_regenerate_failed_round(client, backend, monkeypatch):
     through(client, 1)
     original = backend.run
     monkeypatch.setattr(backend, 'run', lambda task: failure('timeout', 'Timed out'))
-    first = start(client, 2)
+    first = start(client, 3)
     assert first['status'] == 'failed'
     monkeypatch.setattr(backend, 'run', original)
-    response = client.post('/keywords/test/rounds/2?regenerate=true')
+    response = client.post('/keywords/test/rounds/3?regenerate=true')
     assert response.status_code == 200
-    second = client.get('/keywords/test/rounds/2').json()
+    second = client.get('/keywords/test/rounds/3').json()
     assert second['jobId'] != first['jobId'] and second['gen'] == first['gen'] + 1
     assert second['status'] == 'done'
 
@@ -512,16 +522,19 @@ def test_coverage_uses_searchad_when_connected(client, monkeypatch, autocomplete
 
 
 def test_coverage_falls_back_to_autocomplete_when_unconnected(client, autocomplete_calls):
-    through(client, 1)
+    state = start(client, 1)
     # Seed order follows displayed generation order, excluding manual/rejected items.
     data = store.load_session('test')
-    kws = data['keywords']
+    kws = data['keywordRounds']['1']['keywords']
+    for kw in kws:
+        kw['status'] = 'approved'
     kws[0]['status'] = 'rejected'
     kws[1]['origin'] = 'manual'
     data.update(keywords=kws, projectContext={'bk': '에어컨'})
     store.write_json(store.session_dir('test') / 'session.json', data)
-    state = start(client, 2)
-    assert commit(client, 2, state).status_code == 200
+    assert client.post('/keywords/test/rounds/1/commit', json={
+        'gen': state['gen'], 'decisions': [{'id': k['id'], 'status': k['status']} for k in kws]
+    }).status_code == 200
     saved = client.get('/keywords/test').json()['coverage']
     expected = [k['kw'] for k in kws if k['status'] == 'approved' and k['origin'] == 'llm'][:20]
     assert autocomplete_calls == [['에어컨'] + expected]
@@ -567,7 +580,7 @@ def test_missing_top_feeds_r3_inputs(client, backend, monkeypatch):
     assert json.dumps(missing, ensure_ascii=False) in backend.calls[-1].instructions
 
 
-def test_r2_commit_returns_before_autocomplete_finishes(client, monkeypatch, autocomplete_calls):
+def test_r2_commit_returns_before_autocomplete_finishes(client, monkeypatch, autocomplete_calls, unlocked_rounds):
     through(client, 1)
     state = start(client, 2)
     queued = []
@@ -616,8 +629,7 @@ def test_refresh_param_refetches_only_when_true(client, monkeypatch, autocomplet
 
 
 def test_coverage_real_worker_does_not_block_commit(client, monkeypatch):
-    through(client, 1)
-    state = start(client, 2)
+    state = start(client, 1)
     entered, release = Event(), Event()
     workers = []
     def suggestions(seeds, on_progress=None):
@@ -629,7 +641,7 @@ def test_coverage_real_worker_does_not_block_commit(client, monkeypatch):
     monkeypatch.setattr(naver_autocomplete, 'suggestions', suggestions)
     monkeypatch.setattr(rounds, 'execute', execute)
     try:
-        assert commit(client, 2, state).status_code == 200
+        assert commit(client, 1, state).status_code == 200
         assert entered.wait(2)
         assert client.get('/keywords/test').json()['coverage']['status'] == 'loading'
     finally:
@@ -681,7 +693,7 @@ def test_superseded_coverage_worker_preserves_new_result(client, monkeypatch, au
 
 
 @pytest.mark.parametrize('source', ['autocomplete', 'searchad'])
-def test_r2_recommit_recomputes_cached_queries(client, monkeypatch, source):
+def test_r2_recommit_recomputes_cached_queries(client, monkeypatch, source, unlocked_rounds):
     human = [('냉방2단어0', 2), ('새승인', 4)]
     if source == 'searchad':
         monkeypatch.setattr(rounds.naver_searchad, 'related_queries', lambda hints: human)
@@ -834,8 +846,8 @@ def test_review_stale_refresh_recommit_never_reuses_previous(client, monkeypatch
     assert loading['previous'] == {key: old[key] for key in fields if key in old}
     now = datetime.fromisoformat(loading['updatedAt']) + timedelta(seconds=121)
     monkeypatch.setattr(store, 'now', lambda: now.isoformat())
-    store.update_session('test', {'keywordRounds': {'2': {'committed': False}}})
-    assert commit(client, 2).status_code == 200
+    store.update_session('test', {'keywordRounds': {'1': {'committed': False}}})
+    assert commit(client, 1).status_code == 200
     assert client.get('/keywords/test').json()['coverage']['status'] == 'unavailable'
     assert len(queued) == 1
     queued[0]()
@@ -1013,3 +1025,50 @@ def test_qfix_autocomplete_empty_and_product_queries(client, monkeypatch, empty)
     cached = client.post('/keywords/test/coverage').json()
     assert cached['humanQueries'] == saved['humanQueries']
     assert cached['m1'] == saved['m1']
+
+
+@pytest.mark.parametrize('version', [None, 'v1'])
+@pytest.mark.parametrize('suffix', ['', '/rounds/1'])
+def test_display_get_is_response_only(client, monkeypatch, version, suffix):
+    from app.context import versions
+
+    keyword = {'id': 'display-test', 'kw': '귀촌휴식죄책감', 'axis': 'physical',
+               'sub': 'space', 'round': 1, 'origin': 'manual', 'status': 'approved'}
+    store.update_session('test', {'keywords': [keyword], 'keywordRounds': {
+        '1': {'job': {'status': 'done'}, 'keywords': [keyword]}}})
+    directory = store.session_dir('test')
+    monkeypatch.setattr(versions, 'version_dir', lambda sid, version: directory)
+    path = directory / 'session.json'
+    before = path.read_bytes()
+    response = client.get(f'/keywords/test{suffix}', params={'version': version} if version else {})
+    assert response.status_code == 200
+    assert response.json()['keywords'][0] == {**keyword, 'display': '귀촌 휴식 죄책감'}
+    assert path.read_bytes() == before
+    assert '"display"' not in path.read_text()
+
+
+def test_display_manual_never_persists(client):
+    response = client.post('/keywords/test/manual', json={
+        'kw': '귀촌휴식죄책감', 'axis': 'physical', 'sub': 'space'})
+    assert response.status_code == 200
+    manual = response.json()
+    assert manual['kw'] == '귀촌휴식죄책감'
+    assert manual['keywords'][0]['display'] == '귀촌 휴식 죄책감'
+    path = store.session_dir('test') / 'session.json'
+    assert '"display"' not in path.read_text()
+
+
+def test_display_events_never_persist(client):
+    manual = client.post('/keywords/test/manual', json={
+        'kw': '귀촌휴식죄책감', 'axis': 'physical', 'sub': 'space'}).json()
+    path = store.session_dir('test') / 'session.json'
+    for event in [{'type': 'reject', 'kwId': manual['id'], 'tags': ['irrelevant']},
+                  {'type': 'direction', 'text': '새 방향'}]:
+        response = client.post('/keywords/test/events', json={'round': 1, **event})
+        assert response.status_code == 200
+        keyword = response.json()['keywords'][0]
+        assert keyword['display'] == '귀촌 휴식 죄책감'
+        assert keyword['kw'] == '귀촌휴식죄책감'
+        assert keyword['status'] == 'rejected'
+        assert '"display"' not in path.read_text()
+    assert all(event.kw == '귀촌휴식죄책감' for event in load_events('test') if event.kw)

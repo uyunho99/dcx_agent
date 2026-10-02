@@ -1,6 +1,16 @@
 """Shared Korean display labels, kept as plain data for frontend parity."""
 
 LABELS: dict[str, dict[str, str]] = {
+    "taskMode": {
+        "metric": "지표 개선형",
+        "explore": "탐색·기획형",
+    },
+    "personaDimensions": {
+        "social": "사회적 외부 페르소나",
+        "taste": "개인 취향·활동",
+        "movement": "신체 외부 동선",
+        "bio": "내부 바이오",
+    },
     "projectType": {
         "branding": "브랜딩",
         "new": "신규기획",

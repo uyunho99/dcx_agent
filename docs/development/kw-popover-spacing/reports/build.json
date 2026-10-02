@@ -1,0 +1,66 @@
+{
+ "verdict": "PASS",
+ "head": "e680dcecc0373a90b2af9eb1bd501d03aa29820a",
+ "fingerprint": "dcf3c6815c467b6b8e8530a431052af155bf510c2242645019d3c63066974fae",
+ "commands": [
+  {
+   "command": "backend/.venv/bin/python -m pytest backend/tests -q",
+   "exitCode": 0,
+   "stdout": "........................................................................ [  4%]\n........................................................................ [  9%]\n........................................................................ [ 13%]\n........................................................................ [ 18%]\n........................................................................ [ 22%]\n........................................................................ [ 27%]\n........................................................................ [ 31%]\n........................................................................ [ 36%]\n........................................................................ [ 40%]\n........................................................................ [ 45%]\n........................................................................ [ 50%]\n........................................................................ [ 54%]\n........................................................................ [ 59%]\n........................................................................ [ 63%]\n........................................................................ [ 68%]\n........................................................................ [ 72%]\n........................................................................ [ 77%]\n........................................................................ [ 81%]\n........................................................................ [ 86%]\n........................................................................ [ 90%]\n........................................................................ [ 95%]\n........................................................................ [100%]\n=============================== warnings summary ===============================\nbackend/app/config.py:12\n  /Users/persona1/Desktop/dcx_agent-kw-popover/backend/app/config.py:12: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/\n    class Settings(BaseSettings):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n1584 passed, 1 deselected, 1 warning in 154.98s (0:02:34)\n",
+   "stderr": ""
+  },
+  {
+   "command": "npm --prefix frontend run lint",
+   "exitCode": 0,
+   "stdout": "\n> frontend@0.1.0 lint\n> eslint\n\n",
+   "stderr": ""
+  },
+  {
+   "command": "npm --prefix frontend run build",
+   "exitCode": 0,
+   "stdout": "\n> frontend@0.1.0 build\n> next build\n\n▲ Next.js 16.1.6 (Turbopack)\n- Environments: .env.production\n\n  Creating an optimized production build ...\n✓ Compiled successfully in 2.4s\n  Running TypeScript ...\n  Collecting page data using 9 workers ...\n  Generating static pages using 9 workers (0/14) ...\n  Generating static pages using 9 workers (3/14) \r\n  Generating static pages using 9 workers (6/14) \r\n  Generating static pages using 9 workers (10/14) \r\n✓ Generating static pages using 9 workers (14/14) in 108.8ms\n  Finalizing page optimization ...\n\nRoute (app)\n┌ ○ /\n├ ○ /_not-found\n├ ○ /insights\n├ ○ /pipeline/clustering\n├ ○ /pipeline/compare\n├ ○ /pipeline/crawling\n├ ○ /pipeline/keywords\n├ ○ /pipeline/labeling\n├ ○ /pipeline/personas\n├ ○ /pipeline/preprocess\n├ ○ /pipeline/start\n└ ○ /pipeline/training\n\n\n○  (Static)  prerendered as static content\n\n",
+   "stderr": "(node:27709) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.\n(Use `node --trace-deprecation ...` to show where the warning was created)\n(node:27712) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.\n(Use `node --trace-deprecation ...` to show where the warning was created)\n"
+  },
+  {
+   "command": "npm --prefix frontend test",
+   "exitCode": 0,
+   "stdout": "\n> frontend@0.1.0 test\n> vitest run\n\n\n RUN  v3.2.7 /Users/persona1/Desktop/dcx_agent-kw-popover/frontend\n\n ✓ src/lib/logic/labelKeys.test.ts (5 tests) 4ms\n ✓ src/components/train/trainingView.test.ts (20 tests) 19ms\n ✓ src/app/pipeline/training/page.test.ts (6 tests) 20ms\n ✓ src/components/label/workerControls.test.ts (3 tests) 19ms\n ✓ src/lib/logic/completedThrough.test.ts (30 tests) 11ms\n ✓ src/components/prep/PrepScreen.test.ts (6 tests) 19ms\n ✓ src/components/label/QueueCard.test.ts (5 tests) 13ms\n ✓ src/lib/logic/qaFix.test.ts (9 tests) 19ms\n ✓ src/components/prep/prep.test.ts (11 tests) 4ms\n ✓ src/components/ds/popoverMeasure.test.ts (8 tests) 12ms\n ✓ src/lib/logic/finishPartial.test.ts (2 tests) 17ms\n ✓ src/components/browserQa.test.ts (7 tests) 56ms\n ✓ src/components/keywords/CoveragePanel.test.ts (28 tests) 65ms\n ✓ src/lib/logic/nowCard.test.ts (7 tests) 31ms\n ✓ src/components/known/KnownInsightsDrawer.test.ts (4 tests) 18ms\n ✓ src/lib/logic/compareView.test.ts (3 tests) 21ms\n ✓ src/lib/api/errors.test.ts (21 tests) 4ms\n ✓ src/components/versions/VersionProvider.test.ts (2 tests) 12ms\n ✓ src/components/ds/choiceCards.test.ts (13 tests) 10ms\n ✓ src/components/chat-flow.test.ts (2 tests) 7ms\n ✓ src/lib/logic/finalFix.test.ts (10 tests) 7ms\n ✓ src/lib/logic/restartVersion.test.ts (6 tests) 2ms\n ✓ src/components/prep/workflow.test.ts (4 tests) 8ms\n ✓ src/lib/api/label.test.ts (10 tests) 8ms\n ✓ src/app/pipeline/labeling/page.test.ts (2 tests) 5ms\n ✓ src/lib/logic/crawlLoad.test.ts (3 tests) 5ms\n ✓ src/lib/logic/josa.test.ts (22 tests) 4ms\n ✓ src/lib/logic/roundUi.test.ts (8 tests) 3ms\n ✓ src/components/shell.test.ts (11 tests) 13ms\n ✓ src/lib/logic/mutationContract.test.ts (4 tests) 14ms\n ✓ src/components/sidebarAuto.test.ts (7 tests) 4ms\n ✓ src/lib/logic/filterKeywords.test.ts (3 tests) 5ms\n ✓ src/lib/logic/startForm.test.ts (36 tests) 4ms\n ✓ src/lib/logic/isDirty.test.ts (4 tests) 1ms\n ✓ src/lib/logic/crawlConfig.test.ts (4 tests) 11ms\n ✓ src/app/pipeline/clustering/page.test.ts (3 tests) 7ms\n ✓ src/lib/logic/finalW4.test.ts (4 tests) 3ms\n ✓ src/components/label/queueView.test.ts (3 tests) 2ms\n ✓ src/lib/refreshSessionAfterStage.test.ts (4 tests) 11ms\n ✓ src/components/keywords/keywordDisplay.test.ts (5 tests) 3ms\n ✓ src/lib/logic/keywordKeys.test.ts (3 tests) 3ms\n ✓ src/lib/logic/channelBars.test.ts (2 tests) 3ms\n ✓ src/lib/logic/reviewKeywords.test.ts (1 test) 8ms\n ✓ src/components/label/useLabelSeen.test.ts (1 test) 2ms\n ✓ src/components/versions/versions.test.ts (2 tests) 2ms\n ✓ src/components/ds/popoverAlign.test.ts (7 tests) 3ms\n ✓ src/lib/logic/actionQueue.test.ts (2 tests) 9ms\n ✓ src/lib/logic/nextTrapIndex.test.ts (3 tests) 3ms\n ✓ src/components/versions/useStageCompletionRefresh.test.ts (5 tests) 2ms\n ✓ src/lib/logic/versionSelection.test.ts (4 tests) 9ms\n ✓ src/lib/logic/crawlWindow.test.ts (3 tests) 1ms\n ✓ src/lib/logic/nextFocus.test.ts (3 tests) 2ms\n ✓ src/lib/logic/keywordDraft.test.ts (1 test) 2ms\n ✓ src/lib/logic/smoke.test.ts (1 test) 2ms\n\n Test Files  54 passed (54)\n      Tests  383 passed (383)\n   Start at  20:04:37\n   Duration  1.89s (transform 988ms, setup 0ms, collect 3.50s, tests 555ms, environment 9ms, prepare 2.88s)\n\n",
+   "stderr": "(node:27741) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.\n(Use `node --trace-deprecation ...` to show where the warning was created)\n"
+  }
+ ],
+ "findings": [],
+ "tasks": [
+  {
+   "id": "T1",
+   "executor": "codex",
+   "dispatch": "codex thread 01a0fc2b-3faa-7832-a163-d1f3fbc80edc; F2 fix codex thread 01a0fc41-a353-7fd1-9de2-fc891e74d7e0",
+   "red": "pytest backend/tests/keywords: 6 failed, 22 errors (display module missing); F2: 41 failed (new spacing expectations)",
+   "green": "pytest backend/tests/keywords: 318 passed; full 1541 passed; F2: keywords 361 passed, full 1584 passed",
+   "review": "Claude diff review: display.py merges 1-char segments, falls back to kw; with_display copies only, storage untouched; reports/T1.md; F2 tag/prefix-aware merge reviewed"
+  },
+  {
+   "id": "T2",
+   "executor": "codex",
+   "dispatch": "codex thread 01a0fc32-f45c-7410-8998-3d8012cc4865",
+   "red": "vitest keywordDisplay: fails, module missing",
+   "green": "vitest keywordDisplay 5 passed; full 368 passed",
+   "review": "Claude diff review: label/title/aria use display, requests use kw/id; chips via reviewKeywords prefer top-level keywords; reports/T2.md"
+  },
+  {
+   "id": "T3",
+   "executor": "codex",
+   "dispatch": "codex thread 01a0fc36-6373-7da1-a3f3-77b6f722fb04",
+   "red": "vitest sidebarAuto: fails, module missing",
+   "green": "vitest sidebarAuto 7 passed; full 375 passed",
+   "review": "Claude diff review: counter release-once, user||auto, localStorage try/catch, aria-expanded/controls; reports/T3.md"
+  },
+  {
+   "id": "T4",
+   "executor": "codex",
+   "dispatch": "codex thread 01a0fc33-1836-7112-8f9a-926b83ecc326; F1 fix codex thread 01a0fc41-be45-75a2-89b0-436c7ab879ab",
+   "red": "vitest popoverAlign: fails, module missing; F1: 4 regression failures",
+   "green": "vitest popoverAlign 7 passed; full 368 passed; F1: 383 passed",
+   "review": "Claude diff review: rAF measure vs nearest overflow ancestor, data-align start CSS, focus outline double frame fix; reports/T4.md; F1 ResizeObserver + per-frame geometry check, data-align always present"
+  }
+ ]
+}

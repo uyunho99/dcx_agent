@@ -9,6 +9,7 @@ export * from "./Icon";
 export * from "./Checkbox";
 export * from "./Switch";
 export * from "./ChoiceChips";
+export * from "./ChoiceCards";
 export * from "./Segmented";
 export * from "./Tabs";
 export * from "./Popover";

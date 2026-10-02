@@ -92,8 +92,13 @@ def _save_context(sid, ctx, old):
     patch = context_patch(ctx, sid, old)
     warnings = []
     if old.get('keywordRounds', {}).get('1'):
-        for field in ('oneLiner', 'researchQuestion'):
-            if old.get('projectContext', {}).get(field) != patch['projectContext'][field]:
+        old_context = old.get('projectContext', {})
+        try:
+            old_context = ProjectContext.model_validate(old_context).model_dump(mode='json')
+        except ValidationError:
+            pass  # Malformed historical data still permits saving a valid replacement.
+        for field in ('oneLiner', 'researchQuestion', 'taskMode', 'keyMetrics', 'personaSeeds'):
+            if old_context.get(field) != patch['projectContext'][field]:
                 warnings.append(field + '_changed_after_r1')
     data = _update_locked(sid, patch, confirm_stage='stage0')
     return {'projectContext': data['projectContext'], 'warnings': warnings}

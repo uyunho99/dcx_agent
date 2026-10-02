@@ -3,10 +3,11 @@ import { useRef, useState } from 'react';
 import { Badge, Banner, Button, Input } from '@/components/ds';
 import type { Destination, Keyword, Rejection } from '@/lib/api/keywords';
 import { nextFocus } from '@/lib/logic/nextFocus';
+import { roundTag } from '@/lib/logic/roundKeywords';
 import { groupLabel } from './taxonomy';
 import { KeywordChip } from './KeywordChip';
-export function KeywordGroup({ group, keywords, groups, collapsed, toggle, disabled, onAdd, onSuggest, onMove, onReview }: {
-  group: Destination; keywords: Keyword[]; groups: Destination[]; collapsed: boolean; toggle: () => void; disabled: boolean;
+export function KeywordGroup({ group, keywords, currentRound, groups, collapsed, toggle, disabled, onAdd, onSuggest, onMove, onReview }: {
+  group: Destination; keywords: Keyword[]; currentRound?: number; groups: Destination[]; collapsed: boolean; toggle: () => void; disabled: boolean;
   onAdd: (word: string, group: Destination, origin: 'manual' | 'suggested') => Promise<boolean>;
   onSuggest: (group: Destination) => Promise<string[]>; onMove: (k: Keyword | string, to: Destination) => Promise<void>;
   onReview: (k: Keyword, reject: Rejection | null, to?: Destination) => Promise<void>;
@@ -17,7 +18,7 @@ export function KeywordGroup({ group, keywords, groups, collapsed, toggle, disab
   async function add(value: string, origin: 'manual' | 'suggested') { setBusy(true); try { if (await onAdd(value, group, origin)) { if (origin === 'manual') setWord(''); else setSuggestions(s => s?.filter(w => w !== value) ?? null); } } finally { setBusy(false); } }
   return <section className={`kw-group ${over ? 'kw-drop' : ''}`} onDragOver={event => { if (!disabled) { event.preventDefault(); setOver(true); event.dataTransfer.dropEffect = 'move'; } }} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setOver(false); }} onDrop={event => { event.preventDefault(); setOver(false); const id = event.dataTransfer.getData('text/plain'); if (id && !disabled) void onMove(id, group).catch(() => {}); }}>
     <div className="kw-group-head"><Button size="sm" variant="quiet" aria-expanded={!collapsed} onClick={toggle}>{groupLabel(group)} {collapsed ? '펼치기' : '접기'}</Button><Badge>{keywords.length}</Badge><Button size="sm" variant="quiet" disabled={disabled} onClick={() => { setAdding(!adding); if (collapsed) toggle(); }}>직접 추가하기</Button>{over && <span className="ds-t-caption">여기에 놓으면 이동합니다</span>}</div>
-    {!collapsed && <div className="kw-group-body"><div ref={list} role="listbox" aria-label={groupLabel(group)} aria-multiselectable="true" className="kw-chip-list">{keywords.map(k => <KeywordChip key={k.id} keyword={k} groups={groups} disabled={disabled} tabIndex={active === k.id ? 0 : -1} onFocus={() => setFocused(k.id)} onReview={onReview} onMove={onMove} onKeyDown={event => {
+    {!collapsed && <div className="kw-group-body"><div ref={list} role="listbox" aria-label={groupLabel(group)} aria-multiselectable="true" className="kw-chip-list">{keywords.map(k => <KeywordChip key={k.id} keyword={k} roundTag={roundTag(k.round, currentRound)} groups={groups} disabled={disabled} tabIndex={active === k.id ? 0 : -1} onFocus={() => setFocused(k.id)} onReview={onReview} onMove={onMove} onKeyDown={event => {
       if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
       event.preventDefault(); const buttons = Array.from(list.current?.querySelectorAll<HTMLButtonElement>('[data-keyword-id]') ?? []);
       const rows: string[][] = []; let lastTop = -Infinity;

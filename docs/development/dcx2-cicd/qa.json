@@ -1,0 +1,23 @@
+{
+  "verdict": "PASS",
+  "head": "18c7712ece9dfc6b25f10d0bfb156be63ae64134",
+  "fingerprint": "9deb6fe454cd7a55ff9a49c8d043f75567303d489c2719138b0fc23b9ee7ebd3",
+  "commands": [
+    { "command": "APP_ROOT=~/srv/dcx-agent-qa DCX_INSTALL_ASSUME_YES=1 /bin/bash ops/macmini/install.sh --qa (2nd attempt)", "exitCode": 0 },
+    { "command": "APP_ROOT=~/srv/dcx-agent /bin/bash ops/macmini/install.sh --dry-run --output-dir <scratch>", "exitCode": 0 }
+  ],
+  "findings": [],
+  "notes": [
+    "QA install attempt 1 failed on main 2ba66eb lacking constraints.txt → fixed in 1810ab9, attempt 2 passed",
+    "Local demo servers 3311/8311 (user-started) were found stopped after 17:30; no evidence in QA logs or tests; public site unaffected (tunnel now 3400/8400)",
+    "QA-2/QA-3/QA-5 (real automatic deploy, rollback, build failure) are verified post-merge, because deploys only accept commits whose main push CI is green; covered pre-merge by 120 ops tests including bash 3.2",
+    "QA-7 production install and reboot is a UAT step requiring the user's sudo"
+  ],
+  "scenarios": [
+    { "id": "QA-1", "url": "https://github.com/uyunho99/dcx_agent/pull/6", "result": "PASS", "evidence": "CI backend 7m34s pass, frontend 52s pass on 1810ab9 (docs/development/dcx2-cicd/qa/qa-report.md)" },
+    { "id": "QA-install", "url": "http://localhost:3401/pipeline/start", "result": "PASS", "evidence": "qa/qa-install.log; /health ok; 3401 200; dcxctl status maintenance clear, deployed installation:true" },
+    { "id": "QA-4", "url": "http://localhost:8401/health", "result": "PASS", "evidence": "qa/qa-report.md dcxctl status" },
+    { "id": "QA-6", "url": "n/a (dry run)", "result": "PASS", "evidence": "qa/qa-report.md: LaunchDaemons, ports 3400/8400 only, public URLs" },
+    { "id": "QA-secrets", "url": "n/a", "result": "PASS", "evidence": "0 occurrences of app.env key in QA logs and frontend build" }
+  ]
+}

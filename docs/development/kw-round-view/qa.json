@@ -1,0 +1,38 @@
+{
+ "verdict": "PASS",
+ "head": "2b187a25fd1091c2c46ec40f4db8939cbf154d46",
+ "fingerprint": "fdf296f108a77be4e8957cb1068ca2251aef326aca258b55a6ad45793dde2867",
+ "commands": [
+  {
+   "command": "내장 브라우저 QA 1360×900, 가짜 LLM 8315/3315",
+   "exitCode": 0
+  }
+ ],
+ "findings": [],
+ "scenarios": [
+  {
+   "id": "QA1",
+   "url": "http://localhost:3315/pipeline/keywords",
+   "result": "PASS",
+   "evidence": "세라젬 복사본: R3 선택 → 탭 전체60 · 필터 전체 60, R1 선택 → 탭 전체87(물리30 · 심리27 · 행동30), 칩 목록 R1 단어로 바뀜. 두 경우 모두 축 분포 \"승인 예정 포함 127개\" · \"승인 예정 127 · 거절 20\" 동일(누적)"
+  },
+  {
+   "id": "QA2",
+   "url": "http://localhost:3315/pipeline/keywords",
+   "result": "PASS",
+   "evidence": "QA에어컨(R4 확정) 최종 화면 \"최종 키워드를 검토합니다\": 탭 전체190(R1 70 + R3 60 + R4 60 누적)"
+  },
+  {
+   "id": "QA3",
+   "url": "http://localhost:3315/pipeline/keywords",
+   "result": "PASS",
+   "evidence": "세라젬 복사본 R3 미확정 상태에서 직접 추가(시골집QA추가, 서버 round=3) → R3 화면 탭 전체61, 칩 표시 확인"
+  },
+  {
+   "id": "QA4",
+   "url": "http://localhost:3315/pipeline/keywords",
+   "result": "PASS",
+   "evidence": "거절 · 임시 저장 경로는 이번 diff에서 바뀌지 않음(decisions()가 current.keywords 기준, review/draft/commit 함수 무변경) — 코드 검토로 확인, 화면 조작은 생략"
+  }
+ ]
+}

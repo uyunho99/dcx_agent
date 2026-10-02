@@ -1,0 +1,42 @@
+{
+ "verdict": "PASS",
+ "head": "e680dcecc0373a90b2af9eb1bd501d03aa29820a",
+ "fingerprint": "dcf3c6815c467b6b8e8530a431052af155bf510c2242645019d3c63066974fae",
+ "findings": [],
+ "environment": "http://localhost:3411/pipeline/keywords (worktree dev servers, copied demo session s2d08197, 1440x900). Browser pane was hidden so rAF/ResizeObserver were paused; S1/S6 run with a page-side rAF->setTimeout(16ms) shim to emulate a visible tab.",
+ "scenarios": [
+  {
+   "id": "S1",
+   "result": "PASS",
+   "evidence": "right-edge chip 8/8: sidebar auto-collapsed 224->72px, panel inside .pipeline-main, restored to expanded on Esc/cancel; docs/development/kw-popover-spacing/reports/qa-s1-s4.jpg"
+  },
+  {
+   "id": "S2",
+   "result": "PASS",
+   "evidence": "user collapse stored dcx.sidebar.collapsed=true, popover open/close keeps collapsed, persists after reload"
+  },
+  {
+   "id": "S3",
+   "result": "PASS",
+   "evidence": "toggle focusable, 46px wide, aria-label 사이드바 접기->펴기, aria-expanded true->false, aria-controls=pipeline-side"
+  },
+  {
+   "id": "S4",
+   "result": "PASS",
+   "evidence": "chips show spaced display (초진 접수 마감, 진료 전 도착 시간), title shows raw kw; docs/development/kw-popover-spacing/reports/qa-s1-s4.jpg"
+  },
+  {
+   "id": "S5",
+   "result": "PASS",
+   "evidence": "reject POST /events body {kwId:k_r1g1_0007,...}; stored kw 퇴원수납지연 unchanged, no display key in session.json"
+  },
+  {
+   "id": "S6",
+   "result": "PASS",
+   "evidence": "left-edge chip 8/8 data-align=start left 187>=72, mid chips 8/8, single .ds-pop, no double frame in screenshot; docs/development/kw-popover-spacing/reports/qa-s1-s4.jpg"
+  }
+ ],
+ "residual": [
+  "Kiwi mis-segmentation still possible on some proper/compound nouns (e.g. 제 증명 창구, 아산 병원제 증명) — display only, raw kw in title"
+ ]
+}

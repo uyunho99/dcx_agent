@@ -9,6 +9,7 @@ import { useSessionStore } from '@/stores/useSessionStore';
 import { Banner, Badge, BarList, Button, Card, ChoiceChips, Input, Popover, Select, Skeleton, Stepper, Tabs, type StepperItem } from '@/components/ds';
 import { SaveBar } from '@/components/SaveBar';
 import { KeywordGroup } from '@/components/keywords/KeywordGroup';
+import { keywordLabel } from '@/components/keywords/keywordDisplay';
 import { CoveragePanel, startCoveragePolling } from '@/components/keywords/CoveragePanel';
 import { axes, destinations, groupKey, groupLabel } from '@/components/keywords/taxonomy';
 import { addKeyword, commitRound, getCoverage, KeywordApiError, postEvent, regenerateRound, startRound, suggestWords, type Axis, type Decision, type Destination, type Draft, type Keyword, type KeywordState, type Rejection } from '@/lib/api/keywords';
@@ -16,8 +17,9 @@ import { contextRequest, patchSession } from '@/lib/api/context';
 import { filterKeywords, keywordFilters, type KeywordFilter } from '@/lib/logic/filterKeywords';
 import { createActionQueue } from '@/lib/logic/actionQueue';
 import { reviewKeywords } from '@/lib/logic/reviewKeywords';
+import { roundKeywords } from '@/lib/logic/roundKeywords';
 import { displayError } from '@/lib/api/errors';
-import { roundUi, directionRound } from '@/lib/logic/roundUi';
+import { roundUi, directionRound, nextRound, prevRound, followingRound } from '@/lib/logic/roundUi';
 import { INTERNAL_TOOLS } from '@/lib/internalTools';
 import '@/components/keywords/keywords.css';
 
@@ -45,8 +47,9 @@ function KeywordScreen({ sid }: { sid: string }) {
   const [custom, setCustom] = useState<Destination[]>([]); const [customAxis, setCustomAxis] = useState(''); const [customName, setCustomName] = useState('');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({}); const [help, setHelp] = useState(false); const [elapsed, setElapsed] = useState(0);
   const [duplicate, setDuplicate] = useState<Keyword | null>(null);
-  const nextRound = data?.keywordRounds[String(round + 1)];
-  const current = data?.keywordRounds[String(round)]; const ui = roundUi({ round, status: current?.job.status, committed: current?.committed, gen: current?.gen, jobGen: current?.job.gen, needsRegeneration: current?.needsRegeneration, nextRound: nextRound ? {...nextRound, status: nextRound.job.status} : undefined, dirty });
+  const following = followingRound(round);
+  const nextState = following === undefined ? undefined : data?.keywordRounds[String(following)];
+  const current = data?.keywordRounds[String(round)]; const ui = roundUi({ round, status: current?.job.status, committed: current?.committed, gen: current?.gen, jobGen: current?.job.gen, needsRegeneration: current?.needsRegeneration, nextRound: nextState ? {...nextState, status: nextState.job.status} : undefined, dirty });
   const coverageLoading = data?.coverage.status === 'loading';
   const r3Blocked = round === 3 && coverageLoading;
   const running = current?.job.status === 'running';
@@ -88,10 +91,12 @@ function KeywordScreen({ sid }: { sid: string }) {
     const timer = setInterval(() => setElapsed(Math.max(0, Math.floor((Date.now() - started) / 1000))), 1000);
     return () => clearInterval(timer);
   }, [running, current?.job.startedAt]);
+  // reviewKeywords merges by id, preferring top-level keywords (including display) over round entries.
   const all = reviewKeywords({ keywordRounds: data?.keywordRounds ?? {}, keywords: data?.keywords ?? [] }).map(k => overrides[k.id] ? { ...k, ...overrides[k.id] } : k);
-  const groups = [...new Map([...destinations, ...custom, ...all.map(k => ({ axis: k.axis, sub: k.sub }))].map(g => [groupKey(g), g])).values()];
+  const shown = roundKeywords(all, round, ui.final);
+  const groups = [...new Map([...destinations, ...custom, ...shown.map(k => ({ axis: k.axis, sub: k.sub }))].map(g => [groupKey(g), g])).values()];
   const tabGroups = groups.filter(g => axis === 'all' || g.axis === axis);
-  const tabKeywords = all.filter(k => axis === 'all' || k.axis === axis);
+  const tabKeywords = shown.filter(k => axis === 'all' || k.axis === axis);
   const visible = filterKeywords(tabKeywords, filter, query);
   const isCollapsed = (g: Destination) => readonly ? false : collapsed[`${axis}:${groupKey(g)}`] ?? tabGroups.length >= 10;
   const decisions = (): Decision[] => (current?.keywords ?? []).map(k => overrides[k.id] ?? { id: k.id, status: k.status === 'rejected' ? 'rejected' : 'approved', reject: k.reject });
@@ -126,38 +131,42 @@ function KeywordScreen({ sid }: { sid: string }) {
   }
   async function add(word: string, to: Destination, origin: 'manual' | 'suggested') {
     if (lock.current) return false; let success = false;
-    await action(async () => { try { const keyword = await addKeyword(sid, word, to, origin, version); setData(d => d ? { ...d, keywords: [...d.keywords, keyword] } : d); setDuplicate(null); setFilter('전체'); setQuery(''); success = true; }
-      catch (e) { if (e instanceof KeywordApiError && e.duplicateOf) { const found = all.find(k => k.id === e.duplicateOf); setDuplicate(found ?? null); setError(found ? `이미 있는 키워드입니다. ${groupLabel(found)}의 “${found.kw}”${josa(found.kw, '을/를')} 확인하세요.` : '이미 있는 키워드입니다. 전체 목록을 확인하세요.'); } else throw e; }
+    await action(async () => { try {
+      const result = await addKeyword(sid, word, to, origin, version);
+      const keyword = result.keywords.find(k => k.id === result.id) ?? result;
+      setData(d => d ? { ...d, keywords: [...d.keywords, keyword] } : d); setDuplicate(null); setFilter('전체'); setQuery(''); success = true;
+    }
+      catch (e) { if (e instanceof KeywordApiError && e.duplicateOf) { const found = all.find(k => k.id === e.duplicateOf); setDuplicate(found ?? null); setError(found ? `이미 있는 키워드입니다. ${groupLabel(found)}의 “${keywordLabel(found)}”${josa(keywordLabel(found), '을/를')} 확인하세요.` : '이미 있는 키워드입니다. 전체 목록을 확인하세요.'); } else throw e; }
     }); return success;
   }
   async function suggest(to: Destination) { let words: string[] = []; await action(async () => { words = (await suggestWords(sid, to, version)).words.map(w => w.word); }); return words; }
   async function draft() { if (running) return; await action(async () => { await patchSession(sid, { drafts: { keywords: { [`r${round}`]: { round, gen: current?.gen ?? 0, decisions: decisions(), groups: custom, direction } } } }, version); setDirty(false); drafts.current[`r${round}`] = {round,gen:current?.gen ?? 0,decisions:decisions(),groups:custom,direction}; setSavedDirection(direction); setNotice('검토를 임시 저장했습니다. 저장하면 이 라운드를 확정합니다.'); }); }
   async function commit() { if (!current || !ui.canCommit) return; await action(async () => { await saveDirection(); await commitRound(sid, round, current.gen, decisions(), version); setOverrides({}); setDirty(false); await reload(); await patchSession(sid, { drafts: { keywords: { [`r${round}`]: null } } }, version); delete drafts.current[`r${round}`]; setNotice(`R${round}${josa(String(round), '을/를')} 저장했습니다. 다음 작업을 선택하세요.`); }); }
-  async function next() { if (!ui.canNext || dirty) return; if (round < 4) await generate(round + 1, !!nextRound); else await action(async () => { await saveDirection(); await patchSession(sid, { step: 'crawl-setup' }, version); useSessionStore.getState().setSession({ step: 'crawl-setup' }); router.push('/pipeline/crawling'); }); }
+  async function next() { if (!ui.canNext || dirty) return; if (round < 4) await generate(nextRound(round), !!nextState); else await action(async () => { await saveDirection(); await patchSession(sid, { step: 'crawl-setup' }, version); useSessionStore.getState().setSession({ step: 'crawl-setup' }); router.push('/pipeline/crawling'); }); }
   const approved = all.filter(k => k.status !== 'rejected'); const counts = axes.map(a => approved.filter(k => k.axis === a.value).length); const minimum = counts.indexOf(Math.min(...counts));
   if (!data) return <div className="space-y-4">{error ? <Banner tone="danger" actions={<Button onClick={() => window.location.reload()}>새로고침하기</Button>}>{error}</Banner> : <><p role="status">처리 중…</p><Skeleton height={120} /><Skeleton height={240} /></>}</div>;
   const steps = names.map((title, i) => ({ label: i < 4 ? `R${i + 1}` : '최종', title, description: techniques[i], state: i === (ui.final ? 4 : round - 1) ? 'current' : i < 4 && data.keywordRounds[String(i + 1)]?.committed ? 'complete' : 'upcoming' })) as [StepperItem, StepperItem, StepperItem, StepperItem, StepperItem];
   const reviewPanel = <>
         <div className="kw-filters"><ChoiceChips label="배지 필터" value={filter} onChange={v => setFilter(v as KeywordFilter)} options={keywordFilters.map(f => ({ value: f, label: `${f} ${filterKeywords(tabKeywords, f).length}` }))} /><Input label="키워드 검색" value={query} onChange={e => setQuery(e.target.value)} />{(filter !== '전체' || query) && <><span className="ds-t-caption">필터 적용 중</span><Button size="sm" onClick={() => { setFilter('전체'); setQuery(''); }}>해제하기</Button></>}<Popover triggerLabel="키보드 도움말 보기" label="키보드 단축키" open={help} onOpenChange={setHelp}><p>Tab 그룹 이동 · 방향키 칩 이동 · Home/End 처음/끝 · Enter/Space 거절 또는 복원 · M 이동 · Esc 취소</p></Popover><Button size="sm" onClick={() => { const close = !tabGroups.every(isCollapsed); setCollapsed(c => ({ ...c, ...Object.fromEntries(tabGroups.map(g => [`${axis}:${groupKey(g)}`, close])) })); }}>{tabGroups.every(isCollapsed) ? '모두 펼치기' : '모두 접기'}</Button></div>
         {!visible.length && <Banner>조건에 맞는 키워드가 없습니다. 필터를 해제하세요.</Banner>}
-        {tabGroups.map(g => <KeywordGroup key={groupKey(g)} group={g} groups={groups} keywords={visible.filter(k => groupKey(k) === groupKey(g))} disabled={busy || !ui.canEdit} collapsed={isCollapsed(g)} toggle={() => setCollapsed(c => ({ ...c, [`${axis}:${groupKey(g)}`]: !isCollapsed(g) }))} onAdd={add} onSuggest={suggest} onMove={move} onReview={review} />)}
+        {tabGroups.map(g => <KeywordGroup currentRound={ui.final ? undefined : round} key={groupKey(g)} group={g} groups={groups} keywords={visible.filter(k => groupKey(k) === groupKey(g))} disabled={busy || !ui.canEdit} collapsed={isCollapsed(g)} toggle={() => setCollapsed(c => ({ ...c, [`${axis}:${groupKey(g)}`]: !isCollapsed(g) }))} onAdd={add} onSuggest={suggest} onMove={move} onReview={review} />)}
         <fieldset disabled={busy} className="kw-add"><Select label="새 하위 카테고리 축" value={customAxis} onChange={e => setCustomAxis(e.target.value)}><option value="">축 선택</option>{axes.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}</Select><Input label="새 하위 카테고리 이름" value={customName} onChange={e => setCustomName(e.target.value)} /><Button disabled={!customAxis || !customName.trim()} onClick={() => { const g = { axis: customAxis as Axis, sub: `custom:${customName.trim()}` }; if (!groups.some(v => groupKey(v) === groupKey(g))) { setCustom(c => [...c, g]); setDirty(true); } reveal(g); setCustomName(''); }}>하위 카테고리 추가하기</Button></fieldset>
   </>;
-  return <div className="kw-screen"><StageVersionAction stage="stage1" /><div className="ds-eyebrow">1단계 · 키워드</div><h1 className={data.keywordRounds['2']?.committed ? 'ds-t-section' : 'ds-t-screen'}>{ui.final ? '최종 키워드를 검토합니다' : `R${round} ${names[round - 1]} 결과 ${ui.canEdit ? current?.keywords.length ?? 0 : 0}개를 검토합니다`}</h1><p>거절할 키워드를 누르고 사유를 남기면 다음 라운드에 반영됩니다. 드래그하거나 M 키로 하위 카테고리를 옮길 수 있습니다.</p><Stepper label="라운드 진행" steps={steps} /><Select label="검토할 라운드" value={round} disabled={busy || running} onChange={e => {if(!confirmNavigation()) return; const n=Number(e.target.value); const draft=restoreKeywordDraft(drafts.current[`r${n}`],data.keywordRounds[String(n)]?.gen??0);setRound(n);setOverrides(draft && !data.keywordRounds[String(n)]?.committed ? Object.fromEntries(draft.decisions.map(d=>[d.id,d])) : {});setCustom(draft?.groups??[]);setDirection(draft?.direction??'');setSavedDirection(draft?.direction??'');setDirty(false);}}>{[...new Set([round,...Object.keys(data.keywordRounds).map(Number)])].sort().map(n=><option key={n} value={n}>R{n}</option>)}</Select>
+  return <div className="kw-screen"><StageVersionAction stage="stage1" /><div className="ds-eyebrow">1단계 · 키워드</div><h1 className={data.keywordRounds[String(prevRound(3))]?.committed ? 'ds-t-section' : 'ds-t-screen'}>{ui.final ? '최종 키워드를 검토합니다' : `R${round} ${names[round - 1]} 결과 ${ui.canEdit ? current?.keywords.length ?? 0 : 0}개를 검토합니다`}</h1><p>거절할 키워드를 누르고 사유를 남기면 다음 라운드에 반영됩니다. 드래그하거나 M 키로 하위 카테고리를 옮길 수 있습니다.</p><Stepper label="라운드 진행" steps={steps} /><Select label="검토할 라운드" value={round} disabled={busy || running} onChange={e => {if(!confirmNavigation()) return; const n=Number(e.target.value); const draft=restoreKeywordDraft(drafts.current[`r${n}`],data.keywordRounds[String(n)]?.gen??0);setRound(n);setOverrides(draft && !data.keywordRounds[String(n)]?.committed ? Object.fromEntries(draft.decisions.map(d=>[d.id,d])) : {});setCustom(draft?.groups??[]);setDirection(draft?.direction??'');setSavedDirection(draft?.direction??'');setDirty(false);}}>{[...new Set([round,...Object.keys(data.keywordRounds).map(Number)])].sort().map(n=><option key={n} value={n}>R{n}</option>)}</Select>
     {error && <Banner tone="danger">{error}{duplicate && <Button size="sm" onClick={() => { reveal(duplicate); setDuplicate(null); }}>중복 키워드 확인하기</Button>}</Banner>}{notice && !readonly && <Banner>{notice}</Banner>}
     <div className="kw-layout"><div className="kw-main space-y-4"><Card><fieldset disabled={busy || running}><Input label="다음 라운드 방향 지시 (선택)" value={direction} onChange={e => setDirection(e.target.value)} placeholder="예: 영유아 관련 맥락을 더 발산해줘" /><div className="ds-actions"><Button disabled={!direction.trim()} onClick={() => void action(saveDirection)}>지시 저장하기</Button></div></fieldset></Card>
       {running ? <Card><p role="status" aria-live="polite">처리 중… R{round} 생성 중 · 보통 30~90초 · 경과 {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}</p><div className="space-y-4 mt-4">{[0, 1, 2].map(i => <Skeleton key={i} height={112} />)}</div><p className="ds-t-caption">다른 화면으로 이동해도 생성은 계속됩니다.</p></Card> : <>
       {current?.job.status === 'failed' && <Banner tone="danger" actions={<Button disabled={busy || r3Blocked} onClick={() => void generate(round)}>다시 생성하기</Button>}>R{round} 생성에 실패했습니다(원인: {reasons[current.job.error?.kind ?? ''] ?? '생성 도구 오류'}). 승인한 키워드는 그대로 있습니다. 다시 생성하세요.{current.job.error?.kind === 'backend' && ' 설정에서 claude_api로 바꿀 수 있습니다.'}</Banner>}
       {current?.job.status === 'done' && !current.committed && (current?.keywords.length === 0 ? <Banner actions={<Button disabled={busy || r3Blocked || !ui.canRegenerate} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}>새 키워드가 나오지 않았습니다. 방향 지시를 바꾸거나 다시 생성하세요.</Banner> : current?.below_min ? <Banner actions={<Button disabled={busy || r3Blocked || !ui.canRegenerate} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}>목표 {current.below_min.min}개 중 {current.below_min.got}개가 생성되었습니다. 그대로 검토하거나 다시 생성하세요.</Banner> : null)}
-      {ui.canEdit && <Card><Tabs label="3축" value={axis} onChange={setAxis} items={[{ value: 'all', label: '전체' }, ...axes].map(a => ({ ...a, count: all.filter(k => a.value === 'all' || k.axis === a.value).length, content: a.value === axis ? reviewPanel : null }))} />
+      {ui.canEdit && <Card><Tabs label="3축" value={axis} onChange={setAxis} items={[{ value: 'all', label: '전체' }, ...axes].map(a => ({ ...a, count: shown.filter(k => a.value === 'all' || k.axis === a.value).length, content: a.value === axis ? reviewPanel : null }))} />
 
       </Card>}</>}
     </div><aside className="kw-side space-y-4"><Card><h2 className="ds-t-card">축 분포</h2><p className="ds-t-caption">승인 예정 포함 {approved.length}개 기준 · 부족한 축은 다음 라운드가 채웁니다.</p><BarList max={Math.max(1, approved.length)} highlightIndex={minimum} items={axes.map((a, i) => ({ label: a.label, value: counts[i], displayValue: `${counts[i]}개 · ${approved.length ? Math.round(counts[i] / approved.length * 100) : 0}%` }))} /></Card>
-    {!data.keywordRounds['2']?.committed && <Card><h2 className="ds-t-card">커버리지</h2><Badge>R2 확정 후 계산</Badge></Card>}
+    {!data.keywordRounds[String(prevRound(3))]?.committed && <Card><h2 className="ds-t-card">커버리지</h2><Badge>{`R${prevRound(3)} 확정 후 계산`}</Badge></Card>}
     {INTERNAL_TOOLS && <Card><details><summary>keyword_feedback.md 미리보기 <Badge>내부용</Badge></summary><pre style={{color:"var(--ink)"}} className="ds-t-caption">{data.feedback_md || '아직 기록된 피드백이 없습니다.'}</pre></details></Card>}</aside></div>
-    {data.keywordRounds['2']?.committed && <section className="mt-6" aria-label="커버리지 검사"><CoveragePanel beforeR3={!data.keywordRounds['3'] && !data.keywordRounds['4']} coverage={data.coverage} busy={busy || running} onRefresh={() => void action(async () => { await getCoverage(sid, version); await reload(); })} /></section>}
+    {data.keywordRounds[String(prevRound(3))]?.committed && <section className="mt-6" aria-label="커버리지 검사"><CoveragePanel beforeR3={!data.keywordRounds['3'] && !data.keywordRounds['4']} coverage={data.coverage} busy={busy || running} onRefresh={() => void action(async () => { await getCoverage(sid, version); await reload(); })} /></section>}
     <p className="ds-t-caption" aria-live="polite">승인 예정 {approved.length} · 거절 {all.length - approved.length}</p>
-    {(round === 2 || round === 3) && coverageLoading && <p role="status" aria-live="polite">커버리지를 받는 중입니다. 끝나면 R3를 만들 수 있습니다.</p>}
-    <SaveBar dirty={dirty || direction !== savedDirection} valid={ui.canCommit && !busy} saving={busy} onDraft={() => void draft()} onSave={() => void commit()} primary={<>{ui.showRegenerate && <Button disabled={busy || r3Blocked || !ui.canRegenerate} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}<Button disabled={!ui.canStart || busy || r3Blocked || (dirty && !!current)} onClick={() => void generate(round)}>{ui.final ? '추가 생성하기' : current?.job.status === 'failed' ? '다시 생성하기' : '생성하기'}</Button>{(round === 4 || !nextRound || ui.canNext) && <Button variant="primary" disabled={!ui.canNext || busy || dirty || (round === 2 && coverageLoading)} onClick={() => void next()}>{round === 4 ? '크롤링 설정하기' : '다음 라운드 생성'}</Button>}</>} />
+    {(round === prevRound(3) || round === 3) && coverageLoading && <p role="status" aria-live="polite">커버리지를 받는 중입니다. 끝나면 R3를 만들 수 있습니다.</p>}
+    <SaveBar dirty={dirty || direction !== savedDirection} valid={ui.canCommit && !busy} saving={busy} onDraft={() => void draft()} onSave={() => void commit()} primary={<>{ui.showRegenerate && <Button disabled={busy || r3Blocked || !ui.canRegenerate} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}<Button disabled={!ui.canStart || busy || r3Blocked || (dirty && !!current)} onClick={() => void generate(round)}>{ui.final ? '추가 생성하기' : current?.job.status === 'failed' ? '다시 생성하기' : '생성하기'}</Button>{(round === 4 || !nextState || ui.canNext) && <Button variant="primary" disabled={!ui.canNext || busy || dirty || (nextRound(round) === 3 && coverageLoading)} onClick={() => void next()}>{round === 4 ? '크롤링 설정하기' : '다음 라운드 생성'}</Button>}</>} />
   </div>;
 }

@@ -9,7 +9,9 @@ from app.context import store
 from app.keywords import rounds
 
 
-def test_round_two_commit_makes_zero_external_connects(client, monkeypatch):
+@pytest.mark.parametrize("locked_rounds", [[], [2]], ids=["r2-commit-unlocked", "r1-commit-default"])
+def test_round_two_commit_makes_zero_external_connects(client, monkeypatch, locked_rounds):
+    monkeypatch.setattr(settings, "keyword_locked_rounds", locked_rounds)
     monkeypatch.setattr(settings, "llm_backend", "fake")
     monkeypatch.setattr(settings, "searchad_api_key", "")
     monkeypatch.setattr(rounds, "execute", lambda fn: fn())
@@ -32,6 +34,8 @@ def test_round_two_commit_makes_zero_external_connects(client, monkeypatch):
     (store.session_dir("offline") / "project_context.md").write_text("에어컨 사용 경험")
 
     for number in (1, 2):
+        if rounds.locked(number):
+            continue
         response = client.post(f"/keywords/offline/rounds/{number}")
         assert response.status_code == 200, response.text
         state = client.get(f"/keywords/offline/rounds/{number}").json()

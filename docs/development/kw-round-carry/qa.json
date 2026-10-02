@@ -1,0 +1,38 @@
+{
+ "verdict": "PASS",
+ "head": "7c5f8f051e0702949206aa86dbdcdd489c216665",
+ "fingerprint": "86de48df01a13dde96150e56a490278dd9c62bed99fab29f2000a3bdb5784af1",
+ "commands": [
+  {
+   "command": "내장 브라우저 QA, 가짜 LLM 8316/3316",
+   "exitCode": 0
+  }
+ ],
+ "findings": [],
+ "scenarios": [
+  {
+   "id": "QA1",
+   "url": "http://localhost:3316/pipeline/keywords",
+   "result": "PASS",
+   "evidence": "세라젬 복사본 R3: 탭 전체128(R3 61 + R1 승인 67), 물리 탭 칩 88개 중 R1 표시 27 · R3 61 표시 없음, 거절 칩 0(R1 거절 20 숨김), aria-label 예 \"농촌개 짖음, R1, 미연결\""
+  },
+  {
+   "id": "QA2",
+   "url": "http://localhost:3316/pipeline/keywords",
+   "result": "PASS",
+   "evidence": "세라젬 복사본 R1: 탭 전체87, 라운드 표시 0"
+  },
+  {
+   "id": "QA3",
+   "url": "http://localhost:3316/pipeline/keywords",
+   "result": "PASS",
+   "evidence": "QA에어컨 최종 화면: 전체190, 칩 190 · 라운드 표시 0"
+  },
+  {
+   "id": "QA4",
+   "url": "http://localhost:3316/pipeline/keywords",
+   "result": "PASS",
+   "evidence": "R1 · R3 화면 모두 \"승인 예정 128 · 거절 20\"(누적) 동일"
+  }
+ ]
+}

@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     storage: str = "local"
     local_data_dir: str = "data"
 
+    keyword_locked_rounds: list[int] = [2]
+
     llm_backend: str = "openai_api"
     openai_api_key: str = ""
     openai_model: str = ""

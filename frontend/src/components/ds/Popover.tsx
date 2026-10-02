@@ -1,6 +1,7 @@
 "use client";
-import { useCallback, useEffect, useId, useRef, type ReactNode, type Ref, type MouseEventHandler } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, type ReactNode, type Ref, type MouseEventHandler } from "react";
 import { Button } from "./Button";
+import { observePopover } from "./popoverMeasure";
 export type PopoverTrigger = {
   ref: Ref<HTMLButtonElement>;
   props: {
@@ -25,6 +26,11 @@ export type PopoverProps = {
 export function Popover({ contained = false, label, triggerLabel, renderTrigger, open, onOpenChange, children }: PopoverProps) {
   const id = useId(); const trigger = useRef<HTMLButtonElement>(null); const panel = useRef<HTMLDivElement>(null); const wasOpen = useRef(false);
   const setTriggerRef = useCallback((node: HTMLButtonElement | null) => { trigger.current = node; }, []);
+  useLayoutEffect(() => {
+    const node = panel.current;
+    if (!open || contained || !node) return;
+    return observePopover(node, trigger.current);
+  }, [open, contained]);
   useEffect(() => {
     if (open) { panel.current?.focus(); wasOpen.current = true; }
     else if (wasOpen.current) { trigger.current?.focus(); wasOpen.current = false; }
@@ -42,5 +48,5 @@ export function Popover({ contained = false, label, triggerLabel, renderTrigger,
     "aria-controls": open ? id : undefined,
     onClick: () => onOpenChange(!open),
   };
-  return <div className={contained ? "ds-pop-anchor ds-pop-contained" : "ds-pop-anchor"}>{renderTrigger ? renderTrigger({ ref: setTriggerRef, props: triggerProps }) : <button ref={trigger} className="ds-btn" {...triggerProps}>{triggerLabel}</button>}{open && <div ref={panel} id={id} className="ds-pop" role="dialog" aria-label={label} tabIndex={-1}>{children}<div className="ds-actions"><Button size="sm" variant="quiet" onClick={() => onOpenChange(false)}>닫기</Button></div></div>}</div>;
+  return <div className={contained ? "ds-pop-anchor ds-pop-contained" : "ds-pop-anchor"}>{renderTrigger ? renderTrigger({ ref: setTriggerRef, props: triggerProps }) : <button ref={trigger} className="ds-btn" {...triggerProps}>{triggerLabel}</button>}{open && <div ref={panel} id={id} className="ds-pop" data-align="end" role="dialog" aria-label={label} tabIndex={-1}>{children}<div className="ds-actions"><Button size="sm" variant="quiet" onClick={() => onOpenChange(false)}>닫기</Button></div></div>}</div>;
 }

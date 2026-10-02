@@ -1,0 +1,71 @@
+{
+  "verdict": "PASS",
+  "head": "50dd62c1710d84bb5b249c6210bec75a4b60c075",
+  "fingerprint": "b6d294e8ac252ec2a61f8f3cd46dd0171acbef83f79d4614a0d67a9b25abc4c3",
+  "commands": [
+    { "command": "backend/.venv/bin/python -m pytest backend/tests -q -p no:cacheprovider  (1507 passed, 1 deselected; baseline 1458)", "exitCode": 0 },
+    { "command": "npm --prefix frontend run lint", "exitCode": 0 },
+    { "command": "npm --prefix frontend test  (51 files, 356 passed; baseline 318)", "exitCode": 0 },
+    { "command": "npm --prefix frontend run build  (Turbopack, controller run outside Codex sandbox)", "exitCode": 0 }
+  ],
+  "findings": [],
+  "tasks": [
+    {
+      "id": "T1",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent a64cc430d418d09bf (--wait --fresh --write); commit c240a7c by controller (Codex sandbox cannot write worktree git metadata)",
+      "red": "docs/development/dcx2-stage0-task-mode/reports/task-T1-report.md §2 RED (24 failed, 3 passed)",
+      "green": "docs/development/dcx2-stage0-task-mode/reports/task-T1-report.md §3 GREEN (28 passed; context/known/integration/keywords 540 passed)",
+      "review": "task review (Claude reviewer, read-only) Approved, 0 Critical/Important; minors in reports/sdd-ledger.md"
+    },
+    {
+      "id": "T3",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent a8c62e8119b56a64c (--wait --fresh --write); commit 0d509ac by controller",
+      "red": "docs/development/dcx2-stage0-task-mode/reports/task-T3-report.md RED (20 failed, 28 passed)",
+      "green": "docs/development/dcx2-stage0-task-mode/reports/task-T3-report.md GREEN (491 passed)",
+      "review": "task review Approved, 0 Critical/Important; minors in reports/sdd-ledger.md"
+    },
+    {
+      "id": "T4",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent a1daea47e32e1676c (--wait --fresh --write); commit 6fc04e7 by controller",
+      "red": "docs/development/dcx2-stage0-task-mode/reports/task-T4-report.md RED",
+      "green": "docs/development/dcx2-stage0-task-mode/reports/task-T4-report.md GREEN (342 passed, lint pass)",
+      "review": "task review Approved, 0 Critical/Important; minors in reports/sdd-ledger.md"
+    },
+    {
+      "id": "T5",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent af27de425b97a1272 (--wait --fresh --write); commit ca4d699 by controller",
+      "red": "docs/development/dcx2-stage0-task-mode/reports/task-T5-report.md RED",
+      "green": "docs/development/dcx2-stage0-task-mode/reports/task-T5-report.md GREEN (13/13, lint pass)",
+      "review": "task review: Important 1 (interface naming vs plan contract) resolved by controller ruling amending the contract to the implemented aria-* names, recorded in reports/sdd-ledger.md"
+    },
+    {
+      "id": "T6",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent a05dfd0d50f504329 (--wait --fresh --write), fix round 1 agent a2e891a784671c986; commits a87b1f2, cbe7727 by controller",
+      "red": "docs/development/dcx2-stage0-task-mode/reports/task-T6-report.md (page has no render tests; behavior covered by T4 pure-function tests and browser QA)",
+      "green": "docs/development/dcx2-stage0-task-mode/reports/task-T6-report.md (lint, 355 tests, webpack build) + Fix round 1",
+      "review": "task review: Important 1 (positioning details auto-collapse) -> fix round 1 -> scoped re-review ADDRESSED; minors in reports/sdd-ledger.md"
+    },
+    {
+      "id": "FINAL-FIX",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent a30127024513c140e (--wait --fresh --write) after harness retry from review; commit b428144 by controller",
+      "red": "docs/development/dcx2-stage0-task-mode/reports/final-fix-report.md RED",
+      "green": "docs/development/dcx2-stage0-task-mode/reports/final-fix-report.md GREEN (backend context 210, frontend 356, lint, webpack build)",
+      "review": "final whole-branch review (Claude opus, read-only) With fixes -> scoped re-review: both findings ADDRESSED"
+    },
+    {
+      "id": "QA-FIX-1",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent a58990496a29d2d66 (--wait --fresh --write) after harness retry from browser-qa; commit 7529ac2 by controller",
+      "red": "docs/development/dcx2-stage0-task-mode/qa/qa-report-round1.md ISSUE-001 (browser repro: fieldset top -1003, focus body)",
+      "green": "docs/development/dcx2-stage0-task-mode/reports/qa-fix1-report.md (lint, 356 tests, webpack build) + qa/qa-report-round2.md browser recheck",
+      "review": "scoped re-review (Claude sonnet, read-only): ISSUE-001 · ISSUE-002 ADDRESSED, no new breakage"
+    }
+  ],
+  "scenarios": []
+}
