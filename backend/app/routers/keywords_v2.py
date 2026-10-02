@@ -115,6 +115,7 @@ def keywords(sid: str, version: str | None = None):
     data = store.read_json(path / 'session.json')
     if data is None:
         raise store.StoreError('세션이 없습니다', 404, 'not_found')
+    data['keywordRounds'] = rounds.visible_rounds(data.get('keywordRounds', {}))
     data['coverage'] = rounds.coverage_status(data.get('coverage') or {})
     feedback = path / 'keyword_feedback.md'
     return {key: data.get(key, {} if key != 'keywords' else []) for key in ('keywords', 'keywordRounds', 'coverage')} | {
