@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>__LABEL__.deploy</string>
+	<key>UserName</key>
+	<string>__USER__</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>__HOME__</string>
+		<key>APP_ROOT</key>
+		<string>__APP_ROOT__</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+		<key>DCX_API_PORT</key>
+		<string>__API_PORT__</string>
+		<key>DCX_WEB_PORT</key>
+		<string>__WEB_PORT__</string>
+		<key>DCX_LAUNCH_LABEL</key>
+		<string>__LABEL__</string>
+	</dict>
+	<key>WorkingDirectory</key>
+	<string>__APP_ROOT__</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>__APP_ROOT__/ops/deploy.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardOutPath</key>
+	<string>__APP_ROOT__/logs/deploy.log</string>
+	<key>StandardErrorPath</key>
+	<string>__APP_ROOT__/logs/deploy.log</string>
+	<key>StartInterval</key>
+	<integer>120</integer>
+</dict>
+</plist>

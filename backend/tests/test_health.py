@@ -1,8 +1,9 @@
 from app.config import Settings
 
 
-def test_health_ok(client):
-    assert client.get("/health").json() == {"status": "ok"}
+def test_health_ok(client, monkeypatch):
+    monkeypatch.delenv("DCX_RELEASE_SHA", raising=False)
+    assert client.get("/health").json() == {"status": "ok", "release": "dev"}
 
 
 def test_default_storage_is_local(monkeypatch):
