@@ -173,3 +173,52 @@ export type Coverage = {
   m7_reason?: string | null;
   missing_top?: [string, number][];
 };
+
+// Stage 6 wire contracts. `run` is the result generation, not the worker runId.
+export type SegmentLayer = 'clusters' | 'personas' | 'contexts';
+export type SegmentQuality = { cohesion?: number | null; boundary?: number | null; ari?: number | null; npmi?: number | null; flags?: string[] };
+export type SegmentRepresentative = { docId: string; text: string; source: string; field: string; idx: number | null };
+export type SegmentRequest = { layer: 'clusters'; id: string; kind: 'split' | 'merge'; note: string };
+export type SegmentRequestMemo = SegmentRequest & { at: string };
+export type SegmentRow = { id: string; docs: number; nameDraft: string | null; name: string | null; confirmed: boolean };
+export type SegmentCluster = SegmentRow & {
+  keywords: string[]; reps: SegmentRepresentative[]; quality: SegmentQuality;
+  channels: Record<string, number>; channelSkew: boolean; requests: SegmentRequestMemo[];
+};
+export type SegmentPersona = SegmentRow & {
+  clusterId: string; authors: number; desireDraft: string | null; desire: string | null;
+  goalsDraft: string[]; goals: string[]; centrality: [string, number][];
+  network: { nodes: { id: string; persona: number; score: number }[]; edges: { source: string; target: string; weight: number }[] };
+  similar: { id: string; score: number; desire: string }[]; reps: SegmentRepresentative[]; flags: string[];
+};
+export type SegmentContext = SegmentRow & {
+  personaId: string; actionDraft: string | null; action: string | null; keywords: string[];
+  dominantConstraint: string | null; dimsSummary: Record<string, unknown>; quality: SegmentQuality; flags: string[];
+};
+export type SegmentKSuggest = { k: number; suggested: number; silhouette: Record<string, number>; inertia: Record<string, number>; dendrogram: unknown[]; sample: number };
+export type SegmentStatus = {
+  run: string | null; status: WorkerState | 'review'; step: 'load' | 'L1' | 'L2' | 'L3' | 'quality' | 'dims' | 'drafts';
+  progress: number; confirm: Record<SegmentLayer, string>; stage6?: Record<string, unknown>; reason?: string;
+};
+export type SegmentClustersResponse = { run: string | null; clusters: SegmentCluster[]; kSuggest: SegmentKSuggest | null };
+export type SegmentPersonasResponse = { run: string | null; personas: SegmentPersona[] };
+export type SegmentContextsResponse = { run: string | null; contexts: SegmentContext[]; emptyGoalConstraintRatio: number };
+export type SegmentRunRequest = { k?: number; confirmReset?: boolean };
+export type SegmentConfirmation = { run: string; name: string; confirm: true };
+export type SegmentPersonaConfirmation = SegmentConfirmation & { desire: string; goals: [string] | [string, string] | [string, string, string] };
+export type SegmentContextConfirmation = SegmentConfirmation & { action: string };
+export type SegmentBulkConfirmation = { run: string; contexts: { id: string; name: string; action: string }[] };
+export type SegmentBulkResponse = { run: string; contexts: SegmentContext[] };
+export type SegmentBand = 'core' | 'fringe' | 'edge';
+export type SegmentDocsOptions = { context?: string; band?: SegmentBand; offset?: number; limit?: number };
+export type SegmentDocument = {
+  docId: string; title: string; body: string; comments: unknown[]; url: string;
+  clusterId: string | null; personaId: string | null; contextId: string | null;
+  theta: number | null; thetaJson: number[] | null; distCentroid: number | null; band: SegmentBand | null;
+  comboRarity: number | null; emerging: number | null; lexicalSurprise: number | null;
+  sentiment: number | null; predEntropy: number | null; evidenceLevel: EvidenceLevel | null;
+  source: string | null; authorHash: string | null; date: string | null;
+};
+export type SegmentDocsResponse = { run: string | null; docs: SegmentDocument[]; total: number; offset: number; limit: number };
+export type SegmentDraft = { run: string; [key: string]: unknown };
+export type SegmentErrorKind = 'locked' | 'confirm_required' | 'stale_run' | 'validation';
