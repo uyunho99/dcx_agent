@@ -1,0 +1,71 @@
+
+> frontend@0.1.0 test
+> vitest run src/lib/logic/crawlConfig.test.ts
+
+
+ RUN  v3.2.7 /Users/persona1/Desktop/dcx_agent-crawl/frontend
+
+(node:96876) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ src/lib/logic/crawlConfig.test.ts (6 tests | 2 failed) 5ms
+   × crawl settings > merges channel defaults into partial saved perChannel 4ms
+     → expected { max_per_keyword: 25 } to deeply equal { concurrency: 1, …(2) }
+   × crawl settings > merges channel defaults into partial draft perChannel 0ms
+     → expected { max_per_keyword: 25 } to deeply equal { concurrency: 1, …(2) }
+   ✓ crawl settings > trims all list entries and drops empty entries 0ms
+   ✓ crawl settings > prefills server defaults exactly, preserving order and duplicates 0ms
+   ✓ crawl settings > only sends limits for enabled channels without mutating the input 0ms
+   ✓ crawl settings > shows connected fixture before selection and retains selected sources 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/logic/crawlConfig.test.ts > crawl settings > merges channel defaults into partial saved perChannel
+AssertionError: expected { max_per_keyword: 25 } to deeply equal { concurrency: 1, …(2) }
+
+- Expected
++ Received
+
+  {
+-   "concurrency": 1,
+    "max_per_keyword": 25,
+-   "min_interval_s": 0.5,
+  }
+
+ ❯ src/lib/logic/crawlConfig.test.ts:14:51
+     12|       const loaded = deriveCrawlLoad({ data: { crawlConfig: { channels…
+     13|       const expected = { concurrency: 1, min_interval_s: 0.5, max_per_…
+     14|       expect(loaded.config.perChannel.naver_blog).toEqual(expected);
+       |                                                   ^
+     15|       expect(loaded.savedConfig?.perChannel.naver_blog).toEqual(expect…
+     16|       expect(perChannel.naver_blog).toEqual(saved);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/lib/logic/crawlConfig.test.ts > crawl settings > merges channel defaults into partial draft perChannel
+AssertionError: expected { max_per_keyword: 25 } to deeply equal { concurrency: 1, …(2) }
+
+- Expected
++ Received
+
+  {
+-   "concurrency": 1,
+    "max_per_keyword": 25,
+-   "min_interval_s": 0.5,
+  }
+
+ ❯ src/lib/logic/crawlConfig.test.ts:25:51
+     23|       const draft = { ...base, perChannel: { naver_blog: saved as Limi…
+     24|       const loaded = deriveCrawlLoad({ data: { crawlConfig: base, draf…
+     25|       expect(loaded.config.perChannel.naver_blog).toEqual({ concurrenc…
+       |                                                   ^
+     26|       expect(loaded.savedConfig?.perChannel.naver_blog).toEqual(base.p…
+     27|       expect(draft.perChannel.naver_blog).toEqual(saved);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 4 passed (6)
+   Start at  00:12:35
+   Duration  278ms (transform 20ms, setup 0ms, collect 18ms, tests 5ms, environment 0ms, prepare 29ms)
+
