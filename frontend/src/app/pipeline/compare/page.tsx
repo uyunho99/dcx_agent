@@ -12,7 +12,14 @@ import { INTERNAL_TOOLS } from '@/lib/internalTools';
 import { contextLabels } from '@/lib/contextLabels';
 
 type CollectionDiff = {same: boolean; before?: string; after?: string; counts?: Record<string, Record<string, number>>};
-type FileDiff = {same: boolean; before: Record<string, {savedAt: number}>; after: Record<string, {savedAt: number}>};
+type FileDiff = {same: boolean; before?: Record<string, {savedAt: number}> | null; after?: Record<string, {savedAt: number}> | null};
+type MetricsEntry = {before?: Record<string, unknown> | null; after?: Record<string, unknown> | null};
+type MetricsDiff = {same: boolean} & Record<string, MetricsEntry | boolean>;
+function isFileDiff(data: unknown): data is FileDiff {
+  return typeof data === 'object' && data !== null
+    && 'before' in data && typeof data.before === 'object' && data.before !== null
+    && 'after' in data && typeof data.after === 'object' && data.after !== null;
+}
 const tabs = ['0단계 입력 보기','1단계 키워드 보기','2단계 수집 보기','3단계 이후 보기'];
 const fieldNames: Record<string,string> = {bk:'제품명',oneLiner:'한줄 정의',researchQuestion:'리서치 질문',projectType:'프로젝트 성격',analysisGoal:'분석 목적',keyMetrics:'핵심 지표',constraints:'사내 제약',positioning:'브랜드 포지셔닝',channels:'수집 채널',knownInsights:'이미 아는 것',productCategory:'제품군',targetScope:'분석 대상',futureCustomer:'미래 고객'};
 export default function ComparePage() { return <Suspense fallback={<p role="status">처리 중…</p>}><CompareScreen /></Suspense>; }
@@ -39,7 +46,7 @@ function CompareScreen() {
     void load(); return () => {cancelled = true;};
   }, [view.sid,a,b,actual,key,valid,retry]);
   if (!valid) return <Banner>비교할 두 버전을 버전 목록에서 선택하세요.</Banner>;
-  const content = error ? <Banner tone="danger" actions={<Button onClick={() => {setError('');setRetry(n=>n+1);}}>다시 확인하기</Button>}>{error}</Banner> : result?.key !== key ? <p role="status">처리 중…</p> : actual === 'stage1' ? <KeywordComparison diff={result.data as KeywordDiff} a={a} b={b} /> : actual === 'stage2' ? <CollectionComparison diff={result.data as CollectionDiff} /> : actual === 'stage0' ? <ContextComparison diff={result.data as Record<string,{before:unknown;after:unknown}>} a={a} b={b} /> : actual === 'stage6' ? <SegmentComparison diff={result.data as SegmentDiff} a={a} b={b} /> : <FileComparison diff={result.data as FileDiff} />;
+  const content = error ? <Banner tone="danger" actions={<Button onClick={() => {setError('');setRetry(n=>n+1);}}>다시 확인하기</Button>}>{error}</Banner> : result?.key !== key ? <p role="status">처리 중…</p> : actual === 'stage1' ? <KeywordComparison diff={result.data as KeywordDiff} a={a} b={b} /> : actual === 'stage2' ? <CollectionComparison diff={result.data as CollectionDiff} /> : actual === 'stage0' ? <ContextComparison diff={result.data as Record<string,{before:unknown;after:unknown}>} a={a} b={b} /> : actual === 'stage6' ? <SegmentComparison diff={result.data as SegmentDiff} a={a} b={b} /> : isFileDiff(result.data) ? <FileComparison diff={result.data} /> : <MetricsComparison diff={result.data as MetricsDiff} a={a} b={b} />;
   const collections = [...new Set(view.meta!.versions.map(v=>v.collectionId).filter(Boolean))];
   return <div className="space-y-6"><header className="flex justify-between items-start gap-6"><div><p className="ds-eyebrow">버전</p><h1 className="ds-t-screen">{a}{josa(a, '와/과')} {b}의 {actual.slice(5)}단계를 비교합니다</h1><p>버전은 세션 내용을 통째로 복사해 만듭니다. 크롤링 수집본은 복사하지 않고 여러 버전이 함께 씁니다.</p></div><RestartVersion stage={actual} from={a} label={`${a}에서 다시 시작하기`} /></header><div className="grid gap-6 lg:grid-cols-3"><Card><h2 className="ds-t-card mb-4">버전 기록</h2><VersionHistory entries={view.meta!.versions} /><h3 className="ds-t-label mt-6">크롤링 수집본</h3>{collections.length ? collections.map((cid,i)=><p key={cid}>{INTERNAL_TOOLS ? cid : `수집본 ${i+1}`} · {view.meta!.versions.filter(v=>v.collectionId===cid).map(v=>v.id).join(' · ')}</p>) : <p>연결된 수집본이 없습니다.</p>}</Card><section className="lg:col-span-2 space-y-6"><Tabs label="비교 단계" value={stage} onChange={v=>setStage(v as Stage)} items={tabs.map((label,i)=>({value:`stage${i}`,label,content:stage===`stage${i}`?<div className="space-y-6 pt-6">{stage==='stage3'&&<label className="ds-field">비교할 단계<select className="ds-inp" value={later} onChange={e=>setLater(e.target.value as Stage)}>{[3,4,5,6,7].map(n=><option key={n} value={`stage${n}`}>{n}단계</option>)}</select></label>}{content}</div>:null}))} />{result?.key === key && <StaleBanner stage={actual} session={result.session} />}</section></div></div>;
 }
@@ -54,7 +61,29 @@ function CollectionComparison({diff}: {diff: CollectionDiff}) {
 }
 const printable = (value: unknown): string => value == null ? '—' : typeof value === 'object' ? Array.isArray(value) ? value.map(printable).join(' · ') : Object.entries(value).map(([key,v])=>`${fieldNames[key] ?? key}: ${printable(v)}`).join(' · ') : String(value);
 function ContextComparison({diff,a,b}: {diff:Record<string,{before:unknown;after:unknown}>;a:string;b:string}) { return Object.keys(diff).length ? <Table><thead><tr><th>입력 항목</th><th>{a}</th><th>{b}</th></tr></thead><tbody>{Object.entries(diff).map(([key,value])=><tr key={key}><td>{fieldNames[key] ?? key}</td><td>{printable(value.before)}</td><td>{printable(value.after)}</td></tr>)}</tbody></Table> : <Banner>입력 변경이 없습니다.</Banner>; }
-function FileComparison({diff}: {diff: FileDiff}) { const files = [...new Set([...Object.keys(diff.before),...Object.keys(diff.after)])].sort(); return <div className="space-y-4"><Banner>결과 파일이 {diff.same?'같습니다.':'다릅니다.'}</Banner>{files.length ? <Table><thead><tr><th>결과</th><th>이전 저장 시각</th><th>이후 저장 시각</th></tr></thead><tbody>{files.map((file,i)=><tr key={file}><td>{INTERNAL_TOOLS?file:`결과 ${i+1}`}</td>{[diff.before[file],diff.after[file]].map((v,j)=><td key={j}>{v?new Date(v.savedAt*1000).toLocaleString('ko-KR'):'—'}</td>)}</tr>)}</tbody></Table> : <p>저장된 결과 파일이 없습니다.</p>}</div>; }
+function MetricsComparison({diff,a,b}: {diff: MetricsDiff; a: string; b: string}) {
+  return <div className="space-y-4"><Banner>결과가 {diff.same ? '같습니다.' : '다릅니다.'}</Banner>
+    <Table><thead><tr><th>항목</th><th>{a}</th><th>{b}</th></tr></thead><tbody>
+      {Object.entries(diff).flatMap(([entryKey, entry]) => {
+        if (entryKey === 'same' || typeof entry === 'boolean') return [];
+        if (entry.before == null && entry.after == null) return <tr key={entryKey}><td colSpan={3}>저장된 결과가 없습니다.</td></tr>;
+        const keys = [...new Set([...Object.keys(entry.before ?? {}), ...Object.keys(entry.after ?? {})])];
+        return keys.map(key => <tr key={`${entryKey}:${key}`}><td>{key}</td><td>{printable(entry.before?.[key])}</td><td>{printable(entry.after?.[key])}</td></tr>);
+      })}
+    </tbody></Table></div>;
+}
+function FileComparison({diff}: {diff: FileDiff}) {
+  const before = diff.before ?? {};
+  const after = diff.after ?? {};
+  const files = [...new Set([...Object.keys(before), ...Object.keys(after)])].sort();
+  return <div className="space-y-4"><Banner>결과 파일이 {diff.same ? '같습니다.' : '다릅니다.'}</Banner>
+    {files.length ? <Table><thead><tr><th>결과</th><th>이전 저장 시각</th><th>이후 저장 시각</th></tr></thead><tbody>
+      {files.map((file,i) => <tr key={file}><td>{INTERNAL_TOOLS ? file : `결과 ${i+1}`}</td>
+        {[before[file],after[file]].map((value,j) => <td key={j}>{value ? new Date(value.savedAt*1000).toLocaleString('ko-KR') : '—'}</td>)}
+      </tr>)}
+    </tbody></Table> : <p>저장된 결과 파일이 없습니다.</p>}
+  </div>;
+}
 
 
 type SegmentSummary = {
