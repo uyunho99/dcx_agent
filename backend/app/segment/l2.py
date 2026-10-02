@@ -29,23 +29,28 @@ class PersonaResult:
 
 
 def _centrality(graph):
-    """Normalize each connected component to max 1, including merged islands.
+    """Normalize to the hub of the component with greatest total edge weight.
 
-    NetworkX rejects disconnected graphs. Component-wise normalization keeps
-    isolated merged communities represented rather than giving them zero
-    weight. One/two-node components have equal analytical scores; ARPACK's
+    NetworkX rejects disconnected graphs. Scale component maxima by their
+    edge weight relative to the main component; isolated nodes score zero.
+    One/two-node components have equal analytical scores; ARPACK's
     sparse solver cannot handle those sizes. Round numerical noise so tied
     nouns, assignments and persisted scores do not depend on ARPACK starts.
     """
     scores = {}
-    for component in sorted(nx.connected_components(graph), key=lambda c: tuple(sorted(c))):
-        subgraph = graph.subgraph(sorted(component)).copy()
-        if len(component) <= 2:
-            values = dict.fromkeys(component, 1.)
+    components = [graph.subgraph(sorted(c)).copy() for c in
+                  sorted(nx.connected_components(graph), key=lambda c: tuple(sorted(c)))]
+    weights = [component.size(weight='weight') for component in components]
+    main_weight = max(weights, default=0)
+    for subgraph, weight in zip(components, weights):
+        if len(subgraph) <= 2:
+            values = dict.fromkeys(subgraph, 1.)
         else:
             values = nx.eigenvector_centrality_numpy(subgraph, weight='weight')
         maximum = max(values.values())
-        scores.update((word, round(value / maximum, 12)) for word, value in values.items())
+        scale = weight / main_weight if main_weight else 0.
+        scores.update((word, round(value / maximum * scale, 12))
+                      for word, value in values.items())
     return scores
 
 
@@ -65,7 +70,7 @@ def _assign_profiles(profiles, scores):
                 index, score = lookup[word]
                 overlaps[index].append(score)
         totals = [round(fsum(values), 12) for values in overlaps]
-        if any(overlaps):
+        if any(totals):
             winner = max(range(len(scores)), key=lambda i: totals[i])
             assigned[words] = winner
             counts[winner] += count
@@ -74,8 +79,17 @@ def _assign_profiles(profiles, scores):
     return assigned, counts
 
 
+def _supported_communities(graph, communities, profiles):
+    scores = [_centrality(graph.subgraph(c)) for c in communities]
+    _, counts = _assign_profiles(profiles, scores)
+    return [c for c, count in zip(communities, counts) if count] or [set()]
+
+
 def _merge(graph, communities, profiles):
-    while len(communities) > params.PERSONA_RANGE[1]:
+    while True:
+        communities = _supported_communities(graph, communities, profiles)
+        if len(communities) <= params.PERSONA_RANGE[1]:
+            return communities
         scores = [_centrality(graph.subgraph(c)) for c in communities]
         _, counts = _assign_profiles(profiles, scores)
         smallest = min(range(len(communities)), key=lambda i: (counts[i], i))
@@ -83,8 +97,8 @@ def _merge(graph, communities, profiles):
         weights = Counter()
         for word in sorted(communities[smallest]):
             for neighbor, attributes in graph[word].items():
-                target = owners[neighbor]
-                if target != smallest:
+                target = owners.get(neighbor)
+                if target is not None and target != smallest:
                     weights[target] += attributes['weight']
         candidates = [i for i in range(len(communities)) if i != smallest]
         if weights:
@@ -94,7 +108,6 @@ def _merge(graph, communities, profiles):
         communities[target].update(communities[smallest])
         del communities[smallest]
         communities = _ordered(communities)
-    return communities
 
 
 def _network_view(graph, ranked):
@@ -135,12 +148,16 @@ def personas(cluster_ids: list[str], nouns: dict, bk: str) -> PersonaResult:
     graph.add_nodes_from(sorted(vocabulary))
     graph.add_weighted_edges_from((a, b, count) for (a, b), count in sorted(pairs.items())
                                  if count >= len(ids) * params.L2_EDGE_MIN_DOC_RATIO)
+    graph.remove_nodes_from(list(nx.isolates(graph)))
+    vocabulary = set(graph)
+    profiles = Counter(tuple(sorted(vocabulary.intersection(nouns.get(d, ())))) for d in ids)
     if not graph.number_of_edges():
         communities = [set(graph)]
     else:
         for resolution in params.L2_RESOLUTIONS:
             communities = _ordered(nx.community.louvain_communities(
                 graph, weight='weight', resolution=resolution, seed=params.SEED))
+            communities = _supported_communities(graph, communities, profiles)
             if len(communities) >= params.PERSONA_RANGE[0]:
                 break
         communities = _merge(graph, communities, profiles)

@@ -195,3 +195,65 @@ def test_deterministic_and_quality_ari_callable():
                                 [result.assign[d] for d in ids],
                                 level='L2', recluster=recluster)
     assert score == pytest.approx(1.)
+
+
+@pytest.fixture
+def rare_noun_corpus():
+    nouns = {f'{p}-{d}': [f'{p}{i}' for i in range(8)]
+             for p, size in [('a', 40), ('b', 30)] for d in range(size)}
+    for p in ('a', 'b'):
+        for i in range(7):
+            for d in range(3):
+                nouns[f'{p}-spoke-{i}-{d}'] = [f'{p}6', f'{p}{i if i < 6 else 7}']
+    nouns.update({f'rare-{i}': [f'zz{i:02d}'] for i in range(60)})
+    return nouns
+
+
+def test_rare_isolated_nouns_do_not_displace_hub(rare_noun_corpus):
+    result = l2.personas(list(rare_noun_corpus), rare_noun_corpus, '')
+    scores = result.centrality[result.assign['a-0']]
+    assert ('a6', 1.) in scores
+    assert not any(word.startswith('zz') for word, _ in scores)
+    assert not any(word.startswith('zz') for group in result.communities for word in group)
+    assert not any(node['id'].startswith('zz') for node in result.network['nodes'])
+    assert all(result.assignment_reasons[f'rare-{i}'] == 'fallback' for i in range(60))
+    assert result.fallback_ratio == pytest.approx(60 / len(rare_noun_corpus))
+
+
+def test_rare_isolated_nouns_do_not_create_junk_persona(rare_noun_corpus):
+    result = l2.personas(list(rare_noun_corpus), rare_noun_corpus, '')
+    assert len(result.communities) == 2
+    assert result.assign['a-0'] != result.assign['b-0']
+    assert all(any(result.assign[d] == i and reason == 'centrality'
+                   for d, reason in result.assignment_reasons.items())
+               for i in range(len(result.communities)))
+
+
+def test_merged_components_scale_by_relative_edge_weight():
+    graph = nx.Graph()
+    graph.add_weighted_edges_from([('hub', f'leaf{i}', 10) for i in range(4)])
+    graph.add_edge('small-a', 'small-b', weight=2)
+    graph.add_node('isolated')
+    scores = l2._centrality(graph)
+    assert scores['hub'] == 1.
+    assert scores['leaf0'] == pytest.approx(.5)
+    assert scores['small-a'] == scores['small-b'] == pytest.approx(2 / 40)
+    assert scores['isolated'] == 0.
+
+
+@pytest.mark.parametrize('group_count', [2, 4])
+def test_zero_document_communities_dropped_before_persona_range(monkeypatch, group_count):
+    nouns = {str(i): [f'w{j}' for j in range(group_count * 2)] for i in range(10)}
+    calls = []
+
+    def partition(graph, *, resolution, **kwargs):
+        calls.append(resolution)
+        return [{f'w{2 * i}', f'w{2 * i + 1}'} for i in range(group_count)]
+
+    monkeypatch.setattr(nx.community, 'louvain_communities', partition)
+    result = l2.personas(list(nouns), nouns, '')
+    assert calls == list(params.L2_RESOLUTIONS)
+    assert result.communities == [['w0', 'w1']]
+    assert set(result.assign.values()) == {0}
+    assert result.flags == ['few_communities']
+    assert result.fallback_ratio == 0
