@@ -71,7 +71,7 @@ def test_detail_cafe_name(number, status):
 def test_naver_worker_defaults(tmp_path, source):
     run = worker._Run(tmp_path, 'S', 'list', [source], None, {})
     try:
-        assert (run.limiters[source].concurrency, run.limiters[source].min_interval_s) == (1, 1)
+        assert (run.limiters[source].concurrency, run.limiters[source].min_interval_s) == (1, 0.5)
     finally:
         run.close('stopped')
 
@@ -115,4 +115,26 @@ def test_status_reports_naver_effective_interval(tmp_path, monkeypatch):
     root.mkdir(parents=True)
     store.write_json(root / 'meta.json', {'keywords': []})
     store.write_json(root / 'manifest.json', {'channels': ['naver_blog', 'naver_cafe'], 'config': {}})
-    assert control._status_settings({'sid': 'S', 'collectionId': 'c1'})['min_interval_s'] == {'naver_blog': 1, 'naver_cafe': 1}
+    assert control._status_settings({'sid': 'S', 'collectionId': 'c1'})['min_interval_s'] == {'naver_blog': 0.5, 'naver_cafe': 0.5}
+
+
+
+def test_default_interval_half_second(tmp_path, monkeypatch):
+    from app.crawl import control
+    from app.crawl.adapters import community
+    from app.context import store
+    sources = ['clien', 'ppomppu', 'naver_blog', 'naver_cafe', 'youtube', 'fixture']
+    expected = dict.fromkeys(sources[:4], 0.5) | {'youtube': 0, 'fixture': 0}
+    monkeypatch.setattr(settings, 'local_data_dir', str(tmp_path))
+    root = tmp_path / 'crawl/S/collections/c1'
+    root.mkdir(parents=True)
+    store.write_json(root / 'meta.json', {'keywords': []})
+    store.write_json(root / 'manifest.json', {'channels': sources, 'config': {}})
+    run = worker._Run(root, 'S', 'list', sources, None, {})
+    try:
+        assert {s: l.min_interval_s for s, l in run.limiters.items()} == expected
+        assert {s: l.concurrency for s, l in run.limiters.items()} == dict.fromkeys(sources[:4], 1) | {'youtube': 2, 'fixture': 4}
+        assert control._status_settings({'sid': 'S', 'collectionId': 'c1'})['min_interval_s'] == expected
+        assert community.DEFAULT_INTERVAL_S == 0.5
+    finally:
+        run.close('stopped')

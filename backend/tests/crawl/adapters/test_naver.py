@@ -281,9 +281,10 @@ def test_request_interval_shared_between_list_and_detail(cls):
         return httpx.Response(200, content=content)
     with httpx.Client(transport=httpx.MockTransport(handle)) as client:
         a = cls(client, clock=lambda: ticks[0], sleep=sleep)
+        a._limiter.rng = lambda: 0.5
         a.list_page('keyword')
         a.fetch(item(cls))
-    assert starts[1] - starts[0] >= 1.0
+    assert starts[1] - starts[0] == 0.5
 
 
 @pytest.mark.parametrize('result', [

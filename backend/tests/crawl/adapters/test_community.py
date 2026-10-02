@@ -166,11 +166,12 @@ def test_ppomppu_encoding():
 @pytest.mark.parametrize("site", CLASSES)
 def test_min_interval_enforced(site):
     a, requests, clock, manifest = adapter(site)
+    a._limiter.rng = lambda: 0.5
     page = a.list_page(manifest["keyword"], None)
     a.fetch(page.items[0])
     a.list_page(manifest["keyword"], None)
-    assert [when for _, when in requests] == [0, 1, 2]
-    assert clock.delays == [1, 1]
+    assert [when for _, when in requests] == [0, 0.5, 1]
+    assert clock.delays == [0.5, 0.5]
 
 
 @pytest.mark.parametrize("site", CLASSES)
@@ -223,3 +224,16 @@ def test_ppomppu_reply_structure_and_rendered_comments():
     assert doc.comments[-1].text == "Rendered reply"
     assert doc.comments[-1].date == "2026-09-17"
     assert doc.src_meta["comment_threads"][-1] == {"id": "999", "parent": "2682217"}
+
+
+@pytest.mark.parametrize('site', CLASSES)
+def test_legacy_zero_worker_interval_keeps_adapter_spacing(site):
+    from app.crawl.ratelimit import ChannelLimiter
+    a, requests, clock, manifest = adapter(site)
+    a._limiter.rng = lambda: 0.5
+    worker_limiter = ChannelLimiter(1, 0)
+    with worker_limiter:
+        page = a.list_page(manifest['keyword'], None)
+    with worker_limiter:
+        a.fetch(page.items[0])
+    assert [when for _, when in requests] == [0, 0.5]

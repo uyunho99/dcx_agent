@@ -13,6 +13,9 @@ from app.crawl.ratelimit import ChannelLimiter
 from app.crawl.schema import Comment
 
 
+DEFAULT_INTERVAL_S = 0.5
+
+
 def text(node) -> str:
     if node is None:
         return ""
@@ -51,7 +54,7 @@ class CommunityAdapter:
                  clock=time.monotonic, sleep=time.sleep):
         self._owns_client = client is None
         self.client = client if client is not None else httpx.Client(timeout=30)
-        self._limiter = ChannelLimiter(1, 1.0, clock=clock, sleep=sleep)
+        self._limiter = ChannelLimiter(1, DEFAULT_INTERVAL_S, clock=clock, sleep=sleep)
 
     def close(self):
         if self._owns_client:

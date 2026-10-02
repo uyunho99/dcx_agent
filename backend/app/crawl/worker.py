@@ -114,7 +114,7 @@ class _Run:
         self.completed_docs = self.q.counts()['doc_count'] if kind == 'detail' else 0
         self.limiters = {}
         for s in sources:
-            defaults = (2, 0) if s == 'youtube' else ((1, 1) if s in ('clien', 'ppomppu', 'naver_blog', 'naver_cafe') else (4, 0))
+            defaults = (2, 0) if s == 'youtube' else ((1, 0.5) if s in ('clien', 'ppomppu', 'naver_blog', 'naver_cafe') else (4, 0))
             opts = config.get('perChannel', config.get('channel_limits', {})).get(s, {})
             self.limiters[s] = (limiters or {}).get(s) or ChannelLimiter(
                 opts.get('concurrency', defaults[0]), opts.get('min_interval_s', defaults[1]))

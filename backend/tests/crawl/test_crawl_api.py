@@ -467,12 +467,12 @@ def test_status_collection_settings_without_collection(env):
 
 
 @pytest.mark.parametrize('config, expected', [
-    ({}, {'fixture': 0, 'youtube': 0, 'clien': 1, 'ppomppu': 1}),
+    ({}, {'fixture': 0, 'youtube': 0, 'clien': 0.5, 'ppomppu': 0.5}),
     ({'channel_limits': {'clien': {'min_interval_s': 3}}},
-     {'fixture': 0, 'youtube': 0, 'clien': 3, 'ppomppu': 1}),
+     {'fixture': 0, 'youtube': 0, 'clien': 3, 'ppomppu': 0.5}),
     ({'channel_limits': {'clien': {'min_interval_s': 3}},
       'perChannel': {'clien': {'min_interval_s': 5}}},
-     {'fixture': 0, 'youtube': 0, 'clien': 5, 'ppomppu': 1}),
+     {'fixture': 0, 'youtube': 0, 'clien': 5, 'ppomppu': 0.5}),
 ])
 def test_status_collection_settings_from_manifest(env, monkeypatch, config, expected):
     sources = ['fixture', 'youtube', 'clien', 'ppomppu']
@@ -679,3 +679,21 @@ def test_registered_sources_status_and_project_defaults(real_sources, env, monke
     manifest = store.read_json(control.collection_dir('S') / 'manifest.json')
     assert manifest['channels'] == sources
     assert len(env.calls) == 1  # Popen is injected; no real channel is contacted.
+
+
+
+def test_partial_naver_limits_preserve_defaults(env, monkeypatch):
+    monkeypatch.setattr(control, 'available_sources', lambda: ['naver_blog'])
+    response = env.client.put('/crawl/S/config', json={
+        'channels': ['naver_blog'], 'perChannel': {'naver_blog': {'max_per_keyword': 25}}})
+    assert response.status_code == 200
+    saved = store.load_session('S')['crawlConfig']
+    assert saved['perChannel']['naver_blog'] == {'max_per_keyword': 25}
+    control.start_list('S')
+    assert control._status_settings(store.load_session('S'))['min_interval_s']['naver_blog'] == 0.5
+    run = worker._Run(env.root, 'test', 'list', ['naver_blog'], None, saved)
+    try:
+        assert run.limiters['naver_blog'].min_interval_s == 0.5
+        assert run.limiters['naver_blog'].concurrency == 1
+    finally:
+        run.close('stopped')

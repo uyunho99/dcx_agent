@@ -346,7 +346,7 @@ def _status_settings(session):
         limits = config.get('perChannel', config.get('channel_limits', {}))
         # Match worker._Run's limiter precedence and default request spacing.
         intervals = {source: limits.get(source, {}).get(
-            'min_interval_s', 1 if source in ('clien', 'ppomppu', 'naver_blog', 'naver_cafe') else 0)
+            'min_interval_s', 0.5 if source in ('clien', 'ppomppu', 'naver_blog', 'naver_cafe') else 0)
             for source in channels}
     return dict(defaults=dict(adWords=DEFAULT_AD_WORDS.copy(), excludeSources=DEFAULT_EXCLUDE_SOURCES.copy()),
                 available_sources=available_sources(), collection_keywords=keywords,

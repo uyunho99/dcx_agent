@@ -109,7 +109,9 @@ class Detail(BaseModel):
 
 @router.put('/{sid}/config')
 def config(sid: str, body: Config, version: str | None = None):
-    return control.save_config(sid, body.model_dump(mode='json'), version)
+    values = body.model_dump(mode='json')
+    values['perChannel'] = {s: limits.model_dump(exclude_unset=True) for s, limits in body.perChannel.items()}
+    return control.save_config(sid, values, version)
 
 
 @router.post('/{sid}/list')

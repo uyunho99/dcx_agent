@@ -4,10 +4,11 @@ import { increasedResumeIntervals } from './finalFix';
 import { limits } from './crawlConfig';
 
 it('uses effective Naver defaults', () => {
-  for (const source of ['naver_blog', 'naver_cafe']) {
+  for (const source of ['clien', 'ppomppu', 'naver_blog', 'naver_cafe']) {
     expect(limits(source).concurrency).toBe(1);
-    expect(limits(source).min_interval_s).toBe(1);
+    expect(limits(source).min_interval_s).toBe(0.5);
   }
+  expect(limits('youtube').min_interval_s).toBe(0);
 });
 it('renders channel status from availability and keyless Naver copy', () => {
   const settings = readFileSync('src/components/crawl/Settings.tsx', 'utf8');
@@ -24,7 +25,7 @@ it('shows terminated shopping and dynamic integration counts', () => {
   expect(layout).toContain('entries?.length');
 });
 
-it('doubles Naver resume spacing to two seconds', () => {
+it('doubles Naver resume spacing to one second', () => {
   const channels = ['naver_blog', 'naver_cafe'];
-  expect(increasedResumeIntervals(channels, {}, {perChannel: Object.fromEntries(channels.map(s => [s, limits(s)]))})).toEqual({naver_blog: 2, naver_cafe: 2});
+  expect(increasedResumeIntervals(channels, {}, {perChannel: Object.fromEntries(channels.map(s => [s, limits(s)]))})).toEqual({naver_blog: 1, naver_cafe: 1});
 });
