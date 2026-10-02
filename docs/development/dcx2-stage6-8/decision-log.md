@@ -129,3 +129,9 @@
 
 ### D-243 QA-S9 옛 세션은 QA 데이터에 옛 저장 경로로 만들어 확인 · 판단 (Claude)
 - 로컬에 schemaVersion 없는 세션이 없어 `/save-session`의 옛 저장 경로로 `legacy-qa-s9`를 만들었다. 결과: "옛 세션 · 읽기 전용 · 클러스터링 · TF-IDF + K-means + Ward" 기존 화면 그대로 → PASS.
+
+## UAT (2026-10-02)
+
+### D-244 묶음 ① UAT 승인 · 브랜치 유지 · 확정 (사용자)
+- 사용자 직접 `decide approve`. merge · push 없음.
+- UAT 안건 4개(불용어 목록 · "LG 에어컨" 환경 코드 · Persona 초안 유사성 · 비교 화면 원문 키)는 답 없이 승인 → 미결로 묶음 ② 브레인스토밍 안건에 넘긴다.
