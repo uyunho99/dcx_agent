@@ -1,6 +1,7 @@
 """Join stage-five labels to immutable preparation data and cache noun tokens."""
 from collections import Counter
 from dataclasses import dataclass
+import fcntl
 import json
 
 import numpy as np
@@ -50,14 +51,17 @@ def _join(export, prepared):
     return doc
 
 
-def _nouns(sid, root, docs, tokens):
+def _nouns(root, docs, tokens):
     """Publish the manifest last; no partial generation is ever read.
 
     Cache all prepared documents, not just this version's relevant subset.
-    The shared session lock serializes concurrent builders across versions.
+    A dedicated cache lock serializes concurrent builders across versions
+    without blocking session writes or reacquiring a caller's session lock.
     """
     directory = root / 'nouns'
-    with store.locked(sid):
+    directory.mkdir(parents=True, exist_ok=True)
+    with (directory / '.lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
         try:
             manifest = store.read_json(directory / 'manifest.json') or {}
             if manifest.get('status') == 'done' and manifest.get('count') == len(docs):
@@ -69,7 +73,6 @@ def _nouns(sid, root, docs, tokens):
                     return cached
         except (OSError, ValueError, KeyError, TypeError):
             pass
-        directory.mkdir(parents=True, exist_ok=True)
         (directory / 'manifest.json').unlink(missing_ok=True)
         for path in directory.glob('part-*.jsonl'):
             path.unlink()
@@ -107,7 +110,7 @@ def load_input(sid: str, version: str) -> SegmentInput:
     if not paths:
         raise store.StoreError('형태소 토큰이 없습니다. 3단계 전처리를 다시 실행하세요.')
     tokens = {row['doc_id']: row['tokens'] for path in paths for row in _rows(path)}
-    nouns = _nouns(sid, root, prepared, tokens)
+    nouns = _nouns(root, prepared, tokens)
     ids, joined, selected_tokens, selected_nouns = [], {}, {}, {}
     report = dict(relevant=len(relevant), zero_vector=0, no_tokens=0, truncated=0, by_channel={})
     vectors = VectorStore(root)
@@ -126,7 +129,6 @@ def load_input(sid: str, version: str) -> SegmentInput:
             if doc_id not in prepared:
                 raise store.StoreError('전처리 문서를 찾을 수 없습니다.')
             doc = _join(row, prepared[doc_id])
-            report['truncated'] += int(len(_text(doc)) > 2000)
             index = lookup.get(doc_id)
             if index is None or not np.isfinite(norms[index]) or norms[index] == 0:
                 report['zero_vector'] += 1
@@ -134,6 +136,7 @@ def load_input(sid: str, version: str) -> SegmentInput:
             if not tokens.get(doc_id):
                 report['no_tokens'] += 1
                 continue
+            report['truncated'] += int(len(_text(doc)) > 2000)
             output[count] = values[index] / norms[index]
             count += 1
             ids.append(doc_id)

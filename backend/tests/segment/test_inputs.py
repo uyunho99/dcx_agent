@@ -69,6 +69,61 @@ def test_channel_from_derived_not_export(session):
         assert doc['evidence_level_pred'] in {'core', 'supporting'}
 
 
+def test_load_input_does_not_take_session_lock(session, monkeypatch, data_dir):
+    data = snapshot(session)
+    root = prepared_root(session.sid, data)
+    manifest = store.read_json(root / 'manifest.json')
+    manifest['config']['tokenPos'] = ['NNG', 'NNP', 'VV', 'VA', 'XR']
+    store.write_json(root / 'manifest.json', manifest)
+    export_path = data_dir / data['training']['exportRef']
+    export_rows = [json.loads(line) for line in export_path.read_text().splitlines()]
+    write_rows(export_path, export_rows[3:5])
+    calls = []
+
+    def kiwi():
+        calls.append(1)
+        return SimpleNamespace(tokenize=lambda text: [SimpleNamespace(form='냉방', tag='NNG')])
+
+    def unexpected_lock(sid):
+        pytest.fail('load_input must not acquire the shared session lock')
+
+    monkeypatch.setattr(prep_tokens, '_kiwi', kiwi)
+    monkeypatch.setattr(store, 'locked', unexpected_lock)
+    first = load_input(session.sid, session.version)
+    assert first.ids == ['d000003', 'd000004']
+    assert len(calls) == session.expected['documents']
+    calls.clear()
+    assert load_input(session.sid, session.version).nouns == first.nouns
+    # Another version can select previously irrelevant docs without rebuilding.
+    expanded_ref = f'classified/{session.sid}/v2/gen-synth/relevant.jsonl'
+    write_rows(data_dir / expanded_ref, export_rows)
+    store.write_json(version_dir(session.sid, 'v2') / 'session.json', {
+        **data, 'training': {**data['training'], 'exportRef': expanded_ref},
+    })
+    expanded = load_input(session.sid, 'v2')
+    assert len(expanded.ids) == session.expected['documents'] - 3
+    assert all(words == ['냉방'] for words in expanded.nouns.values())
+    assert not calls
+
+
+def test_truncated_counts_only_final_target_docs(session):
+    data = snapshot(session)
+    root = prepared_root(session.sid, data)
+    docs = documents(session.sid, data)
+    excluded = session.expected['zero_vector_ids'] + session.expected['no_token_ids']
+    for doc_id in excluded + ['d000003']:
+        docs[doc_id]['body'] = '가' * 2001
+    docs['d000004']['comments'] = [{'text': '나' * 2001}]
+    for path in (root / 'docs').glob('*.jsonl'):
+        rows = [json.loads(line) for line in path.read_text().splitlines()]
+        write_rows(path, [docs[row['doc_id']] for row in rows])
+
+    result = load_input(session.sid, session.version)
+    assert not set(result.ids) & set(excluded)
+    assert {'d000003', 'd000004'} <= set(result.ids)
+    assert result.report['truncated'] == 2
+
+
 def test_nouns_cached_next_to_derived(session, monkeypatch):
     data = snapshot(session)
     root = prepared_root(session.sid, data)
