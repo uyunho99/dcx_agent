@@ -1,0 +1,32 @@
+
+> frontend@0.1.0 test
+> vitest run src/lib/logic/roundKeywords.test.ts
+
+
+ RUN  v3.2.7 /Users/persona1/Desktop/dcx_agent-kw-round-view-impl/frontend
+
+(node:81043) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/logic/roundKeywords.test.ts [ src/lib/logic/roundKeywords.test.ts ]
+Error: Cannot find module './roundKeywords' imported from '/Users/persona1/Desktop/dcx_agent-kw-round-view-impl/frontend/src/lib/logic/roundKeywords.test.ts'
+ ❯ src/lib/logic/roundKeywords.test.ts:2:1
+      1| import { expect, it } from 'vitest';
+      2| import { roundKeywords } from './roundKeywords';
+       | ^
+      3| 
+      4| const all = [
+
+Caused by: Error: Failed to load url ./roundKeywords (resolved id: ./roundKeywords) in /Users/persona1/Desktop/dcx_agent-kw-round-view-impl/frontend/src/lib/logic/roundKeywords.test.ts. Does the file exist?
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/config.js:22739:33
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  20:47:41
+   Duration  472ms (transform 21ms, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 53ms)
+

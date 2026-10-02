@@ -17,6 +17,7 @@ import { contextRequest, patchSession } from '@/lib/api/context';
 import { filterKeywords, keywordFilters, type KeywordFilter } from '@/lib/logic/filterKeywords';
 import { createActionQueue } from '@/lib/logic/actionQueue';
 import { reviewKeywords } from '@/lib/logic/reviewKeywords';
+import { roundKeywords } from '@/lib/logic/roundKeywords';
 import { displayError } from '@/lib/api/errors';
 import { roundUi, directionRound, nextRound, prevRound, followingRound } from '@/lib/logic/roundUi';
 import { INTERNAL_TOOLS } from '@/lib/internalTools';
@@ -92,9 +93,10 @@ function KeywordScreen({ sid }: { sid: string }) {
   }, [running, current?.job.startedAt]);
   // reviewKeywords merges by id, preferring top-level keywords (including display) over round entries.
   const all = reviewKeywords({ keywordRounds: data?.keywordRounds ?? {}, keywords: data?.keywords ?? [] }).map(k => overrides[k.id] ? { ...k, ...overrides[k.id] } : k);
-  const groups = [...new Map([...destinations, ...custom, ...all.map(k => ({ axis: k.axis, sub: k.sub }))].map(g => [groupKey(g), g])).values()];
+  const shown = roundKeywords(all, round, ui.final);
+  const groups = [...new Map([...destinations, ...custom, ...shown.map(k => ({ axis: k.axis, sub: k.sub }))].map(g => [groupKey(g), g])).values()];
   const tabGroups = groups.filter(g => axis === 'all' || g.axis === axis);
-  const tabKeywords = all.filter(k => axis === 'all' || k.axis === axis);
+  const tabKeywords = shown.filter(k => axis === 'all' || k.axis === axis);
   const visible = filterKeywords(tabKeywords, filter, query);
   const isCollapsed = (g: Destination) => readonly ? false : collapsed[`${axis}:${groupKey(g)}`] ?? tabGroups.length >= 10;
   const decisions = (): Decision[] => (current?.keywords ?? []).map(k => overrides[k.id] ?? { id: k.id, status: k.status === 'rejected' ? 'rejected' : 'approved', reject: k.reject });
@@ -156,7 +158,7 @@ function KeywordScreen({ sid }: { sid: string }) {
       {running ? <Card><p role="status" aria-live="polite">처리 중… R{round} 생성 중 · 보통 30~90초 · 경과 {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}</p><div className="space-y-4 mt-4">{[0, 1, 2].map(i => <Skeleton key={i} height={112} />)}</div><p className="ds-t-caption">다른 화면으로 이동해도 생성은 계속됩니다.</p></Card> : <>
       {current?.job.status === 'failed' && <Banner tone="danger" actions={<Button disabled={busy || r3Blocked} onClick={() => void generate(round)}>다시 생성하기</Button>}>R{round} 생성에 실패했습니다(원인: {reasons[current.job.error?.kind ?? ''] ?? '생성 도구 오류'}). 승인한 키워드는 그대로 있습니다. 다시 생성하세요.{current.job.error?.kind === 'backend' && ' 설정에서 claude_api로 바꿀 수 있습니다.'}</Banner>}
       {current?.job.status === 'done' && !current.committed && (current?.keywords.length === 0 ? <Banner actions={<Button disabled={busy || r3Blocked || !ui.canRegenerate} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}>새 키워드가 나오지 않았습니다. 방향 지시를 바꾸거나 다시 생성하세요.</Banner> : current?.below_min ? <Banner actions={<Button disabled={busy || r3Blocked || !ui.canRegenerate} onClick={() => void generate(round, true)}>R{round} 다시 생성</Button>}>목표 {current.below_min.min}개 중 {current.below_min.got}개가 생성되었습니다. 그대로 검토하거나 다시 생성하세요.</Banner> : null)}
-      {ui.canEdit && <Card><Tabs label="3축" value={axis} onChange={setAxis} items={[{ value: 'all', label: '전체' }, ...axes].map(a => ({ ...a, count: all.filter(k => a.value === 'all' || k.axis === a.value).length, content: a.value === axis ? reviewPanel : null }))} />
+      {ui.canEdit && <Card><Tabs label="3축" value={axis} onChange={setAxis} items={[{ value: 'all', label: '전체' }, ...axes].map(a => ({ ...a, count: shown.filter(k => a.value === 'all' || k.axis === a.value).length, content: a.value === axis ? reviewPanel : null }))} />
 
       </Card>}</>}
     </div><aside className="kw-side space-y-4"><Card><h2 className="ds-t-card">축 분포</h2><p className="ds-t-caption">승인 예정 포함 {approved.length}개 기준 · 부족한 축은 다음 라운드가 채웁니다.</p><BarList max={Math.max(1, approved.length)} highlightIndex={minimum} items={axes.map((a, i) => ({ label: a.label, value: counts[i], displayValue: `${counts[i]}개 · ${approved.length ? Math.round(counts[i] / approved.length * 100) : 0}%` }))} /></Card>
