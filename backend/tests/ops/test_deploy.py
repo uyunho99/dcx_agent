@@ -394,3 +394,104 @@ else:
     (m.root / f"releases/{c}/.built").unlink()
     m.lib(f'build_release "{c}"')
     assert (m.root / f"releases/{c}/backend/.venv").resolve() not in (first, second)
+
+
+def test_rollback_replay_preserves_new_writes(macmini):
+    m = macmini
+    snap = m.lib(f'snapshot_sessions "{m.b}"')
+    m.lib(f'restore_sessions "{snap}"')
+    for name, file in [('sessions', 'value'), ('work', 'runs.sqlite')]:
+        (m.root/'shared/data'/name/file).write_text('new-write')
+    (m.root/'shared/deploy-state').write_text(f'rolling-back {m.b} {m.a} {snap}\n')
+    m.run_deploy()
+    assert (m.root/'shared/data/sessions/value').read_text() == 'original'
+    assert (Path(snap+'-failed-1')/'sessions/value').read_text() == 'new-write'
+    assert (Path(snap+'-failed-1')/'work/runs.sqlite').read_text() == 'new-write'
+    for _ in range(6):
+        m.lib(f'snapshot_sessions "{m.b}"')
+    assert (Path(snap+'-failed-1')/'sessions/value').read_text() == 'new-write'
+
+
+@pytest.mark.parametrize('owner', ['dead', 'live', 'legacy'])
+def test_stale_hold_at_up_to_date_tick(macmini, owner):
+    m = macmini
+    m.set_current(m.b)
+    hold = m.root/'shared/maintenance'
+    hold.write_text('' if owner == 'legacy' else f'{os.getpid() if owner == "live" else 99999999} install\n')
+    assert m.run_deploy()[0] == 0
+    assert hold.exists() == (owner == 'live')
+    assert [x['decision'] for x in m.logs] == ([] if owner == 'live' else ['hold-cleared'])
+
+
+def test_hold_records_owner_and_reason(macmini):
+    m = macmini
+    assert m.lib('stop_services; read -r owner reason < "$MAINTENANCE"; [[ "$owner" == "$$" ]]; echo "$reason"', DCX_HOLD_REASON='install') == 'install'
+
+
+@pytest.mark.parametrize('port', ['3000', '3310', '3311', '8310', '8311', '3400', '8400'])
+@pytest.mark.parametrize('operation', ['listener_pids', 'stop_services', 'terminate_pids ""'])
+def test_library_refuses_protected_ports(macmini, port, operation):
+    m = macmini
+    m.command('lsof', "raise AssertionError('must not inspect protected ports')")
+    assert m.lib(f'if {operation}; then echo unsafe; else echo refused; fi', DCX_API_PORT=port) == 'refused'
+    assert m.logs[-1]['decision'] == 'error'
+    assert not (m.root/'events').exists()
+
+
+@pytest.mark.parametrize('kind', ['listener', 'worker', 'node'])
+def test_late_writer_blocks_snapshot(macmini, kind):
+    m = macmini
+    # A launch already in flight becomes visible during the settling delay.
+    child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(120)'], cwd=m.root/'releases'/m.a/'backend')
+    try:
+        (m.bin/'sleep').unlink()
+        m.command('sleep', "import os,pathlib,sys; assert sys.argv[1:] == ['1']; (pathlib.Path(os.environ['APP_ROOT'])/'late').touch()")
+        command = 'node' if kind == 'node' else 'Python'
+        m.command('ps', f"""import pathlib,sys
+if '-axo' in sys.argv and pathlib.Path({str(m.root/'late')!r}).exists() and {kind!r} != 'listener':
+    print('{child.pid} {command}')
+""")
+        m.command('lsof', f"""import pathlib,sys
+if '-p' in sys.argv: print('n{m.root}/releases/{m.a}/backend')
+if '-iTCP:18400' in sys.argv and pathlib.Path({str(m.root/'late')!r}).exists() and {kind!r} == 'listener':
+    print('{child.pid}')
+""")
+        code, log = m.run_deploy()
+        assert code != 0 and log['decision'] == 'error'
+        assert child.poll() is None
+        assert m.current == m.a
+        assert not list((m.root/'shared/snapshots').iterdir())
+    finally:
+        child.terminate(); child.wait(timeout=5)
+
+
+def test_remaining_worker_aborts_before_snapshot(macmini):
+    m = macmini
+    # A test-owned child is discoverable but has no trusted signal identity.
+    import sys, json
+    child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(120)'], cwd=m.root/'releases'/m.a/'backend')
+    try:
+        m.command('ps', f"import sys\nif '-axo' in sys.argv: print('{child.pid} Python')")
+        m.command('lsof', f"import sys\nif '-p' in sys.argv: print('n{m.root}/releases/{m.a}/backend')")
+        code, log = m.run_deploy()
+        assert code != 0 and log['decision'] == 'error'
+        assert child.poll() is None
+        assert m.current == m.a
+        assert not list((m.root/'shared/snapshots').iterdir())
+    finally:
+        child.terminate(); child.wait(timeout=5)
+
+
+@pytest.mark.parametrize('kind,location', [('Python', 'repo/backend'), ('node', 'repo/frontend'), ('node', 'releases')])
+def test_writer_discovery_includes_manual_repo_and_node(macmini, kind, location):
+    import sys
+    m = macmini
+    cwd = m.root/location
+    cwd.mkdir(parents=True, exist_ok=True)
+    child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(120)'], cwd=cwd)
+    try:
+        m.command('ps', f"print('{child.pid} {kind}')")
+        m.command('lsof', f"print('n{cwd}')")
+        assert m.lib('worker_pids') == str(child.pid)
+    finally:
+        child.terminate(); child.wait(timeout=5)

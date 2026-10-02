@@ -43,6 +43,7 @@ for port in "$DCX_API_PORT" "$DCX_WEB_PORT"; do
     [[ "$port" -ge 1024 && "$port" -le 65535 ]] || exit 2
 done
 [[ "$DCX_API_PORT" != "$DCX_WEB_PORT" ]] || exit 2
+validate_service_ports || exit 2
 printf '만들 경로: %s/{repo,releases,shared/data,shared/venvs,shared/snapshots,ops,logs}\n' "$APP_ROOT"
 printf '등록 위치: %s\n' "$destination"
 for job in deploy api web; do printf '잡: %s.%s\n' "$DCX_LAUNCH_LABEL" "$job"; done
@@ -50,11 +51,13 @@ printf '내릴 포트: %s %s (api/web pid 자손 및 릴리스 Python 작업자 
 printf '%s\n' '건드리지 않음: 3000 3310 3311 8310 8311' 'main 머리 커밋을 정식 빌드해 첫 릴리스로 · 손 clone은 설치 후 삭제'
 printf 'runtime.env: AUTHOR_SALT_PATH=%s/shared/data/.author_salt\n' "$APP_ROOT"
 if ! $dry; then
-    printf '진행하려면 y 입력: '
-    answer=""
-    read -r answer || true
-    [[ "$answer" == y ]] || exit 0
-    [[ -t 0 ]] || { echo '실제 설치는 대화형 터미널에서 y 확인이 필요합니다' >&2; exit 1; }
+    if ! $qa || [[ "${DCX_INSTALL_ASSUME_YES:-0}" != 1 ]]; then
+        printf '진행하려면 y 입력: '
+        answer=""
+        read -r answer || true
+        [[ "$answer" == y ]] || exit 0
+        [[ -t 0 ]] || { echo '실제 설치는 대화형 터미널에서 y 확인이 필요합니다' >&2; exit 1; }
+    fi
     [[ "$(uname -s)" == Darwin ]] || { echo '실제 설치는 macOS 전용입니다' >&2; exit 1; }
     if $qa; then
         [[ $EUID -ne 0 ]] || { echo 'QA는 sudo 없이 실행하세요' >&2; exit 1; }
@@ -110,9 +113,13 @@ PY
 }
 if $dry; then render "$output"; echo "렌더 완료: $output"; exit 0; fi
 
-# Real operations below this boundary are deliberately unreachable in tests.
+# Registration below is exercised only in real installs; failure tests stop before it.
 as_user mkdir -p "$SHARED/data" "$SHARED/venvs" "$SHARED/snapshots" "$APP_ROOT/releases" "$APP_ROOT/logs" "$APP_ROOT/ops"
 acquire_lock || { echo '배포가 진행 중입니다' >&2; exit 1; }
+DCX_HOLD_REASON=install
+trap 'remove_own_hold; release' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 trap 'log error "\"line\":$LINENO"' ERR
 [[ ! -s "$SHARED/deploy-state" ]] || { echo '진행 중인 배포 복구부터 완료하세요' >&2; exit 1; }
 # Secrets/data are supplied by the operator; never guess another application's source.

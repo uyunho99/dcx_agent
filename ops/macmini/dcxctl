@@ -7,6 +7,11 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 if [[ -f "$SHARED/launch.env" ]]; then . "$SHARED/launch.env"; fi
 case "${1:-}" in
     status)
+        if [[ -e "$MAINTENANCE" ]]; then
+            printf 'maintenance: held (%s)\n' "$(cat "$MAINTENANCE")"
+        else
+            printf 'maintenance: clear\n'
+        fi
         printf 'current: %s\n/health:\n' "$(current_sha)"
         curl -fsS --max-time 5 "$DCX_HEALTH_API" || true
         printf '\nlast-failed-sha: %s\ndeploy-history:\n' "$(cat "$FAILED" 2>/dev/null || true)"

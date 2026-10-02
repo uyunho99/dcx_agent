@@ -6,6 +6,8 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "$SHARED" "$APP_ROOT/releases" "$APP_ROOT/logs"
 preflight || exit 1
 acquire_lock || exit 0
+DCX_HOLD_REASON=deploy
+clear_stale_hold
 trap 'log error "\"line\":$LINENO"' ERR
 
 finish_success() {

@@ -173,7 +173,7 @@ build_release() { # sha
 snapshot_sessions() { # sha; stdout is exclusively the snapshot path
     python3.12 - "$SHARED" "$1" <<'PY'
 from datetime import datetime, timezone
-import pathlib, shutil, sys
+import pathlib, re, shutil, sys
 shared = pathlib.Path(sys.argv[1]); base = shared/'snapshots'
 base.mkdir(parents=True, exist_ok=True)
 snap = base/(datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')+'-'+sys.argv[2])
@@ -183,7 +183,7 @@ for name in ('sessions','work'):
     if source.exists():
         shutil.copytree(source, snap/name, symlinks=True, copy_function=shutil.copy2)
 # Failed-data backups are evidence, not successful snapshots; retain them.
-complete = sorted(p for p in base.iterdir() if p.is_dir() and not p.name.endswith('-failed'))
+complete = sorted(p for p in base.iterdir() if p.is_dir() and not re.search(r'-failed(?:-\d+)?$', p.name))
 for old in complete[:-5]:
     shutil.rmtree(old)
 print(snap)
@@ -195,31 +195,40 @@ import pathlib, shutil, sys
 shared = pathlib.Path(sys.argv[1]); snap = pathlib.Path(sys.argv[2])
 if not snap.is_dir() or snap.parent.resolve() != (shared/'snapshots').resolve():
     raise ValueError('missing or invalid snapshot')
-backup = snap.with_name(snap.name+'-failed')
-backup.mkdir(exist_ok=True)
+index = 0
+while True:
+    backup = snap.with_name(snap.name+'-failed'+('-'+str(index) if index else ''))
+    try:
+        backup.mkdir()
+        break
+    except FileExistsError:
+        index += 1
 (shared/'data').mkdir(exist_ok=True)
 for name in ('sessions','work'):
     live = shared/'data'/name
-    if live.exists():
-        if not (backup/name).exists():
-            shutil.move(str(live), str(backup/name))
-        else:
-            shutil.rmtree(live)
+    if live.exists() or live.is_symlink():
+        # Every replay preserves the current tree, including partial restores.
+        live.rename(backup/name)
     if (snap/name).exists():
         shutil.copytree(snap/name, live, symlinks=True, copy_function=shutil.copy2)
 PY
 }
 
-# Identify detached Python workers by executable/command and physical cwd.
+# Identify Python workers and Node web processes by executable and physical cwd.
 # Never infer ownership merely from a command containing a release path.
 worker_pids() {
-    python3.12 - "$APP_ROOT/releases" <<'PY'
+    python3.12 - "$APP_ROOT" <<'PY'
 import os, pathlib, shutil, subprocess, sys
 root = pathlib.Path(sys.argv[1]).resolve()
 rows = subprocess.check_output(['ps','-axo','pid=,comm='], text=True).splitlines()
 for row in rows:
     fields = row.strip().split(None, 1)
-    if len(fields) != 2 or 'python' not in os.path.basename(fields[1]).lower():
+    if len(fields) != 2:
+        continue
+    command = os.path.basename(fields[1]).lower()
+    python = 'python' in command
+    node = command in ('node', 'nodejs')
+    if not (python or node):
         continue
     pid = int(fields[0])
     if pid == os.getpid():
@@ -230,7 +239,9 @@ for row in rows:
         else:
             data = subprocess.check_output([shutil.which('lsof') or '/usr/sbin/lsof','-a','-p',str(pid),'-d','cwd','-Fn'], stderr=subprocess.DEVNULL, text=True)
             cwd = pathlib.Path(next(line[1:] for line in data.splitlines() if line.startswith('n'))).resolve()
-        cwd.relative_to(root)
+        allowed = [root] if node else [root/'releases', root/'repo']
+        if not any(cwd == path or path in cwd.parents for path in allowed):
+            continue
     except (OSError, ValueError, StopIteration, subprocess.CalledProcessError):
         continue
     print(pid)
@@ -244,6 +255,7 @@ descendants() {
     done
 }
 terminate_pids() { # fixed PID set, never rediscover after TERM
+    validate_service_ports || return 1
     python3.12 - "$@" <<'PY'
 import os, signal, subprocess, sys, time
 pids = set(int(p) for arg in sys.argv[1:] for p in arg.split() if p.isdigit() and int(p)>1)
@@ -277,7 +289,53 @@ if pids:
     raise RuntimeError('workers did not exit after SIGKILL')
 PY
 }
+validate_service_ports() {
+    local port
+    for port in "$DCX_API_PORT" "$DCX_WEB_PORT"; do
+        case "$port" in
+            3000|3310|3311|8310|8311) ;;
+            3400|8400) [[ "${APP_ROOT%/}" != "$HOME/srv/dcx-agent" ]] || continue ;;
+            *) continue ;;
+        esac
+        log error "\"reason\":\"protected service port\",\"port\":\"$port\""
+        return 1
+    done
+}
+create_hold() {
+    printf '%s %s\n' "$$" "${DCX_HOLD_REASON:-service-stop}" > "$MAINTENANCE.tmp" || return 1
+    mv -f "$MAINTENANCE.tmp" "$MAINTENANCE"
+}
+remove_own_hold() {
+    local owner reason
+    if [[ -f "$MAINTENANCE" ]]; then
+        IFS=' ' read -r owner reason < "$MAINTENANCE" || true
+        if [[ "$owner" == "$$" ]]; then rm -f "$MAINTENANCE"; fi
+    fi
+}
+clear_stale_hold() {
+    [[ ! -e "$SHARED/deploy-state" && -e "$MAINTENANCE" ]] || return 0
+    [[ "${DEPLOY_DRY_RUN:-0}" != 1 ]] || return 0
+    if python3.12 - "$MAINTENANCE" <<'PY_HOLD'
+import os, pathlib, sys
+p = pathlib.Path(sys.argv[1])
+try:
+    pid = int(p.read_text().split()[0])
+    if pid <= 0: raise ValueError()
+except (ValueError, IndexError):
+    pid = None
+if pid:
+    try: os.kill(pid, 0)
+    except ProcessLookupError: pass
+    except PermissionError: sys.exit(1)
+    else: sys.exit(1)
+p.unlink()
+PY_HOLD
+    then
+        log hold-cleared '"reason":"maintenance owner gone; no deploy-state"'
+    fi
+}
 listener_pids() {
+    validate_service_ports || return 1
     local port result status
     for port in "$DCX_API_PORT" "$DCX_WEB_PORT"; do
         status=0
@@ -298,7 +356,8 @@ assert_services_stopped() {
 }
 stop_services() {
     local service pid pids="" listeners
-    touch "$MAINTENANCE" || return 1
+    validate_service_ports || return 1
+    create_hold || return 1
     if [[ -n "${DCX_RESTART_CMD:-}" ]]; then
         "$DCX_RESTART_CMD" stop || return 1
     fi
@@ -327,6 +386,9 @@ PY
     terminate_pids "$pids" || return 1
     pids="$(worker_pids)" || return 1
     terminate_pids "$pids" || return 1
+    assert_services_stopped || return 1
+    # Catch a launch that passed the hold check just before we published it.
+    sleep 1 || return 1
     assert_services_stopped
 }
 start_services() {

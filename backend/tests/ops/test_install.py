@@ -1,4 +1,4 @@
-"""Install tests only render plans; never execute privileged service actions."""
+"""Render plans and inject pre-registration failures in temporary roots only."""
 import os
 import plistlib
 import subprocess
@@ -24,9 +24,9 @@ def test_install_dry_run(macmini, tmp_path, qa):
     out = tmp_path/'render & space'
     before = (m.root/'shared/runtime.env').read_bytes()
     r = run(m, 'install.sh', '--dry-run', '--output-dir', str(out), *(['--qa'] if qa else []),
-            DCX_API_PORT='', DCX_WEB_PORT='')
+            DCX_API_PORT='' if qa else '18400', DCX_WEB_PORT='' if qa else '13400')
     assert r.returncode == 0, r.stderr
-    api, web = ('8401', '3401') if qa else ('8400', '3400')
+    api, web = ('8401', '3401') if qa else ('18400', '13400')
     label = 'ai.person-a.dcx-agent' + ('-qa' if qa else '')
     for value in (str(m.root), api, web, '건드리지 않음: 3000 3310 3311 8310 8311',
                   'main 머리 커밋을 정식 빌드해 첫 릴리스로 · 손 clone은 설치 후 삭제', 'AUTHOR_SALT_PATH'):
@@ -152,3 +152,45 @@ def test_run_waits_during_maintenance(macmini, script):
     assert r.returncode == 0, r.stderr
     assert r.stdout == ''
     assert not (m.root/('shared/'+script[4:-3]+'.pid')).exists()
+
+
+@pytest.mark.parametrize('qa', [False, True])
+def test_assume_yes_only_qa(macmini, qa):
+    m = macmini
+    # Stop at OS validation, before any filesystem/service installation action.
+    (m.bin/'uname').unlink()
+    m.command('uname', "print('TestOS')")
+    r = run(m, 'install.sh', *(['--qa'] if qa else []), DCX_INSTALL_ASSUME_YES='1')
+    if qa:
+        assert r.returncode != 0 and 'macOS' in r.stderr
+        assert 'y 입력' not in r.stdout
+    else:
+        assert r.returncode == 0 and 'y 입력' in r.stdout
+    assert not (m.root/'ops').exists()
+
+
+def test_production_assume_yes_still_rejects_piped_y(macmini):
+    r = run(macmini, 'install.sh', input='y\n', DCX_INSTALL_ASSUME_YES='1')
+    assert r.returncode != 0 and '대화형' in r.stderr
+
+
+def test_install_failure_clears_own_hold(macmini, tmp_path):
+    import shutil
+    m = macmini
+    if os.geteuid() == 0:
+        pytest.skip('QA installer requires a non-root user')
+    for name in ('chmod', 'mktemp'):
+        (m.bin/name).symlink_to(shutil.which(name))
+    (m.bin/'uname').unlink()
+    m.command('uname', "print('Darwin')")
+    m.command('restart', "import sys; sys.exit(42)")
+    m.command('launchctl', "raise AssertionError('must fail before registration')")
+    (m.root/'shared/data/.author_salt').write_text('test-salt')
+    home = tmp_path/'home'
+    home.mkdir()
+    r = run(m, 'install.sh', '--qa', HOME=str(home), DCX_INSTALL_ASSUME_YES='1')
+    assert r.returncode != 0
+    assert not (m.root/'shared/maintenance').exists()
+    assert not (m.root/'shared/deploy.lock').exists()
+    assert (m.root/'ops').exists(), 'must reach actual installation before injected failure'
+    assert not (home/'Library').exists()

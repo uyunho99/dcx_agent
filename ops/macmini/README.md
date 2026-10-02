@@ -42,7 +42,7 @@ APP_ROOT="$HOME/srv/dcx-agent" "$HOME/srv/dcx-agent/ops/dcxctl" deploy <sha>
 APP_ROOT="$HOME/srv/dcx-agent" "$HOME/srv/dcx-agent/ops/dcxctl" rollback
 ```
 
-`status`는 current, `/health`, last-failed-sha, 이력 마지막 3줄, 배포 로그 마지막 5줄을 출력합니다. `deploy`는 지정 커밋(생략하면 origin/main)의 실패 표시를 지운 후 기존 배포 흐름과 CI 판정을 실행합니다. 단축 SHA도 정규화합니다. 다른 배포가 잠금을 가진 동안에는 실패 표시를 지우지 않습니다.
+`status`는 maintenance hold 상태와 소유 PID/시작 이유, current, `/health`, last-failed-sha, 이력 마지막 3줄, 배포 로그 마지막 5줄을 출력합니다. `deploy`는 지정 커밋(생략하면 origin/main)의 실패 표시를 지운 후 기존 배포 흐름과 CI 판정을 실행합니다. 단축 SHA도 정규화합니다. 다른 배포가 잠금을 가진 동안에는 실패 표시를 지우지 않습니다.
 
 `rollback`은 현재 이력의 바로 전 릴리스와 **현재 릴리스 배포 직전** 스냅샷을 사용합니다. 중지 → sessions/work 복원 → current 전환 → 시작 → 상태 확인 순서입니다. 롤백 전 SHA를 last-failed-sha에 기록하고 이력 마지막 행을 제거하므로 반복 호출로 이전 단계에 되돌아갈 수 있습니다. 이전 릴리스나 스냅샷이 없으면 변경 없이 `되돌릴 버전이 없습니다`로 실패합니다. 복원한 버전도 상태 확인에 실패하면 `unhealthy-both`를 남깁니다.
 
@@ -50,9 +50,9 @@ APP_ROOT="$HOME/srv/dcx-agent" "$HOME/srv/dcx-agent/ops/dcxctl" rollback
 
 배포와 수동 롤백은 `shared/maintenance` 파일을 먼저 만듭니다. api/web 진입점은 파일이 있으면 서버를 시작하지 않고 10초 대기 후 정상 종료합니다. launchd의 KeepAlive와 ThrottleInterval=10이 재시도하며, 시작 단계는 파일을 제거하고 정상 상태 확인을 기다립니다. 운영 LaunchDaemon과 QA LaunchAgent 모두 같은 계약을 쓰며 deploy/dcxctl은 launchctl이나 관리자 권한이 필요하지 않습니다. 등록·교체는 설치기만 담당합니다.
 
-중지는 PID 파일의 자손·지정 포트 리스너·releases 아래 Python 작업자에 TERM → 최대 20초 대기 → KILL을 적용한 뒤 포트와 작업자를 다시 확인합니다. 남아 있거나 확인에 실패하면 error를 기록하고 hold를 유지하며 스냅샷·전환을 하지 않습니다. 다음 틱도 중지 검증을 통과해야 hold를 해제합니다. 이때 `deploy.log`와 `shared/deploy-state`를 확인하고 남은 프로세스 원인을 해결하세요. 복구 중 hold 파일을 임의로 삭제하면 안 됩니다.
+중지는 PID 파일의 자손·지정 포트 리스너·releases 및 repo 아래 Python 작업자와 APP_ROOT 아래 Node 프로세스에 TERM → 최대 20초 대기 → KILL을 적용한 뒤 포트와 작업자를 확인하고 1초 후 한 번 더 확인합니다. 남아 있거나 확인에 실패하면 error를 기록하고 hold를 유지하며 스냅샷·전환을 하지 않습니다. 다음 틱도 중지 검증을 통과해야 hold를 해제합니다. 이때 `deploy.log`와 `shared/deploy-state`를 확인하고 남은 프로세스 원인을 해결하세요. 복구 중 hold 파일을 임의로 삭제하면 안 됩니다.
 
-수동 롤백도 동작 전에 `deploy-state` 첫 줄에 `rolling-back <from> <to> <snapshot>`을 기록합니다. 둘째 줄의 `manual` 표시는 복구가 끝날 때까지 유지됩니다. kill·재부팅 후 다음 deploy 틱은 fetch/CI보다 먼저 복원·전환·이력 확정을 마칩니다. 이력 갱신은 반복해도 이전 행을 더 지우지 않으며 최초 실패 데이터 백업도 보존합니다.
+수동 롤백도 동작 전에 `deploy-state` 첫 줄에 `rolling-back <from> <to> <snapshot>`을 기록합니다. 둘째 줄의 `manual` 표시는 복구가 끝날 때까지 유지됩니다. kill·재부팅 후 다음 deploy 틱은 fetch/CI보다 먼저 복원·전환·이력 확정을 마칩니다. 이력 갱신은 반복해도 이전 행을 더 지우지 않으며 매 복원 시 현재 sessions/work를 새 `<snapshot>-failed`, `<snapshot>-failed-1`, … 폴더로 옮깁니다. 재시작 후 생긴 쓰기도 별도 백업에 보존되며 이 백업들은 스냅샷 5개 정리 대상에서 제외됩니다.
 
 ## QA 사용자 에이전트
 
@@ -87,7 +87,7 @@ APP_ROOT="$HOME/srv/dcx-agent" /bin/bash ops/macmini/run-web.sh --print-cmd
 
 배포 로그는 at/sha/decision을 가진 JSON Lines입니다. 상태 확인은 API `/health`의 release, `/sessions` 200, 웹 `/pipeline/start` 200을 확인합니다. run-api는 app.env와 runtime.env를 데이터로 읽고 PID 및 DCX_RELEASE_SHA를 설정합니다. run-web은 HOME/PATH/TMPDIR와 NEXT_PUBLIC 값, PORT만 전달하며 app.env나 상속된 서버 키를 전달하지 않습니다. `--print-cmd`는 서버를 실행하거나 PID 파일을 쓰지 않습니다.
 
-종료 대상은 해당 api/web PID 자손, 지정 포트의 리스너, 배포 루트 releases 아래에서 실행 중인 Python 작업자입니다. 3000·3310·3311·8310·8311 포트는 설치 대상에서 제외합니다. internal-app 및 사용자 데모 서버는 건드리지 않습니다.
+종료 대상은 해당 api/web PID 자손, 지정 포트의 리스너, 배포 루트 releases/repo 아래 Python 작업자와 APP_ROOT 아래 Node 프로세스입니다. 3000·3310·3311·8310·8311 포트는 설치기와 라이브러리의 리스너 조회/종료 경로에서 거부합니다. APP_ROOT가 `$HOME/srv/dcx-agent`가 아니면 3400/8400도 거부합니다. internal-app 및 사용자 데모 서버는 건드리지 않습니다.
 
 테스트 훅은 T2의 `DCX_BUILD_CMD`, `DCX_RESTART_CMD`, `DCX_CI_API`, `DCX_HEALTH_API`, `DCX_HEALTH_WEB`, `DCX_HEALTH_TIMEOUT`, `DCX_REPO_URL`, `DCX_API_PORT`, `DCX_WEB_PORT`, `DCX_FORCE_UNHEALTHY_SHA`, `DCX_BASH`, `DCX_PATH`를 사용합니다. 실제 설치에서는 가짜 훅을 사용하지 않습니다.
 
@@ -95,3 +95,7 @@ APP_ROOT="$HOME/srv/dcx-agent" /bin/bash ops/macmini/run-web.sh --print-cmd
 DCX_BASH=/bin/bash backend/.venv/bin/python -m pytest backend/tests/ops -q -p no:cacheprovider
 backend/.venv/bin/python -m pytest backend/tests -q -p no:cacheprovider
 ```
+
+Hold 파일은 소유 PID와 시작 이유를 기록합니다. 설치 실패 시 설치기는 자신의 hold만 제거합니다. deploy 틱은 deploy-state가 없고 hold 소유 프로세스가 사라졌으면 hold를 제거하고 `hold-cleared`를 기록합니다. 빈 구형 hold도 이 조건에서 정리합니다. 진행 중인 트랜잭션의 hold는 복구 흐름에서 처리합니다.
+
+QA 자동화에서만 `DCX_INSTALL_ASSUME_YES=1`과 `--qa`를 함께 사용해 y 질문을 건너뛸 수 있습니다. 운영 모드는 이 변수를 무시하며 터미널의 직접 y 확인을 계속 요구합니다.

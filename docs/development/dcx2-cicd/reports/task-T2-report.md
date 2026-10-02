@@ -106,3 +106,28 @@ Tests were written and run before implementation changes:
 ### Remaining validation limits
 
 Native socket binding and native process inventory are restricted by this sandbox. Listener/worker discovery therefore uses controlled fake inventories; termination and rollback SIGKILL use real test-owned processes. Real launchd retries, login-free boot, privileged installation, and Linux execution remain separate integration/CI checks. No sudoers or other permission workaround is required by the new runtime contract. The existing rollback limit remains: only code and sessions/work are restored, not large artifacts/models/caches.
+
+## Fix round 2
+
+Addressed all seven re-review findings without changing backend/app or frontend, staging/committing repository changes, dispatching agents, or operating real services/launchd registrations.
+
+1. **Lossless rollback replay:** restoration reserves a fresh backup directory using exclusive mkdir (`<snapshot>-failed`, then `-failed-1`, etc.) and renames each live sessions/work tree into it before copying the snapshot. A replay also preserves partial restores or writes made after the previous restart. Snapshot pruning excludes every numbered failed-data backup. The regression replays rolling-back state after new sessions/work writes, verifies the restored snapshot and new backup, and verifies retention through six more snapshots.
+2. **Maintenance ownership/recovery:** atomic hold publication records PID and start reason. Under the deploy lock, ticks with no deploy-state remove orphaned holds before up-to-date handling and log `hold-cleared`. Live owners and pending transactions remain protected; legacy empty holds are cleared without a transaction. Dry runs do not clear holds. Installer EXIT/INT/TERM cleanup removes only its own hold and releases its lock. `dcxctl status` reports clear/held and owner details. A temporary-root installer test injects failure during stop, before registration, and verifies cleanup.
+3. **Protected ports in shared code:** listener discovery, stop, and PID termination reject 3000/3310/3311/8310/8311, plus 3400/8400 outside `$HOME/srv/dcx-agent`, with an error log before process-control hooks or discovery. Installer uses the same root-sensitive check. Tests cover each prohibited port through all three library paths; nonproduction installer rendering now explicitly uses safe override ports.
+4. **Late restart race:** successful termination is followed by a stopped assertion, a one-second settling delay, and a second assertion. Fake inventories expose test-owned listeners, Python workers, and Node processes during that delay and prove deploy aborts before snapshot/current switch.
+5. **Manual-clone writers:** Python discovery covers both releases and repo; Node discovery covers physical cwd under APP_ROOT. Discovery tests use real test-owned children with controlled ps/lsof records and temporary working directories.
+6. **QA confirmation:** only `--qa` with `DCX_INSTALL_ASSUME_YES=1` skips the y prompt. Production still prompts and rejects piped y even with that variable. Tests stop at OS validation or an injected pre-registration failure.
+7. **Remaining worker regression:** a discoverable test-owned worker with unavailable signal identity remains alive and forces deploy to fail before taking a snapshot or changing current.
+
+### TDD and verification
+
+- Before script changes, the targeted regressions produced **33 failed, 4 passed, 73 deselected**, 21.12s. The existing remaining-worker behavior, live-owner preservation, and production confirmation checks already passed.
+- The additional installer failure test was also run before script changes: **1 failed, 15 deselected**, 0.23s.
+- After implementation, targeted regressions: **38 passed, 73 deselected**, 19.25s. The late-writer tests were then strengthened to exercise deploy using real test-owned children and delayed fake inventories.
+- `backend/.venv/bin/python -m pytest backend/tests/ops -q -p no:cacheprovider` → **111 passed, 1 warning**, 144.71s.
+- `DCX_BASH=/bin/bash backend/.venv/bin/python -m pytest backend/tests/ops -q -p no:cacheprovider` → **111 passed, 1 warning**, 152.16s. This run includes the strengthened delayed-writer tests.
+- `/bin/bash --version` → **3.2.57(1)-release**, macOS arm64. All shell entrypoints pass `/bin/bash -n`; embedded Python blocks pass AST parsing; `git diff --check` passes.
+
+### Remaining validation limits
+
+The warning is the existing Pydantic class-based configuration deprecation. Linux execution and real launchd/server integration remain unverified on this macOS host. Tests use temporary roots, fake process inventories, and only test-created children for signal delivery. The installer failure test stops before registration and uses a temporary HOME; no actual LaunchAgents/LaunchDaemons directory or real server was modified. Failed-data backups deliberately accumulate for operator review/cleanup. The broader backend/frontend suites were not run in this round.

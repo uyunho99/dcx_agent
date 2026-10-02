@@ -120,3 +120,12 @@ os.execv('/bin/mv', ['/bin/mv']+sys.argv[1:])
     assert m.run_deploy()[0] == 0, m.output
     assert (m.root/'shared/deploy-history').read_text() == f'{m.a} -\n'
     assert not state.exists()
+
+
+def test_status_reports_hold(macmini):
+    m = macmini
+    assert 'maintenance: clear' in ctl(m, 'status').stdout
+    (m.root/'shared/maintenance').write_text('99999999 install\n')
+    output = ctl(m, 'status').stdout
+    assert 'maintenance: held' in output
+    assert '99999999 install' in output
