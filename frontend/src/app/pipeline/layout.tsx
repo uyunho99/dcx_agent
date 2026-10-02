@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import Image from "next/image";
-import { BookOpen, MessageCircle, Plug, X } from "lucide-react";
+import { BookOpen, MessageCircle, PanelLeftClose, PanelLeftOpen, Plug, X } from "lucide-react";
 import { Badge, Button, Icon } from "@/components/ds";
 import { INTERNAL_TOOLS } from "@/lib/internalTools";
 import { InternalToolsProvider } from "@/lib/internalToolsContext";
@@ -12,6 +12,7 @@ import { VersionRouteBoundary } from "@/components/versions/StageVersion";
 import { VersionPicker } from "@/components/versions/VersionPicker";
 import { DirtyProvider } from "@/components/DirtyProvider";
 import { SidebarActivity } from "@/components/SessionList";
+import { SidebarAutoProvider, sidebarCollapsed } from "@/components/sidebarAuto";
 import StepBar, { stepIndex } from "@/components/StepBar";
 import { KnownInsightsDrawer } from "@/components/known/KnownInsightsDrawer";
 import { getKnownInsights } from "@/lib/api/known";
@@ -21,6 +22,8 @@ import { useSessionStore } from "@/stores/useSessionStore";
 import { sendChat } from "@/lib/api";
 import { getPersistedSid, clearPersistedSid, restoreSessionToStore } from "@/lib/sessionPersist";
 
+const SIDEBAR_COLLAPSED_KEY = "dcx.sidebar.collapsed";
+
 export default function PipelineLayout({ children }: { children: React.ReactNode }) {
   const sid = useSessionStore(s => s.sid);
   return <DirtyProvider><VersionProvider><PipelineShell key={sid ?? "none"}>{children}</PipelineShell></VersionProvider></DirtyProvider>;
@@ -28,6 +31,17 @@ export default function PipelineLayout({ children }: { children: React.ReactNode
 
 function PipelineShell({ children }: { children: React.ReactNode }) {
   const view = useVersion();
+  const [sideCollapsed, setSideCollapsed] = useState(false);
+  const [sideAutoCollapsed, setSideAutoCollapsed] = useState(false);
+  const collapsed = sidebarCollapsed(sideCollapsed, sideAutoCollapsed);
+  useEffect(() => {
+    try { setSideCollapsed(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true"); } catch {}
+  }, []);
+  const toggleSidebar = () => {
+    const next = !sideCollapsed;
+    setSideCollapsed(next);
+    try { localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next)); } catch {}
+  };
   const [chatOpen, setChatOpen] = useState(false);
   const [drawer, setDrawer] = useState<"known" | "integrations" | null>(null);
   const drawerOpen = drawer === "integrations";
@@ -77,10 +91,14 @@ function PipelineShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
+    <SidebarAutoProvider onChange={setSideAutoCollapsed}>
     <InternalToolsProvider value={{ drawerOpen, setDrawerOpen }}>
-      <div className="pipeline-shell">
-        <aside className="pipeline-side" aria-label="파이프라인">
-          <Image className="pipeline-logo" src="/person-a-logo.png" alt="Person A" width={104} height={32} priority />
+      <div className="pipeline-shell" data-side={collapsed ? "collapsed" : "expanded"}>
+        <aside id="pipeline-side" className="pipeline-side" aria-label="파이프라인">
+          <div className="pipeline-side-header">
+            <Image className="pipeline-logo" src="/person-a-logo.png" alt="Person A" width={104} height={32} priority />
+            <Button variant="quiet" className="ds-btn-icon" style={{ minWidth: 36, minHeight: 36 }} aria-label={collapsed ? "사이드바 펴기" : "사이드바 접기"} aria-expanded={!collapsed} aria-controls="pipeline-side" onClick={toggleSidebar}><Icon icon={collapsed ? PanelLeftOpen : PanelLeftClose} /></Button>
+          </div>
           <StepBar currentStep={step} session={view.session ?? (view.readonly ? null : store.sd)} />
           <div className="pipeline-foot">
             <div className="ds-t-label text-ink-strong">{bk || "세션 없음"}</div>
@@ -107,5 +125,6 @@ function PipelineShell({ children }: { children: React.ReactNode }) {
       {sid && <KnownInsightsDrawer sid={sid} version={view.version} readonly={knownReadonly} open={drawer === "known"} onChange={items => {setKnown(items);setKnownRevision(n => n + 1);}} onClose={() => {setDrawer(null);setKnownRevision(n => n + 1);}} />}
       {INTERNAL_TOOLS && drawerOpen && <IntegrationsDrawer {...integrations} returnFocusId="integrations-trigger" />}
     </InternalToolsProvider>
+    </SidebarAutoProvider>
   );
 }

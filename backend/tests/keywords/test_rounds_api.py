@@ -1025,3 +1025,50 @@ def test_qfix_autocomplete_empty_and_product_queries(client, monkeypatch, empty)
     cached = client.post('/keywords/test/coverage').json()
     assert cached['humanQueries'] == saved['humanQueries']
     assert cached['m1'] == saved['m1']
+
+
+@pytest.mark.parametrize('version', [None, 'v1'])
+@pytest.mark.parametrize('suffix', ['', '/rounds/1'])
+def test_display_get_is_response_only(client, monkeypatch, version, suffix):
+    from app.context import versions
+
+    keyword = {'id': 'display-test', 'kw': '귀촌휴식죄책감', 'axis': 'physical',
+               'sub': 'space', 'round': 1, 'origin': 'manual', 'status': 'approved'}
+    store.update_session('test', {'keywords': [keyword], 'keywordRounds': {
+        '1': {'job': {'status': 'done'}, 'keywords': [keyword]}}})
+    directory = store.session_dir('test')
+    monkeypatch.setattr(versions, 'version_dir', lambda sid, version: directory)
+    path = directory / 'session.json'
+    before = path.read_bytes()
+    response = client.get(f'/keywords/test{suffix}', params={'version': version} if version else {})
+    assert response.status_code == 200
+    assert response.json()['keywords'][0] == {**keyword, 'display': '귀촌 휴식 죄책감'}
+    assert path.read_bytes() == before
+    assert '"display"' not in path.read_text()
+
+
+def test_display_manual_never_persists(client):
+    response = client.post('/keywords/test/manual', json={
+        'kw': '귀촌휴식죄책감', 'axis': 'physical', 'sub': 'space'})
+    assert response.status_code == 200
+    manual = response.json()
+    assert manual['kw'] == '귀촌휴식죄책감'
+    assert manual['keywords'][0]['display'] == '귀촌 휴식 죄책감'
+    path = store.session_dir('test') / 'session.json'
+    assert '"display"' not in path.read_text()
+
+
+def test_display_events_never_persist(client):
+    manual = client.post('/keywords/test/manual', json={
+        'kw': '귀촌휴식죄책감', 'axis': 'physical', 'sub': 'space'}).json()
+    path = store.session_dir('test') / 'session.json'
+    for event in [{'type': 'reject', 'kwId': manual['id'], 'tags': ['irrelevant']},
+                  {'type': 'direction', 'text': '새 방향'}]:
+        response = client.post('/keywords/test/events', json={'round': 1, **event})
+        assert response.status_code == 200
+        keyword = response.json()['keywords'][0]
+        assert keyword['display'] == '귀촌 휴식 죄책감'
+        assert keyword['kw'] == '귀촌휴식죄책감'
+        assert keyword['status'] == 'rejected'
+        assert '"display"' not in path.read_text()
+    assert all(event.kw == '귀촌휴식죄책감' for event in load_events('test') if event.kw)

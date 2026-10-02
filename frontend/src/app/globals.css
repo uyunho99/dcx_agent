@@ -19,6 +19,7 @@ button:not(:disabled) { cursor:pointer; }
 .pipeline-shell { display:flex; height:100dvh; min-height:0; }
 .pipeline-side { width:var(--sidebar-width); flex:none; background:var(--soft); border-right:1px solid var(--line); padding:28px 20px; display:flex; flex-direction:column; gap:28px; overflow-y:auto; }
 .pipeline-logo { width:104px; height:auto; }
+.pipeline-side-header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .pipeline-group { font:var(--type-eyebrow); letter-spacing:.08em; color:var(--ink); margin:0 8px 8px; }
 .pipeline-nav { display:grid; gap:2px; }
 .pipeline-nav a { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:var(--r-button); text-decoration:none; font:400 13px/19px var(--font); color:var(--ink); }
@@ -40,6 +41,13 @@ button:not(:disabled) { cursor:pointer; }
 .pipeline-chat-open { position:absolute; bottom:16px; right:16px; z-index:10; }
 .pipeline-chat { width:var(--chat-width); max-width:100%; flex:none; background:var(--paper); display:flex; flex-direction:column; border-left:1px solid var(--line); }
 .pipeline-chat-header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; }
+.pipeline-shell[data-side="collapsed"] .pipeline-side { width:var(--sidebar-collapsed); padding:20px 10px; }
+.pipeline-shell[data-side="collapsed"] :is(.pipeline-logo,.pipeline-group,.pipeline-nav span,.pipeline-nav small) { display:none; }
+.pipeline-shell[data-side="collapsed"] :is(.pipeline-foot > .ds-t-label,.pipeline-foot-label,.pipeline-tools > .ds-badge) { display:none; }
+.pipeline-shell[data-side="collapsed"] .pipeline-foot .ds-btn { min-width:36px; min-height:36px; padding:6px; }
+.pipeline-shell[data-side="collapsed"] .pipeline-activity { font-size:11px; }
+.pipeline-shell[data-side="collapsed"] .pipeline-activity .ds-badge { white-space:normal; height:auto; padding:3px; }
+.pipeline-shell[data-side="collapsed"] .pipeline-foot > p { font-size:11px; }
 @media(max-width:1100px) {
  .pipeline-side { width:var(--sidebar-collapsed); padding:20px 10px; }
  .pipeline-logo,.pipeline-group,.pipeline-nav span,.pipeline-nav small { display:none; }
