@@ -249,7 +249,7 @@ export type EvidenceStageReport = {
 };
 export type EvidenceStatus = {
   status: EvidenceState; run: string | null; progress: number; contexts: EvidenceContextStatus[];
-  stage7?: EvidenceStageReport; reason?: string;
+  stage7?: EvidenceStageReport; reason?: string; tagCalls?: number;
 };
 export type EvidenceRunRequest = { fresh?: boolean; contexts?: string[] };
 export type EvidenceRunResponse = { runId: string };

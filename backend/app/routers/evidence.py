@@ -97,7 +97,8 @@ def status(sid: str, version: str | None = None):
     report = _report(sid, data, 'stage_7.json')
     if report is not None:
         result['stage7'] = report
-        result['tagCalls'] = max(result['tagCalls'], report.get('tag_calls', 0))
+        if result['status'] != 'running':
+            result['tagCalls'] = report.get('tag_calls', 0)
     return result
 
 

@@ -190,3 +190,9 @@
 ### D-264 Persona 쿼리 위반은 Persona 쿼리만, Context 쿼리 위반은 그 Context만 대체 쿼리 · 판단 (Claude, opus I8)
 ### D-265 한 버전에서 Known Insight를 지워도 공유 캐시 행은 지우지 않고 무시만 한다(다른 버전 보호) · 판단 (Claude, opus Minor)
 ### D-266 공유 계약: stage_7.json에 tag_calls 추가 · 프런트는 relevant_false 사용 · 근거 항목에 quoteSource {field, idx, text}(위치와 짝) · noveltyShown: bool · 판단 (Claude, opus I3 · I4 · I5 · Codex 5 · 8 · 9)
+
+## 묶음 ② 브라우저 QA 1회차 (2026-10-02)
+
+### D-267 QA용 가짜 LLM은 프롬프트의 Context ID · 문서 ID로 유효한 응답을 만든다(evidence.queries · tag · novelty) · 판단 (Claude, ③ D-318과 같은 방식)
+- 정적 응답만으로는 QA 세션에서 쿼리 34개 전부 대체 · 문서 1,196건 미태깅 → 근거 0건(제품 결함 아님). ② · ③ 두 브랜치의 `app/llm/fake.py` 변경은 ③ T17 rebase에서 합친다.
+### D-268 실행 중 진행 표시의 태깅 호출 수는 status의 실시간 값(detail)을 쓴다 · 판단 (Claude, QA)

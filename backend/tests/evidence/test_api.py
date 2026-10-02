@@ -203,3 +203,19 @@ def test_retry_subset_and_fresh_forwarded(api):
     ok(api.client.post(api.base+'/run?version=v1',json={'fresh':True,'contexts':['c1']}))
     assert api.starts[-1][3] == {'fresh':True,'contexts':['c1']}
     error(api.client.post(api.base+'/run',json={'contexts':['missing']}),404,'not_found')
+
+
+def test_live_tag_calls_from_worker_pulses_and_completed_report(api):
+    observed = []
+    def heartbeat(progress, detail):
+        # Heartbeat precedes session publication; status reads the last published pulse.
+        observed.append(ok(api.client.get(api.base + '/status')))
+    api.ctx.heartbeat = heartbeat
+    run(api)
+    live = [r['tagCalls'] for r in observed if r['status'] == 'running']
+    assert live and max(live) > 0
+    assert live == sorted(live)
+    done = ok(api.client.get(api.base + '/status'))
+    assert done['tagCalls'] == done['stage7']['tag_calls'] > 0
+    sessions.update_session(api.sid, {'evidence': {'status':'running', 'detail':{'tagCalls':2}}})
+    assert ok(api.client.get(api.base + '/status'))['tagCalls'] == 2

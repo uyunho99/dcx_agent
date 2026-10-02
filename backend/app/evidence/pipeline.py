@@ -103,9 +103,9 @@ class _Calls:
 
         def call(task):
             with self.limit:
-                self.events.put(('pulse', dict(context=owner, step=name)))
                 with self.lock:
                     self.counts[task.task] += 1
+                self.events.put(('pulse', dict(context=owner, step=name)))
                 try:
                     result = registry.run_task(task)
                 except (TimeoutError, ConnectionError):
@@ -208,7 +208,7 @@ def run(context):
             with ev._db(write=True) as db:
                 db.execute('UPDATE meta SET run=?, params_json=?', (run_id, json.dumps(used_params)))
         sessions.write_json(root / 'generation.json', captured)
-        _session(sid, version, dict(status='running', run=run_id, reason=None, progress=0), already_locked=True)
+        _session(sid, version, dict(status='running', run=run_id, reason=None, progress=0, detail={}), already_locked=True)
     checkpoint['run'] = run_id
     checkpoint.setdefault('personas', [])
     checkpoint.setdefault('queries', list(checkpoint['personas']))

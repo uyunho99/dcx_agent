@@ -57,7 +57,7 @@ export function EvidenceScreenView(p:ViewProps) {
     {p.error && <Banner tone="danger" actions={<Button onClick={p.onReload}>새로고침</Button>}>{p.error}</Banner>}
     {status?.reason && <Banner tone="warning">{status.reason}</Banner>}
     {status && ['interrupted','failed'].includes(status.status) && <Banner actions={<Button disabled={disabled || !p.ready} onClick={p.onStart}>이어서 진행</Button>}>근거 탐색이 중단되었습니다.</Banner>}
-    {status?.status === 'running' && <div role="status"><p>Context {completedCount}/{rows.length} · 태깅 호출 {status.stage7?.tag_calls ?? 0}회</p><ProgressBar label="근거 탐색 진행" value={rows.length ? completedCount : undefined} max={rows.length}/><p>끝난 Context부터 열어 볼 수 있습니다.</p></div>}
+    {status?.status === 'running' && <div role="status"><p>Context {completedCount}/{rows.length} · 태깅 호출 {status.tagCalls ?? 0}회</p><ProgressBar label="근거 탐색 진행" value={rows.length ? completedCount : undefined} max={rows.length}/><p>끝난 Context부터 열어 볼 수 있습니다.</p></div>}
     <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
       <aside className="min-w-0 space-y-4"><Card size="sm"><nav aria-label="Persona 목록" className="space-y-3"><h2 className="ds-t-label">Persona</h2>
         {Array.from(new Set(p.personas.map(row => row.clusterId))).map(cluster => <div key={cluster} className="space-y-2"><h3>{cluster}</h3>{p.personas.filter(row => row.clusterId === cluster).map(persona => {

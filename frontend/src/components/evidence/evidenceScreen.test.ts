@@ -14,7 +14,7 @@ const session = vi.hoisted(() => ({sid:'s',sd:{prep:{}} as Record<string, unknow
 vi.mock('@/stores/useSessionStore', () => ({useSessionStore: () => session}));
 vi.mock('../versions/VersionProvider', () => ({useVersion: () => ({readonly:false,version:'v2'})}));
 const row = (id: string, status: EvidenceStatus['contexts'][number]['status']) => ({id,personaId:'P',name:id,status,coverage:5,counts:{all:10,new:8},error:null,knownChanged:false});
-const status: EvidenceStatus = {status:'running',run:'generation',progress:40,contexts:[row('C1','done'),row('C2','queued'),row('C3','failed')],stage7:stage7Fixture};
+const status: EvidenceStatus = {status:'running',run:'generation',progress:40,tagCalls:84,contexts:[row('C1','done'),row('C2','queued'),row('C3','failed')],stage7:stage7Fixture};
 const detail: EvidenceContextResponse = {...evidenceContextFixture,items:[]};
 const props = () => ({status,personas:[{id:'P',clusterId:'CL0',name:'부모',flags:[]}],selectedPersona:'P',selectedContext:'C1',tab:'new' as const,detail,personaEvidence:null,ready:true,readonly:false,busy:false,error:'',onPersona:vi.fn(),onContext:vi.fn(),onTab:vi.fn(),onStart:vi.fn(),onRetry:vi.fn(),onSkip:vi.fn(),onRefresh:vi.fn(),onAdded:vi.fn(),onNext:vi.fn(),sid:'s',version:'v2'});
 // Resolve stateless view components so handlers can be exercised without a DOM dependency.
@@ -135,4 +135,13 @@ it('keeps unverified quotes visible without highlighting any source text',()=>{
  const item={...evidenceItemFixture,quote:{...evidenceItemFixture.quote,verified:false}};
  const html=renderToStaticMarkup(createElement(EvidenceCard,{item,readonly:false,onAdd:vi.fn()}));
  expect(html).not.toContain('<mark>');expect(html).toContain('<blockquote>인용</blockquote>');expect(html).toContain('인용 미확인 · 추론');
+});
+
+it('renders live status tagCalls before a stage7 report exists and ignores stale reports', () => {
+ for (const stage7 of [undefined, {...stage7Fixture,tag_calls:999}]) {
+  const wire: EvidenceStatus = {status:'running',run:'generation',progress:1/3,
+   contexts:status.contexts,tagCalls:17,stage7};
+  const html=renderToStaticMarkup(createElement(EvidenceScreenView,{...props(),status:wire}));
+  expect(html).toContain('Context 1/3 · 태깅 호출 17회');
+ }
 });

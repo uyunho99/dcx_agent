@@ -231,3 +231,49 @@ def test_confirm_all_script_runs_evidence_api(client, data_dir, monkeypatch, off
     assert_package(client, fixture, contexts)
     assert 'evidence.tag' in calls
     assert offline_worker == []
+
+
+def test_qa_script_default_fake_echo_full_worker(client, data_dir, monkeypatch, offline_worker):
+    """Browser QA data through real registry, fake embedder and worker entry."""
+    monkeypatch.setattr(settings, 'llm_backend', 'fake')
+    monkeypatch.setattr(settings, 'llm_backend_overrides', {})
+    monkeypatch.setattr(sys, 'argv', ['make_segment_qa.py', str(data_dir), '--confirm-all'])
+    runpy.run_path(str(Path(__file__).parents[1] / 'scripts/make_segment_qa.py'), run_name='__main__')
+    # The generator writes a single session into this isolated data directory.
+    session_paths = list(data_dir.glob('sessions/*/versions/*/session.json'))
+    if not session_paths:
+        session_paths = list(data_dir.rglob('versions/v1/session.json'))
+    assert len(session_paths) == 1, list(data_dir.rglob('session.json'))
+    data = json.loads(session_paths[0].read_text())
+    sid = data['sid'] if 'sid' in data else session_paths[0].parents[2].name
+    response = ok(client.post(f'/evidence/{sid}/run', json={}))
+    deadline = time.monotonic() + 120
+    while time.monotonic() < deadline:
+        works = runner.status(sid)
+        work = next(w for w in works if w['runId'] == response['runId'])
+        if work['state'] not in ('running', 'paused'):
+            break
+        time.sleep(.05)
+    status = ok(client.get(f'/evidence/{sid}/status'))
+    assert status['status'] == 'done', status
+    report = status['stage7']
+    with_evidence = sum(row['counts']['all'] > 0 for row in status['contexts'])
+    details = [ok(client.get(f'/evidence/{sid}/contexts/{row["id"]}')) for row in status['contexts']]
+    metrics = dict(query_gen_fail=report['query_gen_fail'], untagged=report['untagged'],
+        contexts_with_evidence=with_evidence, contexts=len(details), tag_calls=report['tag_calls'],
+        coverage_min=min(row['coverage'] for row in status['contexts']),
+        rare=sum(len(d['rare']) for d in details), counter=sum(len(d['counter']) for d in details),
+        undifferentiated=sum(bool(d['undifferentiated']) for d in details))
+    print('QA_FIX1_METRICS=' + json.dumps(metrics))
+    assert metrics['query_gen_fail'] == metrics['untagged'] == 0
+    assert with_evidence == len(details)
+    assert metrics['coverage_min'] > 0
+    assert metrics['rare'] > 0 and metrics['counter'] > 0
+    # Only require escalation when the unchanged QA vectors permit a triple.
+    from app.evidence.assemble import undifferentiated_candidate
+    source = pipeline._load(sid, data['version'])
+    eligible = sum(bool(undifferentiated_candidate(
+        [r for r in source['docs'].values() if r['persona_id'] == p['persona_id'] and r['band'] == 'edge'],
+        source['vectors'])) for p in source['seg'].personas())
+    print('QA_FIX1_ELIGIBLE_PERSONAS=' + str(eligible))
+    assert metrics['undifferentiated'] > 0 or eligible == 0
