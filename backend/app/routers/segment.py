@@ -132,6 +132,8 @@ def _rows(store, layer, parent=None):
         for field in object_fields & row.keys():
             item[_camel(field)] = row[field] or {}
         item.update(id=row[key], confirmed=bool(row['confirmed_at']), docs=counts.get(row[key], (0, 0))[0])
+        if 'reps' in item:
+            item['reps'] = [{**rep, 'text': (rep.get('text') or '')[:300]} for rep in item['reps']]
         if layer == 'clusters':
             item['channelSkew'] = (row.get('metrics') or {}).get('channel_skew', False)
         if layer == 'personas':
@@ -175,12 +177,17 @@ def status(sid: str, version: str | None = None):
     work = next((r for r in reversed(runner.status(sid))
                  if r['kind'] == 'segment' and r['version'] == data['version']), None)
     result = dict(run=store.get_run(), status=segment.get('status', 'none'),
-                  step=segment.get('step', 'load'), progress=segment.get('progress', 0), confirm=_counts(store))
+                  step=segment.get('step', 'load'), progress=segment.get('progress', 0), confirm=_counts(store),
+                  detail=segment.get('detail') or {})
+    if segment.get('reason'):
+        result['reason'] = segment['reason']
     if work and work['state'] != 'done':
         detail = work.get('detail') or {}
         result.update(status=work['state'], step=detail.get('step', result['step']),
-                      progress=work.get('progress', result['progress']))
-        reason = detail.get('reason') or work.get('error')
+                      progress=work.get('progress', result['progress']), detail=detail)
+        reason = segment.get('reason') or detail.get('reason')
+        if not reason and work.get('error'):
+            reason = '클러스터링 중 오류가 났습니다. 이어서 진행하거나 다시 실행하세요.'
         if reason or work['state'] in ('failed', 'interrupted'):
             result['reason'] = reason or '이어서 진행'
     report = _report(sid, data)
@@ -198,9 +205,21 @@ def clusters(sid: str, version: str | None = None):
 
 @router.get('/personas')
 def personas(sid: str, cluster: str | None = None, version: str | None = None):
-    _, store = _open(sid, version)
+    data, store = _open(sid, version)
     _gate(store, 'personas')
-    return dict(run=store.get_run(), personas=_rows(store, 'personas', cluster))
+    rows = _rows(store, 'personas', cluster)
+    scope = data.get('projectContext', {}).get('targetScope')
+    def summarize(value):
+        if isinstance(value, dict):
+            return ' · '.join(filter(None, (summarize(v) for v in value.values())))
+        if isinstance(value, list):
+            return ', '.join(filter(None, (summarize(v) for v in value)))
+        return str(value).strip() if value else ''
+    summary = summarize(scope)[:300]
+    if summary:
+        for row in rows:
+            row['hint'] = '초안 힌트: 0단계 대상 선언 · ' + summary
+    return dict(run=store.get_run(), personas=rows)
 
 
 @router.get('/contexts')

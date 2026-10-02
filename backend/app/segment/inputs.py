@@ -9,7 +9,7 @@ import numpy as np
 from app.context import store
 from app.context.versions import version_dir
 from app.known.filter import read_export
-from app.model.infer import documents, prepared_root
+from app.model.infer import prepared_root
 from app.prep.tokens import tokenize
 from app.vectors.store import VectorStore
 
@@ -51,46 +51,86 @@ def _join(export, prepared):
     return doc
 
 
-def _nouns(root, docs, tokens):
-    """Publish the manifest last; no partial generation is ever read.
+def _selected(root, folder, ids, field=None):
+    return {row['doc_id']: row[field] if field else row
+            for path in sorted((root / folder).glob('*.jsonl'))
+            for row in _rows(path) if row['doc_id'] in ids}
 
-    Cache all prepared documents, not just this version's relevant subset.
-    A dedicated cache lock serializes concurrent builders across versions
-    without blocking session writes or reacquiring a caller's session lock.
+
+def _nouns(root, ids, pulse=None):
+    """Cache all prepared nouns, retaining only requested IDs and one shard.
+
+    The manifest is published last under a dedicated cache lock. Validate all
+    cache rows while streaming, so damaged unselected shards are rebuilt too.
     """
+    pulse = pulse or (lambda **detail: None)
+    paths = sorted((root / 'docs').glob('*.jsonl'))
+    prep = store.read_json(root / 'manifest.json') or {}
+    total = prep.get('counts', {}).get('after')
+    if total is None:
+        total = sum(1 for path in paths for _ in _rows(path))
+    pulse(docs=0, total=total)
     directory = root / 'nouns'
     directory.mkdir(parents=True, exist_ok=True)
     with (directory / '.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         try:
             manifest = store.read_json(directory / 'manifest.json') or {}
-            if manifest.get('status') == 'done' and manifest.get('count') == len(docs):
-                cached = {row['doc_id']: row['nouns'] for name in manifest['parts']
-                          for row in _rows(directory / name)}
-                if cached.keys() == docs.keys() and all(
-                        isinstance(words, list) and all(isinstance(word, str) for word in words)
-                        for words in cached.values()):
+            if manifest.get('status') == 'done' and manifest.get('count') == total:
+                cached, count = {}, 0
+                for name in manifest['parts']:
+                    for row in _rows(directory / name):
+                        words = row['nouns']
+                        if not isinstance(words, list) or not all(isinstance(w, str) for w in words):
+                            raise ValueError('Invalid noun cache')
+                        if row['doc_id'] in ids:
+                            cached[row['doc_id']] = words
+                        count += 1
+                    pulse(docs=count, total=total)
+                if count == total and ids <= cached.keys():
                     return cached
         except (OSError, ValueError, KeyError, TypeError):
             pass
         (directory / 'manifest.json').unlink(missing_ok=True)
         for path in directory.glob('part-*.jsonl'):
             path.unlink()
-        prep = store.read_json(root / 'manifest.json') or {}
         pos = prep.get('config', {}).get('tokenPos', [])
         nouns_only = bool(pos) and all(tag.startswith('NN') for tag in pos)
-        cached, parts, batch = {}, [], []
-        for doc_id, doc in docs.items():
-            words = list(tokens[doc_id]) if nouns_only and doc_id in tokens else tokenize(_text(doc), ('NNG', 'NNP'))
-            cached[doc_id] = words
-            batch.append(dict(doc_id=doc_id, nouns=words))
-            if len(batch) == _SHARD_ROWS:
-                _write_part(directory, parts, batch)
-                batch = []
+        cached, parts, batch, count = {}, [], [], 0
+        for path in paths:
+            # Preparation publishes matching docs/tokens shards.
+            token_path = root / 'tokens' / path.name
+            tokens = iter(_rows(token_path)) if nouns_only and token_path.exists() else iter(())
+            for doc in _rows(path):
+                doc_id = doc['doc_id']
+                token_row = next(tokens, {})
+                words = (list(token_row['tokens']) if token_row.get('doc_id') == doc_id
+                         else tokenize(_text(doc), ('NNG', 'NNP')))
+                if doc_id in ids:
+                    cached[doc_id] = words
+                batch.append(dict(doc_id=doc_id, nouns=words))
+                count += 1
+                pulse(docs=count, total=total)
+                if len(batch) == _SHARD_ROWS:
+                    _write_part(directory, parts, batch)
+                    batch = []
         if batch:
             _write_part(directory, parts, batch)
-        store.write_json(directory / 'manifest.json', dict(status='done', count=len(cached), parts=parts))
+        store.write_json(directory / 'manifest.json', dict(status='done', count=count, parts=parts))
         return cached
+
+
+def restore_input(sid, version, saved, vectors, pulse=None):
+    """Rehydrate the compact checkpoint from immutable preparation shards."""
+    data = store.read_json(version_dir(sid, version) / 'session.json')
+    root = prepared_root(sid, data)
+    ids = saved['ids']
+    selected = set(ids)
+    prepared = _selected(root, 'docs', selected)
+    relevant = {r['doc_id']: r for r in read_export(sid, data) if r['doc_id'] in selected}
+    return SegmentInput(ids, vectors, _selected(root, 'tokens', selected, 'tokens'),
+                        _nouns(root, selected, pulse),
+                        {i: _join(relevant[i], prepared[i]) for i in ids}, saved['report'])
 
 
 def _write_part(directory, parts, rows):
@@ -99,21 +139,47 @@ def _write_part(directory, parts, rows):
     parts.append(name)
 
 
-def load_input(sid: str, version: str) -> SegmentInput:
+class _SelectedVectors(VectorStore):
+    """Stream the collection index; retain selected records and shard sizes."""
+
+    def __init__(self, root, ids):
+        super().__init__(root)
+        self.selected, self.sizes = {}, Counter()
+        if self.index.exists():
+            for row in _rows(self.index):
+                self.sizes[row['shard']] += 1
+                if row['doc_id'] in ids:
+                    self.selected[row['doc_id']] = row
+
+    def get(self, doc_ids):
+        from app.config import settings
+        selected = [self.selected[i] for i in doc_ids if i in self.selected]
+        dim = settings.embed_dim
+        if self.sizes:
+            first = next(iter(self.sizes))
+            dim = self._vectors(first, self.sizes[first]).shape[1]
+        values = np.empty((len(selected), dim), dtype=np.float32)
+        for i, row in enumerate(selected):
+            values[i] = self._vectors(row['shard'], self.sizes[row['shard']])[row['row']]
+        return [r['doc_id'] for r in selected], values
+
+
+def load_input(sid: str, version: str, *, pulse=None) -> SegmentInput:
     data = store.read_json(version_dir(sid, version) / 'session.json')
     if data is None:
         raise store.StoreError('Session not found', 404, 'not_found')
     relevant = read_export(sid, data)
     root = prepared_root(sid, data)
-    prepared = documents(sid, data)
+    selected = {r['doc_id'] for r in relevant}
+    prepared = _selected(root, 'docs', selected)
     paths = sorted((root / 'tokens').glob('*.jsonl'))
     if not paths:
         raise store.StoreError('형태소 토큰이 없습니다. 3단계 전처리를 다시 실행하세요.')
-    tokens = {row['doc_id']: row['tokens'] for path in paths for row in _rows(path)}
-    nouns = _nouns(root, prepared, tokens)
+    tokens = _selected(root, 'tokens', selected, 'tokens')
+    nouns = _nouns(root, selected, pulse)
     ids, joined, selected_tokens, selected_nouns = [], {}, {}, {}
     report = dict(relevant=len(relevant), zero_vector=0, no_tokens=0, truncated=0, by_channel={})
-    vectors = VectorStore(root)
+    vectors = _SelectedVectors(root, selected)
     # Keep the full result float16; only one normalization batch is float32.
     output = None
     count = 0

@@ -75,9 +75,12 @@ class SegmentStore:
         self.path = Path(directory) / 'segment' / 'segment.sqlite'
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._db() as db:
-            db.executescript(_SCHEMA)
-            if 'flags_json' not in {row['name'] for row in db.execute('PRAGMA table_info(personas)')}:
-                db.execute("ALTER TABLE personas ADD COLUMN flags_json TEXT DEFAULT '[]'")
+            db.execute('PRAGMA journal_mode=WAL')
+            if db.execute('PRAGMA user_version').fetchone()[0] < 1:
+                db.executescript(_SCHEMA)
+                if 'flags_json' not in {row['name'] for row in db.execute('PRAGMA table_info(personas)')}:
+                    db.execute("ALTER TABLE personas ADD COLUMN flags_json TEXT DEFAULT '[]'")
+                db.execute('PRAGMA user_version=1')
             self._columns = {table: {row['name'] for row in db.execute(f'PRAGMA table_info({table})')}
                              for table in (*_LAYERS, 'docs', 'codes', 'combos')}
 

@@ -17,7 +17,7 @@ from app.model import infer, registry
 def _label_entropy(label):
     if label['source'] != 'agreed':
         return 0.
-    votes = json.loads(label['votes_json'])
+    votes = json.loads(label['votes_json'] or '{}')
     if not votes.get('jev') or not votes.get('gpt'):
         return 0.
     gpt = votes['gpt']

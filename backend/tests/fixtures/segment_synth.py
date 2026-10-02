@@ -50,14 +50,18 @@ def fake_dims_backend(doc_ids):
 
 
 def make_segment_session(local_data_dir, *, clusters=5, personas=PERSONAS,
-                         contexts=CONTEXTS, docs_per_context=40, seed=42):
+                         contexts=CONTEXTS, docs_per_context=40, seed=42, qa=False):
     """Create one isolated session using the integration test's prep workflow.
 
     Pass one persona count per cluster and one context count per persona.
     Gaussian vectors use orthogonal cluster directions (length 3), persona
     offsets (length .5), and independent noise with sigma .05, then normalize.
+    qa=True makes 1,200 documents: one eight-topic Persona with a 16-document
+    negative topic (<15% of its retained documents), plus nine three-topic Personas.
     Repeated identical calls in the same data directory are rejected.
     """
+    if qa:
+        clusters, personas, contexts, docs_per_context = 5, (2,) * 5, (8,) + (3,) * 9, 40
     personas, contexts = tuple(personas), tuple(contexts)
     if (clusters < 1 or len(personas) != clusters or any(n < 1 for n in personas)
             or len(contexts) != sum(personas) or any(n < 1 for n in contexts)
@@ -66,6 +70,8 @@ def make_segment_session(local_data_dir, *, clusters=5, personas=PERSONAS,
         raise ValueError('Expected positive, matching layer counts and at least three documents')
     config = dict(clusters=clusters, personas=personas, contexts=contexts,
                   docs_per_context=docs_per_context, seed=seed)
+    if qa:
+        config['qa'] = True
     digest = hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest()[:12]
     sid, version = f'segment-synth-{digest}', 'v1'
     base = Path(local_data_dir).resolve()
@@ -87,17 +93,19 @@ def make_segment_session(local_data_dir, *, clusters=5, personas=PERSONAS,
                 context_id = f'{persona_id}-C{c}'
                 words = [f'{word}_{context_id}' for word in TOKENS]
                 expected['context_tokens'][context_id] = words
-                for _ in range(docs_per_context):
+                count = (8 if c == 0 else 16) if qa and persona_index == 0 else docs_per_context
+                negative = qa and persona_index == 0 and c == 1
+                for _ in range(count):
                     index = len(docs)
                     doc_id = f'd{index:06d}'
                     expected['assignments'][doc_id] = dict(cluster=cluster_id, persona=persona_id, context=context_id)
                     author = hashlib.sha256(f'author-{index // 2}'.encode()).hexdigest()
                     docs.append(dict(doc_id=doc_id, title=f'LG 휘센 에어컨 사용 경험 {doc_id}',
-                        body='LG 에어컨을 사용하며 냉방과 전기료를 살펴봤습니다. ' + ' '.join(nouns + words),
+                        body='LG 에어컨을 사용하며 냉방과 전기료를 살펴봤습니다. ' + ' '.join(nouns + words) + (' 짜증 불편 실망' if negative else ''),
                         comments=[dict(text='에어컨 예약 운전으로 편안하게 쉬고 싶어요.', author_hash=author)],
                         source=CHANNELS[index % len(CHANNELS)], author_hash=author,
                         date=(date(2026, 6, 1) + timedelta(days=index % 90)).isoformat()))
-                    tokens.append(nouns + words)
+                    tokens.append(nouns + words + (['짜증', '불편', '실망'] if negative else []))
                     vector = (3 * basis[:, cluster_index] + .5 * basis[:, clusters + persona_index]
                               + rng.normal(0, .05, 1024))
                     vectors.append(vector / np.linalg.norm(vector))

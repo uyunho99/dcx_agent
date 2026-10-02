@@ -16,6 +16,8 @@ import os
 import shutil
 import tempfile
 import json
+import logging
+import time
 from types import FunctionType
 import uuid
 
@@ -30,6 +32,14 @@ from app.segment import ctfidf, dims, drafts, inputs, l1, l2, l3, params, qualit
 from app.segment.store import SegmentStore
 
 STEPS = ('load', 'L1', 'L2', 'L3', 'quality', 'dims', 'drafts')
+
+
+LLM_REASON = 'LLM이 연결되지 않았거나 한도를 넘었습니다. 연결을 확인한 뒤 이어서 진행하세요.'
+GENERIC_REASON = '클러스터링 중 오류가 났습니다. 이어서 진행하거나 다시 실행하세요.'
+
+
+class _LLMUnavailable(BaseException):
+    """The shared worker maps non-Exception exits to interrupted."""
 
 
 class _Stopped(BaseException):
@@ -101,6 +111,7 @@ def _bind(function, **dependencies):
 class _Calls:
     def __init__(self, root, pulse):
         self.root, self.pulse = root, pulse
+        self.results = []
         self.path = root / 'llm_calls.json'
         self.counts = sessions.read_json(self.path) or dict.fromkeys(
             ('cluster_name', 'persona_draft', 'context_draft', 'dims'), 0)
@@ -113,10 +124,16 @@ class _Calls:
         path = self.root / 'draft_cache' / f'{digest}.json'
         cached = sessions.read_json(path) if name != 'dims' else None
         if cached is not None and cached.get('ok'):
-            return validate(task, cached['raw'])
+            result = validate(task, cached['raw'])
+            return result
         self.counts[name] += 1
         _write(self.path, self.counts)
-        result = registry.run_task(task)
+        try:
+            result = registry.run_task(task)
+        except (TimeoutError, ConnectionError):
+            from app.llm.base import failure
+            result = failure('backend', 'Provider unavailable')
+        self.results.append(None if result.ok else result.error.kind if result.error else 'unknown')
         if name != 'dims' and result.ok:
             _write(path, {'ok': True, 'raw': result.raw})
         return result
@@ -177,7 +194,7 @@ def _reps(source, ids, centroid=None):
             field, text = 'title', doc.get('title') or ''
         if not text and doc.get('comments'):
             field, idx, text = 'comments', 0, doc['comments'][0].get('text', '')
-        result.append(dict(docId=doc_id, text=text, source=doc.get('source', ''), field=field, idx=idx))
+        result.append(dict(docId=doc_id, text=text[:300], source=doc.get('source', ''), field=field, idx=idx))
     return result
 
 
@@ -229,20 +246,35 @@ def run(context):
     checkpoint['run'] = run_id
     _write(root / 'checkpoint.json', checkpoint)
     all_params = {k: v for k, v in vars(params).items() if k.isupper()}
-    _session(sid, version, dict(status='running', run=run_id, params=all_params), reset=not resume)
+    _session(sid, version, dict(status='running', run=run_id, params=all_params, reason=None, detail={}), reset=not resume)
     state = sessions.read_json(root / 'state.json') or {'warnings': []}
     source = None
     step = 'load'
 
-    def pulse(persona=None, completed=None):
-        detail = {'step': step}
+    active_detail = {}
+    last_load_pulse = 0.
+
+    def pulse(persona=None, completed=None, **counts):
+        nonlocal active_detail, last_load_pulse
+        if context.should_stop():
+            raise _Stopped()
+        if counts and counts.get('docs') not in (0, counts.get('total')):
+            if time.monotonic() - last_load_pulse < .2:
+                return
+        if counts:
+            last_load_pulse = time.monotonic()
+        if active_detail.get('step') != step:
+            active_detail = {'step': step}
         if persona is not None:
-            detail['persona'] = persona
+            ids = [p['persona_id'] for p in state.get('personas', [])]
+            active_detail.update(persona=ids.index(persona) + 1, personas=len(ids))
+        active_detail.update(counts)
+        detail = dict(active_detail)
         if completed is not None:
             detail['completed'] = completed
         progress = len(checkpoint['done']) / len(STEPS)
         context.heartbeat(progress, detail)
-        _session(sid, version, dict(step=step, progress=progress))
+        _session(sid, version, dict(step=step, progress=progress, detail=detail))
         if context.should_stop():
             raise _Stopped()
 
@@ -252,7 +284,7 @@ def run(context):
             pulse()
             if step == 'load':
                 if step not in checkpoint['done']:
-                    source = inputs.load_input(sid, version)
+                    source = inputs.load_input(sid, version, pulse=pulse)
                     if len(source.ids) < 3:
                         raise sessions.StoreError('클러스터링할 문서가 없습니다.' if not source.ids else '클러스터링할 문서가 부족합니다.', 409)
                     fd, temporary = tempfile.mkstemp(dir=root, prefix='.vectors-')
@@ -265,14 +297,15 @@ def run(context):
                     finally:
                         if os.path.exists(temporary):
                             os.unlink(temporary)
-                    _write(root / 'input.json', {k: v for k, v in vars(source).items() if k != 'vectors'})
+                    _write(root / 'input.json', {'ids': source.ids, 'report': source.report})
                     state['input'] = source.report
                 else:
-                    source = inputs.SegmentInput(**sessions.read_json(root / 'input.json'),
-                        vectors=np.load(root / 'vectors.npy', mmap_mode='r', allow_pickle=False))
+                    source = inputs.restore_input(sid, version, sessions.read_json(root / 'input.json'),
+                        np.load(root / 'vectors.npy', mmap_mode='r', allow_pickle=False), pulse=pulse)
                 source.index = {doc_id: i for i, doc_id in enumerate(source.ids)}
             if step in checkpoint['done']:
                 continue
+            calls.results.clear()
             if step == 'L1':
                 suggestion = l1.suggest_k(source.vectors, np.random.default_rng(params.SEED)) if len(source.ids) >= 4 else dict(k=3, silhouette={}, inertia={}, sample=3)
                 k = checkpoint['k'] or suggestion['k']
@@ -318,6 +351,8 @@ def run(context):
                     result = l3.contexts(ids, source.tokens, vectors,
                         sentiment_by_id={i: sig[i]['sentiment'] for i in ids})
                     state['l3'][pid] = dict(scan=result.scan, topic_ids=result.topic_ids)
+                    if 'granularity_exceeded' in result.flags:
+                        persona['flags'] = list(dict.fromkeys(persona['flags'] + ['granularity_exceeded']))
                     for local, center in result.centroids.items():
                         state['contexts'].append(dict(context_id=f'{pid}-{local}', persona_id=pid,
                             keywords=result.topic_words[local], centroid=center.tolist(), quality={},
@@ -343,6 +378,10 @@ def run(context):
                 for persona in store.personas():
                     persona['flags'] = list(dict.fromkeys([flag for flag in (persona['flags'] or []) if flag != 'draft_failed'] + result['flags'].get(persona['persona_id'], [])))
                     _save_row(store, 'personas', 'persona_id', persona)
+            if step in ('dims', 'drafts') and calls.results and all(
+                    kind in ('backend', 'timeout') for kind in calls.results):
+                _session(sid, version, {'status': 'interrupted', 'reason': LLM_REASON})
+                raise _LLMUnavailable()
             _write(root / 'state.json', state)
             checkpoint['done'].append(step)
             _write(root / 'checkpoint.json', checkpoint)
@@ -357,8 +396,12 @@ def run(context):
         return result
     except _Stopped:
         _session(sid, version, {'status': 'interrupted'})
-    except Exception:
-        _session(sid, version, {'status': 'failed'})
+    except Exception as exc:
+        reason = str(exc) if isinstance(exc, sessions.StoreError) else GENERIC_REASON
+        try:
+            _session(sid, version, {'status': 'failed', 'reason': reason})
+        except Exception:
+            logging.getLogger(__name__).exception('Could not publish failed segment status')
         raise
 
 

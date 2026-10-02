@@ -197,6 +197,7 @@ export type SegmentContext = SegmentRow & {
 };
 export type SegmentKSuggest = { k: number; suggested: number; silhouette: Record<string, number>; inertia: Record<string, number>; dendrogram: unknown[]; sample: number };
 export type SegmentStatus = {
+    detail?: { step?: string; persona?: number; personas?: number; docs?: number; total?: number };
   run: string | null; status: WorkerState | 'review'; step: 'load' | 'L1' | 'L2' | 'L3' | 'quality' | 'dims' | 'drafts';
   progress: number; confirm: Record<SegmentLayer, string>; stage6?: Record<string, unknown>; reason?: string;
 };

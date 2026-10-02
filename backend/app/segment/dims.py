@@ -195,8 +195,8 @@ def _extract(sid, batches, docs, cache, instructions):
         attachments = []
         for doc_id in batch:
             doc = docs[doc_id]
-            text = dict(title=doc.get('title', ''), body=doc.get('body', ''),
-                        comments=[{'idx': i, 'text': c.get('text', '')[:300]}
+            text = dict(title=doc.get('title', ''), body=(doc.get('body') or '')[:2000],
+                        comments=[{'idx': i, 'text': ((c.get('text') or '') if isinstance(c, dict) else str(c))[:300]}
                                   for i, c in enumerate(doc.get('comments', [])[:10])])
             attachments.append(Attachment(title=doc_id, body=json.dumps(text, ensure_ascii=False)))
         task = LLMTask(task='segment.dims', sid=sid, instructions=instructions,

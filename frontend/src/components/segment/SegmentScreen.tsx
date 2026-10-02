@@ -109,6 +109,13 @@ export function SegmentScreen({ sid, version, readonly = false }: Props) {
                 return;
             if ([a, b, c].some(result => result && result.run !== s.run))
                 throw new Error(segmentErrorMessages.stale_run);
+            const rows = [...a.clusters, ...(b?.personas ?? []), ...(c?.contexts ?? [])];
+            setEdits(previous => Object.fromEntries(Object.entries(previous).filter(([id, value]) => {
+                if (!value) return false;
+                const row = rows.find(r => r.id === id);
+                return !row?.confirmed || !Object.entries(value).every(([key, val]) =>
+                    JSON.stringify((row as unknown as Record<string, unknown>)[key]) === JSON.stringify(val));
+            })));
             setClusters(a.clusters);
             setSuggest(a.kSuggest);
             if (kRun.current !== s.run) {
@@ -138,7 +145,7 @@ export function SegmentScreen({ sid, version, readonly = false }: Props) {
             setPersonas([]);
             setContexts([]);
             const saved = currentSegmentDraft(savedDraft, current.run);
-            setEdits(saved && typeof saved.edits === 'object' && saved.edits !== null ? saved.edits as Record<string, Edit> : {});
+            setEdits(saved && typeof saved.edits === 'object' && saved.edits !== null ? Object.fromEntries(Object.entries(saved.edits).filter(([, value]) => value !== null)) as Record<string, Edit> : {});
         }
         if (!running(current) && current.run && ['review', 'done'].includes(current.status) && loadedStatus.current !== current)
             void load(current);
@@ -179,7 +186,7 @@ export function SegmentScreen({ sid, version, readonly = false }: Props) {
                 return;
             const remaining = Object.fromEntries(Object.entries(edits).filter(([id]) => !ids.includes(id)));
             if (current?.run)
-                await patchSession(sid, { drafts: { segment: { run: current.run, edits: remaining } } }, version);
+                await patchSession(sid, { drafts: { segment: { run: current.run, edits: { ...remaining, ...Object.fromEntries(ids.map(id => [id, null])) } } } }, version);
             const next = await fetcher();
             if (active.current) {
                 if (next.run === runRef.current) await load(next);
@@ -284,7 +291,7 @@ export function SegmentScreen({ sid, version, readonly = false }: Props) {
         e.preventDefault();
         closeReset();
     } }}><p>이름 · Desire · Context 확정이 모두 지워집니다.</p><Button disabled={blocked} onClick={() => void start(true)}>확인하고 다시 나누기</Button><Button disabled={busy} onClick={closeReset}>취소</Button></div>}</>}
- {!current ? <Card><p role="status">클러스터링 정보를 불러오는 중…</p></Card> : running(current) ? <Card className="space-y-4"><h2 className="ds-t-card">6단계 · 실행 중</h2><p aria-live="polite">{`${current.step} · ${steps.find(([key]) => key === current.step)?.[1] ?? ''} ${current.status === 'paused' ? '일시 정지' : '진행 중'} ${Math.round(current.progress * 100)}%`}</p><ol className="grid grid-cols-4 gap-3">{steps.map(([key, label], i) => { const position = steps.findIndex(([k]) => k === current.step); return <li key={key}><Badge>{i < position ? '완료' : i === position ? '진행 중' : '대기'}</Badge><p>{label}</p></li>; })}</ol><ProgressBar label="클러스터링 진행" value={current.progress * 100}/><p>화면을 닫아도 계속됩니다.</p><Button disabled>다시 나누기</Button></Card> : !current.run || !['review', 'done'].includes(current.status) ? <Card className="space-y-4"><p>학습 결과의 Core · Supporting 문서를 나눕니다.</p><Button variant="primary" disabled={blocked} onClick={() => void start()}>{current.status === 'failed' || current.status === 'interrupted' ? '이어서 진행' : '클러스터링 실행'}</Button></Card> : !loaded ? <Card><p role="status">결과를 불러오는 중…</p></Card> : <>
+ {!current ? <Card><p role="status">클러스터링 정보를 불러오는 중…</p></Card> : running(current) ? <Card className="space-y-4"><h2 className="ds-t-card">6단계 · 실행 중</h2><p aria-live="polite">{`${current.step} · ${steps.find(([key]) => key === current.step)?.[1] ?? ''} ${current.detail?.personas ? `${current.detail.persona}/${current.detail.personas} Persona ` : current.detail?.total ? `${current.detail.docs}/${current.detail.total} 문서 ` : ''}${current.status === 'paused' ? '일시 정지' : '진행 중'} ${Math.round(current.progress * 100)}%`}</p><ol className="grid grid-cols-4 gap-3">{steps.map(([key, label], i) => { const position = steps.findIndex(([k]) => k === current.step); return <li key={key}><Badge>{i < position ? '완료' : i === position ? '진행 중' : '대기'}</Badge><p>{label}</p></li>; })}</ol><ProgressBar label="클러스터링 진행" value={current.progress * 100}/><p>화면을 닫아도 계속됩니다.</p><Button disabled>다시 나누기</Button></Card> : !current.run || !['review', 'done'].includes(current.status) ? <Card className="space-y-4"><p>학습 결과의 Core · Supporting 문서를 나눕니다.</p><Button variant="primary" disabled={blocked} onClick={() => void start()}>{current.status === 'failed' || current.status === 'interrupted' ? '이어서 진행' : '클러스터링 실행'}</Button></Card> : !loaded ? <Card><p role="status">결과를 불러오는 중…</p></Card> : <>
  {layer === '6-A' && <>{suggest && <details><summary className="cursor-pointer">k 제안 근거 보기</summary><div className="max-w-sm"><KSuggestChart k={suggest.suggested} silhouette={suggest.silhouette} sample={suggest.sample}/></div></details>}{clusters.length ? <ClusterLayer {...editor} clusters={clusters} onRequest={(id, kind, note) => void mutate(() => api.createSegmentRequest(sid, { layer: 'clusters', id, kind, note }, version))}/> : <Card>클러스터링할 문서가 없습니다.</Card>}</>}
  {layer === '6-B' && <PersonaLayer {...editor} forwardPrimary={!!forward} personas={personas} clusters={clusters} selected={chosen?.id ?? ''} onSelect={setSelected}/>}
  {layer === '6-C' && <div className="grid grid-cols-[minmax(160px,1fr)_minmax(0,3fr)] gap-5"><nav aria-label="Persona 목록" className="min-w-0 space-y-2">{personas.map(p => { const rows = contexts.filter(c => c.personaId === p.id); return <Button key={p.id} className="w-full whitespace-normal text-left" aria-current={chosen?.id === p.id ? 'true' : undefined} onClick={() => setSelected(p.id)}>{p.clusterId} · {p.name ?? p.nameDraft ?? p.id} · {rows.filter(c => c.confirmed).length}/{rows.length} 확정</Button>; })}</nav><ContextLayer {...editor} contexts={visibleContexts} emptyRatio={emptyRatio} onBulk={bulk}/></div>}

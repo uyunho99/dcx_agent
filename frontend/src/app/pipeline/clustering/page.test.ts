@@ -213,3 +213,41 @@ it('does not clear a stale write error when a status request succeeds',async()=>
  nodes(tree).find(n=>n.type===ClusterLayer).props.onConfirm('CL0');await tick();screen();await state.pollOptions.fetcher();tree=screen();
  expect(textOf(tree)).toContain('다른 화면에서 다시 나눠 결과가 바뀌었습니다. 새로고침하세요.');expect(nodes(tree).find(n=>n.type===ClusterLayer).props.disabled).toBe(true);
 });
+
+it('keeps confirmation after edit, confirm, and remount through merged server drafts',async()=>{
+ vi.useFakeTimers();let server:any={run:'r1',edits:{}};
+ vi.mocked(patchSession).mockImplementation(async(_sid,patch:any)=>{server={...server,...patch.drafts.segment,edits:{...server.edits,...patch.drafts.segment.edits}};return {} as any;});
+ let tree=await ready();nodes(tree).find(n=>n.type===ClusterLayer).props.onEdit('CL0',{name:'확정 이름'});
+ await vi.advanceTimersByTimeAsync(600);tree=screen();
+ const completed={...status,confirm:{...status.confirm,clusters:'1/1'}};
+ vi.mocked(api.getSegmentStatus).mockResolvedValue(completed as any);
+ vi.mocked(api.getSegmentClusters).mockResolvedValue({run:'r1',clusters:[{...row,name:'확정 이름',confirmed:true}],kSuggest:null} as any);
+ nodes(tree).find(n=>n.type===ClusterLayer).props.onConfirm('CL0');await tick();
+ expect(server.edits.CL0).toBeNull();
+ hooks.slots.forEach(s=>s?.cleanup?.());hooks.slots=[];hooks.effects=[];
+ vi.mocked(getVersionSession).mockResolvedValue({data:{drafts:{segment:server}}} as any);
+ tree=await ready(completed);const layer=nodes(tree).find(n=>n.type===ClusterLayer);
+ expect(layer.props.edits).toEqual({});expect(textOf(ClusterLayer(layer.props))).toContain('확정됨');expect(textOf(tree)).toContain('6-B로 →');
+ vi.mocked(patchSession).mockReset();
+});
+it('drops legacy restored edits only when confirmed values match',async()=>{
+ vi.mocked(getVersionSession).mockResolvedValue({data:{drafts:{segment:{run:'r1',edits:{CL0:{name:'확정 이름'},CL1:{name:'새 수정'},CL2:null}}}}} as any);
+ vi.mocked(api.getSegmentClusters).mockResolvedValue({run:'r1',clusters:[{...row,name:'확정 이름',confirmed:true},{...row,id:'CL1',name:'기존',confirmed:true}],kSuggest:null} as any);
+ const tree=await ready();expect(nodes(tree).find(n=>n.type===ClusterLayer).props.edits).toEqual({CL1:{name:'새 수정'}});
+});
+it('announces numbered Persona progress',async()=>{
+ const tree=await ready({...status,status:'running',step:'L3',detail:{step:'L3',persona:3,personas:12}});
+ expect(textOf(nodes(tree).find(n=>n.props?.['aria-live']==='polite'))).toContain('L3 · Context 3/12 Persona');
+});
+it('renders the target declaration hint on the Persona',()=>{
+ const tree=PersonaLayer({...base,personas:[{...persona,hint:'초안 힌트: 0단계 대상 선언 · 가정 사용자'}],selected:'P1',onSelect:vi.fn()} as any);
+ expect(textOf(tree)).toContain('초안 힌트: 0단계 대상 선언 · 가정 사용자');
+ expect(textOf(tree).match(/초안 힌트:/g)).toHaveLength(1);
+});
+it('shows the Korean failure reason and load document counts',async()=>{
+ let tree=await ready({...status,status:'failed',reason:'형태소 토큰이 없습니다. 3단계 전처리를 다시 실행하세요.'});
+ expect(textOf(tree)).toContain('형태소 토큰이 없습니다. 3단계 전처리를 다시 실행하세요.');
+ state.poll={...status,status:'running',step:'load',detail:{step:'load',docs:20,total:100}};
+ screen();tree=screen();
+ expect(textOf(nodes(tree).find(n=>n.props?.['aria-live']==='polite'))).toContain('20/100 문서');
+});

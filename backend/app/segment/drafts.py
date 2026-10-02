@@ -61,6 +61,8 @@ def _save(store, table, key, item_id, values):
 
 def _draft(sid, task_name, model, one_liner, evidence):
     prompt = (Path(__file__).with_name('prompts') / f'{task_name}.v1.md').read_text(encoding='utf-8')
+    evidence = {**evidence, 'reps': [{**rep, 'text': (rep.get('text') or '')[:300]}
+                                   for rep in evidence.get('reps', [])[:params.REPS]]}
     task = LLMTask(task=f'segment.{task_name}', sid=sid, instructions=prompt,
                    attachments=[Attachment(title='프로젝트 맥락과 관찰 근거',
                        body=one_liner + '\n' + json.dumps(evidence, ensure_ascii=False))],

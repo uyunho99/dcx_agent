@@ -213,3 +213,65 @@ def test_failed_cache_publication_is_rebuilt(session, monkeypatch):
     assert not (root / 'nouns/manifest.json').exists()
     assert len(load_input(session.sid, session.version).ids) == 13
     assert store.read_json(root / 'nouns/manifest.json')['status'] == 'done'
+
+
+def test_sparse_collection_memory_and_noun_pulse(session, data_dir, monkeypatch):
+    import gc
+    import tracemalloc
+    from app.segment import inputs
+    data = snapshot(session)
+    root = prepared_root(session.sid, data)
+    export = data_dir / data['training']['exportRef']
+    rows = [json.loads(line) for line in export.read_text().splitlines()]
+    write_rows(export, rows[3:5])
+    monkeypatch.setattr(inputs, '_SHARD_ROWS', 100)
+    def measure(extra):
+        import shutil
+        shutil.rmtree(root / 'nouns', ignore_errors=True)
+        with (root / 'docs/extra.jsonl').open('w') as docs, (root / 'tokens/extra.jsonl').open('w') as tokens:
+            for i in range(extra):
+                docs.write(json.dumps({'doc_id': f'extra{i}', 'body': 'x'*8000})+'\n')
+                tokens.write(json.dumps({'doc_id': f'extra{i}', 'tokens': ['noun']*20})+'\n')
+        manifest = store.read_json(root / 'manifest.json')
+        manifest['counts']['after'] = extra + 16
+        store.write_json(root / 'manifest.json', manifest)
+        gc.collect()
+        tracemalloc.start()
+        result = load_input(session.sid, 'v1')
+        _, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        assert result.ids == ['d000003', 'd000004']
+        assert store.read_json(root / 'nouns/manifest.json')['count'] == extra + 16
+        return peak
+    small = measure(200)
+    large = measure(4000)
+    assert large < small * 3 + 2_000_000
+
+
+def test_noun_build_pulses_and_stops(session, monkeypatch):
+    from app.segment import inputs
+    root = prepared_root(session.sid, snapshot(session))
+    manifest = store.read_json(root / 'manifest.json')
+    manifest['config']['tokenPos'] = ['VV']
+    store.write_json(root / 'manifest.json', manifest)
+    monkeypatch.setattr(inputs, 'tokenize', lambda *a: ['noun'])
+    events = []
+    class Stopped(BaseException):
+        pass
+    def pulse(**detail):
+        events.append(detail)
+        if detail['docs'] >= 2:
+            raise Stopped
+    with pytest.raises(Stopped):
+        load_input(session.sid, 'v1', pulse=pulse)
+    assert events[0] == {'docs': 0, 'total': 16}
+    assert not (root / 'nouns/manifest.json').exists()
+    assert load_input(session.sid, 'v1').ids
+
+
+def test_sparse_vectors_do_not_materialize_collection_index(session, monkeypatch):
+    from app.vectors.store import VectorStore
+    monkeypatch.setattr(VectorStore, '_records', lambda self: pytest.fail('whole collection vector index loaded'))
+    result = load_input(session.sid, 'v1')
+    assert len(result.ids) == 13
+    np.testing.assert_allclose(np.linalg.norm(result.vectors.astype(np.float32), axis=1), 1, atol=.001)

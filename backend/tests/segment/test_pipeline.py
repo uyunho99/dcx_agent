@@ -118,7 +118,7 @@ def test_heartbeat_each_persona(setup):
     pipeline.run(ctx)
     ids = {p['persona_id'] for p in SegmentStore.open(fixture.sid, 'v1').personas()}
     for step in ('L3', 'drafts'):
-        assert ids <= {d.get('persona') for _, d in ctx.events if d.get('step') == step}
+        assert set(range(1, len(ids) + 1)) <= {d.get('persona') for _, d in ctx.events if d.get('step') == step}
 
 
 @pytest.mark.parametrize('args', [{'k': 3, 'fresh': False}, {'k': None, 'fresh': True}])

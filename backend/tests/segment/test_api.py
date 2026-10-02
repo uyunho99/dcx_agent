@@ -351,3 +351,38 @@ def test_generation_on_docs_is_captured_before_rows(api, monkeypatch):
     monkeypatch.setattr(SegmentStore, 'docs', rotate)
     page = ok(api.client.get(api.base + '/docs?limit=1'))
     assert page['run'] == old
+
+
+@pytest.mark.parametrize('scope', [None, {}, {'note': '가정에서 에어컨을 쓰는 사람'}])
+def test_target_scope_hint(api, scope):
+    run(api)
+    confirm(api, 'clusters')
+    path = version_dir(api.sid, 'v1') / 'session.json'
+    data = sessions.read_json(path)
+    data['projectContext'] = {'targetScope': scope}
+    sessions.write_json(path, data)
+    rows = ok(api.client.get(api.base + '/personas'))['personas']
+    for row in rows:
+        if scope:
+            assert row['hint'] == '초안 힌트: 0단계 대상 선언 · 가정에서 에어컨을 쓰는 사람'
+        else:
+            assert not row.get('hint')
+
+
+def test_status_prefers_korean_reason_and_exposes_detail(api):
+    reason = '클러스터링할 문서가 없습니다.'
+    sessions.update_session(api.sid, {'segment': {'status': 'failed', 'reason': reason}})
+    detail = {'step': 'L3', 'persona': 3, 'personas': 12}
+    api.works.append(dict(version='v1', kind='segment', state='failed', error='StoreError', detail=detail))
+    state = ok(api.client.get(api.base + '/status'))
+    assert state['reason'] == reason
+    assert state['detail'] == detail
+
+
+@pytest.mark.parametrize('layer', ['clusters', 'personas'])
+def test_api_caps_legacy_representatives(api, layer):
+    api.store.write_layers(
+        clusters=[{'cluster_id': 'CL0', 'confirmed_at': 'saved', 'reps': [{'text': 'x'*1000}]}],
+        personas=[{'persona_id': 'CL0-P0', 'cluster_id': 'CL0', 'reps': [{'text': 'y'*1000}]}])
+    rows = ok(api.client.get(api.base + '/' + layer))[layer]
+    assert len(rows[0]['reps'][0]['text']) == 300
