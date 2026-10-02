@@ -66,6 +66,18 @@ def _call(sid, name, schema, payload, run_task):
     return result.data.model_dump()
 
 
+def check_constraints(sid, text, project_context, *, run_task=None) -> list[dict]:
+    """Check every distinct configured constraint with the shared task contract."""
+    constraints = list(dict.fromkeys(_mapping(project_context).get('constraints', [])))
+    checked = _call(sid, 'constraint_check', ConstraintCheckOut,
+                    dict(prescription=_mapping(text), constraints=constraints),
+                    registry.run_task if run_task is None else run_task)['constraints']
+    if (len(checked) != len(constraints)
+            or {row['constraint'] for row in checked} != set(constraints)):
+        raise PrescriptionError('persona.constraint_check: incomplete or unknown constraints')
+    return checked
+
+
 def prescribe(sid, card_summary, project_context, *, run_task=None) -> dict:
     """Check each draft separately; repair once only when a verdict violates.
 
@@ -81,11 +93,7 @@ def prescribe(sid, card_summary, project_context, *, run_task=None) -> dict:
                    keyMetrics=context.get('keyMetrics', []), constraints=constraints)
     for attempt in range(2):
         draft = _call(sid, 'prescribe', PrescriptionOut, payload, run_task)
-        checked = _call(sid, 'constraint_check', ConstraintCheckOut,
-                        dict(prescription=draft, constraints=constraints), run_task)['constraints']
-        if (len(checked) != len(constraints)
-                or {row['constraint'] for row in checked} != set(constraints)):
-            raise PrescriptionError('persona.constraint_check: incomplete or unknown constraints')
+        checked = check_constraints(sid, draft, context, run_task=run_task)
         violations = [row for row in checked if row['verdict'] == 'violates']
         if violations and attempt == 0:
             payload = {**payload, 'previous_prescription': draft, 'violations': violations}

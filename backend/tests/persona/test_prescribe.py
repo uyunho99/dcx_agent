@@ -163,3 +163,14 @@ def test_invalid_output_fails_after_registry_schema_retry(monkeypatch, name, raw
     with pytest.raises(PrescriptionError, match=name):
         operation('s', SUMMARY, PROJECT_CONTEXT)
     assert calls.count(name) == 2
+
+
+def test_public_constraint_check(monkeypatch):
+    from app.persona.prescribe import check_constraints
+
+    run, calls = runner(monkeypatch, ('review',))
+    context = {**PROJECT_CONTEXT, 'constraints': [CONSTRAINT, CONSTRAINT]}
+    checked = check_constraints('s', SUMMARY, context, run_task=run)
+    assert [task.task for task in calls] == ['persona.constraint_check']
+    assert payload(calls[0]) == {'prescription': SUMMARY, 'constraints': [CONSTRAINT]}
+    assert checked == [dict(constraint=CONSTRAINT, verdict='review', reason='의료적 효과를 단정함')]

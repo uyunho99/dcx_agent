@@ -24,3 +24,10 @@
 ### D-308 ② · ③ 공유 파일 충돌은 ② 먼저 merge, ③ T17 rebase에서 해결 · 판단 (Claude)
 - 공유 파일: `app/work/worker.py` · `app/context/versions.py` · `app/routers/sessions.py` · `StepBar.tsx` · `completedThrough.ts`. 각 브랜치 안에서는 한 Task만 고친다.
 ### D-309 이전 세션 추천은 최근 20개 · 같은 제목 중복 제거 · 판단 (Claude, Review Focus 4)
+
+## 구현 (2026-10-02)
+
+### D-310 8-F 근거 문구의 작성자 수는 근거 문서의 author_hash 중복 제거 수 · 판단 (Claude, T9 Codex 우려)
+- Context별 author_count를 더하면 여러 Context에 쓴 같은 작성자가 두 번 센다. segment.sqlite docs의 author_hash로 근거 doc_id 기준 중복 제거.
+### D-311 레이더 백분위는 중간 순위(midrank) 0~100 · 판단 (Claude, T8 Codex 선택 수용)
+- `100 × (아래 수 + 0.5 × 같은 수) / N`. 같은 값은 같은 순위, 하나뿐이면 50.
