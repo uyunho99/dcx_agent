@@ -1,0 +1,398 @@
+#!/bin/bash
+# Shared by deploy.sh and dcxctl. Requires env.sh; compatible with Bash 3.2.
+
+utc_now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+epoch_now() { date +%s; }
+sha256() {
+    if command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 | awk '{print $1}'
+    else
+        sha256sum | awk '{print $1}'
+    fi
+}
+atomic_move() {
+    if [[ "$(uname -s)" == Darwin ]]; then
+        mv -fh "$1" "$2"
+    else
+        mv -fT "$1" "$2"
+    fi
+}
+log() { # decision [JSON object or comma-separated JSON fields]
+    mkdir -p "$APP_ROOT/logs"
+    if command -v python3.12 >/dev/null 2>&1; then
+        python3.12 - "$APP_ROOT/logs/deploy.log" "$(utc_now)" "${sha:-}" "$1" "${2:-}" <<'PY'
+import json, sys
+path, at, sha, decision, extra = sys.argv[1:]
+record = dict(at=at, sha=sha, decision=decision)
+if extra:
+    record.update(json.loads(extra if extra.startswith('{') else '{'+extra+'}'))
+with open(path, 'a') as f:
+    f.write(json.dumps(record, separators=(',', ':'))+'\n')
+PY
+    else
+        # Preflight must also report a missing Python interpreter.
+        printf '{"at":"%s","sha":"","decision":"error","missing":"python3.12"}\n' "$(utc_now)" >> "$APP_ROOT/logs/deploy.log"
+    fi
+}
+preflight() {
+    local binary
+    for binary in node npm python3.12 codex git curl; do
+        if ! command -v "$binary" >/dev/null 2>&1; then
+            log error "\"missing\":\"$binary\""
+            return 1
+        fi
+    done
+}
+current_sha() {
+    [[ -L "$APP_ROOT/current" ]] || return 0
+    basename "$(readlink "$APP_ROOT/current")"
+}
+release() {
+    local lock="$SHARED/deploy.lock"
+    if [[ "$(cat "$lock/pid" 2>/dev/null || true)" == "$$" ]]; then
+        rm -rf "$lock"
+    fi
+}
+acquire_lock() {
+    local lock="$SHARED/deploy.lock"
+    mkdir -p "$SHARED"
+    if ! mkdir "$lock" 2>/dev/null; then
+        # An advisory flock serializes stale-owner takeover, including the
+        # mkdir-to-pid publication window. Kernel releases it after a crash.
+        python3.12 - "$lock" "$$" <<'PY'
+import fcntl, os, pathlib, shutil, sys, time
+lock = pathlib.Path(sys.argv[1]); pid = sys.argv[2]
+with open(str(lock)+'.guard', 'a') as guard:
+    fcntl.flock(guard, fcntl.LOCK_EX)
+    if lock.exists():
+        try:
+            owner = int((lock/'pid').read_text())
+        except (OSError, ValueError):
+            # A live creator may not have published its pid yet.
+            if time.time() - lock.stat().st_mtime < 5:
+                sys.exit(1)
+            owner = None
+        if owner and owner > 0:
+            try:
+                os.kill(owner, 0)
+            except ProcessLookupError:
+                pass
+            except PermissionError:
+                sys.exit(1)
+            else:
+                sys.exit(1)
+        shutil.rmtree(lock)
+    lock.mkdir()
+    (lock/'pid').write_text(pid+'\n')
+PY
+        [[ $? == 0 ]] || return 1
+    else
+        echo $$ > "$lock/pid"
+    fi
+    trap release EXIT
+}
+switch_to() {
+    [[ "$1" != */* && -n "$1" && -d "$APP_ROOT/releases/$1" ]] || return 1
+    # Remove a dangling temporary link left by an interrupted rename.
+    rm -f "$APP_ROOT/current.tmp"
+    ln -s "releases/$1" "$APP_ROOT/current.tmp" || return 1
+    atomic_move "$APP_ROOT/current.tmp" "$APP_ROOT/current"
+}
+
+# Build subprocesses receive only explicit public configuration. Never source
+# app.env, runtime.env, or inherit arbitrary caller secrets in a build process.
+clean_build() { # shell program [positional arguments]
+    python3.12 - "$SHARED/runtime.env" "$@" <<'PY'
+import os, re, shlex, sys
+runtime, program = sys.argv[1:3]
+env = {k: os.environ[k] for k in ('PATH', 'HOME', 'APP_ROOT', 'TMPDIR', 'DCX_PIP_CMD') if k in os.environ}
+# Fakes are available only when the caller explicitly requests a test hook.
+if os.environ.get('DCX_BUILD_CMD') or os.environ.get('DCX_PIP_CMD'):
+    env.update((k,v) for k,v in os.environ.items() if k.startswith('FAKE_'))
+try:
+    lines = open(runtime).readlines()
+except FileNotFoundError:
+    lines = []
+for line in lines:
+    match = re.match(r'^\s*(?:export\s+)?(NEXT_PUBLIC_[A-Za-z0-9_]+)\s*=\s*(.*?)\s*$', line)
+    if match:
+        parts = shlex.split(match[2], comments=True)
+        env[match[1]] = ' '.join(parts)
+env.setdefault('NEXT_PUBLIC_API_URL', 'http://127.0.0.1:'+os.environ['DCX_API_PORT'])
+os.execve('/bin/bash', ['/bin/bash', '-c', program, 'dcx-build']+sys.argv[3:], env)
+PY
+}
+build_config_hash() {
+    clean_build 'python3.12 -c '\''import json,os; print(json.dumps({k:v for k,v in os.environ.items() if k.startswith("NEXT_PUBLIC_")},sort_keys=True))'\''' | sha256
+}
+build_release() { # sha
+    local target="$1" release_dir="$APP_ROOT/releases/$1" config key venv
+    config="$(build_config_hash)" || return 1
+    if [[ -f "$release_dir/.built" && "$(cat "$release_dir/.build-config" 2>/dev/null)" == "$config" ]]; then
+        return 0
+    fi
+    # Rebuilding a current release in place would modify live code.
+    if [[ "$(current_sha)" == "$target" && -f "$release_dir/.built" ]]; then
+        log error '"reason":"cannot rebuild active release; deploy another commit first"'
+        return 1
+    fi
+    rm -rf "$release_dir"
+    mkdir -p "$release_dir" "$SHARED/venvs" || return 1
+    if ! (set -o pipefail; git -C "$APP_ROOT/repo" archive "$target" | tar -x -C "$release_dir"); then
+        rm -rf "$release_dir"
+        return 1
+    fi
+    if [[ -n "${DCX_BUILD_CMD:-}" ]]; then
+        if ! clean_build 'cd "$2" && "$3" "$1"' "$target" "$release_dir" "$DCX_BUILD_CMD"; then
+            rm -rf "$release_dir"
+            return 1
+        fi
+    else
+        # Constraints and interpreter version are part of the cache identity.
+        key="$( (set -o pipefail; cat "$release_dir/backend/requirements.txt" && cat "$release_dir/backend/constraints.txt" && python3.12 --version) | sha256)" || { rm -rf "$release_dir"; return 1; }
+        venv="$SHARED/venvs/$key"
+        if [[ ! -f "$venv/.complete" ]]; then
+            rm -rf "$venv"
+            if ! clean_build 'python3.12 -m venv "$1" && "${DCX_PIP_CMD:-$1/bin/pip}" install -r "$2/backend/requirements.txt" -c "$2/backend/constraints.txt"' "$venv" "$release_dir"; then
+                rm -rf "$venv" "$release_dir"
+                return 1
+            fi
+            touch "$venv/.complete"
+        fi
+        ln -s "$venv" "$release_dir/backend/.venv" || return 1
+        if ! clean_build 'cd "$1/frontend" && npm ci && npm run build' "$release_dir"; then
+            rm -rf "$release_dir"
+            return 1
+        fi
+    fi
+    # Link secrets only after npm/lifecycle scripts have finished.
+    ln -sf "$SHARED/app.env" "$release_dir/.env" || return 1
+    printf '%s\n' "$config" > "$release_dir/.build-config"
+    touch "$release_dir/.built"
+}
+snapshot_sessions() { # sha; stdout is exclusively the snapshot path
+    python3.12 - "$SHARED" "$1" <<'PY'
+from datetime import datetime, timezone
+import pathlib, shutil, sys
+shared = pathlib.Path(sys.argv[1]); base = shared/'snapshots'
+base.mkdir(parents=True, exist_ok=True)
+snap = base/(datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')+'-'+sys.argv[2])
+snap.mkdir()
+for name in ('sessions','work'):
+    source = shared/'data'/name
+    if source.exists():
+        shutil.copytree(source, snap/name, symlinks=True, copy_function=shutil.copy2)
+# Failed-data backups are evidence, not successful snapshots; retain them.
+complete = sorted(p for p in base.iterdir() if p.is_dir() and not p.name.endswith('-failed'))
+for old in complete[:-5]:
+    shutil.rmtree(old)
+print(snap)
+PY
+}
+restore_sessions() { # snapshot directory; services and workers MUST be stopped
+    python3.12 - "$SHARED" "$1" <<'PY'
+import pathlib, shutil, sys
+shared = pathlib.Path(sys.argv[1]); snap = pathlib.Path(sys.argv[2])
+if not snap.is_dir() or snap.parent.resolve() != (shared/'snapshots').resolve():
+    raise ValueError('missing or invalid snapshot')
+backup = snap.with_name(snap.name+'-failed')
+backup.mkdir(exist_ok=True)
+(shared/'data').mkdir(exist_ok=True)
+for name in ('sessions','work'):
+    live = shared/'data'/name
+    if live.exists():
+        if not (backup/name).exists():
+            shutil.move(str(live), str(backup/name))
+        else:
+            shutil.rmtree(live)
+    if (snap/name).exists():
+        shutil.copytree(snap/name, live, symlinks=True, copy_function=shutil.copy2)
+PY
+}
+
+# Identify detached Python workers by executable/command and physical cwd.
+# Never infer ownership merely from a command containing a release path.
+worker_pids() {
+    python3.12 - "$APP_ROOT/releases" <<'PY'
+import os, pathlib, shutil, subprocess, sys
+root = pathlib.Path(sys.argv[1]).resolve()
+rows = subprocess.check_output(['ps','-axo','pid=,comm='], text=True).splitlines()
+for row in rows:
+    fields = row.strip().split(None, 1)
+    if len(fields) != 2 or 'python' not in os.path.basename(fields[1]).lower():
+        continue
+    pid = int(fields[0])
+    if pid == os.getpid():
+        continue
+    try:
+        if sys.platform.startswith('linux'):
+            cwd = pathlib.Path(os.readlink('/proc/%s/cwd' % pid)).resolve()
+        else:
+            data = subprocess.check_output([shutil.which('lsof') or '/usr/sbin/lsof','-a','-p',str(pid),'-d','cwd','-Fn'], stderr=subprocess.DEVNULL, text=True)
+            cwd = pathlib.Path(next(line[1:] for line in data.splitlines() if line.startswith('n'))).resolve()
+        cwd.relative_to(root)
+    except (OSError, ValueError, StopIteration, subprocess.CalledProcessError):
+        continue
+    print(pid)
+PY
+}
+descendants() {
+    local child
+    for child in $(pgrep -P "$1" 2>/dev/null || true); do
+        descendants "$child"
+        echo "$child"
+    done
+}
+terminate_pids() { # fixed PID set, never rediscover after TERM
+    python3.12 - "$@" <<'PY'
+import os, signal, subprocess, sys, time
+pids = set(int(p) for arg in sys.argv[1:] for p in arg.split() if p.isdigit() and int(p)>1)
+pids.discard(os.getpid()); pids.discard(os.getppid())
+def identity(pid):
+    try:
+        value = subprocess.check_output(['ps','-p',str(pid),'-o','lstart=,stat='], stderr=subprocess.DEVNULL, text=True).strip()
+        return None if not value or value.split()[-1].startswith('Z') else value.rsplit(None, 1)[0]
+    except subprocess.CalledProcessError:
+        return None
+original = {p: identity(p) for p in pids}
+for p in pids:
+    if original[p]:
+        try: os.kill(p, signal.SIGTERM)
+        except ProcessLookupError: pass
+deadline = time.monotonic()+20
+while time.monotonic() < deadline:
+    pids = {p for p in pids if original[p] and identity(p)==original[p]}
+    if not pids: break
+    time.sleep(.1)
+for p in pids:
+    if identity(p)==original[p]:
+        try: os.kill(p, signal.SIGKILL)
+        except ProcessLookupError: pass
+# SIGKILL is asynchronous: wait for writers to exit before copying SQLite.
+deadline = time.monotonic()+5
+while pids and time.monotonic() < deadline:
+    pids = {p for p in pids if identity(p)==original[p]}
+    if pids: time.sleep(.1)
+if pids:
+    raise RuntimeError('workers did not exit after SIGKILL')
+PY
+}
+stop_services() {
+    local service pid pids="" port
+    if [[ -n "${DCX_RESTART_CMD:-}" ]]; then
+        "$DCX_RESTART_CMD" stop || return 1
+    else
+        for service in api web; do
+            launchctl disable "$DCX_LAUNCH_DOMAIN/$DCX_LAUNCH_LABEL.$service" || return 1
+        done
+        for service in api web; do
+            pid="$(cat "$SHARED/$service.pid" 2>/dev/null || true)"
+            case "$pid" in ''|*[!0-9]*) continue ;; esac
+            # PID files are trusted only while the process cwd is our release.
+            if python3.12 - "$pid" "$APP_ROOT/releases" <<'PY'
+import os, pathlib, shutil, subprocess, sys
+try:
+    if sys.platform.startswith('linux'):
+        cwd=os.readlink('/proc/'+sys.argv[1]+'/cwd')
+    else:
+        out=subprocess.check_output([shutil.which('lsof') or '/usr/sbin/lsof','-a','-p',sys.argv[1],'-d','cwd','-Fn'],text=True,stderr=subprocess.DEVNULL)
+        cwd=next(x[1:] for x in out.splitlines() if x.startswith('n'))
+    pathlib.Path(cwd).resolve().relative_to(pathlib.Path(sys.argv[2]).resolve())
+except (OSError,ValueError,StopIteration,subprocess.CalledProcessError): sys.exit(1)
+PY
+            then
+                pids="$pids $(descendants "$pid") $pid"
+            fi
+        done
+        for port in "$DCX_API_PORT" "$DCX_WEB_PORT"; do
+            pids="$pids $("${DCX_LSOF:-$(command -v lsof || echo /usr/sbin/lsof)}" -nP -t -iTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)"
+        done
+    fi
+    # Stop API parents before scanning for detached workers: they can no
+    # longer spawn a worker between discovery and the snapshot.
+    terminate_pids "$pids" || return 1
+    pids="$(worker_pids)" || return 1
+    terminate_pids "$pids"
+}
+start_services() {
+    local service
+    if [[ -n "${DCX_RESTART_CMD:-}" ]]; then
+        "$DCX_RESTART_CMD" start
+    else
+        for service in api web; do
+            launchctl enable "$DCX_LAUNCH_DOMAIN/$DCX_LAUNCH_LABEL.$service" || return 1
+            launchctl kickstart -k "$DCX_LAUNCH_DOMAIN/$DCX_LAUNCH_LABEL.$service" || return 1
+        done
+    fi
+}
+restart_services() { # Optional stop/start phases; no argument performs both.
+    case "${1:-restart}" in
+        stop) stop_services ;;
+        start) start_services ;;
+        restart) stop_services && start_services ;;
+        *) return 1 ;;
+    esac
+}
+http_ok() { # timeout URL; redirects are not readiness.
+    local code
+    code="$(curl -fsS --max-time "$1" -o /dev/null -w '%{http_code}' "$2" 2>/dev/null)" || return 1
+    [[ "$code" == 200 ]]
+}
+wait_healthy() { # seconds sha
+    local deadline=$((SECONDS + $1)) target="$2" response first remaining
+    [[ "${DCX_FORCE_UNHEALTHY_SHA:-}" != "$target" ]] || return 1
+    first="$(head -n 1 "$HISTORY" 2>/dev/null | awk '{print $1}' || true)"
+    while :; do
+        remaining=$((deadline - SECONDS))
+        ((remaining > 0)) || return 1
+        response="$(curl -fsS --max-time "$remaining" "$DCX_HEALTH_API" 2>/dev/null)" || response=""
+        if python3.12 - "$response" "$target" "$first" <<'PY'
+import json, sys
+try:
+    data=json.loads(sys.argv[1])
+    ok=isinstance(data,dict) and data.get('status')=='ok' and (data.get('release')==sys.argv[2] or ('release' not in data and sys.argv[2]==sys.argv[3]))
+except (ValueError,TypeError): ok=False
+sys.exit(0 if ok else 1)
+PY
+        then
+            remaining=$((deadline - SECONDS)); ((remaining > 0)) || return 1
+            if http_ok "$remaining" "${DCX_HEALTH_API%/health}/sessions"; then
+                remaining=$((deadline - SECONDS)); ((remaining > 0)) || return 1
+                if http_ok "$remaining" "$DCX_HEALTH_WEB"; then
+                    return 0
+                fi
+            fi
+        fi
+        ((SECONDS < deadline)) || return 1
+        sleep 1
+    done
+}
+ci_status() {
+    local response
+    response="$(curl -fsS --max-time 20 "$DCX_CI_API?head_sha=$1&event=push&branch=main&per_page=1" 2>/dev/null)" || { echo unknown; return; }
+    python3.12 - "$response" "$1" <<'PY'
+import json, sys
+try:
+    data = json.loads(sys.argv[1]); runs = data['workflow_runs']
+    if not isinstance(runs, list): raise ValueError()
+    if not runs:
+        print('pending'); sys.exit()
+    run = runs[0]
+    if run['head_sha']!=sys.argv[2] or run['event']!='push' or run['head_branch']!='main': raise ValueError()
+    status = run['status']; conclusion = run['conclusion']
+    if status == 'completed' and conclusion == 'success': print('success')
+    elif status == 'completed' and conclusion in ('failure','timed_out','startup_failure','action_required'):
+        print('failed:%d:%d' % (int(run['id']),int(run['run_attempt'])))
+    elif status in ('queued','in_progress','waiting','pending','requested') or (status=='completed' and conclusion in ('cancelled','skipped','neutral','stale')): print('pending')
+    else: print('unknown')
+except (KeyError,ValueError,TypeError,IndexError): print('unknown')
+PY
+}
+prune_releases() {
+    local keep dir
+    keep=" $(current_sha) $(tail -n 3 "$HISTORY" 2>/dev/null | awk '{print $1}' | tr '\n' ' ') "
+    for dir in "$APP_ROOT/releases"/*; do
+        [[ -d "$dir" ]] || continue
+        [[ "$keep" == *" $(basename "$dir") "* ]] || rm -rf "$dir"
+    done
+}
