@@ -47,7 +47,8 @@ export function currentSegmentDraft<T extends SegmentDraft>(draft: T | null | un
 export function granularityBadge(flags: string[], count: number): string | null {
   return flags.includes('granularity_exceeded') ? `Context가 ${count}개입니다(권장 2~4)` : null;
 }
-const errorMessages: Record<SegmentErrorKind, string> = {
+export const segmentErrorMessages: Record<SegmentErrorKind | 'running', string> = {
+  running:'클러스터링이 이미 진행 중입니다.',
   locked:'앞 층을 모두 확정한 뒤 진행하세요.',
   confirm_required:'다시 나누면 확정값이 지워집니다. 다시 나누기를 확인하세요.',
   stale_run:'다른 화면에서 다시 나눠 결과가 바뀌었습니다. 새로고침하세요.',
@@ -58,7 +59,7 @@ export function segmentErrorMessage(error: unknown): string {
     const detail = error.error;
     if (detail !== null && typeof detail === 'object') {
       const kind = 'kind' in detail && typeof detail.kind === 'string' ? detail.kind : '';
-      const fallback = Object.hasOwn(errorMessages, kind) ? errorMessages[kind as SegmentErrorKind] : undefined;
+      const fallback = Object.hasOwn(segmentErrorMessages, kind) ? segmentErrorMessages[kind as keyof typeof segmentErrorMessages] : undefined;
       const message = 'message' in detail && typeof detail.message === 'string' ? detail.message : '';
       return displayError(new Error(message), fallback);
     }

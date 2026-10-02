@@ -7,14 +7,16 @@ vi.mock('react', async () => ({...await vi.importActual('react'),
  useCallback:(fn:any,deps:any[])=>{const i=hooks.cursor++;const old=hooks.slots[i];if(!old||deps.some((d,j)=>d!==old.deps[j]))hooks.slots[i]={deps,fn};return hooks.slots[i].fn;},
  useEffect:(fn:any,deps:any[])=>{const i=hooks.cursor++;const old=hooks.slots[i];if(!old||deps.some((d,j)=>d!==old.deps[j]))hooks.effects.push(()=>{old?.cleanup?.();hooks.slots[i]={deps,cleanup:fn()};});},
 }));
-const state=vi.hoisted(()=>({session:{sid:'s',sd:{prep:{derivedRef:{prepKey:'p'}}}} as any,poll:null as any,view:{readonly:false,version:'v1',refreshSessionAfterStage:vi.fn().mockResolvedValue(undefined)}}));
+const state=vi.hoisted(()=>({session:{sid:'s',sd:{prep:{derivedRef:{prepKey:'p'}}}} as any,poll:null as any,pollOptions:null as any,view:{readonly:false,version:'v1',refreshSessionAfterStage:vi.fn().mockResolvedValue(undefined)}}));
 vi.mock('next/navigation',()=>({useRouter:()=>({push:vi.fn()})}));
 vi.mock('@/stores/useSessionStore',()=>({useSessionStore:()=>state.session}));
 vi.mock('@/components/versions/VersionProvider',()=>({useVersion:()=>state.view}));
 vi.mock('@/components/versions/StageVersion',()=>({VersionStage:({children}:any)=>children,StageVersionAction:()=>null}));
-vi.mock('@/lib/usePolling',()=>({usePolling:()=>({data:state.poll,refresh:vi.fn()})}));
+vi.mock('@/lib/usePolling',()=>({usePolling:(options:any)=>{state.pollOptions=options;return {data:state.poll,refresh:vi.fn()};}}));
 vi.mock('@/lib/api/context',()=>({patchSession:vi.fn().mockResolvedValue({})}));
 vi.mock('@/lib/api/segment',()=>Object.fromEntries(['startSegment','getSegmentStatus','getSegmentClusters','getSegmentPersonas','getSegmentContexts','confirmSegmentCluster','confirmSegmentPersona','confirmSegmentContext','confirmSegmentContexts','createSegmentRequest'].map(k=>[k,vi.fn()])));
+vi.mock('@/lib/api/versions',()=>({getVersionSession:vi.fn()}));
+import { getVersionSession } from '@/lib/api/versions';
 import Page from './page';
 import { SegmentScreen } from '@/components/segment/SegmentScreen';
 import { ClusterLayer } from '@/components/segment/ClusterLayer';
@@ -30,7 +32,7 @@ const persona={...row,id:'P1',clusterId:'CL0',authors:10,desireDraft:'바람',de
 const context={...row,id:'C1',personaId:'P1',actionDraft:'행동',action:null,dominantConstraint:null,dimsSummary:{},flags:['counter_context','granularity_exceeded']};
 const status={run:'r1',status:'review',step:'drafts',progress:1,confirm:{clusters:'3/5',personas:'0/12',contexts:'0/31'}};
 const base={disabled:false,edits:{},onEdit:vi.fn(),onConfirm:vi.fn()};
-afterEach(()=>{hooks.slots=[];hooks.effects=[];state.poll=null;state.view.readonly=false;state.session.sd={prep:{derivedRef:{prepKey:'p'}}};vi.clearAllMocks();});
+afterEach(()=>{hooks.slots.forEach(slot=>slot?.cleanup?.());vi.useRealTimers();vi.unstubAllGlobals();hooks.slots=[];hooks.effects=[];state.poll=null;state.view.readonly=false;state.session.sd={prep:{derivedRef:{prepKey:'p'}}};vi.clearAllMocks();});
 it('routes derived sessions to SegmentScreen and retains the legacy screen',()=>{expect(nodes(Page()).some(n=>n.type===SegmentScreen)).toBe(true);state.session.sd={};expect(nodes(Page()).some(n=>n.type===SegmentScreen)).toBe(false);});
 it('shows one primary run action before results and disables evidence',()=>{state.poll={...status,status:'idle',run:null};const tree=render(()=>SegmentScreen({sid:'s'}));expect(nodes(tree).filter(n=>n.props?.variant==='primary')).toHaveLength(1);expect(textOf(tree)).toContain('클러스터링 실행');expect(nodes(tree).find(n=>n.props?.title==='다음 묶음에서 열립니다')?.props.disabled).toBe(true);});
 it('shows live running steps without enabled run or rerun actions',()=>{state.poll={...status,status:'running',step:'L3',progress:.58};const tree=render(()=>SegmentScreen({sid:'s'}));expect(textOf(tree)).toContain('6단계 · 실행 중');expect(nodes(tree).some(n=>n.props?.['aria-live']==='polite')).toBe(true);expect(nodes(tree).filter(n=>['다시 나누기','클러스터링 실행'].includes(textOf(n))).every(n=>n.props.disabled)).toBe(true);});
@@ -43,6 +45,7 @@ it('keeps evidence disabled after completion with bundle tooltip',()=>{state.pol
 const tick=async()=>{for(let i=0;i<20;i++)await Promise.resolve();};
 const screen=()=>render(()=>SegmentScreen({sid:'s',version:'v1'}));
 beforeEach(()=>{
+ vi.mocked(getVersionSession).mockResolvedValue({data:{drafts:{}}} as any);
  vi.mocked(api.getSegmentClusters).mockResolvedValue({run:'r1',clusters:[row] as any,kSuggest:null});
  vi.mocked(api.getSegmentPersonas).mockResolvedValue({run:'r1',personas:[persona] as any});
  vi.mocked(api.getSegmentContexts).mockResolvedValue({run:'r1',contexts:[context] as any,emptyGoalConstraintRatio:.18});
@@ -82,6 +85,7 @@ it('temporarily saves edits only in PATCH drafts.segment with the current run',a
  await vi.advanceTimersByTimeAsync(600);expect(patchSession).toHaveBeenCalledWith('s',{drafts:{segment:{run:'r1',edits:{CL0:{name:'임시 이름'}}}}},'v1');vi.useRealTimers();
 });
 it('does not load or write an old draft from another run',async()=>{
+ vi.mocked(getVersionSession).mockResolvedValue({data:{drafts:{segment:{run:'old',edits:{CL0:{name:'옛 이름'}}}}}} as any);
  state.poll=status;const draw=()=>render(()=>SegmentScreen({sid:'s',draft:{run:'old',edits:{CL0:{name:'옛 이름'}}}}));draw();await tick();draw();await tick();const tree=draw();
  expect(nodes(tree).find(n=>n.type===ClusterLayer)?.props.edits).toEqual({});expect(patchSession).not.toHaveBeenCalled();
 });
@@ -113,4 +117,99 @@ it('confirms Persona edits with nonempty Desire and 1–3 Goals',async()=>{
 it('confirms individual Context edits with the current run',async()=>{
  let tree=await ready({...status,confirm:{clusters:'5/5',personas:'12/12',contexts:'0/31'}});nodes(tree).find(n=>n.type===LayerTabs).props.onChange('6-C');tree=screen();nodes(tree).find(n=>n.type===ContextLayer).props.onEdit('C1',{action:'수정한 행동'});tree=screen();nodes(tree).find(n=>n.type===ContextLayer).props.onConfirm('C1');await tick();
  expect(api.confirmSegmentContext).toHaveBeenCalledWith('s','C1',{run:'r1',name:'초안',action:'수정한 행동',confirm:true},'v1');
+});
+
+
+it('restores the server draft on remount despite a stale store prop',async()=>{
+ vi.useFakeTimers();
+ let tree=await ready();nodes(tree).find(n=>n.type===ClusterLayer).props.onEdit('CL0',{name:'서버에 저장된 이름'});
+ await vi.advanceTimersByTimeAsync(600);
+ hooks.slots.forEach(slot=>slot?.cleanup?.());hooks.slots=[];hooks.effects=[];
+ vi.mocked(getVersionSession).mockResolvedValue({data:{drafts:{segment:{run:'r1',edits:{CL0:{name:'서버에 저장된 이름'}}}}}} as any);
+ const draw=()=>render(()=>SegmentScreen({sid:'s',version:'v1',draft:{run:'r1',edits:{CL0:{name:'오래된 값'}}}}));
+ draw();await tick();draw();await tick();tree=draw();
+ expect(getVersionSession).toHaveBeenCalledWith('s','v1');
+ expect(nodes(tree).find(n=>n.type===ClusterLayer).props.edits.CL0.name).toBe('서버에 저장된 이름');
+ vi.useRealTimers();
+});
+it('does not promise stale input retention and discards edits after refresh to a new run',async()=>{
+ let tree=await ready();nodes(tree).find(n=>n.type===ClusterLayer).props.onEdit('CL0',{name:'옛 수정'});tree=screen();
+ vi.mocked(api.confirmSegmentCluster).mockRejectedValueOnce(new Error('다른 화면에서 다시 나눠 결과가 바뀌었습니다. 새로고침하세요.'));
+ nodes(tree).find(n=>n.type===ClusterLayer).props.onConfirm('CL0');await tick();tree=screen();
+ expect(textOf(tree)).not.toContain('입력은 유지됩니다.');
+ vi.mocked(api.getSegmentStatus).mockResolvedValue({...status,run:'r2'} as any);
+ vi.mocked(api.getSegmentClusters).mockResolvedValue({run:'r2',clusters:[row],kSuggest:null} as any);
+ await nodes(tree).find(n=>n.props?.actions?.props?.children==='새로고침').props.actions.props.onClick();await tick();screen();await tick();tree=screen();
+ expect(nodes(tree).find(n=>n.type===ClusterLayer).props.edits).toEqual({});
+});
+it('keeps the editor mounted, loads once, and preserves chosen k through confirmation and draft prop refresh',async()=>{
+ const suggestion={k:5,suggested:5,silhouette:{},sample:20};
+ vi.mocked(api.getSegmentClusters).mockResolvedValue({run:'r1',clusters:[row],kSuggest:suggestion} as any);
+ let tree=await ready();nodes(tree).find(n=>n.props?.['aria-label']==='클러스터 수 k').props.onChange({target:{value:'7'}});tree=screen();
+ const before=vi.mocked(api.getSegmentClusters).mock.calls.length;
+ vi.mocked(api.getSegmentStatus).mockResolvedValue({...status,confirm:{...status.confirm,clusters:'4/5'}} as any);
+ nodes(tree).find(n=>n.type===ClusterLayer).props.onConfirm('CL0');await tick();screen();
+ tree=render(()=>SegmentScreen({sid:'s',version:'v1',draft:{run:'r1',edits:{}}}));
+ expect(nodes(tree).some(n=>n.type===ClusterLayer)).toBe(true);
+ await tick();tree=screen();
+ expect(api.getSegmentClusters).toHaveBeenCalledTimes(before+1);
+ expect(nodes(tree).find(n=>n.props?.['aria-label']==='클러스터 수 k').props.value).toBe(7);
+});
+it('clears a poll failure on the next successful poll',async()=>{
+ await ready({...status,status:'running'});
+ vi.mocked(api.getSegmentStatus).mockRejectedValueOnce(new Error('일시적으로 상태를 읽지 못했습니다.'));
+ await expect(state.pollOptions.fetcher()).rejects.toThrow();expect(textOf(screen())).toContain('일시적으로 상태를 읽지 못했습니다.');
+ await state.pollOptions.fetcher();expect(textOf(screen())).not.toContain('일시적으로 상태를 읽지 못했습니다.');
+});
+it('announces only one short running status line',async()=>{
+ const tree=await ready({...status,status:'running',step:'L3',progress:.58});
+ const live=nodes(tree).filter(n=>n.props?.['aria-live']==='polite');
+ expect(live).toHaveLength(1);expect(textOf(live[0])).toBe('L3 · Context 진행 중 58%');
+});
+it('delegates the version banner to the route boundary',async()=>{
+ expect((await ready()).props.showBanner).toBe(false);
+});
+it('offers a single primary forward action after each layer is confirmed',async()=>{
+ vi.mocked(api.getSegmentClusters).mockResolvedValue({run:'r1',clusters:[{...row,confirmed:true}],kSuggest:null} as any);
+ vi.mocked(api.getSegmentPersonas).mockResolvedValue({run:'r1',personas:[{...persona,confirmed:true}]} as any);
+ let tree=await ready({...status,confirm:{clusters:'5/5',personas:'12/12',contexts:'0/31'}});
+ const primaries=(tree:any)=>nodes(tree).flatMap(n=>n.type===ClusterLayer?nodes(ClusterLayer(n.props)):n.type===PersonaLayer?nodes(PersonaLayer(n.props)):[n]).filter(n=>n.props?.variant==='primary');
+ expect(primaries(tree)).toHaveLength(1);expect(textOf(primaries(tree)[0])).toBe('6-B로 →');primaries(tree)[0].props.onClick();tree=screen();
+ expect(primaries(tree)).toHaveLength(1);expect(textOf(primaries(tree)[0])).toBe('6-C로 →');primaries(tree)[0].props.onClick();expect(nodes(screen()).some(n=>n.type===ContextLayer)).toBe(true);
+});
+it.each(['interrupted','failed'])('resumes %s without confirmReset and discards the previous generation draft',async(runStatus)=>{
+ vi.mocked(getVersionSession).mockResolvedValue({data:{drafts:{segment:{run:'r1',edits:{CL0:{name:'중단 전 수정'}}}}}} as any);
+ let tree=await ready({...status,status:runStatus});vi.mocked(api.startSegment).mockResolvedValue({runId:'worker2'});
+ const button=nodes(tree).find(n=>n.props?.children==='이어서 진행');expect(button).toBeDefined();button.props.onClick();await tick();tree=screen();
+ expect(api.startSegment).toHaveBeenCalledWith('s',{},'v1');expect(textOf(tree)).toContain('6단계 · 실행 중');expect(state.pollOptions.enabled).toBe(true);
+ state.poll={...status,run:'r2'};vi.mocked(api.getSegmentClusters).mockResolvedValue({run:'r2',clusters:[row],kSuggest:null} as any);
+ screen();screen();await tick();tree=screen();expect(nodes(tree).find(n=>n.type===ClusterLayer).props.edits).toEqual({});
+});
+it.each(['running','paused'])('handles a running conflict by observing the existing %s run',async(runStatus)=>{
+ let tree=await ready({...status,status:'interrupted'});
+ vi.mocked(api.startSegment).mockRejectedValueOnce(new Error('클러스터링이 이미 진행 중입니다.'));
+ vi.mocked(api.getSegmentStatus).mockResolvedValue({...status,status:runStatus,run:'r2'} as any);
+ nodes(tree).find(n=>n.props?.children==='이어서 진행').props.onClick();await tick();tree=screen();
+ expect(textOf(tree)).toContain('클러스터링이 이미 진행 중입니다.');expect(textOf(tree)).toContain('6단계 · 실행 중');expect(state.pollOptions.enabled).toBe(true);
+});
+
+it('initializes k again only after the run generation changes',async()=>{
+ vi.mocked(api.getSegmentClusters).mockResolvedValue({run:'r1',clusters:[row],kSuggest:{k:5}} as any);
+ let tree=await ready();nodes(tree).find(n=>n.props?.['aria-label']==='클러스터 수 k').props.onChange({target:{value:'7'}});
+ state.poll={...status,run:'r2'};vi.mocked(api.getSegmentClusters).mockResolvedValue({run:'r2',clusters:[row],kSuggest:{k:3}} as any);
+ screen();screen();await tick();tree=screen();expect(nodes(tree).find(n=>n.props?.['aria-label']==='클러스터 수 k').props.value).toBe(3);
+});
+it('restores confirmation focus to the forward control after the last item',async()=>{
+ let tree=await ready();const confirmedControl={focus:vi.fn()};const forwardControl={focus:vi.fn()};
+ vi.stubGlobal('document',{activeElement:confirmedControl});
+ nodes(tree).find(n=>n.props?.ref && n.props?.className==='min-w-0 space-y-5 break-words').props.ref.current={contains:()=>true,querySelector:()=>forwardControl};
+ vi.mocked(api.getSegmentStatus).mockResolvedValue({...status,confirm:{...status.confirm,clusters:'5/5'}} as any);
+ vi.mocked(api.getSegmentClusters).mockResolvedValue({run:'r1',clusters:[{...row,confirmed:true}],kSuggest:null} as any);
+ nodes(tree).find(n=>n.type===ClusterLayer).props.onConfirm('CL0');screen();await tick();tree=screen();
+ expect(nodes(tree).some(n=>n.props?.['data-forward'])).toBe(true);expect(forwardControl.focus).toHaveBeenCalledOnce();
+});
+it('does not clear a stale write error when a status request succeeds',async()=>{
+ let tree=await ready();vi.mocked(api.confirmSegmentCluster).mockRejectedValueOnce(new Error('다른 화면에서 다시 나눠 결과가 바뀌었습니다. 새로고침하세요.'));
+ nodes(tree).find(n=>n.type===ClusterLayer).props.onConfirm('CL0');await tick();screen();await state.pollOptions.fetcher();tree=screen();
+ expect(textOf(tree)).toContain('다른 화면에서 다시 나눠 결과가 바뀌었습니다. 새로고침하세요.');expect(nodes(tree).find(n=>n.type===ClusterLayer).props.disabled).toBe(true);
 });

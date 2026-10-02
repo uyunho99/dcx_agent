@@ -42,6 +42,7 @@ describe('segment presentation contract', () => {
     expect(granularityBadge([],6)).toBeNull();
   });
   it.each([
+    ['running','클러스터링이 이미 진행 중입니다.'],
     ['locked','앞 층을 모두 확정한 뒤 진행하세요.'],
     ['confirm_required','다시 나누면 확정값이 지워집니다. 다시 나누기를 확인하세요.'],
     ['stale_run','다른 화면에서 다시 나눠 결과가 바뀌었습니다. 새로고침하세요.'],
@@ -96,4 +97,10 @@ describe('segment API wire contract (offline fetch)', () => {
     vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:false,status:409,json:async()=>({status:'error',error:{kind:'stale_run',message}})}));
     await expect(api.getSegmentStatus('s')).rejects.toThrow(message);
   });
+});
+
+it('surfaces the running conflict from the real API wrapper', async () => {
+  const message = '클러스터링이 이미 진행 중입니다.';
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:false,status:409,json:async()=>({status:'error',error:{kind:'running',message}})}));
+  await expect(api.startSegment('s',{},'v1')).rejects.toThrow(message);
 });

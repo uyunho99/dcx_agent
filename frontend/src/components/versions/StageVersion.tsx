@@ -50,10 +50,10 @@ export function VersionBanner({stage}: {stage: Stage}) {
   const view = useVersion();
   return <>{view.readonly && <Banner>{view.version} · 읽기 전용 · <RestartVersion stage={stage} from={view.version} label="이 버전에서 새로 시작하기" /></Banner>}<StaleBanner stage={stage} session={view.session} /></>;
 }
-export function VersionStage({stage, children}: {stage: Stage; children: ReactNode}) {
+export function VersionStage({stage, children, showBanner = true}: {stage: Stage; children: ReactNode; showBanner?: boolean}) {
   const view = useVersion();
   const [openedReadonly] = useState(view.readonly);
-  return <div className="space-y-4"><VersionBanner stage={stage} /><fieldset disabled={view.readonly} className="min-w-0" onClickCapture={e => {if(view.readonly){e.preventDefault();e.stopPropagation();}}} onDragStartCapture={e => {if(view.readonly)e.preventDefault();}} onDropCapture={e => {if(view.readonly){e.preventDefault();e.stopPropagation();}}}>{stage === 'stage2' && openedReadonly ? <HistoricalCrawl /> : children}</fieldset></div>;
+  return <div className="space-y-4">{showBanner && <VersionBanner stage={stage} />}<fieldset disabled={view.readonly} className="min-w-0" onClickCapture={e => {if(view.readonly){e.preventDefault();e.stopPropagation();}}} onDragStartCapture={e => {if(view.readonly)e.preventDefault();}} onDropCapture={e => {if(view.readonly){e.preventDefault();e.stopPropagation();}}}>{stage === 'stage2' && openedReadonly ? <HistoricalCrawl /> : children}</fieldset></div>;
 }
 function HistoricalCrawl() {
   const {session} = useVersion();
