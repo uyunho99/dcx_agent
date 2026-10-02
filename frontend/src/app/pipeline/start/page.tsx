@@ -155,7 +155,7 @@ function StartScreen() {
     if (operation.current) return;
     if (!draft && !valid) {
       const target = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
-      target?.scrollIntoView({block: "center"}); target?.focus(); return;
+      target?.scrollIntoView({block: "center"}); target?.focus({preventScroll: true}); return;
     }
     operation.current = true; setBusy(true); setMessage("");
     const snapshot = structuredClone(form);
@@ -269,7 +269,7 @@ function StartScreen() {
           </Card>
           <Card className="space-y-4">
             <div className="flex justify-between gap-3"><div><h2 className="ds-t-card">생각하는 페르소나 (선택)</h2><p className="ds-t-caption">떠오르는 사람을 한 줄씩 적으세요. 결과는 이 목록을 넘어서도록 지시합니다.</p></div><Badge>시드</Badge></div>
-            <div className="flex flex-wrap items-end gap-2"><Input label="페르소나" placeholder="예: 초진 보호자" maxLength={40} disabled={seeds.items.length >= 20} value={personaText} onChange={event => setPersonaText(event.target.value)} onKeyDown={event => submitOnEnter(event, addPersona)} /><Button size="sm" disabled={seeds.items.length >= 20} onClick={addPersona}>추가하기</Button></div>
+            <div className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto] [&>.ds-field]:mb-0"><Input label="페르소나" placeholder="예: 초진 보호자" maxLength={40} disabled={seeds.items.length >= 20} value={personaText} onChange={event => setPersonaText(event.target.value)} onKeyDown={event => submitOnEnter(event, addPersona)} /><Button size="sm" disabled={seeds.items.length >= 20} onClick={addPersona}>추가하기</Button></div>
             {(seeds.items.length >= 20 || personaNotice) && <p className="ds-t-caption" role="status">20개까지 적을 수 있습니다.</p>}
             {seeds.items.map((seed, index) => <div key={seed.text} className="grid grid-cols-[1fr_auto] items-center gap-2 md:grid-cols-[minmax(0,1fr)_auto_auto]">
               <span className="ds-t-body break-words">{seed.text}</span>
@@ -288,7 +288,8 @@ function StartScreen() {
             <div className="space-y-2"><h3 className="ds-t-label">미래 고객 정의</h3><ChoiceChips multiple label="미래 고객 정의" options={options(labels.futureCustomer)} value={form.futureCustomer?.choices || []} onChange={choices => update("futureCustomer", {choices,note:form.futureCustomer?.note || ""})} /><Input label="미래 고객 보충 설명" value={form.futureCustomer?.note || ""} onChange={e => update("futureCustomer", {choices:form.futureCustomer?.choices || [],note:e.target.value})} /></div>
           </Card>
           </fieldset>
-          <SaveBar dirty={isDirty(saved,form)} valid={valid} saving={busy} onDraft={() => void persist(true)} onSave={() => void persist(false)} primary={<Button variant="primary" loading={busy} onClick={() => void persist(false,true)}>키워드 생성 시작하기</Button>} />
+          {/* Keep Save enabled so persist can reveal and focus validation errors. */}
+          <SaveBar dirty={isDirty(saved,form)} valid={true} saving={busy} onDraft={() => void persist(true)} onSave={() => void persist(false)} primary={<Button variant="primary" loading={busy} onClick={() => void persist(false,true)}>키워드 생성 시작하기</Button>} />
         </div>
         {INTERNAL_TOOLS && <aside><Card className="lg:sticky lg:top-6"><details open><summary className="ds-t-label">project_context.md 미리보기</summary><p className="ds-t-caption">서버 저장 맥락을 바탕으로 만든 미리보기입니다.</p><pre style={{color:"var(--ink)"}} className="ds-t-caption whitespace-pre-wrap break-words">{preview(returned || form)}</pre></details></Card></aside>}
       </div>}
