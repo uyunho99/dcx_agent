@@ -9,6 +9,7 @@ import { useSessionStore } from '@/stores/useSessionStore';
 import { Banner, Badge, BarList, Button, Card, ChoiceChips, Input, Popover, Select, Skeleton, Stepper, Tabs, type StepperItem } from '@/components/ds';
 import { SaveBar } from '@/components/SaveBar';
 import { KeywordGroup } from '@/components/keywords/KeywordGroup';
+import { keywordLabel } from '@/components/keywords/keywordDisplay';
 import { CoveragePanel, startCoveragePolling } from '@/components/keywords/CoveragePanel';
 import { axes, destinations, groupKey, groupLabel } from '@/components/keywords/taxonomy';
 import { addKeyword, commitRound, getCoverage, KeywordApiError, postEvent, regenerateRound, startRound, suggestWords, type Axis, type Decision, type Destination, type Draft, type Keyword, type KeywordState, type Rejection } from '@/lib/api/keywords';
@@ -88,6 +89,7 @@ function KeywordScreen({ sid }: { sid: string }) {
     const timer = setInterval(() => setElapsed(Math.max(0, Math.floor((Date.now() - started) / 1000))), 1000);
     return () => clearInterval(timer);
   }, [running, current?.job.startedAt]);
+  // reviewKeywords merges by id, preferring top-level keywords (including display) over round entries.
   const all = reviewKeywords({ keywordRounds: data?.keywordRounds ?? {}, keywords: data?.keywords ?? [] }).map(k => overrides[k.id] ? { ...k, ...overrides[k.id] } : k);
   const groups = [...new Map([...destinations, ...custom, ...all.map(k => ({ axis: k.axis, sub: k.sub }))].map(g => [groupKey(g), g])).values()];
   const tabGroups = groups.filter(g => axis === 'all' || g.axis === axis);
@@ -126,8 +128,12 @@ function KeywordScreen({ sid }: { sid: string }) {
   }
   async function add(word: string, to: Destination, origin: 'manual' | 'suggested') {
     if (lock.current) return false; let success = false;
-    await action(async () => { try { const keyword = await addKeyword(sid, word, to, origin, version); setData(d => d ? { ...d, keywords: [...d.keywords, keyword] } : d); setDuplicate(null); setFilter('전체'); setQuery(''); success = true; }
-      catch (e) { if (e instanceof KeywordApiError && e.duplicateOf) { const found = all.find(k => k.id === e.duplicateOf); setDuplicate(found ?? null); setError(found ? `이미 있는 키워드입니다. ${groupLabel(found)}의 “${found.kw}”${josa(found.kw, '을/를')} 확인하세요.` : '이미 있는 키워드입니다. 전체 목록을 확인하세요.'); } else throw e; }
+    await action(async () => { try {
+      const result = await addKeyword(sid, word, to, origin, version);
+      const keyword = result.keywords.find(k => k.id === result.id) ?? result;
+      setData(d => d ? { ...d, keywords: [...d.keywords, keyword] } : d); setDuplicate(null); setFilter('전체'); setQuery(''); success = true;
+    }
+      catch (e) { if (e instanceof KeywordApiError && e.duplicateOf) { const found = all.find(k => k.id === e.duplicateOf); setDuplicate(found ?? null); setError(found ? `이미 있는 키워드입니다. ${groupLabel(found)}의 “${keywordLabel(found)}”${josa(keywordLabel(found), '을/를')} 확인하세요.` : '이미 있는 키워드입니다. 전체 목록을 확인하세요.'); } else throw e; }
     }); return success;
   }
   async function suggest(to: Destination) { let words: string[] = []; await action(async () => { words = (await suggestWords(sid, to, version)).words.map(w => w.word); }); return words; }

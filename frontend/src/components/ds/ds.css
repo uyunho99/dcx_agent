@@ -157,6 +157,9 @@ textarea.ds-inp{resize:vertical}
 .ds-seg button:only-child { border-radius:var(--r-button); }
 .ds-pop-anchor { position:relative; display:inline-block; }
 .ds-pop { max-width:calc(100vw - 32px); right:0; top:100%; }
+.ds-pop[data-align="start"] { left:0; right:auto; }
+/* Use the existing frame as the panel's focus indicator, not a second outline. */
+.ds-pop:focus-visible { outline:none; border-color:var(--action); }
 .ds-skeleton { background:var(--sunken); }
 .ds-note.success { background:var(--success-soft); }.ds-note.success .ds-ic { color:var(--success); }
 .ds-note.warning { background:var(--warning-soft); }.ds-note.warning .ds-ic { color:var(--warning); }

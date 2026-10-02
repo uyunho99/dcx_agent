@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, ValidationError
 from app.context import store
 from app.context import versions
 from app.keywords import rounds
+from app.keywords.display import with_display
 from app.keywords.events import KeywordEvent, append_event
 from app.keywords.feedback import write_feedback_md
 from app.keywords.taxonomy import is_valid
@@ -81,8 +82,10 @@ def round_status(sid: str, n: int, version: str | None = None):
         value = (data or {}).get('keywordRounds', {}).get(str(n))
         if value is None:
             raise store.StoreError('라운드 작업이 없습니다', 404, 'not_found')
-        return {**value['job'], **{key: value.get(key) for key in ('keywords', 'inputs', 'below_min', 'committed', 'promptVersion')}}
-    return rounds.round_status(sid, n)
+        result = {**value['job'], **{key: value.get(key) for key in ('keywords', 'inputs', 'below_min', 'committed', 'promptVersion')}}
+    else:
+        result = rounds.round_status(sid, n)
+    return {**result, 'keywords': with_display(result.get('keywords') or [])}
 
 
 @router.post('/{sid}/rounds/{n}/commit')
@@ -94,7 +97,8 @@ def commit_round(sid: str, n: int, body: CommitRequest, version: str | None = No
 
 @router.post('/{sid}/manual')
 def manual(sid: str, body: ManualRequest, version: str | None = None):
-    return rounds.add_manual(sid, **body.model_dump(), version=version)
+    keyword = rounds.add_manual(sid, **body.model_dump(), version=version).model_dump()
+    return {**keyword, 'keywords': with_display([keyword])}
 
 
 @router.post('/{sid}/suggest-words')
@@ -117,7 +121,8 @@ def keywords(sid: str, version: str | None = None):
         raise store.StoreError('세션이 없습니다', 404, 'not_found')
     data['coverage'] = rounds.coverage_status(data.get('coverage') or {})
     feedback = path / 'keyword_feedback.md'
-    return {key: data.get(key, {} if key != 'keywords' else []) for key in ('keywords', 'keywordRounds', 'coverage')} | {
+    return {key: data.get(key, {}) for key in ('keywordRounds', 'coverage')} | {
+        'keywords': with_display(data.get('keywords', [])),
         'feedback_md': feedback.read_text(encoding='utf-8') if feedback.exists() else ''}
 
 
@@ -146,9 +151,10 @@ def event(sid: str, body: EventRequest, version: str | None = None):
                 return {'keywords': [all_kws[k['id']] for k in data.get('keywords', [])],
                         'keywordRounds': {n: {'keywords': [all_kws[k['id']] for k in r.get('keywords', [])]}
                                           for n, r in data.get('keywordRounds', {}).items()}}
-            store._update_locked(sid, patch(data), confirm_stage='stage1')
+            data = store._update_locked(sid, patch(data), confirm_stage='stage1')
         if ev.type == 'direction':
-            store._update_locked(sid, {}, confirm_stage='stage1')
+            data = store._update_locked(sid, {}, confirm_stage='stage1')
         append_event(sid, ev, directory=directory)
         feedback = write_feedback_md(sid, directory=directory)
-    return {'status': 'ok', 'feedback_md': feedback}
+    return {'status': 'ok', 'feedback_md': feedback,
+            'keywords': with_display(data.get('keywords', []))}
