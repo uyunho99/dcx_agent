@@ -223,3 +223,47 @@ export type SegmentDocument = {
 export type SegmentDocsResponse = { run: string | null; docs: SegmentDocument[]; total: number; offset: number; limit: number };
 export type SegmentDraft = { run: string; [key: string]: unknown };
 export type SegmentErrorKind = 'locked' | 'confirm_required' | 'stale_run' | 'validation';
+
+// Stage 7 wire contracts. `run` is the result generation, not the worker runId.
+export type EvidenceTab = 'all' | 'new';
+export type EvidenceContextState = 'queued' | 'running' | 'done' | 'failed' | 'skipped';
+export type EvidenceState = 'none' | 'running' | 'done' | 'failed' | 'interrupted' | 'stale' | 'partial';
+export type EvidenceRole = 'support' | 'counter' | 'rare';
+export type EvidenceLocation = { field: 'title' | 'body' | 'comment'; idx: number | null };
+export type EvidenceQuote = { text: string; start: number | null; end: number | null; verified: boolean };
+export type EvidenceItemView = {
+  docId: string; source: string; location: EvidenceLocation; quote: EvidenceQuote;
+  text: string; tags: string[]; band: SegmentBand | null; novelty: string | null;
+  noveltyReason: string | null; knownMatch: string | null; rare: boolean; role: EvidenceRole;
+};
+export type EvidenceQuery = { dim: string; text: string; origin: 'llm' | 'regen' | 'fallback' };
+export type EvidenceContextStatus = {
+  id: string; personaId: string; name: string; status: EvidenceContextState;
+  coverage: number | null; counts: Record<string, number>; error: string | null; knownChanged: boolean;
+};
+export type EvidenceStatus = {
+  status: EvidenceState; run: string | null; progress: number; contexts: EvidenceContextStatus[];
+  stage7?: Record<string, unknown>; reason?: string;
+};
+export type EvidenceRunRequest = { fresh?: boolean; contexts?: string[] };
+export type EvidenceRunResponse = { runId: string };
+export type EvidenceGenerationRequest = { run: string };
+// Nested context/artifact/PersonaBlock fields are not specified by the API table.
+// Keep them opaque instead of guessing a backend shape.
+export type EvidenceContextResponse = {
+  context: Record<string, unknown>; tab: EvidenceTab; items: EvidenceItemView[];
+  counter: EvidenceItemView[]; rare: EvidenceItemView[]; excludedKnown: number;
+  queries: EvidenceQuery[]; queryFailed: boolean; undifferentiated: string[];
+};
+export type EvidenceArtifact = Record<string, unknown>;
+export type EvidencePersonaResponse = { desireSupport: EvidenceItemView[]; artifacts: EvidenceArtifact[] };
+export type EvidenceItem = {
+  doc_id: string; source: string; quote: (EvidenceLocation & EvidenceQuote) | null;
+  tags: string[]; polarity: number | null; novelty: string | null; known_match: string | null;
+  tab: EvidenceTab[]; role: EvidenceRole; dist_centroid?: number | null; combo_rarity?: number | null;
+};
+export type EvidencePersonaBlock = Record<string, unknown>;
+export type EvidencePackage = {
+  schema: 'evidence-package/1'; version: string; params: Record<string, unknown>; personas: EvidencePersonaBlock[];
+};
+export type EvidenceErrorKind = 'segment_required' | 'running' | 'locked' | 'not_found' | 'not_ready' | 'stale_run';
