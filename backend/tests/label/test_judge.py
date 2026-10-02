@@ -115,7 +115,7 @@ def test_rate_limit_respected(setup_judge, monkeypatch):
     real_wait = ChannelLimiter
     def sleep(delay):
         now[0] += delay
-    monkeypatch.setattr(jev, 'ChannelLimiter', lambda concurrency, min_interval_s: real_wait(concurrency, min_interval_s, clock=lambda: now[0], sleep=sleep))
+    monkeypatch.setattr(jev, 'ChannelLimiter', lambda concurrency, min_interval_s, *, jitter: real_wait(concurrency, min_interval_s, jitter=jitter, clock=lambda: now[0], sleep=sleep))
     real_client = jev.JevClient
     fake = FakeJev()
     def handle(request):

@@ -1,0 +1,382 @@
+FFFFFFFFFFFFFFFFF                                                        [100%]
+=================================== FAILURES ===================================
+___________________________ test_limiter_fake_clock ____________________________
+
+    def test_limiter_fake_clock():
+        now = [0.0]
+>       limiter = ChannelLimiter(2, 0.5, jitter=0, clock=lambda: now[0], sleep=lambda s: now.__setitem__(0, now[0] + s))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: ChannelLimiter.__init__() got an unexpected keyword argument 'jitter'
+
+tests/crawl/test_resume.py:176: TypeError
+______________________ test_limiter_jitter_bounds[0-0.4] _______________________
+
+sample = 0, gap = 0.4
+
+    @pytest.mark.parametrize(('sample', 'gap'), [(0, 0.4), (0.5, 0.5), (1, 0.6)])
+    def test_limiter_jitter_bounds(sample, gap):
+        now = [0.0]
+>       limiter = ChannelLimiter(1, 0.5, rng=lambda: sample,
+                                 clock=lambda: now[0], sleep=lambda s: now.__setitem__(0, now[0] + s))
+E       TypeError: ChannelLimiter.__init__() got an unexpected keyword argument 'rng'
+
+tests/crawl/test_resume.py:320: TypeError
+_____________________ test_limiter_jitter_bounds[0.5-0.5] ______________________
+
+sample = 0.5, gap = 0.5
+
+    @pytest.mark.parametrize(('sample', 'gap'), [(0, 0.4), (0.5, 0.5), (1, 0.6)])
+    def test_limiter_jitter_bounds(sample, gap):
+        now = [0.0]
+>       limiter = ChannelLimiter(1, 0.5, rng=lambda: sample,
+                                 clock=lambda: now[0], sleep=lambda s: now.__setitem__(0, now[0] + s))
+E       TypeError: ChannelLimiter.__init__() got an unexpected keyword argument 'rng'
+
+tests/crawl/test_resume.py:320: TypeError
+______________________ test_limiter_jitter_bounds[1-0.6] _______________________
+
+sample = 1, gap = 0.6
+
+    @pytest.mark.parametrize(('sample', 'gap'), [(0, 0.4), (0.5, 0.5), (1, 0.6)])
+    def test_limiter_jitter_bounds(sample, gap):
+        now = [0.0]
+>       limiter = ChannelLimiter(1, 0.5, rng=lambda: sample,
+                                 clock=lambda: now[0], sleep=lambda s: now.__setitem__(0, now[0] + s))
+E       TypeError: ChannelLimiter.__init__() got an unexpected keyword argument 'rng'
+
+tests/crawl/test_resume.py:320: TypeError
+_____________________ test_limiter_zero_interval_no_jitter _____________________
+
+    def test_limiter_zero_interval_no_jitter():
+>       limiter = ChannelLimiter(1, 0, rng=lambda: pytest.fail('zero interval sampled RNG'),
+                                 clock=lambda: 0, sleep=lambda s: pytest.fail('zero interval slept'))
+E       TypeError: ChannelLimiter.__init__() got an unexpected keyword argument 'rng'
+
+tests/crawl/test_resume.py:330: TypeError
+__________________ test_limiter_rejects_invalid_jitter[-0.1] ___________________
+
+jitter = -0.1
+
+    @pytest.mark.parametrize('jitter', [-0.1, 1, 1.1])
+    def test_limiter_rejects_invalid_jitter(jitter):
+        with pytest.raises(ValueError, match='jitter'):
+>           ChannelLimiter(1, 0.5, jitter=jitter)
+E           TypeError: ChannelLimiter.__init__() got an unexpected keyword argument 'jitter'
+
+tests/crawl/test_resume.py:340: TypeError
+____________________ test_limiter_rejects_invalid_jitter[1] ____________________
+
+jitter = 1
+
+    @pytest.mark.parametrize('jitter', [-0.1, 1, 1.1])
+    def test_limiter_rejects_invalid_jitter(jitter):
+        with pytest.raises(ValueError, match='jitter'):
+>           ChannelLimiter(1, 0.5, jitter=jitter)
+E           TypeError: ChannelLimiter.__init__() got an unexpected keyword argument 'jitter'
+
+tests/crawl/test_resume.py:340: TypeError
+___________________ test_limiter_rejects_invalid_jitter[1.1] ___________________
+
+jitter = 1.1
+
+    @pytest.mark.parametrize('jitter', [-0.1, 1, 1.1])
+    def test_limiter_rejects_invalid_jitter(jitter):
+        with pytest.raises(ValueError, match='jitter'):
+>           ChannelLimiter(1, 0.5, jitter=jitter)
+E           TypeError: ChannelLimiter.__init__() got an unexpected keyword argument 'jitter'
+
+tests/crawl/test_resume.py:340: TypeError
+_________________ test_partial_naver_limits_preserve_defaults __________________
+
+env = namespace(root=PosixPath('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1031/test_partial_naver_limits_pres0'), calls=[], client=<starlette.testclient.TestClient object at 0x10aefa060>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10aef9a00>
+
+    def test_partial_naver_limits_preserve_defaults(env, monkeypatch):
+        monkeypatch.setattr(control, 'available_sources', lambda: ['naver_blog'])
+        response = env.client.put('/crawl/S/config', json={
+            'channels': ['naver_blog'], 'perChannel': {'naver_blog': {'max_per_keyword': 25}}})
+        assert response.status_code == 200
+        saved = store.load_session('S')['crawlConfig']
+>       assert saved['perChannel']['naver_blog'] == {'max_per_keyword': 25}
+E       AssertionError: assert {'concurrency...minute': 60.0} == {'max_per_keyword': 25}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Left contains 3 more items:
+E         {'concurrency': 4, 'min_interval_s': 0.0, 'per_minute': 60.0}
+E         Use -v to get more diff
+
+tests/crawl/test_crawl_api.py:691: AssertionError
+_________________ test_status_reports_naver_effective_interval _________________
+
+tmp_path = PosixPath('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1031/test_status_reports_naver_effe0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x11a1a2ba0>
+
+    def test_status_reports_naver_effective_interval(tmp_path, monkeypatch):
+        from app.crawl import control
+        from app.context import store
+        monkeypatch.setattr(settings, 'local_data_dir', str(tmp_path))
+        root = tmp_path / 'crawl/S/collections/c1'
+        root.mkdir(parents=True)
+        store.write_json(root / 'meta.json', {'keywords': []})
+        store.write_json(root / 'manifest.json', {'channels': ['naver_blog', 'naver_cafe'], 'config': {}})
+>       assert control._status_settings({'sid': 'S', 'collectionId': 'c1'})['min_interval_s'] == {'naver_blog': 0.5, 'naver_cafe': 0.5}
+E       AssertionError: assert {'naver_blog'...aver_cafe': 1} == {'naver_blog'...er_cafe': 0.5}
+E         
+E         Differing items:
+E         {'naver_blog': 1} != {'naver_blog': 0.5}
+E         {'naver_cafe': 1} != {'naver_cafe': 0.5}
+E         Use -v to get more diff
+
+tests/crawl/test_final_w4.py:118: AssertionError
+______________________ test_default_interval_half_second _______________________
+
+tmp_path = PosixPath('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1031/test_default_interval_half_sec0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x11a5a5e80>
+
+    def test_default_interval_half_second(tmp_path, monkeypatch):
+        from app.crawl import control
+        from app.crawl.adapters import community
+        from app.context import store
+        sources = ['clien', 'ppomppu', 'naver_blog', 'naver_cafe', 'youtube', 'fixture']
+        expected = dict.fromkeys(sources[:4], 0.5) | {'youtube': 0, 'fixture': 0}
+        monkeypatch.setattr(settings, 'local_data_dir', str(tmp_path))
+        root = tmp_path / 'crawl/S/collections/c1'
+        root.mkdir(parents=True)
+        store.write_json(root / 'meta.json', {'keywords': []})
+        store.write_json(root / 'manifest.json', {'channels': sources, 'config': {}})
+        run = worker._Run(root, 'S', 'list', sources, None, {})
+        try:
+>           assert {s: l.min_interval_s for s, l in run.limiters.items()} == expected
+E           AssertionError: assert {'clien': 1, ...cafe': 1, ...} == {'clien': 0.5...fe': 0.5, ...}
+E             
+E             Omitting 2 identical items, use -vv to show
+E             Differing items:
+E             {'naver_cafe': 1} != {'naver_cafe': 0.5}
+E             {'naver_blog': 1} != {'naver_blog': 0.5}
+E             {'ppomppu': 1} != {'ppomppu': 0.5}
+E             {'clien': 1} != {'clien': 0.5}
+E             Use -v to get more diff
+
+tests/crawl/test_final_w4.py:135: AssertionError
+______________________ test_min_interval_enforced[clien] _______________________
+
+site = 'clien'
+
+    @pytest.mark.parametrize("site", CLASSES)
+    def test_min_interval_enforced(site):
+        a, requests, clock, manifest = adapter(site)
+        a._limiter.rng = lambda: 0.5
+        page = a.list_page(manifest["keyword"], None)
+        a.fetch(page.items[0])
+        a.list_page(manifest["keyword"], None)
+>       assert [when for _, when in requests] == [0, 0.5, 1]
+E       assert [0.0, 1.0, 2.0] == [0, 0.5, 1]
+E         
+E         At index 1 diff: 1.0 != 0.5
+E         Use -v to get more diff
+
+tests/crawl/adapters/test_community.py:173: AssertionError
+_____________________ test_min_interval_enforced[ppomppu] ______________________
+
+site = 'ppomppu'
+
+    @pytest.mark.parametrize("site", CLASSES)
+    def test_min_interval_enforced(site):
+        a, requests, clock, manifest = adapter(site)
+        a._limiter.rng = lambda: 0.5
+        page = a.list_page(manifest["keyword"], None)
+        a.fetch(page.items[0])
+        a.list_page(manifest["keyword"], None)
+>       assert [when for _, when in requests] == [0, 0.5, 1]
+E       assert [0.0, 1.0, 2.0] == [0, 0.5, 1]
+E         
+E         At index 1 diff: 1.0 != 0.5
+E         Use -v to get more diff
+
+tests/crawl/adapters/test_community.py:173: AssertionError
+________ test_legacy_zero_worker_interval_keeps_adapter_spacing[clien] _________
+
+site = 'clien'
+
+    @pytest.mark.parametrize('site', CLASSES)
+    def test_legacy_zero_worker_interval_keeps_adapter_spacing(site):
+        from app.crawl.ratelimit import ChannelLimiter
+        a, requests, clock, manifest = adapter(site)
+        a._limiter.rng = lambda: 0.5
+        worker_limiter = ChannelLimiter(1, 0)
+        with worker_limiter:
+            page = a.list_page(manifest['keyword'], None)
+        with worker_limiter:
+            a.fetch(page.items[0])
+>       assert [when for _, when in requests] == [0, 0.5]
+E       assert [0.0, 1.0] == [0, 0.5]
+E         
+E         At index 1 diff: 1.0 != 0.5
+E         Use -v to get more diff
+
+tests/crawl/adapters/test_community.py:239: AssertionError
+_______ test_legacy_zero_worker_interval_keeps_adapter_spacing[ppomppu] ________
+
+site = 'ppomppu'
+
+    @pytest.mark.parametrize('site', CLASSES)
+    def test_legacy_zero_worker_interval_keeps_adapter_spacing(site):
+        from app.crawl.ratelimit import ChannelLimiter
+        a, requests, clock, manifest = adapter(site)
+        a._limiter.rng = lambda: 0.5
+        worker_limiter = ChannelLimiter(1, 0)
+        with worker_limiter:
+            page = a.list_page(manifest['keyword'], None)
+        with worker_limiter:
+            a.fetch(page.items[0])
+>       assert [when for _, when in requests] == [0, 0.5]
+E       assert [0.0, 1.0] == [0, 0.5]
+E         
+E         At index 1 diff: 1.0 != 0.5
+E         Use -v to get more diff
+
+tests/crawl/adapters/test_community.py:239: AssertionError
+____ test_request_interval_shared_between_list_and_detail[NaverBlogAdapter] ____
+
+cls = <class 'app.crawl.adapters.naver_blog.NaverBlogAdapter'>
+
+    @pytest.mark.parametrize('cls', CLASSES)
+    def test_request_interval_shared_between_list_and_detail(cls):
+        ticks = [0.0]
+        starts = []
+        def sleep(seconds):
+            ticks[0] += seconds
+        def handle(request):
+            starts.append(ticks[0])
+            if request.url.host == 'search.naver.com':
+                content = fixture(cls, 'list-1.html')
+            else:
+                content = fixture(cls, 'detail-1.html' if cls is NaverBlogAdapter else 'detail-3.json')
+            return httpx.Response(200, content=content)
+        with httpx.Client(transport=httpx.MockTransport(handle)) as client:
+            a = cls(client, clock=lambda: ticks[0], sleep=sleep)
+            a._limiter.rng = lambda: 0.5
+            a.list_page('keyword')
+            a.fetch(item(cls))
+>       assert starts[1] - starts[0] == 0.5
+E       assert (1.0 - 0.0) == 0.5
+
+tests/crawl/adapters/test_naver.py:287: AssertionError
+____ test_request_interval_shared_between_list_and_detail[NaverCafeAdapter] ____
+
+cls = <class 'app.crawl.adapters.naver_cafe.NaverCafeAdapter'>
+
+    @pytest.mark.parametrize('cls', CLASSES)
+    def test_request_interval_shared_between_list_and_detail(cls):
+        ticks = [0.0]
+        starts = []
+        def sleep(seconds):
+            ticks[0] += seconds
+        def handle(request):
+            starts.append(ticks[0])
+            if request.url.host == 'search.naver.com':
+                content = fixture(cls, 'list-1.html')
+            else:
+                content = fixture(cls, 'detail-1.html' if cls is NaverBlogAdapter else 'detail-3.json')
+            return httpx.Response(200, content=content)
+        with httpx.Client(transport=httpx.MockTransport(handle)) as client:
+            a = cls(client, clock=lambda: ticks[0], sleep=sleep)
+            a._limiter.rng = lambda: 0.5
+            a.list_page('keyword')
+            a.fetch(item(cls))
+>       assert starts[1] - starts[0] == 0.5
+E       assert (1.0 - 0.0) == 0.5
+
+tests/crawl/adapters/test_naver.py:287: AssertionError
+=============================== warnings summary ===============================
+app/config.py:12
+  /Users/persona1/Desktop/dcx_agent-crawl/backend/app/config.py:12: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class Settings(BaseSettings):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/crawl/test_resume.py::test_limiter_fake_clock - TypeError: Chann...
+FAILED tests/crawl/test_resume.py::test_limiter_jitter_bounds[0-0.4] - TypeEr...
+FAILED tests/crawl/test_resume.py::test_limiter_jitter_bounds[0.5-0.5] - Type...
+FAILED tests/crawl/test_resume.py::test_limiter_jitter_bounds[1-0.6] - TypeEr...
+FAILED tests/crawl/test_resume.py::test_limiter_zero_interval_no_jitter - Typ...
+FAILED tests/crawl/test_resume.py::test_limiter_rejects_invalid_jitter[-0.1]
+FAILED tests/crawl/test_resume.py::test_limiter_rejects_invalid_jitter[1] - T...
+FAILED tests/crawl/test_resume.py::test_limiter_rejects_invalid_jitter[1.1]
+FAILED tests/crawl/test_crawl_api.py::test_partial_naver_limits_preserve_defaults
+FAILED tests/crawl/test_final_w4.py::test_status_reports_naver_effective_interval
+FAILED tests/crawl/test_final_w4.py::test_default_interval_half_second - Asse...
+FAILED tests/crawl/adapters/test_community.py::test_min_interval_enforced[clien]
+FAILED tests/crawl/adapters/test_community.py::test_min_interval_enforced[ppomppu]
+FAILED tests/crawl/adapters/test_community.py::test_legacy_zero_worker_interval_keeps_adapter_spacing[clien]
+FAILED tests/crawl/adapters/test_community.py::test_legacy_zero_worker_interval_keeps_adapter_spacing[ppomppu]
+FAILED tests/crawl/adapters/test_naver.py::test_request_interval_shared_between_list_and_detail[NaverBlogAdapter]
+FAILED tests/crawl/adapters/test_naver.py::test_request_interval_shared_between_list_and_detail[NaverCafeAdapter]
+17 failed, 177 deselected, 1 warning in 6.78s
+
+> frontend@0.1.0 test
+> vitest run src/lib/logic/finalW4.test.ts
+
+
+ RUN  v3.2.7 /Users/persona1/Desktop/dcx_agent-crawl/frontend
+
+(node:53428) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ❯ src/lib/logic/finalW4.test.ts (4 tests | 2 failed) 6ms
+   × uses effective Naver defaults 4ms
+     → expected 1 to be 0.5 // Object.is equality
+   ✓ renders channel status from availability and keyless Naver copy 0ms
+   ✓ shows terminated shopping and dynamic integration counts 0ms
+   × doubles Naver resume spacing to one second 1ms
+     → expected { naver_blog: 2, naver_cafe: 2 } to deeply equal { naver_blog: 1, naver_cafe: 1 }
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/logic/finalW4.test.ts > uses effective Naver defaults
+AssertionError: expected 1 to be 0.5 // Object.is equality
+
+- Expected
++ Received
+
+- 0.5
++ 1
+
+ ❯ src/lib/logic/finalW4.test.ts:9:43
+      7|   for (const source of ['clien', 'ppomppu', 'naver_blog', 'naver_cafe'…
+      8|     expect(limits(source).concurrency).toBe(1);
+      9|     expect(limits(source).min_interval_s).toBe(0.5);
+       |                                           ^
+     10|   }
+     11|   expect(limits('youtube').min_interval_s).toBe(0);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/lib/logic/finalW4.test.ts > doubles Naver resume spacing to one second
+AssertionError: expected { naver_blog: 2, naver_cafe: 2 } to deeply equal { naver_blog: 1, naver_cafe: 1 }
+
+- Expected
++ Received
+
+  {
+-   "naver_blog": 1,
+-   "naver_cafe": 1,
++   "naver_blog": 2,
++   "naver_cafe": 2,
+  }
+
+ ❯ src/lib/logic/finalW4.test.ts:30:119
+     28| it('doubles Naver resume spacing to one second', () => {
+     29|   const channels = ['naver_blog', 'naver_cafe'];
+     30|   expect(increasedResumeIntervals(channels, {}, {perChannel: Object.fr…
+       |                                                                                                                       ^
+     31| });
+     32| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 2 passed (4)
+   Start at  23:37:06
+   Duration  506ms (transform 27ms, setup 0ms, collect 23ms, tests 6ms, environment 0ms, prepare 314ms)
+

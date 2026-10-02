@@ -467,12 +467,12 @@ def test_status_collection_settings_without_collection(env):
 
 
 @pytest.mark.parametrize('config, expected', [
-    ({}, {'fixture': 0, 'youtube': 0, 'clien': 1, 'ppomppu': 1}),
+    ({}, {'fixture': 0, 'youtube': 0, 'clien': 0.5, 'ppomppu': 0.5}),
     ({'channel_limits': {'clien': {'min_interval_s': 3}}},
-     {'fixture': 0, 'youtube': 0, 'clien': 3, 'ppomppu': 1}),
+     {'fixture': 0, 'youtube': 0, 'clien': 3, 'ppomppu': 0.5}),
     ({'channel_limits': {'clien': {'min_interval_s': 3}},
       'perChannel': {'clien': {'min_interval_s': 5}}},
-     {'fixture': 0, 'youtube': 0, 'clien': 5, 'ppomppu': 1}),
+     {'fixture': 0, 'youtube': 0, 'clien': 5, 'ppomppu': 0.5}),
 ])
 def test_status_collection_settings_from_manifest(env, monkeypatch, config, expected):
     sources = ['fixture', 'youtube', 'clien', 'ppomppu']
@@ -679,3 +679,60 @@ def test_registered_sources_status_and_project_defaults(real_sources, env, monke
     manifest = store.read_json(control.collection_dir('S') / 'manifest.json')
     assert manifest['channels'] == sources
     assert len(env.calls) == 1  # Popen is injected; no real channel is contacted.
+
+
+
+def test_partial_naver_limits_preserve_defaults(env, monkeypatch):
+    monkeypatch.setattr(control, 'available_sources', lambda: ['naver_blog'])
+    response = env.client.put('/crawl/S/config', json={
+        'channels': ['naver_blog'], 'perChannel': {'naver_blog': {'max_per_keyword': 25}}})
+    assert response.status_code == 200
+    saved = store.load_session('S')['crawlConfig']
+    assert saved['perChannel']['naver_blog'] == {'max_per_keyword': 25}
+    control.start_list('S')
+    assert control._status_settings(store.load_session('S'))['min_interval_s']['naver_blog'] == 0.5
+    run = worker._Run(env.root, 'test', 'list', ['naver_blog'], None, saved)
+    try:
+        assert run.limiters['naver_blog'].min_interval_s == 0.5
+        assert run.limiters['naver_blog'].concurrency == 1
+    finally:
+        run.close('stopped')
+
+
+@pytest.mark.parametrize('intervals', [None, {'fixture': 2}])
+def test_resume_requeues_blocked_lists(env, intervals):
+    root, _ = prepared(env)
+    with closing(CrawlQueue(root / 'queue.sqlite')) as q:
+        q.add_list_tasks([KwMeta('alpha', 'a', 's', 0)], ['other'])
+        q.connection.execute("UPDATE list_tasks SET status='failed', attempts=3, last_error='AdapterBlocked'")
+        q.connection.execute("UPDATE list_tasks SET last_error='ValueError' WHERE kw='beta'")
+    response = env.client.post('/crawl/S/resume', json={'min_interval_s': intervals} if intervals else {})
+    assert response.status_code == 200
+    with closing(CrawlQueue(root / 'queue.sqlite')) as q:
+        rows = {(r['kw'], r['source']): (r['status'], r['attempts'])
+                for r in q.connection.execute('SELECT * FROM list_tasks')}
+    assert rows == {('alpha', 'fixture'): ('pending', 0),
+                    ('beta', 'fixture'): ('failed', 3), ('alpha', 'other'): ('failed', 3)}
+
+
+def test_resume_no_duplicate_tasks(env, monkeypatch):
+    root, _ = prepared(env)
+    with closing(CrawlQueue(root / 'queue.sqlite')) as q:
+        q.connection.execute("UPDATE list_tasks SET status='failed', attempts=3, last_error='AdapterBlocked'")
+    assert env.client.post('/crawl/S/resume').status_code == 200
+    assert env.client.post('/crawl/S/resume').status_code == 200
+    assert len(env.calls) == 1
+    seen = []
+    class Ready:
+        def list_page(self, kw, cursor):
+            seen.append((kw, cursor))
+            return ListPage([], None, 0)
+    monkeypatch.setitem(REGISTRY, 'fixture', Ready)
+    with closing(CrawlQueue(root / 'queue.sqlite')) as q:
+        q.connection.execute("UPDATE runs SET status='done'")
+    worker.run_list('S', collection=root)
+    assert seen == [('alpha', None), ('beta', None)]
+    with closing(CrawlQueue(root / 'queue.sqlite')) as q:
+        assert q.connection.execute('SELECT count(*) FROM list_tasks').fetchone()[0] == 2
+        assert {r[0] for r in q.connection.execute('SELECT status FROM list_tasks')} == {'done'}
+    assert env.client.post('/crawl/S/resume').status_code == 409

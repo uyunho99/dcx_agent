@@ -1,0 +1,756 @@
+FFFFFFFFFFFFFFFFFFFF.                                                    [100%]
+=================================== FAILURES ===================================
+____________________ test_search_block_stops_host[list-200] ____________________
+
+tmp_path = PosixPath('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1034/test_search_block_stops_host_l0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d642e70>
+fake_time = ([1.0], <function fake_time.<locals>.limiter at 0x10d702020>)
+status = 200, kind = 'list'
+
+    @pytest.mark.parametrize('status', [200, 403, 500])
+    @pytest.mark.parametrize('kind', ['list', 'detail'])
+    def test_search_block_stops_host(tmp_path, monkeypatch, fake_time, status, kind):
+        calls = []
+    
+        def handle(request):
+            calls.append(request)
+            return httpx.Response(status, text='검색 서비스 이용이 제한되었습니다')
+    
+        with httpx.Client(transport=httpx.MockTransport(handle)) as client:
+            adapters = register(monkeypatch, client)
+            if kind == 'list':
+                worker.run_list('S', collection=tmp_path, keywords=['k'], sources=SOURCES)
+            else:
+                with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+                    q.add_list_tasks(worker._keywords(['k']), SOURCES)
+                    q.add_urls([dict(url=f'https://{a.kind}.naver.com/owner/1', source=s, kw='k')
+                                for s, a in adapters.items()])
+                    snapshot = q.take_snapshot()
+                for adapter in adapters.values():
+                    def fetch(item, adapter=adapter):
+                        adapter.list_page('k')
+                        return []
+                    monkeypatch.setattr(adapter, 'fetch', fetch)
+                worker.run_detail('S', snapshot, collection=tmp_path, backoff_s=0)
+            state = store.read_json(tmp_path / 'worker_state.json')
+>           assert {c['status'] for c in state['channels'].values()} == {'paused_blocked'}
+E           AssertionError: assert {'failed'} == {'paused_blocked'}
+E             
+E             Extra items in the left set:
+E             'failed'
+E             Extra items in the right set:
+E             'paused_blocked'
+E             Use -v to get more diff
+
+tests/crawl/test_naver_safety.py:71: AssertionError
+____________________ test_search_block_stops_host[list-403] ____________________
+
+tmp_path = PosixPath('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1034/test_search_block_stops_host_l1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d6430e0>
+fake_time = ([1.0], <function fake_time.<locals>.limiter at 0x10d701da0>)
+status = 403, kind = 'list'
+
+    @pytest.mark.parametrize('status', [200, 403, 500])
+    @pytest.mark.parametrize('kind', ['list', 'detail'])
+    def test_search_block_stops_host(tmp_path, monkeypatch, fake_time, status, kind):
+        calls = []
+    
+        def handle(request):
+            calls.append(request)
+            return httpx.Response(status, text='검색 서비스 이용이 제한되었습니다')
+    
+        with httpx.Client(transport=httpx.MockTransport(handle)) as client:
+            adapters = register(monkeypatch, client)
+            if kind == 'list':
+                worker.run_list('S', collection=tmp_path, keywords=['k'], sources=SOURCES)
+            else:
+                with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+                    q.add_list_tasks(worker._keywords(['k']), SOURCES)
+                    q.add_urls([dict(url=f'https://{a.kind}.naver.com/owner/1', source=s, kw='k')
+                                for s, a in adapters.items()])
+                    snapshot = q.take_snapshot()
+                for adapter in adapters.values():
+                    def fetch(item, adapter=adapter):
+                        adapter.list_page('k')
+                        return []
+                    monkeypatch.setattr(adapter, 'fetch', fetch)
+                worker.run_detail('S', snapshot, collection=tmp_path, backoff_s=0)
+            state = store.read_json(tmp_path / 'worker_state.json')
+>           assert {c['status'] for c in state['channels'].values()} == {'paused_blocked'}
+E           AssertionError: assert {'failed'} == {'paused_blocked'}
+E             
+E             Extra items in the left set:
+E             'failed'
+E             Extra items in the right set:
+E             'paused_blocked'
+E             Use -v to get more diff
+
+tests/crawl/test_naver_safety.py:71: AssertionError
+____________________ test_search_block_stops_host[list-500] ____________________
+
+tmp_path = PosixPath('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1034/test_search_block_stops_host_l2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d6827b0>
+fake_time = ([1.0], <function fake_time.<locals>.limiter at 0x10d701b20>)
+status = 500, kind = 'list'
+
+    @pytest.mark.parametrize('status', [200, 403, 500])
+    @pytest.mark.parametrize('kind', ['list', 'detail'])
+    def test_search_block_stops_host(tmp_path, monkeypatch, fake_time, status, kind):
+        calls = []
+    
+        def handle(request):
+            calls.append(request)
+            return httpx.Response(status, text='검색 서비스 이용이 제한되었습니다')
+    
+        with httpx.Client(transport=httpx.MockTransport(handle)) as client:
+            adapters = register(monkeypatch, client)
+            if kind == 'list':
+                worker.run_list('S', collection=tmp_path, keywords=['k'], sources=SOURCES)
+            else:
+                with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+                    q.add_list_tasks(worker._keywords(['k']), SOURCES)
+                    q.add_urls([dict(url=f'https://{a.kind}.naver.com/owner/1', source=s, kw='k')
+                                for s, a in adapters.items()])
+                    snapshot = q.take_snapshot()
+                for adapter in adapters.values():
+                    def fetch(item, adapter=adapter):
+                        adapter.list_page('k')
+                        return []
+                    monkeypatch.setattr(adapter, 'fetch', fetch)
+                worker.run_detail('S', snapshot, collection=tmp_path, backoff_s=0)
+            state = store.read_json(tmp_path / 'worker_state.json')
+>           assert {c['status'] for c in state['channels'].values()} == {'paused_blocked'}
+E           AssertionError: assert {'failed'} == {'paused_blocked'}
+E             
+E             Extra items in the left set:
+E             'failed'
+E             Extra items in the right set:
+E             'paused_blocked'
+E             Use -v to get more diff
+
+tests/crawl/test_naver_safety.py:71: AssertionError
+___________________ test_search_block_stops_host[detail-200] ___________________
+
+tmp_path = PosixPath('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1034/test_search_block_stops_host_d0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d6c9880>
+fake_time = ([1.0], <function fake_time.<locals>.limiter at 0x10d73aa20>)
+status = 200, kind = 'detail'
+
+    @pytest.mark.parametrize('status', [200, 403, 500])
+    @pytest.mark.parametrize('kind', ['list', 'detail'])
+    def test_search_block_stops_host(tmp_path, monkeypatch, fake_time, status, kind):
+        calls = []
+    
+        def handle(request):
+            calls.append(request)
+            return httpx.Response(status, text='검색 서비스 이용이 제한되었습니다')
+    
+        with httpx.Client(transport=httpx.MockTransport(handle)) as client:
+            adapters = register(monkeypatch, client)
+            if kind == 'list':
+                worker.run_list('S', collection=tmp_path, keywords=['k'], sources=SOURCES)
+            else:
+                with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+                    q.add_list_tasks(worker._keywords(['k']), SOURCES)
+                    q.add_urls([dict(url=f'https://{a.kind}.naver.com/owner/1', source=s, kw='k')
+                                for s, a in adapters.items()])
+                    snapshot = q.take_snapshot()
+                for adapter in adapters.values():
+                    def fetch(item, adapter=adapter):
+                        adapter.list_page('k')
+                        return []
+                    monkeypatch.setattr(adapter, 'fetch', fetch)
+                worker.run_detail('S', snapshot, collection=tmp_path, backoff_s=0)
+            state = store.read_json(tmp_path / 'worker_state.json')
+>           assert {c['status'] for c in state['channels'].values()} == {'paused_blocked'}
+E           AssertionError: assert {'done'} == {'paused_blocked'}
+E             
+E             Extra items in the left set:
+E             'done'
+E             Extra items in the right set:
+E             'paused_blocked'
+E             Use -v to get more diff
+
+tests/crawl/test_naver_safety.py:71: AssertionError
+___________________ test_search_block_stops_host[detail-403] ___________________
+
+tmp_path = PosixPath('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1034/test_search_block_stops_host_d1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d6db620>
+fake_time = ([1.0], <function fake_time.<locals>.limiter at 0x10d73bd80>)
+status = 403, kind = 'detail'
+
+    @pytest.mark.parametrize('status', [200, 403, 500])
+    @pytest.mark.parametrize('kind', ['list', 'detail'])
+    def test_search_block_stops_host(tmp_path, monkeypatch, fake_time, status, kind):
+        calls = []
+    
+        def handle(request):
+            calls.append(request)
+            return httpx.Response(status, text='검색 서비스 이용이 제한되었습니다')
+    
+        with httpx.Client(transport=httpx.MockTransport(handle)) as client:
+            adapters = register(monkeypatch, client)
+            if kind == 'list':
+                worker.run_list('S', collection=tmp_path, keywords=['k'], sources=SOURCES)
+            else:
+                with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+                    q.add_list_tasks(worker._keywords(['k']), SOURCES)
+                    q.add_urls([dict(url=f'https://{a.kind}.naver.com/owner/1', source=s, kw='k')
+                                for s, a in adapters.items()])
+                    snapshot = q.take_snapshot()
+                for adapter in adapters.values():
+                    def fetch(item, adapter=adapter):
+                        adapter.list_page('k')
+                        return []
+                    monkeypatch.setattr(adapter, 'fetch', fetch)
+                worker.run_detail('S', snapshot, collection=tmp_path, backoff_s=0)
+            state = store.read_json(tmp_path / 'worker_state.json')
+>           assert {c['status'] for c in state['channels'].values()} == {'paused_blocked'}
+E           AssertionError: assert {'done'} == {'paused_blocked'}
+E             
+E             Extra items in the left set:
+E             'done'
+E             Extra items in the right set:
+E             'paused_blocked'
+E             Use -v to get more diff
+
+tests/crawl/test_naver_safety.py:71: AssertionError
+___________________ test_search_block_stops_host[detail-500] ___________________
+
+tmp_path = PosixPath('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1034/test_search_block_stops_host_d2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d6de360>
+fake_time = ([1.0], <function fake_time.<locals>.limiter at 0x10d73b4c0>)
+status = 500, kind = 'detail'
+
+    @pytest.mark.parametrize('status', [200, 403, 500])
+    @pytest.mark.parametrize('kind', ['list', 'detail'])
+    def test_search_block_stops_host(tmp_path, monkeypatch, fake_time, status, kind):
+        calls = []
+    
+        def handle(request):
+            calls.append(request)
+            return httpx.Response(status, text='검색 서비스 이용이 제한되었습니다')
+    
+        with httpx.Client(transport=httpx.MockTransport(handle)) as client:
+            adapters = register(monkeypatch, client)
+            if kind == 'list':
+                worker.run_list('S', collection=tmp_path, keywords=['k'], sources=SOURCES)
+            else:
+                with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+                    q.add_list_tasks(worker._keywords(['k']), SOURCES)
+                    q.add_urls([dict(url=f'https://{a.kind}.naver.com/owner/1', source=s, kw='k')
+                                for s, a in adapters.items()])
+                    snapshot = q.take_snapshot()
+                for adapter in adapters.values():
+                    def fetch(item, adapter=adapter):
+                        adapter.list_page('k')
+                        return []
+                    monkeypatch.setattr(adapter, 'fetch', fetch)
+                worker.run_detail('S', snapshot, collection=tmp_path, backoff_s=0)
+            state = store.read_json(tmp_path / 'worker_state.json')
+>           assert {c['status'] for c in state['channels'].values()} == {'paused_blocked'}
+E           AssertionError: assert {'done'} == {'paused_blocked'}
+E             
+E             Extra items in the left set:
+E             'done'
+E             Extra items in the right set:
+E             'paused_blocked'
+E             Use -v to get more diff
+
+tests/crawl/test_naver_safety.py:71: AssertionError
+______________________ test_shared_search_limiter_spacing ______________________
+
+tmp_path = PosixPath('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1034/test_shared_search_limiter_spa0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d6d8d10>
+fake_time = ([0.0], <function fake_time.<locals>.limiter at 0x10d739440>)
+
+    def test_shared_search_limiter_spacing(tmp_path, monkeypatch, fake_time):
+        ticks, _ = fake_time
+        starts = []
+        barrier = Barrier(2)
+    
+        def handle(request):
+            assert request.url.host == 'search.naver.com'
+            starts.append(ticks[0])
+            return httpx.Response(200, text=EMPTY)
+    
+        with httpx.Client(transport=httpx.MockTransport(handle)) as client:
+            adapters = register(monkeypatch, client)
+            for adapter in adapters.values():
+                original = adapter.list_page
+                def list_page(kw, cursor=None, original=original):
+                    barrier.wait(timeout=5)
+                    return original(kw, cursor)
+                monkeypatch.setattr(adapter, 'list_page', list_page)
+            worker.run_list('S', collection=tmp_path, keywords=['k'], sources=SOURCES)
+            assert len(starts) == 2
+>           assert starts[1] - starts[0] >= 0.5
+E           assert (0.0 - 0.0) >= 0.5
+
+tests/crawl/test_naver_safety.py:103: AssertionError
+___ test_article_hosts_use_channel_limiter[NaverBlogAdapter-blog.naver.com] ____
+
+fake_time = ([0.0], <function fake_time.<locals>.limiter at 0x10d7399e0>)
+cls = <class 'app.crawl.adapters.naver_blog.NaverBlogAdapter'>
+host = 'blog.naver.com'
+
+    @pytest.mark.parametrize('cls,host', [
+        (NaverBlogAdapter, 'blog.naver.com'),
+        (NaverBlogAdapter, 'm.blog.naver.com'),
+        (NaverCafeAdapter, 'article.cafe.naver.com'),
+    ])
+    def test_article_hosts_use_channel_limiter(fake_time, cls, host):
+        ticks, limiter = fake_time
+        starts = []
+        with httpx.Client(transport=httpx.MockTransport(
+                lambda request: (starts.append(ticks[0]) or httpx.Response(200)))) as client:
+            adapter = cls(client)
+>           assert adapter.search_limiter is adapter._limiter
+                   ^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'NaverBlogAdapter' object has no attribute 'search_limiter'
+
+tests/crawl/test_naver_safety.py:118: AttributeError
+__ test_article_hosts_use_channel_limiter[NaverBlogAdapter-m.blog.naver.com] ___
+
+fake_time = ([0.0], <function fake_time.<locals>.limiter at 0x10d738540>)
+cls = <class 'app.crawl.adapters.naver_blog.NaverBlogAdapter'>
+host = 'm.blog.naver.com'
+
+    @pytest.mark.parametrize('cls,host', [
+        (NaverBlogAdapter, 'blog.naver.com'),
+        (NaverBlogAdapter, 'm.blog.naver.com'),
+        (NaverCafeAdapter, 'article.cafe.naver.com'),
+    ])
+    def test_article_hosts_use_channel_limiter(fake_time, cls, host):
+        ticks, limiter = fake_time
+        starts = []
+        with httpx.Client(transport=httpx.MockTransport(
+                lambda request: (starts.append(ticks[0]) or httpx.Response(200)))) as client:
+            adapter = cls(client)
+>           assert adapter.search_limiter is adapter._limiter
+                   ^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'NaverBlogAdapter' object has no attribute 'search_limiter'
+
+tests/crawl/test_naver_safety.py:118: AttributeError
+_ test_article_hosts_use_channel_limiter[NaverCafeAdapter-article.cafe.naver.com] _
+
+fake_time = ([0.0], <function fake_time.<locals>.limiter at 0x10d738fe0>)
+cls = <class 'app.crawl.adapters.naver_cafe.NaverCafeAdapter'>
+host = 'article.cafe.naver.com'
+
+    @pytest.mark.parametrize('cls,host', [
+        (NaverBlogAdapter, 'blog.naver.com'),
+        (NaverBlogAdapter, 'm.blog.naver.com'),
+        (NaverCafeAdapter, 'article.cafe.naver.com'),
+    ])
+    def test_article_hosts_use_channel_limiter(fake_time, cls, host):
+        ticks, limiter = fake_time
+        starts = []
+        with httpx.Client(transport=httpx.MockTransport(
+                lambda request: (starts.append(ticks[0]) or httpx.Response(200)))) as client:
+            adapter = cls(client)
+>           assert adapter.search_limiter is adapter._limiter
+                   ^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'NaverCafeAdapter' object has no attribute 'search_limiter'
+
+tests/crawl/test_naver_safety.py:118: AttributeError
+_____ test_worker_shared_limiter_configuration[sources0-options0-0.5-list] _____
+
+tmp_path = PosixPath('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1034/test_worker_shared_limiter_con0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d680a10>
+fake_time = ([0.0], <function fake_time.<locals>.limiter at 0x10d738180>)
+kind = 'list', sources = ('naver_blog', 'naver_cafe'), options = {}
+expected = 0.5
+
+    @pytest.mark.parametrize('kind', ['list', 'detail'])
+    @pytest.mark.parametrize('sources,options,expected', [
+        (SOURCES, {}, 0.5),
+        (SOURCES, {'naver_blog': {'min_interval_s': 0.7},
+                   'naver_cafe': {'min_interval_s': 1.2}}, 1.2),
+        (('naver_blog',), {'naver_blog': {'min_interval_s': 0.2}}, 0.2),
+        (('naver_cafe',), {}, 0.5),
+        (SOURCES, {s: {'min_interval_s': 0} for s in SOURCES}, 0),
+    ])
+    def test_worker_shared_limiter_configuration(tmp_path, monkeypatch, fake_time, kind, sources, options, expected):
+        store.write_json(tmp_path / 'manifest.json', {'config': {'perChannel': options}})
+        with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, text=EMPTY))) as client:
+            adapters = register(monkeypatch, client)
+            if kind == 'list':
+                worker.run_list('S', collection=tmp_path, keywords=['k'], sources=sources)
+            else:
+                with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+                    q.add_list_tasks(worker._keywords(['k']), sources)
+                    q.add_urls([dict(url=f'https://{adapters[s].kind}.naver.com/owner/1', source=s, kw='k')
+                                for s in sources])
+                    snapshot = q.take_snapshot()
+                for adapter in adapters.values():
+                    monkeypatch.setattr(adapter, 'fetch', lambda item: [])
+                worker.run_detail('S', snapshot, collection=tmp_path)
+>           shared = adapters[sources[0]].search_limiter
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'NaverBlogAdapter' object has no attribute 'search_limiter'
+
+tests/crawl/test_naver_safety.py:154: AttributeError
+____ test_worker_shared_limiter_configuration[sources0-options0-0.5-detail] ____
+
+tmp_path = PosixPath('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1034/test_worker_shared_limiter_con1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d683710>
+fake_time = ([0.0], <function fake_time.<locals>.limiter at 0x10d727c40>)
+kind = 'detail', sources = ('naver_blog', 'naver_cafe'), options = {}
+expected = 0.5
+
+    @pytest.mark.parametrize('kind', ['list', 'detail'])
+    @pytest.mark.parametrize('sources,options,expected', [
+        (SOURCES, {}, 0.5),
+        (SOURCES, {'naver_blog': {'min_interval_s': 0.7},
+                   'naver_cafe': {'min_interval_s': 1.2}}, 1.2),
+        (('naver_blog',), {'naver_blog': {'min_interval_s': 0.2}}, 0.2),
+        (('naver_cafe',), {}, 0.5),
+        (SOURCES, {s: {'min_interval_s': 0} for s in SOURCES}, 0),
+    ])
+    def test_worker_shared_limiter_configuration(tmp_path, monkeypatch, fake_time, kind, sources, options, expected):
+        store.write_json(tmp_path / 'manifest.json', {'config': {'perChannel': options}})
+        with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, text=EMPTY))) as client:
+            adapters = register(monkeypatch, client)
+            if kind == 'list':
+                worker.run_list('S', collection=tmp_path, keywords=['k'], sources=sources)
+            else:
+                with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+                    q.add_list_tasks(worker._keywords(['k']), sources)
+                    q.add_urls([dict(url=f'https://{adapters[s].kind}.naver.com/owner/1', source=s, kw='k')
+                                for s in sources])
+                    snapshot = q.take_snapshot()
+                for adapter in adapters.values():
+                    monkeypatch.setattr(adapter, 'fetch', lambda item: [])
+                worker.run_detail('S', snapshot, collection=tmp_path)
+>           shared = adapters[sources[0]].search_limiter
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'NaverBlogAdapter' object has no attribute 'search_limiter'
+
+tests/crawl/test_naver_safety.py:154: AttributeError
+_____ test_worker_shared_limiter_configuration[sources1-options1-1.2-list] _____
+
+tmp_path = PosixPath('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1034/test_worker_shared_limiter_con2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d681b50>
+fake_time = ([0.0], <function fake_time.<locals>.limiter at 0x10d739760>)
+kind = 'list', sources = ('naver_blog', 'naver_cafe')
+options = {'naver_blog': {'min_interval_s': 0.7}, 'naver_cafe': {'min_interval_s': 1.2}}
+expected = 1.2
+
+    @pytest.mark.parametrize('kind', ['list', 'detail'])
+    @pytest.mark.parametrize('sources,options,expected', [
+        (SOURCES, {}, 0.5),
+        (SOURCES, {'naver_blog': {'min_interval_s': 0.7},
+                   'naver_cafe': {'min_interval_s': 1.2}}, 1.2),
+        (('naver_blog',), {'naver_blog': {'min_interval_s': 0.2}}, 0.2),
+        (('naver_cafe',), {}, 0.5),
+        (SOURCES, {s: {'min_interval_s': 0} for s in SOURCES}, 0),
+    ])
+    def test_worker_shared_limiter_configuration(tmp_path, monkeypatch, fake_time, kind, sources, options, expected):
+        store.write_json(tmp_path / 'manifest.json', {'config': {'perChannel': options}})
+        with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, text=EMPTY))) as client:
+            adapters = register(monkeypatch, client)
+            if kind == 'list':
+                worker.run_list('S', collection=tmp_path, keywords=['k'], sources=sources)
+            else:
+                with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+                    q.add_list_tasks(worker._keywords(['k']), sources)
+                    q.add_urls([dict(url=f'https://{adapters[s].kind}.naver.com/owner/1', source=s, kw='k')
+                                for s in sources])
+                    snapshot = q.take_snapshot()
+                for adapter in adapters.values():
+                    monkeypatch.setattr(adapter, 'fetch', lambda item: [])
+                worker.run_detail('S', snapshot, collection=tmp_path)
+>           shared = adapters[sources[0]].search_limiter
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'NaverBlogAdapter' object has no attribute 'search_limiter'
+
+tests/crawl/test_naver_safety.py:154: AttributeError
+____ test_worker_shared_limiter_configuration[sources1-options1-1.2-detail] ____
+
+tmp_path = PosixPath('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1034/test_worker_shared_limiter_con3')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d682690>
+fake_time = ([0.0], <function fake_time.<locals>.limiter at 0x10d703ce0>)
+kind = 'detail', sources = ('naver_blog', 'naver_cafe')
+options = {'naver_blog': {'min_interval_s': 0.7}, 'naver_cafe': {'min_interval_s': 1.2}}
+expected = 1.2
+
+    @pytest.mark.parametrize('kind', ['list', 'detail'])
+    @pytest.mark.parametrize('sources,options,expected', [
+        (SOURCES, {}, 0.5),
+        (SOURCES, {'naver_blog': {'min_interval_s': 0.7},
+                   'naver_cafe': {'min_interval_s': 1.2}}, 1.2),
+        (('naver_blog',), {'naver_blog': {'min_interval_s': 0.2}}, 0.2),
+        (('naver_cafe',), {}, 0.5),
+        (SOURCES, {s: {'min_interval_s': 0} for s in SOURCES}, 0),
+    ])
+    def test_worker_shared_limiter_configuration(tmp_path, monkeypatch, fake_time, kind, sources, options, expected):
+        store.write_json(tmp_path / 'manifest.json', {'config': {'perChannel': options}})
+        with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, text=EMPTY))) as client:
+            adapters = register(monkeypatch, client)
+            if kind == 'list':
+                worker.run_list('S', collection=tmp_path, keywords=['k'], sources=sources)
+            else:
+                with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+                    q.add_list_tasks(worker._keywords(['k']), sources)
+                    q.add_urls([dict(url=f'https://{adapters[s].kind}.naver.com/owner/1', source=s, kw='k')
+                                for s in sources])
+                    snapshot = q.take_snapshot()
+                for adapter in adapters.values():
+                    monkeypatch.setattr(adapter, 'fetch', lambda item: [])
+                worker.run_detail('S', snapshot, collection=tmp_path)
+>           shared = adapters[sources[0]].search_limiter
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'NaverBlogAdapter' object has no attribute 'search_limiter'
+
+tests/crawl/test_naver_safety.py:154: AttributeError
+_____ test_worker_shared_limiter_configuration[sources2-options2-0.2-list] _____
+
+tmp_path = PosixPath('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1034/test_worker_shared_limiter_con4')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d6810d0>
+fake_time = ([0.0], <function fake_time.<locals>.limiter at 0x10d7022a0>)
+kind = 'list', sources = ('naver_blog',)
+options = {'naver_blog': {'min_interval_s': 0.2}}, expected = 0.2
+
+    @pytest.mark.parametrize('kind', ['list', 'detail'])
+    @pytest.mark.parametrize('sources,options,expected', [
+        (SOURCES, {}, 0.5),
+        (SOURCES, {'naver_blog': {'min_interval_s': 0.7},
+                   'naver_cafe': {'min_interval_s': 1.2}}, 1.2),
+        (('naver_blog',), {'naver_blog': {'min_interval_s': 0.2}}, 0.2),
+        (('naver_cafe',), {}, 0.5),
+        (SOURCES, {s: {'min_interval_s': 0} for s in SOURCES}, 0),
+    ])
+    def test_worker_shared_limiter_configuration(tmp_path, monkeypatch, fake_time, kind, sources, options, expected):
+        store.write_json(tmp_path / 'manifest.json', {'config': {'perChannel': options}})
+        with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, text=EMPTY))) as client:
+            adapters = register(monkeypatch, client)
+            if kind == 'list':
+                worker.run_list('S', collection=tmp_path, keywords=['k'], sources=sources)
+            else:
+                with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+                    q.add_list_tasks(worker._keywords(['k']), sources)
+                    q.add_urls([dict(url=f'https://{adapters[s].kind}.naver.com/owner/1', source=s, kw='k')
+                                for s in sources])
+                    snapshot = q.take_snapshot()
+                for adapter in adapters.values():
+                    monkeypatch.setattr(adapter, 'fetch', lambda item: [])
+                worker.run_detail('S', snapshot, collection=tmp_path)
+>           shared = adapters[sources[0]].search_limiter
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'NaverBlogAdapter' object has no attribute 'search_limiter'
+
+tests/crawl/test_naver_safety.py:154: AttributeError
+____ test_worker_shared_limiter_configuration[sources2-options2-0.2-detail] ____
+
+tmp_path = PosixPath('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1034/test_worker_shared_limiter_con5')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d6dc470>
+fake_time = ([0.0], <function fake_time.<locals>.limiter at 0x10e171a80>)
+kind = 'detail', sources = ('naver_blog',)
+options = {'naver_blog': {'min_interval_s': 0.2}}, expected = 0.2
+
+    @pytest.mark.parametrize('kind', ['list', 'detail'])
+    @pytest.mark.parametrize('sources,options,expected', [
+        (SOURCES, {}, 0.5),
+        (SOURCES, {'naver_blog': {'min_interval_s': 0.7},
+                   'naver_cafe': {'min_interval_s': 1.2}}, 1.2),
+        (('naver_blog',), {'naver_blog': {'min_interval_s': 0.2}}, 0.2),
+        (('naver_cafe',), {}, 0.5),
+        (SOURCES, {s: {'min_interval_s': 0} for s in SOURCES}, 0),
+    ])
+    def test_worker_shared_limiter_configuration(tmp_path, monkeypatch, fake_time, kind, sources, options, expected):
+        store.write_json(tmp_path / 'manifest.json', {'config': {'perChannel': options}})
+        with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, text=EMPTY))) as client:
+            adapters = register(monkeypatch, client)
+            if kind == 'list':
+                worker.run_list('S', collection=tmp_path, keywords=['k'], sources=sources)
+            else:
+                with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+                    q.add_list_tasks(worker._keywords(['k']), sources)
+                    q.add_urls([dict(url=f'https://{adapters[s].kind}.naver.com/owner/1', source=s, kw='k')
+                                for s in sources])
+                    snapshot = q.take_snapshot()
+                for adapter in adapters.values():
+                    monkeypatch.setattr(adapter, 'fetch', lambda item: [])
+                worker.run_detail('S', snapshot, collection=tmp_path)
+>           shared = adapters[sources[0]].search_limiter
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'NaverBlogAdapter' object has no attribute 'search_limiter'
+
+tests/crawl/test_naver_safety.py:154: AttributeError
+_____ test_worker_shared_limiter_configuration[sources3-options3-0.5-list] _____
+
+tmp_path = PosixPath('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1034/test_worker_shared_limiter_con6')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d681400>
+fake_time = ([0.0], <function fake_time.<locals>.limiter at 0x10d702340>)
+kind = 'list', sources = ('naver_cafe',), options = {}, expected = 0.5
+
+    @pytest.mark.parametrize('kind', ['list', 'detail'])
+    @pytest.mark.parametrize('sources,options,expected', [
+        (SOURCES, {}, 0.5),
+        (SOURCES, {'naver_blog': {'min_interval_s': 0.7},
+                   'naver_cafe': {'min_interval_s': 1.2}}, 1.2),
+        (('naver_blog',), {'naver_blog': {'min_interval_s': 0.2}}, 0.2),
+        (('naver_cafe',), {}, 0.5),
+        (SOURCES, {s: {'min_interval_s': 0} for s in SOURCES}, 0),
+    ])
+    def test_worker_shared_limiter_configuration(tmp_path, monkeypatch, fake_time, kind, sources, options, expected):
+        store.write_json(tmp_path / 'manifest.json', {'config': {'perChannel': options}})
+        with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, text=EMPTY))) as client:
+            adapters = register(monkeypatch, client)
+            if kind == 'list':
+                worker.run_list('S', collection=tmp_path, keywords=['k'], sources=sources)
+            else:
+                with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+                    q.add_list_tasks(worker._keywords(['k']), sources)
+                    q.add_urls([dict(url=f'https://{adapters[s].kind}.naver.com/owner/1', source=s, kw='k')
+                                for s in sources])
+                    snapshot = q.take_snapshot()
+                for adapter in adapters.values():
+                    monkeypatch.setattr(adapter, 'fetch', lambda item: [])
+                worker.run_detail('S', snapshot, collection=tmp_path)
+>           shared = adapters[sources[0]].search_limiter
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'NaverCafeAdapter' object has no attribute 'search_limiter'
+
+tests/crawl/test_naver_safety.py:154: AttributeError
+____ test_worker_shared_limiter_configuration[sources3-options3-0.5-detail] ____
+
+tmp_path = PosixPath('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1034/test_worker_shared_limiter_con7')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d6834d0>
+fake_time = ([0.0], <function fake_time.<locals>.limiter at 0x10d7032e0>)
+kind = 'detail', sources = ('naver_cafe',), options = {}, expected = 0.5
+
+    @pytest.mark.parametrize('kind', ['list', 'detail'])
+    @pytest.mark.parametrize('sources,options,expected', [
+        (SOURCES, {}, 0.5),
+        (SOURCES, {'naver_blog': {'min_interval_s': 0.7},
+                   'naver_cafe': {'min_interval_s': 1.2}}, 1.2),
+        (('naver_blog',), {'naver_blog': {'min_interval_s': 0.2}}, 0.2),
+        (('naver_cafe',), {}, 0.5),
+        (SOURCES, {s: {'min_interval_s': 0} for s in SOURCES}, 0),
+    ])
+    def test_worker_shared_limiter_configuration(tmp_path, monkeypatch, fake_time, kind, sources, options, expected):
+        store.write_json(tmp_path / 'manifest.json', {'config': {'perChannel': options}})
+        with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, text=EMPTY))) as client:
+            adapters = register(monkeypatch, client)
+            if kind == 'list':
+                worker.run_list('S', collection=tmp_path, keywords=['k'], sources=sources)
+            else:
+                with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+                    q.add_list_tasks(worker._keywords(['k']), sources)
+                    q.add_urls([dict(url=f'https://{adapters[s].kind}.naver.com/owner/1', source=s, kw='k')
+                                for s in sources])
+                    snapshot = q.take_snapshot()
+                for adapter in adapters.values():
+                    monkeypatch.setattr(adapter, 'fetch', lambda item: [])
+                worker.run_detail('S', snapshot, collection=tmp_path)
+>           shared = adapters[sources[0]].search_limiter
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'NaverCafeAdapter' object has no attribute 'search_limiter'
+
+tests/crawl/test_naver_safety.py:154: AttributeError
+______ test_worker_shared_limiter_configuration[sources4-options4-0-list] ______
+
+tmp_path = PosixPath('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1034/test_worker_shared_limiter_con8')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d682690>
+fake_time = ([0.0], <function fake_time.<locals>.limiter at 0x10d701bc0>)
+kind = 'list', sources = ('naver_blog', 'naver_cafe')
+options = {'naver_blog': {'min_interval_s': 0}, 'naver_cafe': {'min_interval_s': 0}}
+expected = 0
+
+    @pytest.mark.parametrize('kind', ['list', 'detail'])
+    @pytest.mark.parametrize('sources,options,expected', [
+        (SOURCES, {}, 0.5),
+        (SOURCES, {'naver_blog': {'min_interval_s': 0.7},
+                   'naver_cafe': {'min_interval_s': 1.2}}, 1.2),
+        (('naver_blog',), {'naver_blog': {'min_interval_s': 0.2}}, 0.2),
+        (('naver_cafe',), {}, 0.5),
+        (SOURCES, {s: {'min_interval_s': 0} for s in SOURCES}, 0),
+    ])
+    def test_worker_shared_limiter_configuration(tmp_path, monkeypatch, fake_time, kind, sources, options, expected):
+        store.write_json(tmp_path / 'manifest.json', {'config': {'perChannel': options}})
+        with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, text=EMPTY))) as client:
+            adapters = register(monkeypatch, client)
+            if kind == 'list':
+                worker.run_list('S', collection=tmp_path, keywords=['k'], sources=sources)
+            else:
+                with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+                    q.add_list_tasks(worker._keywords(['k']), sources)
+                    q.add_urls([dict(url=f'https://{adapters[s].kind}.naver.com/owner/1', source=s, kw='k')
+                                for s in sources])
+                    snapshot = q.take_snapshot()
+                for adapter in adapters.values():
+                    monkeypatch.setattr(adapter, 'fetch', lambda item: [])
+                worker.run_detail('S', snapshot, collection=tmp_path)
+>           shared = adapters[sources[0]].search_limiter
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'NaverBlogAdapter' object has no attribute 'search_limiter'
+
+tests/crawl/test_naver_safety.py:154: AttributeError
+_____ test_worker_shared_limiter_configuration[sources4-options4-0-detail] _____
+
+tmp_path = PosixPath('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1034/test_worker_shared_limiter_con9')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d6809b0>
+fake_time = ([0.0], <function fake_time.<locals>.limiter at 0x10d700680>)
+kind = 'detail', sources = ('naver_blog', 'naver_cafe')
+options = {'naver_blog': {'min_interval_s': 0}, 'naver_cafe': {'min_interval_s': 0}}
+expected = 0
+
+    @pytest.mark.parametrize('kind', ['list', 'detail'])
+    @pytest.mark.parametrize('sources,options,expected', [
+        (SOURCES, {}, 0.5),
+        (SOURCES, {'naver_blog': {'min_interval_s': 0.7},
+                   'naver_cafe': {'min_interval_s': 1.2}}, 1.2),
+        (('naver_blog',), {'naver_blog': {'min_interval_s': 0.2}}, 0.2),
+        (('naver_cafe',), {}, 0.5),
+        (SOURCES, {s: {'min_interval_s': 0} for s in SOURCES}, 0),
+    ])
+    def test_worker_shared_limiter_configuration(tmp_path, monkeypatch, fake_time, kind, sources, options, expected):
+        store.write_json(tmp_path / 'manifest.json', {'config': {'perChannel': options}})
+        with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, text=EMPTY))) as client:
+            adapters = register(monkeypatch, client)
+            if kind == 'list':
+                worker.run_list('S', collection=tmp_path, keywords=['k'], sources=sources)
+            else:
+                with closing(CrawlQueue(tmp_path / 'queue.sqlite')) as q:
+                    q.add_list_tasks(worker._keywords(['k']), sources)
+                    q.add_urls([dict(url=f'https://{adapters[s].kind}.naver.com/owner/1', source=s, kw='k')
+                                for s in sources])
+                    snapshot = q.take_snapshot()
+                for adapter in adapters.values():
+                    monkeypatch.setattr(adapter, 'fetch', lambda item: [])
+                worker.run_detail('S', snapshot, collection=tmp_path)
+>           shared = adapters[sources[0]].search_limiter
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'NaverBlogAdapter' object has no attribute 'search_limiter'
+
+tests/crawl/test_naver_safety.py:154: AttributeError
+=============================== warnings summary ===============================
+app/config.py:12
+  /Users/persona1/Desktop/dcx_agent-crawl/backend/app/config.py:12: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class Settings(BaseSettings):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/crawl/test_naver_safety.py::test_search_block_stops_host[list-200]
+FAILED tests/crawl/test_naver_safety.py::test_search_block_stops_host[list-403]
+FAILED tests/crawl/test_naver_safety.py::test_search_block_stops_host[list-500]
+FAILED tests/crawl/test_naver_safety.py::test_search_block_stops_host[detail-200]
+FAILED tests/crawl/test_naver_safety.py::test_search_block_stops_host[detail-403]
+FAILED tests/crawl/test_naver_safety.py::test_search_block_stops_host[detail-500]
+FAILED tests/crawl/test_naver_safety.py::test_shared_search_limiter_spacing
+FAILED tests/crawl/test_naver_safety.py::test_article_hosts_use_channel_limiter[NaverBlogAdapter-blog.naver.com]
+FAILED tests/crawl/test_naver_safety.py::test_article_hosts_use_channel_limiter[NaverBlogAdapter-m.blog.naver.com]
+FAILED tests/crawl/test_naver_safety.py::test_article_hosts_use_channel_limiter[NaverCafeAdapter-article.cafe.naver.com]
+FAILED tests/crawl/test_naver_safety.py::test_worker_shared_limiter_configuration[sources0-options0-0.5-list]
+FAILED tests/crawl/test_naver_safety.py::test_worker_shared_limiter_configuration[sources0-options0-0.5-detail]
+FAILED tests/crawl/test_naver_safety.py::test_worker_shared_limiter_configuration[sources1-options1-1.2-list]
+FAILED tests/crawl/test_naver_safety.py::test_worker_shared_limiter_configuration[sources1-options1-1.2-detail]
+FAILED tests/crawl/test_naver_safety.py::test_worker_shared_limiter_configuration[sources2-options2-0.2-list]
+FAILED tests/crawl/test_naver_safety.py::test_worker_shared_limiter_configuration[sources2-options2-0.2-detail]
+FAILED tests/crawl/test_naver_safety.py::test_worker_shared_limiter_configuration[sources3-options3-0.5-list]
+FAILED tests/crawl/test_naver_safety.py::test_worker_shared_limiter_configuration[sources3-options3-0.5-detail]
+FAILED tests/crawl/test_naver_safety.py::test_worker_shared_limiter_configuration[sources4-options4-0-list]
+FAILED tests/crawl/test_naver_safety.py::test_worker_shared_limiter_configuration[sources4-options4-0-detail]
+20 failed, 1 passed, 1 warning in 0.22s

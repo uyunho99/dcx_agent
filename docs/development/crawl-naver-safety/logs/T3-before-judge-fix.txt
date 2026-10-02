@@ -1,0 +1,88 @@
+........................................................................ [  4%]
+........................................................................ [  8%]
+........................................................................ [ 12%]
+........................................................................ [ 16%]
+........................................................................ [ 20%]
+........................................................................ [ 24%]
+........................................................................ [ 28%]
+........................................................................ [ 32%]
+........................................................................ [ 36%]
+........................................................................ [ 40%]
+........................................................................ [ 44%]
+........................................................................ [ 48%]
+........................................................................ [ 52%]
+........................................................................ [ 56%]
+........................................................................ [ 60%]
+........................................................................ [ 64%]
+...................................F.................................... [ 68%]
+........................................................................ [ 72%]
+........................................................................ [ 76%]
+........................................................................ [ 80%]
+........................................................................ [ 85%]
+........................................................................ [ 89%]
+........................................................................ [ 93%]
+........................................................................ [ 97%]
+..................................................                       [100%]
+=================================== FAILURES ===================================
+__________________________ test_rate_limit_respected ___________________________
+
+setup_judge = namespace(prepare=<function setup_judge.<locals>.prepare at 0x1191e7e20>, calls=[], judge=<module 'app.label.judge' fr...('/private/var/folders/4w/d2l0tfps1q799p4nlh6r07kr0000gn/T/pytest-of-persona1/pytest-1040/test_rate_limit_respected0'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x118cce120>
+
+    def test_rate_limit_respected(setup_judge, monkeypatch):
+        env = setup_judge
+        env.prepare(125)
+        now, starts = [1000.0], []
+        monkeypatch.setattr(ChannelLimiter, 'wait_start', REAL_WAIT_START)
+        real_wait = ChannelLimiter
+        def sleep(delay):
+            now[0] += delay
+        monkeypatch.setattr(jev, 'ChannelLimiter', lambda concurrency, min_interval_s: real_wait(concurrency, min_interval_s, clock=lambda: now[0], sleep=sleep))
+        real_client = jev.JevClient
+        fake = FakeJev()
+        def handle(request):
+            starts.append(now[0])
+            return fake(request)
+        monkeypatch.setattr(env.judge, 'JevClient', lambda keys, model: real_client(keys, model, transport=httpx.MockTransport(handle)))
+        ctx = Context()
+>       env.judge.run_worker(ctx)
+
+tests/label/test_judge.py:126: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+app/label/judge.py:116: in run_worker
+    client = JevClient(settings.jev_api_keys, settings.jev_model) if labeler == 'jev' else None
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/label/test_judge.py:124: in <lambda>
+    monkeypatch.setattr(env.judge, 'JevClient', lambda keys, model: real_client(keys, model, transport=httpx.MockTransport(handle)))
+                                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app/label/jev.py:146: in __init__
+    self._limiters = [_limiter_for(key, rate) for key in self._keys]
+                      ^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+key = 'offline', rate = 120
+
+    def _limiter_for(key: str, rate: float) -> ChannelLimiter:
+        fingerprint = hashlib.sha256(key.encode('utf-8')).hexdigest()
+        with _limiter_pool_lock:
+            if fingerprint not in _limiter_pool:
+>               _limiter_pool[fingerprint] = ChannelLimiter(concurrency=1, min_interval_s=60 / rate, jitter=0)
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               TypeError: test_rate_limit_respected.<locals>.<lambda>() got an unexpected keyword argument 'jitter'
+
+app/label/jev.py:32: TypeError
+=============================== warnings summary ===============================
+app/config.py:12
+  /Users/persona1/Desktop/dcx_agent-crawl/backend/app/config.py:12: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class Settings(BaseSettings):
+
+tests/context/test_session_completion.py::test_clustering_publishes_version_local_completion_surviving_restart[stage3]
+  /Users/persona1/Desktop/dcx_agent-crawl/backend/.venv/lib/python3.12/site-packages/joblib/externals/loky/backend/context.py:134: UserWarning: Could not find the number of physical cores for the following reason:
+  invalid literal for int() with base 10: ''
+  Returning the number of logical cores instead. You can silence this warning by setting LOKY_MAX_CPU_COUNT to the number of cores you want to use.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/label/test_judge.py::test_rate_limit_respected - TypeError: test...
+1 failed, 1777 passed, 1 deselected, 2 warnings in 273.06s (0:04:33)

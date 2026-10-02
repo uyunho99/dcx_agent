@@ -160,10 +160,13 @@ def test_list_termination_and_parse_failure(cls):
 @pytest.mark.parametrize('status', [403, 429])
 def test_http_403_raises_blocked(cls, status):
     a, _ = adapter(cls, b'', status)
-    with pytest.raises(AdapterBlocked):
+    with pytest.raises(AdapterBlocked) as caught:
         a.list_page('keyword')
-    with pytest.raises(AdapterBlocked):
+    assert caught.value.host is None
+    assert a.search_limiter.blocked is False
+    with pytest.raises(AdapterBlocked) as caught:
         a.fetch(item(cls))
+    assert caught.value.host is None
 
 
 def test_cafe_detail_body_and_nested_comments():
@@ -281,9 +284,10 @@ def test_request_interval_shared_between_list_and_detail(cls):
         return httpx.Response(200, content=content)
     with httpx.Client(transport=httpx.MockTransport(handle)) as client:
         a = cls(client, clock=lambda: ticks[0], sleep=sleep)
+        a._limiter.rng = lambda: 0.5
         a.list_page('keyword')
         a.fetch(item(cls))
-    assert starts[1] - starts[0] >= 1.0
+    assert starts[1] - starts[0] == 0.5
 
 
 @pytest.mark.parametrize('result', [

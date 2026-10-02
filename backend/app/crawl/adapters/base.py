@@ -35,7 +35,11 @@ class FetchedDoc:
 
 
 class AdapterBlocked(Exception):
-    """Real adapters raise this on HTTP 403 or 429."""
+    """Adapters report HTTP blocks or an explicitly restricted host."""
+
+    def __init__(self, message='', *, host=None):
+        super().__init__(message)
+        self.host = host
 
 
 class ChannelAdapter(Protocol):

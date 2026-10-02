@@ -1,0 +1,44 @@
+{
+ "verdict": "PASS",
+ "head": "1bc85879db84bee42aaa92cf826970d5e8de736c",
+ "fingerprint": "d8c4d20fa2c5a760baa65bf296a9ec40e601ae191d2a5deb500ec6f3db0a6420",
+ "commands": [
+  {
+   "command": "내장 브라우저 · API QA, 가짜 LLM · fixture 채널, REAL_CHANNELS_ENABLED=false(실제 사이트 접속 없음), 8317/3317",
+   "exitCode": 0
+  }
+ ],
+ "findings": [],
+ "scenarios": [
+  {
+   "id": "QA1",
+   "url": "http://localhost:3317/pipeline/crawling",
+   "result": "PASS",
+   "evidence": "크롤링 설정 고급 설정: 블로그 · 카페 · 클리앙 · 뽐뿌 요청 간격 0.5, 유튜브 0"
+  },
+  {
+   "id": "QA2",
+   "url": "http://localhost:8317/crawl/<sid>/config",
+   "result": "PASS",
+   "evidence": "perChannel {naver_blog:{max_per_keyword:200}} 저장 → 저장값에 min_interval_s 없음(0으로 덮어쓰지 않음)"
+  },
+  {
+   "id": "QA3",
+   "url": "http://localhost:3317/pipeline/crawling",
+   "result": "PASS",
+   "evidence": "fixture 채널 목록 수집 c2: status done, attempts 190, parse_errors 0, blocked 0"
+  },
+  {
+   "id": "QA4",
+   "url": "http://localhost:3317/pipeline/crawling",
+   "result": "PASS",
+   "evidence": "fixture 부분 저장 후 새로고침: 임시 저장 · 저장 · 상세 수집 시작 버튼 활성(T4). 기본값 병합 값 자체는 crawlConfig.test.ts로 확인"
+  },
+  {
+   "id": "QA-정적",
+   "url": "n/a (실제 네이버 접속 금지)",
+   "result": "PASS",
+   "evidence": "차단 즉시 감지 · 공용 간격 · 재시도 보호는 test_naver_safety.py · test_queue.py로 확인. 실측은 배포 후 첫 실수집에서 관찰 필요"
+  }
+ ]
+}

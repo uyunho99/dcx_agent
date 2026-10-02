@@ -173,7 +173,7 @@ def test_same_snapshot_same_urls(tmp_path, corpus):
 
 def test_limiter_fake_clock():
     now = [0.0]
-    limiter = ChannelLimiter(2, 0.5, clock=lambda: now[0], sleep=lambda s: now.__setitem__(0, now[0] + s))
+    limiter = ChannelLimiter(2, 0.5, jitter=0, clock=lambda: now[0], sleep=lambda s: now.__setitem__(0, now[0] + s))
     starts = []
     for _ in range(3):
         with limiter: starts.append(now[0])
@@ -312,3 +312,29 @@ def test_detail_channels_overlap_across_queue_batch_boundary(tmp_path, monkeypat
     detail(tmp_path, snap)
     assert overlaps == [True, True]
     assert len(list(read_docs(tmp_path / 'docs'))) == 208
+
+
+@pytest.mark.parametrize(('sample', 'gap'), [(0, 0.4), (0.5, 0.5), (1, 0.6)])
+def test_limiter_jitter_bounds(sample, gap):
+    now = [0.0]
+    limiter = ChannelLimiter(1, 0.5, rng=lambda: sample,
+                             clock=lambda: now[0], sleep=lambda s: now.__setitem__(0, now[0] + s))
+    starts = []
+    for _ in range(4):
+        with limiter:
+            starts.append(now[0])
+    assert [b - a for a, b in zip(starts, starts[1:])] == pytest.approx([gap] * 3)
+
+
+def test_limiter_zero_interval_no_jitter():
+    limiter = ChannelLimiter(1, 0, rng=lambda: pytest.fail('zero interval sampled RNG'),
+                             clock=lambda: 0, sleep=lambda s: pytest.fail('zero interval slept'))
+    for _ in range(3):
+        with limiter:
+            pass
+
+
+@pytest.mark.parametrize('jitter', [-0.1, 1, 1.1])
+def test_limiter_rejects_invalid_jitter(jitter):
+    with pytest.raises(ValueError, match='jitter'):
+        ChannelLimiter(1, 0.5, jitter=jitter)

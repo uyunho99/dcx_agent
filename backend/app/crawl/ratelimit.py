@@ -1,12 +1,16 @@
 """Thread-safe concurrency and request-start spacing for a single channel."""
+import random
 import threading
 import time
 
 
 class ChannelLimiter:
-    def __init__(self, concurrency, min_interval_s, *, clock=time.monotonic, sleep=time.sleep):
+    def __init__(self, concurrency, min_interval_s, *, jitter=0.2, rng=random.random, clock=time.monotonic, sleep=time.sleep):
         if concurrency < 1 or min_interval_s < 0:
             raise ValueError('concurrency must be positive and interval nonnegative')
+        if not 0 <= jitter < 1:
+            raise ValueError('jitter must be between 0 (inclusive) and 1 (exclusive)')
+        self.jitter, self.rng = jitter, rng
         self.concurrency = concurrency
         self.min_interval_s = min_interval_s
         self.clock, self.sleep = clock, sleep
@@ -32,4 +36,7 @@ class ChannelLimiter:
             delay = self._next - self.clock()
             if delay > 0:
                 self.sleep(delay)
-            self._next = self.clock() + self.min_interval_s
+            interval = self.min_interval_s
+            if interval:
+                interval *= 1 + self.jitter * (2 * self.rng() - 1)
+            self._next = self.clock() + interval

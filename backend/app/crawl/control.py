@@ -242,9 +242,13 @@ def start_detail(sid, snapshot_id, version=None):
 def _unfinished_run(queue, run):
     if not run:
         return False
-    # Completed lists await gate review; only unfinished detail completion needs recovery.
+    # Completed lists await gate review unless legacy blocked failures remain.
     if run['kind'] == 'list':
-        return run['status'] != 'done'
+        if run['status'] != 'done':
+            return True
+        with closing(CrawlQueue.open_readonly(queue.path)) as db:
+            return db.execute("""SELECT 1 FROM list_tasks
+                WHERE status='failed' AND last_error='AdapterBlocked' LIMIT 1""").fetchone() is not None
     return not report.can_finalize(queue, run)
 
 
@@ -282,6 +286,8 @@ def resume(sid, version=None, min_interval_s=None):
                 state.pop('stopReason', None)
                 store.write_json(root / 'manifest.json', manifest)
                 store.write_json(root / 'worker_state.json', state)
+            if not _live(queue) and run['kind'] == 'list':
+                queue.requeue_blocked_lists(min_interval_s or manifest['channels'])
             result = _spawn(sid, root, queue, run['kind'], manifest.get('snapshotId'))
         return {'step': 'crawl-' + run['kind']}, result
     return _mutate(sid, perform, version)
@@ -346,7 +352,7 @@ def _status_settings(session):
         limits = config.get('perChannel', config.get('channel_limits', {}))
         # Match worker._Run's limiter precedence and default request spacing.
         intervals = {source: limits.get(source, {}).get(
-            'min_interval_s', 1 if source in ('clien', 'ppomppu', 'naver_blog', 'naver_cafe') else 0)
+            'min_interval_s', 0.5 if source in ('clien', 'ppomppu', 'naver_blog', 'naver_cafe') else 0)
             for source in channels}
     return dict(defaults=dict(adWords=DEFAULT_AD_WORDS.copy(), excludeSources=DEFAULT_EXCLUDE_SOURCES.copy()),
                 available_sources=available_sources(), collection_keywords=keywords,

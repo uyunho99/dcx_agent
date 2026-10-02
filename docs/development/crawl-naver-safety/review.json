@@ -1,0 +1,40 @@
+{
+ "verdict": "PASS",
+ "head": "1bc85879db84bee42aaa92cf826970d5e8de736c",
+ "fingerprint": "d8c4d20fa2c5a760baa65bf296a9ec40e601ae191d2a5deb500ec6f3db0a6420",
+ "commands": [
+  {
+   "command": "Task별 Main Claude diff 검토 + codex:codex-rescue 읽기 전용 브랜치 리뷰(git diff e563df5...129249e)",
+   "exitCode": 0
+  }
+ ],
+ "findings": [],
+ "resolved": [
+  {
+   "id": "R1",
+   "severity": "P2",
+   "source": "Main Claude T2 검토",
+   "summary": "덮어쓰기 버그로 저장된 min_interval_s=0이면 공용 검색 제한기가 0초가 되어 0.5초 바닥이 사라짐",
+   "fix": "129249e (T3: max(DEFAULT_INTERVAL_S, …))"
+  },
+  {
+   "id": "R2",
+   "severity": "P2",
+   "source": "Codex 브랜치 리뷰",
+   "summary": "부분 저장된 perChannel을 화면이 기본값 없이 불러와 저장 · 시작 버튼 비활성",
+   "fix": "1bc8587 (T4)"
+  },
+  {
+   "id": "R3",
+   "severity": "P2",
+   "source": "T3 전체 테스트",
+   "summary": "Jev 라벨링 제한기가 크롤링 흔들림을 물려받음",
+   "fix": "129249e (jitter=0)"
+  }
+ ],
+ "checked": [
+  "네이버 공식 API 코드 반입 없음",
+  "공용 검색 제한기는 목록 · 본문 실행마다 새로 생성(차단 표시가 재개 후 남지 않음)",
+  "차단 문구 감지는 search.naver.com 응답만"
+ ]
+}

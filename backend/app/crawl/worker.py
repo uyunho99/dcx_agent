@@ -23,6 +23,8 @@ from app.config import settings
 from app.crawl.errors import safe_error
 from app.context.store import load_session, read_json, write_json
 from app.crawl.adapters import REGISTRY, available_sources, managed_adapter
+from app.crawl.adapters.naver_common import NaverAdapter
+from app.crawl.adapters.community import DEFAULT_INTERVAL_S
 from app.crawl.adapters.base import AdapterBlocked, FetchedDoc, ListItem, ListPage
 from app.crawl.filters import FilterConfig, check_doc, check_list
 from app.crawl.hashing import author_hash
@@ -114,13 +116,23 @@ class _Run:
         self.completed_docs = self.q.counts()['doc_count'] if kind == 'detail' else 0
         self.limiters = {}
         for s in sources:
-            defaults = (2, 0) if s == 'youtube' else ((1, 1) if s in ('clien', 'ppomppu', 'naver_blog', 'naver_cafe') else (4, 0))
+            defaults = (2, 0) if s == 'youtube' else ((1, 0.5) if s in ('clien', 'ppomppu', 'naver_blog', 'naver_cafe') else (4, 0))
             opts = config.get('perChannel', config.get('channel_limits', {})).get(s, {})
             self.limiters[s] = (limiters or {}).get(s) or ChannelLimiter(
                 opts.get('concurrency', defaults[0]), opts.get('min_interval_s', defaults[1]))
         self.pools = {s: ThreadPoolExecutor(max_workers=l.concurrency) for s, l in self.limiters.items()}
         self.last_heartbeat = self.last_reclaim = time.monotonic()
         self.save()
+
+    def share_naver_search_limiter(self, adapters):
+        naver = {s: a for s, a in adapters.items()
+                 if s in ('naver_blog', 'naver_cafe') and isinstance(a, NaverAdapter)}
+        if naver:
+            limiter = ChannelLimiter(1, max(
+                DEFAULT_INTERVAL_S, *(self.limiters[s].min_interval_s for s in naver)))
+            limiter.blocked = False
+            for adapter in naver.values():
+                adapter.search_limiter = limiter
 
     def save(self):
         # Serialize ownership validation and the atomic file replacement with
@@ -170,7 +182,11 @@ class _Run:
         c['attempts'] += 1
         c['blocked'] = c['blocked'] + 1 if isinstance(error, AdapterBlocked) else 0
         c['parse_errors'] += isinstance(error, (ValueError, TypeError, KeyError, AttributeError, IndexError))
-        if c['blocked'] >= 20:
+        if isinstance(error, AdapterBlocked) and error.host == 'search.naver.com':
+            for s in ('naver_blog', 'naver_cafe'):
+                if s in self.channels:
+                    self.channels[s]['status'] = 'paused_blocked'
+        elif c['blocked'] >= 20:
             c['status'] = 'paused_blocked'
         elif c['attempts'] >= 10 and c['parse_errors'] / c['attempts'] > 0.3:
             c['status'] = 'paused_parse_error'
@@ -275,6 +291,7 @@ def run_list(sid, *, collection=None, keywords=None, sources=None, filters=None,
     try:
         adapters = {s: resources.enter_context(managed_adapter(REGISTRY[s])) for s in sources}
         run = _Run(root, sid, 'list', sources, limiters, config)
+        run.share_naver_search_limiter(adapters)
         run.q.add_list_tasks(kws, sources)
         with _stop_event() as stop:
             while not stop.is_set():
@@ -290,7 +307,7 @@ def run_list(sid, *, collection=None, keywords=None, sources=None, filters=None,
                         dispatch.append(task)
                 for task, page, error in run.execute(dispatch, adapters, 'list', stop):
                     if error:
-                        run.q.mark_list_failed(task, _error(error))
+                        run.q.mark_list_failed(task, _error(error), blocked=isinstance(error, AdapterBlocked))
                         continue
                     remaining = run.list_remaining(task)
                     items = page.items if remaining is None else page.items[:remaining]
@@ -445,6 +462,7 @@ def run_detail(sid, snapshot_id, *, collection=None, filters=None, limiters=None
     try:
         adapters = {s: resources.enter_context(managed_adapter(REGISTRY[s])) for s in sources}
         run = _Run(root, sid, 'detail', sources, limiters, config, snapshot_id)
+        run.share_naver_search_limiter(adapters)
         writer = DocWriter(root / 'docs', shard_size=5000)
         run.q.lease_urls(snapshot_id, 0, LEASE_SECONDS)  # Validate snapshot, apply exclusions.
         with _stop_event() as stop:
@@ -453,7 +471,8 @@ def run_detail(sid, snapshot_id, *, collection=None, filters=None, limiters=None
                 if error:
                     last_error = _error(error)
                     result = run.q.mark_failed_attempt(row.url_norm, row.source, last_error,
-                                                      max_attempts=3, backoff_s=backoff_s)
+                                                      max_attempts=3, backoff_s=backoff_s,
+                                                      blocked=isinstance(error, AdapterBlocked))
                     if result != 'exhausted':
                         continue
                 fallback = row.exhausted or error is not None

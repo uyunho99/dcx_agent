@@ -279,13 +279,20 @@ class CrawlQueue:
             raise LeaseLost('List task is no longer owned by this run')
         return row
 
-    def mark_list_failed(self, task: ListTask, err: str) -> None:
+    def mark_list_failed(self, task: ListTask, err: str, *, blocked=False) -> None:
         with self._write() as db:
             row = self._list_owner(db, task)
-            db.execute("""UPDATE list_tasks SET attempts=attempts+1,last_error=?,
+            db.execute("""UPDATE list_tasks SET attempts=attempts+?,last_error=?,
                 status=?,lease_run_id=NULL WHERE kw=? AND source=? AND cursor=?""",
-                       (err, 'failed' if row['attempts'] + 1 >= 3 else 'pending',
+                       (int(not blocked), err, 'failed' if not blocked and row['attempts'] + 1 >= 3 else 'pending',
                         task.kw, task.source, task.cursor or ''))
+
+    def requeue_blocked_lists(self, sources):
+        """Recover legacy blocked failures only for the resumed channels."""
+        with self._write() as db:
+            db.executemany("""UPDATE list_tasks SET status='pending',attempts=0,lease_run_id=NULL
+                WHERE source=? AND status='failed' AND last_error='AdapterBlocked'""",
+                [(source,) for source in sources])
 
     def _prepare(self, items, task=None):
         result = []
@@ -433,10 +440,18 @@ class CrawlQueue:
                            (doc_count, last_error, fetch_level, access, url_norm, source))
 
     def mark_failed_attempt(self, url_norm: str, source: str, last_error: str,
-                            max_attempts: int = 3, backoff_s: float = 1) -> str:
+                            max_attempts: int = 3, backoff_s: float = 1, *, blocked=False) -> str:
         """Return pending for retry, or exhausted while retaining the snippet lease."""
         with self._write() as db:
             row = self._owns_completion(db, url_norm, source)
+            if blocked:
+                # Leasing counts the attempt; a block must refund that increment.
+                db.execute("""UPDATE urls SET status='pending',attempts=max(0,attempts-1),
+                    last_error=?,retry_at=?,lease_until=NULL,lease_run_id=NULL,exhausted=0
+                    WHERE url_norm=? AND source=?""",
+                    (last_error, time.time() + backoff_s, url_norm, source))
+                self._apply_exclusions(db, keys=[(url_norm, source)])
+                return 'pending'
             db.execute('UPDATE urls SET max_attempts=? WHERE url_norm=? AND source=?',
                        (max_attempts, url_norm, source))
             if row['exhausted'] or row['attempts'] >= max_attempts:
