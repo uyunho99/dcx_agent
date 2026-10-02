@@ -115,10 +115,15 @@ export interface ProjectContext {
   oneLiner: string;
   researchQuestion: { text: string; template?: string | null };
   projectType: { choice: string; note: string };
-  analysisGoal: { choice: string; note: string };
-  keyMetrics: string[];
+  taskMode?: "metric" | "explore" | null;
+  analysisGoal?: { choice: string; note: string } | null;
+  keyMetrics: { name: string; source: string; item: string }[];
   constraints: string[];
-  positioning: { price: string; market: string };
+  positioning: { price: string | null; market: string | null; priceText: string; marketText: string };
+  personaSeeds?: {
+    items: { text: string; dimension: "social" | "taste" | "movement" | "bio" | null }[];
+    exploreBeyond: boolean;
+  } | null;
   channels: string[];
   knownInsights: string[];
   productCategory: { l1: string; l2?: string | null; l3?: string | null; source: "shopping" | "llm_estimate" | "user" };
