@@ -1,5 +1,23 @@
 import { expect, it } from 'vitest';
-import { roundUi, directionRound, nextRound, prevRound, LOCKED_ROUNDS } from './roundUi';
+import { roundUi, directionRound, nextRound, prevRound, followingRound, LOCKED_ROUNDS } from './roundUi';
+it('has no following round after R4 while skipping locked R2', () => {
+  expect(followingRound(1)).toBe(3);
+  expect(followingRound(3)).toBe(4);
+  expect(followingRound(4)).toBeUndefined();
+  expect(followingRound(5)).toBeUndefined();
+});
+it('allows committed R4 to advance when its own state is not used as the next round', () => {
+  const current = { round: 4, status: 'done' as const, committed: true };
+  expect(roundUi({ ...current, nextRound: undefined }).canNext).toBe(true);
+  expect(roundUi({ ...current, nextRound: current }).canNext).toBe(false);
+
+  const rounds = { '4': current } as Record<string, typeof current>;
+  const following = followingRound(current.round);
+  const nextState = following === undefined ? undefined : rounds[String(following)];
+  const ui = roundUi({ ...current, nextRound: nextState });
+  expect(ui.canNext).toBe(true);
+  expect(current.round === 4 || !nextState || ui.canNext).toBe(true);
+});
 it('skips locked R2 when advancing', () => {
   expect(nextRound(1)).toBe(3);
   expect(nextRound(3)).toBe(4);

@@ -17,7 +17,7 @@ import { filterKeywords, keywordFilters, type KeywordFilter } from '@/lib/logic/
 import { createActionQueue } from '@/lib/logic/actionQueue';
 import { reviewKeywords } from '@/lib/logic/reviewKeywords';
 import { displayError } from '@/lib/api/errors';
-import { roundUi, directionRound, nextRound, prevRound } from '@/lib/logic/roundUi';
+import { roundUi, directionRound, nextRound, prevRound, followingRound } from '@/lib/logic/roundUi';
 import { INTERNAL_TOOLS } from '@/lib/internalTools';
 import '@/components/keywords/keywords.css';
 
@@ -45,7 +45,8 @@ function KeywordScreen({ sid }: { sid: string }) {
   const [custom, setCustom] = useState<Destination[]>([]); const [customAxis, setCustomAxis] = useState(''); const [customName, setCustomName] = useState('');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({}); const [help, setHelp] = useState(false); const [elapsed, setElapsed] = useState(0);
   const [duplicate, setDuplicate] = useState<Keyword | null>(null);
-  const nextState = data?.keywordRounds[String(nextRound(round))];
+  const following = followingRound(round);
+  const nextState = following === undefined ? undefined : data?.keywordRounds[String(following)];
   const current = data?.keywordRounds[String(round)]; const ui = roundUi({ round, status: current?.job.status, committed: current?.committed, gen: current?.gen, jobGen: current?.job.gen, needsRegeneration: current?.needsRegeneration, nextRound: nextState ? {...nextState, status: nextState.job.status} : undefined, dirty });
   const coverageLoading = data?.coverage.status === 'loading';
   const r3Blocked = round === 3 && coverageLoading;
