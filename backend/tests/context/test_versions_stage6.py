@@ -71,9 +71,8 @@ def test_restart_stage3_4_5_unchanged(completed, stage, data_dir, tmp_path_facto
     parent = store.read_json(versions.version_dir(sid, 'v1') / 'session.json')
     # Execute the pre-T9 implementation against an identical isolated tree.
     legacy = ModuleType('versions_before_T9')
-    source = subprocess.check_output(
-        ['git', 'show', 'e0d124f:backend/app/context/versions.py'],
-        cwd=Path(__file__).resolve().parents[3], text=True)
+    # Frozen copy of versions.py at e0d124f, so a shallow CI checkout works.
+    source = (Path(__file__).resolve().parents[1] / 'fixtures/legacy/versions_pre_t9.py').read_text(encoding='utf-8')
     exec(compile(source, 'e0d124f/versions.py', 'exec'), legacy.__dict__)
     baseline_dir = tmp_path_factory.mktemp('legacy') / 'data'
     shutil.copytree(data_dir, baseline_dir, symlinks=True)
