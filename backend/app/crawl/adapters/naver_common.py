@@ -17,6 +17,8 @@ KST = ZoneInfo('Asia/Seoul')
 class NaverAdapter(CommunityAdapter):
     def __init__(self, client=None, *, now=None, **kwargs):
         super().__init__(client, **kwargs)
+        self.search_limiter = self._limiter
+        self.search_limiter.blocked = False
         self._pages = OrderedDict()
         self._pages_lock = Lock()
         self.now = now or (lambda: datetime.now(KST))
@@ -70,8 +72,19 @@ class NaverAdapter(CommunityAdapter):
         return f'https://{self.kind}.naver.com/{owner}/{article_id}'
 
     def request(self, url, *, restricted=False):
-        with self._limiter:
+        search = urlsplit(url).hostname == 'search.naver.com'
+        limiter = self.search_limiter if search else self._limiter
+        if search and limiter.blocked:
+            raise AdapterBlocked('Naver search restricted', host='search.naver.com')
+        with limiter:
+            # Recheck after acquiring the shared slot: another channel may block
+            # the host while this request is waiting.
+            if search and limiter.blocked:
+                raise AdapterBlocked('Naver search restricted', host='search.naver.com')
             response = self.client.get(url, headers=self.headers(), follow_redirects=False)
+            if search and '검색 서비스 이용이 제한' in response.content.decode('utf-8', errors='replace'):
+                limiter.blocked = True
+                raise AdapterBlocked('Naver search restricted', host='search.naver.com')
         if response.status_code == 429 or (response.status_code == 403 and not restricted):
             raise AdapterBlocked(f'{self.source}: HTTP {response.status_code}')
         # Cafe detail classifies 403 JSON restrictions versus channel blocking.

@@ -160,10 +160,13 @@ def test_list_termination_and_parse_failure(cls):
 @pytest.mark.parametrize('status', [403, 429])
 def test_http_403_raises_blocked(cls, status):
     a, _ = adapter(cls, b'', status)
-    with pytest.raises(AdapterBlocked):
+    with pytest.raises(AdapterBlocked) as caught:
         a.list_page('keyword')
-    with pytest.raises(AdapterBlocked):
+    assert caught.value.host is None
+    assert a.search_limiter.blocked is False
+    with pytest.raises(AdapterBlocked) as caught:
         a.fetch(item(cls))
+    assert caught.value.host is None
 
 
 def test_cafe_detail_body_and_nested_comments():
