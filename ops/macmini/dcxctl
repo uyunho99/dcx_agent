@@ -1,0 +1,75 @@
+#!/bin/bash
+set -Eeuo pipefail
+HERE="$(cd "$(dirname "$0")" && pwd)"
+. "$HERE/env.sh"
+. "$HERE/lib.sh"
+# Installed daemon controls belong to the system domain; QA exports gui/<uid>.
+if [[ -f "$SHARED/launch.env" ]]; then . "$SHARED/launch.env"; fi
+case "${1:-}" in
+    status)
+        printf 'current: %s\n/health:\n' "$(current_sha)"
+        curl -fsS --max-time 5 "$DCX_HEALTH_API" || true
+        printf '\nlast-failed-sha: %s\ndeploy-history:\n' "$(cat "$FAILED" 2>/dev/null || true)"
+        tail -n 3 "$HISTORY" 2>/dev/null || true
+        printf 'deploy.log:\n'
+        tail -n 5 "$APP_ROOT/logs/deploy.log" 2>/dev/null || true
+        ;;
+    deploy)
+        [[ $# -le 2 ]] || exit 2
+        preflight
+        acquire_lock || { echo '배포가 진행 중입니다' >&2; exit 1; }
+        if [[ ! -d "$APP_ROOT/repo/.git" ]]; then git clone --quiet "$DCX_REPO_URL" "$APP_ROOT/repo"; fi
+        git -C "$APP_ROOT/repo" fetch --quiet origin main
+        sha="$(git -C "$APP_ROOT/repo" rev-parse --verify "${2:-origin/main}^{commit}")"
+        if [[ "$(cat "$FAILED" 2>/dev/null || true)" == "$sha" ]]; then rm -f "$FAILED"; fi
+        export DEPLOY_SHA="$sha" DCX_LAUNCH_DOMAIN DCX_LAUNCH_LABEL
+        release
+        exec "${DCX_BASH:-/bin/bash}" "$HERE/deploy.sh"
+        ;;
+    rollback)
+        [[ $# == 1 ]] || exit 2
+        acquire_lock || { echo '배포가 진행 중입니다' >&2; exit 1; }
+        [[ ! -s "$SHARED/deploy-state" ]] || { echo '배포 복구가 먼저 필요합니다' >&2; exit 1; }
+        # Validate history and snapshot before stopping services or changing data.
+        selection="$(python3.12 - "$APP_ROOT" <<'PY'
+import pathlib, sys
+root=pathlib.Path(sys.argv[1]); shared=root/'shared'
+try:
+    rows=(shared/'deploy-history').read_text().splitlines()
+    current=(root/'current').resolve().name
+    if len(rows)<2: raise ValueError()
+    sha, snapshot=rows[-1].split(' ',1)
+    previous=rows[-2].split(' ',1)[0]
+    if sha!=current or previous==sha or '/' in previous: raise ValueError()
+    if not (root/'releases'/previous).is_dir(): raise ValueError()
+    snap=pathlib.Path(snapshot)
+    if not snap.is_dir() or snap.parent.resolve()!=(shared/'snapshots').resolve(): raise ValueError()
+    print(sha); print(previous); print(snapshot)
+except (OSError,ValueError):
+    print('되돌릴 버전이 없습니다', file=sys.stderr); sys.exit(1)
+PY
+)" || exit 1
+        sha="$(printf '%s\n' "$selection" | head -n 1)"
+        previous="$(printf '%s\n' "$selection" | head -n 2 | tail -n 1)"
+        snapshot="$(printf '%s\n' "$selection" | tail -n 1)"
+        preflight
+        trap 'log error "\"line\":$LINENO"' ERR
+        restart_services stop
+        restore_sessions "$snapshot"
+        switch_to "$previous"
+        printf '%s\n' "$sha" > "$FAILED"
+        python3.12 - "$HISTORY" <<'PY'
+import pathlib,sys
+p=pathlib.Path(sys.argv[1]); tmp=p.with_suffix('.tmp')
+tmp.write_text('\n'.join(p.read_text().splitlines()[:-1])+'\n'); tmp.replace(p)
+PY
+        restart_services start
+        if wait_healthy "$DCX_HEALTH_TIMEOUT" "$previous"; then
+            log rolled-back "\"rolled_back_to\":\"$previous\""
+        else
+            log unhealthy-both "\"rolled_back_to\":\"$previous\""
+            exit 1
+        fi
+        ;;
+    *) echo '사용법: dcxctl status | deploy [sha] | rollback' >&2; exit 2 ;;
+esac
