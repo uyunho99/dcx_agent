@@ -217,7 +217,7 @@ export type SegmentContextConfirmation = SegmentConfirmation & { action: string 
 export type SegmentBulkConfirmation = { run: string; contexts: { id: string; name: string; action: string }[] };
 export type SegmentBulkResponse = { run: string; contexts: SegmentContext[] };
 export type SegmentBand = 'core' | 'fringe' | 'edge';
-export type SegmentDocsOptions = { context?: string; band?: SegmentBand; offset?: number; limit?: number };
+export type SegmentDocsOptions = { context?: string; cluster?: string; persona?: string; band?: SegmentBand; sort?: 'id' | 'center' | 'edge'; offset?: number; limit?: number };
 export type SegmentDocument = {
   docId: string; title: string; body: string; comments: unknown[]; url: string;
   clusterId: string | null; personaId: string | null; contextId: string | null;
