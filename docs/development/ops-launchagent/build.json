@@ -1,0 +1,39 @@
+{
+  "verdict": "PASS",
+  "head": "fc3107a96c8dfd406a892dc39c387942bfb7fd6d",
+  "fingerprint": "3374c7d54a10ac51b4597c2ab6bee506cb73aeaf758a0ceab7bd0d4f73a171ed",
+  "commands": [
+    {
+      "command": "backend/.venv/bin/python -m pytest backend/tests/ops -q",
+      "exitCode": 0,
+      "summary": "142 passed"
+    }
+  ],
+  "findings": [],
+  "tasks": [
+    {
+      "id": "T1",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent a7531cfc30def83ad (report docs/development/ops-launchagent/reports/T1.md)",
+      "red": "docs/development/ops-launchagent/reports/T1.md#RED",
+      "green": "docs/development/ops-launchagent/reports/T1.md#GREEN",
+      "review": "docs/development/ops-launchagent/reports/review.md"
+    },
+    {
+      "id": "T2",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent a7531cfc30def83ad (report docs/development/ops-launchagent/reports/T2.md)",
+      "red": "docs/development/ops-launchagent/reports/T2.md#RED",
+      "green": "docs/development/ops-launchagent/reports/T2.md#GREEN",
+      "review": "docs/development/ops-launchagent/reports/review.md"
+    },
+    {
+      "id": "T3",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent a14ec6f38aac5d77a (report docs/development/ops-launchagent/reports/T3.md)",
+      "red": "docs/development/ops-launchagent/reports/T3.md#RED",
+      "green": "docs/development/ops-launchagent/reports/T3.md#GREEN",
+      "review": "docs/development/ops-launchagent/reports/review.md"
+    }
+  ]
+}

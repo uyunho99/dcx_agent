@@ -1,0 +1,22 @@
+{
+  "verdict": "PASS",
+  "head": "fc3107a96c8dfd406a892dc39c387942bfb7fd6d",
+  "fingerprint": "3374c7d54a10ac51b4597c2ab6bee506cb73aeaf758a0ceab7bd0d4f73a171ed",
+  "commands": [],
+  "findings": [],
+  "scenarios": [
+    {
+      "id": "Q1",
+      "url": "http://127.0.0.1:8400/health",
+      "result": "PASS",
+      "evidence": "docs/development/ops-launchagent/reports/qa.md#Q1"
+    },
+    {
+      "id": "Q2",
+      "url": "http://127.0.0.1:8400/health",
+      "result": "PASS",
+      "evidence": "docs/development/ops-launchagent/reports/qa.md#Q2"
+    }
+  ],
+  "notApplicable": "No UI change; Q3 (live switch with sudo) is verified by the user at UAT after merge."
+}
