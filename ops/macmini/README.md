@@ -147,3 +147,11 @@ backend/.venv/bin/python -m pytest backend/tests -q -p no:cacheprovider
 Hold 파일은 소유 PID와 시작 이유를 기록합니다. 설치 실패 시 설치기는 자신의 hold만 제거합니다. deploy 틱은 deploy-state가 없고 hold 소유 프로세스가 사라졌으면 hold를 제거하고 `hold-cleared`를 기록합니다. 빈 구형 hold도 이 조건에서 정리합니다. 진행 중인 트랜잭션의 hold는 복구 흐름에서 처리합니다.
 
 QA 자동화에서만 `DCX_INSTALL_ASSUME_YES=1`과 `--qa`를 함께 사용해 y 질문을 건너뛸 수 있습니다. 운영 모드는 이 변수를 무시하며 터미널의 직접 y 확인을 계속 요구합니다.
+
+## 맥미니 로컬 CI 배포
+
+`shared/ci-mode` 파일에 `local`을 쓰면 배포 잡이 GitHub CI를 기다리지 않고 이 맥미니에서 같은 검사(백엔드 pytest, 프런트 lint · test · build)를 직접 돌린 뒤 통과하면 배포한다. 커밋당 한 번만 돌고 결과는 `shared/local-ci/<sha>`(`success` 또는 `failed:local`), 로그는 `logs/local-ci-<sha>.log`에 남는다. 실패한 테스트는 한 번만 다시 돌려 시간에 민감한 테스트의 일시 실패를 흡수한다. 실패한 커밋을 다시 검사하려면 `shared/local-ci/<sha>`를 지운다. 테스트는 운영 키 · 데이터 경로를 물려받지 않는 빈 환경(`HOME`, `PATH`, `TMPDIR`만)에서 `ci/<sha>` 임시 폴더로 실행하고 끝나면 지운다. GitHub CI로 돌아가려면 `shared/ci-mode`를 지운다.
+
+```bash
+echo local > "$HOME/srv/dcx-agent/shared/ci-mode"
+```

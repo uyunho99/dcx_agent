@@ -71,7 +71,12 @@ if [[ "$sha" == "$(cat "$FAILED" 2>/dev/null || true)" ]]; then
     if [[ "${DEPLOY_DRY_RUN:-0}" == 1 ]]; then log known-failed; fi
     exit 0
 fi
-ci="$(ci_status "$sha")"
+# `shared/ci-mode` = local: run the suite on this Mac instead of waiting for GitHub.
+if [[ "$(cat "$SHARED/ci-mode" 2>/dev/null || true)" == local && "${DEPLOY_DRY_RUN:-0}" != 1 ]]; then
+    ci="$(local_ci_status "$sha")"
+else
+    ci="$(ci_status "$sha")"
+fi
 case "$ci" in
     success) ;;
     failed:*)
