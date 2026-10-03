@@ -3,7 +3,6 @@ import { getPersonaStatus, startPersona } from '@/lib/api/persona';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Badge, Banner, Button, Card, ProgressBar, Skeleton, Tabs } from '../ds';
-import { StaleBanner } from '../versions/StageVersion';
 import { useVersion } from '../versions/VersionProvider';
 import { useStageCompletionRefresh } from '../versions/useStageCompletionRefresh';
 import * as api from '@/lib/api/evidence';
@@ -64,7 +63,7 @@ export function EvidenceScreenView(p:ViewProps) {
         {Array.from(new Set(p.personas.map(row => row.clusterId))).map(cluster => <div key={cluster} className="space-y-2"><h3>{cluster}</h3>{p.personas.filter(row => row.clusterId === cluster).map(persona => {
           const owned = rows.filter(row => row.personaId === persona.id);
           const state = owned.some(r => r.status === 'failed') ? 'failed' : owned.some(r => r.status === 'running') ? 'running' : owned.length && owned.every(r => r.status === 'done' || r.status === 'skipped') ? 'done' : 'queued';
-          return <Button className="w-full whitespace-normal text-left" key={persona.id} aria-current={p.selectedPersona === persona.id ? 'true' : undefined} onClick={() => p.onPersona(persona.id)}>{persona.name || persona.id} <Badge>{rowBadge(state)}</Badge>{persona.flags.includes('future') && <Badge tone="warning">FUTURE</Badge>}</Button>;
+          return <Button className="ds-wrap w-full" key={persona.id} aria-current={p.selectedPersona === persona.id ? 'true' : undefined} onClick={() => p.onPersona(persona.id)}>{persona.name || persona.id} <Badge>{rowBadge(state)}</Badge>{persona.flags.includes('future') && <Badge tone="warning">FUTURE</Badge>}</Button>;
         })}</div>)}
       </nav></Card><ContextList rows={rows.filter(row => row.personaId === p.selectedPersona)} selected={p.selectedContext} disabled={disabled} flags={p.flags} onSelect={p.onContext} onRetry={p.onRetry} onSkip={p.onSkip} onRefresh={p.onRefresh}/></aside>
       <section className="min-w-0 space-y-4" aria-label="Context 근거">{selected?.status === 'done' ? <><h2 className="ds-t-card">{selected.id} · {selected.name}</h2>
@@ -188,7 +187,7 @@ export function EvidenceScreen({sid,version,readonly = false}: {sid:string;versi
     router.replace('/pipeline/evidence',{scroll:false});
     if(!blocked && ['none','stale'].includes(status.status)) start();
   },[status,ready,blocked,router,start]);
-  return <>{readonly && <Banner>{version} · 읽기 전용</Banner>}<StaleBanner stage="stage7" session={view.session}/><EvidenceScreenView sid={sid} version={version} status={status} personas={personas} flags={flags} selectedPersona={selectedPersona} selectedContext={chosen?.id ?? ''} tab={tab} detail={detail} personaEvidence={personaEvidence} ready={ready} readonly={blocked} busy={busy} error={error} added={added} knownNumbers={knownNumbers}
+  return <>{readonly && <Banner>{version} · 읽기 전용</Banner>}<EvidenceScreenView sid={sid} version={version} status={status} personas={personas} flags={flags} selectedPersona={selectedPersona} selectedContext={chosen?.id ?? ''} tab={tab} detail={detail} personaEvidence={personaEvidence} ready={ready} readonly={blocked} busy={busy} error={error} added={added} knownNumbers={knownNumbers}
     onPersona={id => {setDetail(null);setPersonaEvidence(null);setPersona(id);setContext('');setTab('new');}} onContext={id => {setDetail(null);setContext(id);setTab('new');}} onTab={next => {setDetail(null);setTab(next);}} onStart={start}
     onRetry={id => {if(status?.run && status.status !== 'stale') void mutate(() => actions.retry(id));}} onSkip={id => {if(status?.run && status.status !== 'stale') void mutate(() => actions.skip(id));}}
     onRefresh={id => {if(status?.run && status.status !== 'stale') void mutate(async () => {await actions.refresh(id);});}} onAdded={docId => void add(docId)}
