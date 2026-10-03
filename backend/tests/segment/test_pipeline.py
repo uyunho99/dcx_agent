@@ -257,7 +257,8 @@ def test_counter_flags_and_persona_draft_failure_persist(setup, monkeypatch):
     assert any('counter_context' in c['flags'] for c in store.contexts())
 
 
-def test_resume_mid_dims_reuses_completed_batches(setup):
+def test_resume_mid_dims_reuses_completed_batches(setup, monkeypatch):
+    monkeypatch.setattr(pipeline.dims.settings, 'segment_concurrency', 1)  # Stop after exactly one batch.
     fixture, calls = setup(docs_per_context=4)
     ctx = Context(fixture.sid)
     original = ctx.heartbeat

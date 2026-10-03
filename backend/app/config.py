@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     label_fake_jev_cross: bool = False
     label_batch_size: int = 20
     label_concurrency: int = 4
+    segment_concurrency: int = 4
     evidence_llm_concurrency: int = 4
     known_theta: float = 0.85
     model_cut_low: float = 0.2
@@ -71,7 +72,7 @@ class Settings(BaseSettings):
 
     @field_validator(
         "embed_backend", "embed_model", "embed_dim", "jev_model", "jev_rate_per_min",
-        "jev_backend", "label_gpt_backend", "label_fake_jev_cross", "label_batch_size", "label_concurrency",
+        "jev_backend", "label_gpt_backend", "label_fake_jev_cross", "label_batch_size", "label_concurrency", "segment_concurrency",
         "known_theta", "model_cut_low", "model_cut_high", "monitor_rate", "monitor_warn",
         "head_min_samples", "audit_first", "audit_every", "audit_size", "audit_reissue",
         "kappa_floor", mode="before",
