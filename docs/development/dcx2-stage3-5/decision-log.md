@@ -213,3 +213,7 @@
 - 사용자 선택: "B로 진행해줘 — cvc_agent도 그 방식"(Codex를 사용자 로그인 세션에서 실행).
 - 규칙: 운영도 QA처럼 `gui/<uid>` LaunchAgent(`~/Library/LaunchAgents/ai.person-a.dcx-agent.{deploy,api,web}.plist`)로 등록한다. 포트 8400/3400 · 공개 주소 · 데이터 위치는 그대로. 맥미니는 `persona1` 자동 로그인이라 재부팅 후에도 로그인과 함께 뜬다.
 - 기획안과의 차이: ops README의 "로그인 여부와 관계없이"(LaunchDaemon) 운영 조건이 "자동 로그인된 사용자 세션"으로 바뀐다. 로그아웃하면 서비스가 내려간다.
+### D-343 GPT(Codex) 판정 묶음을 동시에 처리한다 · 확정 (사용자, 2026-10-03)
+- 배경: 운영 Codex 판정이 묶음(20건)을 한 번에 하나씩 보내 분당 약 20건, 8.7만 건에 약 7일. `LABEL_CONCURRENCY`(기본 4)는 `run_many`에 작업 1개만 넘겨 실제로 효과가 없다.
+- 사용자 선택: "C로 20명으로 늘려서 진행"(묶음 크기 20 유지, 묶음 여러 개를 동시에).
+- 규칙: 판정 워커가 `LABEL_CONCURRENCY`개 묶음을 동시에 Codex(또는 API)에 보낸다. 운영 `LABEL_CONCURRENCY=20`. 묶음 하나가 실패 · 한도에 걸려도 같이 끝난 다른 묶음 결과는 저장한다.

@@ -326,7 +326,7 @@ sudo certbot renew --dry-run
 | `JEV_RATE_PER_MIN` | - | 키당 분당 요청 수 (`120`) |
 | `LABEL_FAKE_JEV_CROSS` | - | 기본 `false`; 테스트 · 오프라인 QA 전용: fake Jev를 실제 교차 판정 라벨러로 취급 |
 | `LABEL_GPT_BACKEND` | - | `codex_exec` (기본), `openai_api`, 오프라인 `fake` |
-| `LABEL_BATCH_SIZE` / `LABEL_CONCURRENCY` | - | GPT 배치 문서 수 (`20`) / 동시 실행 수 (`4`) |
+| `LABEL_BATCH_SIZE` / `LABEL_CONCURRENCY` | - | GPT 배치 문서 수 (`20`) / 동시에 처리하는 GPT 묶음 수 (`4`) |
 | `EVIDENCE_LLM_CONCURRENCY` | - | 7단계 근거 탐색 LLM 동시 호출 수 (`4`, `1`이면 순차 실행) |
 | `OPENAI_API_KEY` / `OPENAI_MODEL` | OpenAI API 사용 시 | API 인증 및 모델 선택 |
 | `CODEX_BIN` / `CODEX_PROFILE` / `CODEX_TIMEOUT_S` | Codex 사용 시 | 실행 파일 (`codex`), 프로필 (`dcx-worker`), 제한 시간 (`600`초) |

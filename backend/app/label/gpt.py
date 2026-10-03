@@ -131,7 +131,7 @@ def judge_batch(docs: list[dict], one_liner: str, *, sid: str, ctx_key: str,
     run_id = _run_id(ids, sid, qver, context)
     backend = settings.label_gpt_backend
     if backend == 'codex_exec':
-        result = run_many([task], run_id=run_id, concurrency=settings.label_concurrency)[0]
+        result = run_many([task], run_id=run_id, concurrency=1)[0]
     elif backend == 'openai_api':
         result = OpenAIApiBackend().run(task)
     elif backend == 'fake':
