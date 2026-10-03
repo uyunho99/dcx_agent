@@ -207,3 +207,9 @@
 - 사용자: "confidence는 안 채우는 형식으로 가자 아니면 codex한테 confidence를 출력하게 하거나".
 - 선택: 비운다. 이유 ① confidence = 일치 칸 수/8 × Jev 확신도라 Jev 없이는 정의가 없다. ② Codex가 스스로 말하는 확신도는 보정되지 않은 값이다(대부분 0.8~0.95로 몰림). ③ GPT 질문 · 출력 형식을 바꾸면 GPT 판정 캐시 식별자(질문 파일 해시)가 바뀌어 이미 받은 GPT 판정을 전부 다시 받아야 한다. ④ 단독 모드에서 confidence를 쓰는 곳(등급 불일치 큐 우선순위)이 없고 학습도 confidence를 쓰지 않는다.
 - 표시: 화면 · 내보내기에서 confidence가 없으면 "—"(JSON은 null).
+
+### D-342 운영 서비스를 사용자 세션(LaunchAgent)으로 돌린다 · 확정 (사용자, 2026-10-03)
+- 배경: 운영 API는 LaunchDaemon(system 도메인, `UserName=persona1`)으로 돈다. 이 환경에서 `codex exec`가 시작 즉시 `failed to load configuration: Failed to synchronize managed preferences`로 실패해 4단계 GPT(Codex) 판정이 0건에서 멈춘다. 같은 프로필을 사용자 세션의 LaunchAgent로 실행하면 정상(2026-10-03 임시 에이전트로 확인).
+- 사용자 선택: "B로 진행해줘 — cvc_agent도 그 방식"(Codex를 사용자 로그인 세션에서 실행).
+- 규칙: 운영도 QA처럼 `gui/<uid>` LaunchAgent(`~/Library/LaunchAgents/ai.person-a.dcx-agent.{deploy,api,web}.plist`)로 등록한다. 포트 8400/3400 · 공개 주소 · 데이터 위치는 그대로. 맥미니는 `persona1` 자동 로그인이라 재부팅 후에도 로그인과 함께 뜬다.
+- 기획안과의 차이: ops README의 "로그인 여부와 관계없이"(LaunchDaemon) 운영 조건이 "자동 로그인된 사용자 세션"으로 바뀐다. 로그아웃하면 서비스가 내려간다.
