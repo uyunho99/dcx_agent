@@ -31,6 +31,8 @@ CORS_ORIGINS=https://dcx.person-a.ai,http://localhost:3400
 NEXT_PUBLIC_API_URL=https://dcx-api.person-a.ai
 ```
 
+`JEV_BACKEND=fake`이면 4단계 라벨링은 GPT 단독 판정으로 돕니다(가짜 Jev 값은 쓰지 않음).
+
 설치 시 `DCX_PUBLIC_API_URL`과 `DCX_PUBLIC_WEB_URL` 환경변수로 공개 API·웹 주소를 바꿀 수 있습니다. 웹 주소는 CORS에 지정 웹 포트의 localhost origin과 함께 들어갑니다. 예: `sudo APP_ROOT="$HOME/srv/dcx-agent" DCX_PUBLIC_API_URL=https://api.example.com DCX_PUBLIC_WEB_URL=https://example.com /bin/bash ops/macmini/install.sh`. `--qa`는 이 공개 주소 환경변수를 사용하지 않고 `NEXT_PUBLIC_API_URL=http://localhost:8401`, `CORS_ORIGINS=http://localhost:3401`을 기본값으로 사용합니다. QA 포트 변경 시 localhost URL도 함께 바뀝니다.
 
 기존 `shared/runtime.env`에 `NEXT_PUBLIC_API_URL` 또는 `CORS_ORIGINS`가 있으면 각 값을 환경변수·기본값보다 우선하여 보존합니다. 일반 설치 계획과 `--dry-run` 모두 실제 사용할 두 값을 출력합니다. 기존 localhost 설정도 보존되므로 공개 주소로 전환할 때는 운영자가 해당 값을 직접 수정해야 합니다.

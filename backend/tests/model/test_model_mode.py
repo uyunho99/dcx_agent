@@ -232,6 +232,8 @@ def test_train_worker_and_parent_snapshot(client, data_dir, monkeypatch):
 
 
 def test_llm_predictions_do_not_suppress_new_label_merges(client, data_dir, monkeypatch):
+    monkeypatch.setattr(settings, 'label_fake_jev_cross', True)
+    monkeypatch.setattr(settings, 'jev_backend', 'fake')
     from app.label.schema import JevVote
     from app.label.gpt import GptVote
     sid, _ = prepared(data_dir)

@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Button, Card, InsightCard } from '@/components/ds';
+import { Banner, Button, Card, InsightCard } from '@/components/ds';
+import { formatRate, GPT_ONLY_BODY, GPT_ONLY_TITLE, labelerView } from './labelerMode';
 import { KappaTable } from './KappaTable';
 import { LabelerProgress } from './LabelerProgress';
 import { controlTarget, type WorkerAction } from './workerControls';
@@ -20,6 +21,7 @@ export function Overview({sid, version, overview: o, readonly = false, onRefresh
   const lock = useRef(false);
   const workers = useRef<HTMLDivElement>(null);
   const now = pickNowCard(o);
+  const view = labelerView(o, o.started ? o.mode : mode);
   useEffect(() => {
     if (o.started) return;
     let active = true;
@@ -48,10 +50,11 @@ export function Overview({sid, version, overview: o, readonly = false, onRefresh
         {mode === 'model' && <label className="ds-field">모델 선택<select className="ds-inp" value={modelId} onChange={e => setModelId(e.target.value)}><option value="">모델을 선택하세요</option>{models.map(m => <option key={m.modelId} value={m.modelId} disabled={m.selectable === false}>{m.modelId} · {String(m.bk ?? '')} · {String(m.oneLiner ?? '')}{m.reason ? ` · ${m.reason}` : ''}</option>)}</select></label>}
         {!models.some(m => m.selectable !== false) && <p className="ds-t-caption">사용할 수 있는 분류 모델이 없습니다.</p>}</fieldset>
         <p>{now.body}</p><Button variant="primary" loading={busy} disabled={readonly || (mode === 'model' && !models.some(m => m.modelId === modelId && m.selectable !== false))} onClick={() => void start()}>라벨링 시작</Button>
-      </Card> : <InsightCard eyebrow="지금 할 일" insight={now.title} interpretation={<><p>{now.body}</p><p>지난 접속 이후 새로 판정 {o.changes.judged.toLocaleString('ko-KR')}건 · 채택 {o.changes.accepted.toLocaleString('ko-KR')}건 · 큐에 쌓인 문서 {o.changes.queued.toLocaleString('ko-KR')}건</p></>} evidence={[{label:'불일치율',value:`${(o.mismatchRate * 100).toFixed(1)}%`}]} nextAction={now.action && <Button variant="primary" onClick={() => {const target = now.action!.target; if(target === 'workers') {workers.current?.focus(); workers.current?.scrollIntoView({behavior:'smooth'});} else if(target !== 'start') onNavigate(target);}}>{now.action.label}</Button>}/>}</div>
-      <Card><h2 className="ds-t-card">합친 결과</h2><dl className="space-y-2"><dt>합친 문서</dt><dd>{o.merged.toLocaleString('ko-KR')} / {o.total.toLocaleString('ko-KR')}건</dd><dt>채택</dt><dd>{o.accepted.toLocaleString('ko-KR')}건</dd><dt>불일치율</dt><dd>{(o.mismatchRate * 100).toFixed(1)}%</dd><dt>검수 큐</dt><dd>{o.queue.total.toLocaleString('ko-KR')}건 · 예상 {Math.ceil(o.queue.estimatedSeconds / 60)}분</dd></dl></Card>
+      </Card> : <InsightCard eyebrow="지금 할 일" insight={now.title} interpretation={<><p>{now.body}</p><p>지난 접속 이후 새로 판정 {o.changes.judged.toLocaleString('ko-KR')}건 · 채택 {o.changes.accepted.toLocaleString('ko-KR')}건 · 큐에 쌓인 문서 {o.changes.queued.toLocaleString('ko-KR')}건</p></>} evidence={[{label:'불일치율',value:formatRate(o.mismatchRate)}]} nextAction={now.action && <Button variant="primary" onClick={() => {const target = now.action!.target; if(target === 'workers') {workers.current?.focus(); workers.current?.scrollIntoView({behavior:'smooth'});} else if(target !== 'start') onNavigate(target);}}>{now.action.label}</Button>}/>}</div>
+      <Card><h2 className="ds-t-card">합친 결과</h2><dl className="space-y-2"><dt>합친 문서</dt><dd>{o.merged.toLocaleString('ko-KR')} / {o.total.toLocaleString('ko-KR')}건</dd><dt>채택</dt><dd>{o.accepted.toLocaleString('ko-KR')}건</dd><dt>불일치율</dt><dd>{formatRate(o.mismatchRate)}</dd><dt>검수 큐</dt><dd>{o.queue.total.toLocaleString('ko-KR')}건 · 예상 {Math.ceil(o.queue.estimatedSeconds / 60)}분</dd></dl></Card>
     </div>
-    <div ref={workers} tabIndex={-1}><Card className="space-y-4"><h2 className="ds-t-card">전량 판정</h2><p className="ds-t-caption">화면을 닫아도 계속됩니다.</p><div className="grid gap-6 md:grid-cols-2">{Object.entries(o.progress).map(([name, progress]) => <div key={name} className="space-y-2"><LabelerProgress key={name} name={name === 'jev' ? 'Jev' : name === 'gpt' ? 'GPT' : name === 'infer' ? '분류 모델' : '감시'} progress={progress} busy={busy} onControl={!readonly && controlTarget(name, o.mode) ? action => void control(controlTarget(name, o.mode)!, action) : undefined}/>{progress.state === 'running' && progress.estimate?.seconds != null && <p className="ds-t-caption">예상 완료 · {new Date(Date.now() + progress.estimate.seconds * 1000).toLocaleString('ko-KR')}</p>}{name === 'jev' && <p className="ds-t-caption">예상 Jev 비용 · 금액 추정은 아직 제공되지 않습니다.{typeof progress.estimate?.jevTokens === 'number' && ` 예상 입력 ${progress.estimate.jevTokens.toLocaleString('ko-KR')}토큰`}</p>}</div>)}</div></Card></div>
+    {view.showNotice && <Banner><h2 className="ds-t-card">{GPT_ONLY_TITLE}</h2><p className="ds-t-caption">{GPT_ONLY_BODY}</p></Banner>}
+    <div ref={workers} tabIndex={-1}><Card className="space-y-4"><h2 className="ds-t-card">전량 판정</h2><p className="ds-t-caption">화면을 닫아도 계속됩니다.</p><div className={`grid gap-6 ${view.workers.length > 1 ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}>{view.workers.map(([name, progress]) => <div key={name} className="space-y-2"><LabelerProgress key={name} name={name === 'jev' ? 'Jev' : name === 'gpt' ? 'GPT' : name === 'infer' ? '분류 모델' : '감시'} progress={progress} busy={busy} onControl={!readonly && controlTarget(name, o.mode) ? action => void control(controlTarget(name, o.mode)!, action) : undefined}/>{progress.state === 'running' && progress.estimate?.seconds != null && <p className="ds-t-caption">예상 완료 · {new Date(Date.now() + progress.estimate.seconds * 1000).toLocaleString('ko-KR')}</p>}{name === 'jev' && <p className="ds-t-caption">예상 Jev 비용 · 금액 추정은 아직 제공되지 않습니다.{typeof progress.estimate?.jevTokens === 'number' && ` 예상 입력 ${progress.estimate.jevTokens.toLocaleString('ko-KR')}토큰`}</p>}</div>)}</div></Card></div>
     <Card><h2 className="ds-t-card">등급 분포</h2><div className="flex flex-wrap gap-6">{(['core','supporting','non'] as EvidenceLevel[]).map(level => <p key={level}><LevelBadge level={level}/> {o.levelDistribution[level].toLocaleString('ko-KR')}건</p>)}</div></Card>
     <Card><KappaTable audit={o.audit.at(-1)?.kappaAI} jev={o.labelerAccuracy.jev} gpt={o.labelerAccuracy.gpt}/></Card>
   </div>;

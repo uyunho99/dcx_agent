@@ -16,7 +16,9 @@ def tags(value=1):
 
 
 @pytest.fixture
-def session(data_dir):
+def session(data_dir, monkeypatch):
+    monkeypatch.setattr('app.config.settings.jev_backend', 'fake')
+    monkeypatch.setattr('app.config.settings.label_fake_jev_cross', True)
     store.update_session('labeltest', {'schemaVersion': 2, 'prep': {'status': 'done',
         'derivedRef': {'collectionId': 'c1', 'prepKey': 'p_123456789abc'}}})
     # Minimal context sufficient for labeling; avoid the unrelated context editor validator.

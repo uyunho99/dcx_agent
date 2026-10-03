@@ -1,0 +1,79 @@
+{
+  "verdict": "PASS",
+  "head": "c3ed4c0a0d1de7b4140779dbe1baa2f7c458e953",
+  "fingerprint": "54c93b95adb3bf32addf3703aa3de1b890eeb80bfb20695cba99cf86ef33752d",
+  "commands": [
+    {
+      "command": "backend/.venv/bin/python -m pytest backend/tests -q -n auto",
+      "exitCode": 0,
+      "summary": "2690 passed"
+    },
+    {
+      "command": "npm --prefix frontend test",
+      "exitCode": 0,
+      "summary": "778 passed"
+    },
+    {
+      "command": "npm --prefix frontend run lint",
+      "exitCode": 0
+    },
+    {
+      "command": "npm --prefix frontend run build",
+      "exitCode": 0
+    }
+  ],
+  "findings": [],
+  "tasks": [
+    {
+      "id": "T1",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent a1826aca94ce535f4 (report docs/development/label-gpt-only/reports/T1.md)",
+      "red": "docs/development/label-gpt-only/reports/T1.md#RED",
+      "green": "docs/development/label-gpt-only/reports/T1.md#GREEN",
+      "review": "docs/development/label-gpt-only/reports/review.md"
+    },
+    {
+      "id": "T2",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent aa84ce5eb66a6158b (report docs/development/label-gpt-only/reports/T2.md)",
+      "red": "docs/development/label-gpt-only/reports/T2.md#RED",
+      "green": "docs/development/label-gpt-only/reports/T2.md#GREEN",
+      "review": "docs/development/label-gpt-only/reports/review.md"
+    },
+    {
+      "id": "T3",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent abe8b7e3e91ad82f3 (report docs/development/label-gpt-only/reports/T3.md)",
+      "red": "docs/development/label-gpt-only/reports/T3.md#RED",
+      "green": "docs/development/label-gpt-only/reports/T3.md#GREEN",
+      "review": "docs/development/label-gpt-only/reports/review.md"
+    },
+    {
+      "id": "T4",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent aa1678b76913e1701 (report docs/development/label-gpt-only/reports/T4.md)",
+      "red": "docs/development/label-gpt-only/reports/T4.md#RED",
+      "green": "docs/development/label-gpt-only/reports/T4.md#GREEN",
+      "review": "docs/development/label-gpt-only/reports/review.md"
+    },
+    {
+      "id": "T5",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent a835e443b2e0ce924 (report docs/development/label-gpt-only/reports/T5.md)",
+      "red": "docs/development/label-gpt-only/reports/T5.md#RED",
+      "green": "docs/development/label-gpt-only/reports/T5.md#GREEN",
+      "review": "docs/development/label-gpt-only/reports/review.md"
+    },
+    {
+      "id": "FIX-R1-R3",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent a857c48f3ce816883 (report docs/development/label-gpt-only/reports/fix-R1-R3.md)",
+      "red": "docs/development/label-gpt-only/reports/fix-R1-R3.md#RED",
+      "green": "docs/development/label-gpt-only/reports/fix-R1-R3.md#GREEN",
+      "review": "docs/development/label-gpt-only/reports/review.md"
+    }
+  ],
+  "notes": [
+    "tsc --noEmit reports a pre-existing error in frontend/src/lib/logic/crawlConfig.test.ts (duplicate max_per_keyword) on origin/main; out of scope, not part of verificationCommands."
+  ]
+}

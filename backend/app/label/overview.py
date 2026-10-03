@@ -7,6 +7,7 @@ import json
 from app.config import settings
 from app.context import store, versions
 from app.label import audit, judge
+from app.label.jev import labeler_mode
 from app.label.route import sync as rebuild_queue, next_item
 from app.label.store import LabelStore
 from app.label.votes import VoteCache
@@ -112,10 +113,11 @@ def overview(sid, version=None, *, sync=True) -> dict:
         return dict(legacy=True, readonly=True, message=LEGACY_MESSAGE,
                     legacyLabels=[{**row, 'anchor': bool(row['label'])} for row in data.get('labeledData', [])])
     labeling = data.get('labeling', {})
+    mode = labeler_mode(data)
     labels = labels_for(sid, data)
     caches = caches_for(sid, data)
     if sync:
-        rebuild_queue(labels, caches.get('jev'), caches.get('gpt'))
+        rebuild_queue(labels, caches.get('jev'), caches.get('gpt'), mode=mode)
         index_documents(sid, data, labels)
     else:
         from app.label.route import schema
@@ -131,6 +133,8 @@ def overview(sid, version=None, *, sync=True) -> dict:
             picked = db.execute('SELECT MIN(picked_at) FROM audit_set WHERE round=?', (r,)).fetchone()[0]
         history.append(dict(round=r, n=metric['n'], kappaAI=metric, at=picked))
     accuracy = audit.labeler_accuracy(labels)
+    if mode == 'gpt_only':
+        accuracy['jev'] = None
     consistency = audit.self_consistency(labels)
     consistency['agree'] = consistency['accuracy']
     definition = audit.definition_signal([r['kappaAI'] for r in history])
@@ -158,7 +162,7 @@ def overview(sid, version=None, *, sync=True) -> dict:
             changes['judged'] += db.execute("SELECT count(*) FROM votes WHERE status IN ('done','bad') AND at>?", (timestamp,)).fetchone()[0]
     work = {row['runId']: row for row in runner.status(sid)}
     progress = {}
-    for name in ('jev', 'gpt'):
+    for name in (('gpt',) if mode == 'gpt_only' else ('jev', 'gpt')):
         counts = caches[name].counts() if name in caches else dict(done=0, pending=0, bad=0)
         run = work.get(labeling.get('judgeRuns', {}).get(name), {})
         detail = run.get('detail', {})
@@ -173,9 +177,9 @@ def overview(sid, version=None, *, sync=True) -> dict:
     queue_count = sum(reasons.values())
     pending = next_item(labels, 'audit') is not None or next_item(labels, 'reissue') is not None
     from app.model.dataset import trainable_count
-    result = dict(trainable=trainable_count(sid, data, labels), mode=labeling.get('mode', 'llm'), modelId=labeling.get('modelId'), started=labeling.get('started', False),
+    result = dict(labelerMode=mode, trainable=trainable_count(sid, data, labels), mode=labeling.get('mode', 'llm'), modelId=labeling.get('modelId'), started=labeling.get('started', False),
                   merged=merged, total=total, accepted=accepted, escalated=queue_count,
-                  mismatchRate=mismatches / merged if merged else 0,
+                  mismatchRate=None if mode == 'gpt_only' else (mismatches / merged if merged else 0),
                   levelDistribution=distribution, queue=dict(total=queue_count, byReason=reasons, estimatedSeconds=queue_count * average),
                   labelerAccuracy=accuracy, selfConsistency=consistency, definitionCheck=definition,
                   progress=progress, audit=history, changes=changes,

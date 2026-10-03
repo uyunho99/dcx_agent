@@ -1,7 +1,7 @@
 import { contextRequest } from './context';
 import { versionQuery } from './errors';
 import type { EvidenceLevel, LabelTags, LabelSubmission, LabelResult, Overview, LegacyOverview, QueueItem, ReviewMode, Worker } from '../types';
-export type { Overview, QueueItem, LabelTags, LabelResult } from '../types';
+export type { Overview, QueueItem, LabelTags, LabelVote, LabelResult } from '../types';
 const path = (sid: string, action: string, version?: string) => versionQuery(`/label/${encodeURIComponent(sid)}/${action}`,version);
 export const setLabelMode = (sid: string, body: {mode: 'llm' | 'model'; modelId?: string | null}, version?: string) => contextRequest<typeof body>(path(sid,'mode',version),'POST',body);
 export const startLabel = (sid: string, version?: string) => contextRequest<{started: boolean; workers: Record<string, Worker>}>(path(sid,'start',version),'POST');

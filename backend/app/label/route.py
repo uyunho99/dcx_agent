@@ -59,8 +59,8 @@ def _vote_journal(cache):
                 INSERT INTO route_vote_changes(doc_id) VALUES (NEW.doc_id); END""")
 
 
-def rebuild_final(store, jev_cache, gpt_cache):
-    """Merge only pairs touched since this version's last committed sync.
+def rebuild_final(store, jev_cache, gpt_cache, mode='cross'):
+    """Merge touched cross-mode pairs or all unprojected completed GPT votes.
 
     Journals bootstrap existing caches once. Cursors and projections commit in
     one transaction; a crash or a second worker cannot lose a newly paired vote.
@@ -69,14 +69,15 @@ def rebuild_final(store, jev_cache, gpt_cache):
     from app.label.merge import merge
     from app.label.jev import JevVote
     from app.label.gpt import GptVote
-    for cache in (jev_cache, gpt_cache):
+    caches = (('gpt', gpt_cache),) if mode == 'gpt_only' else (('jev', jev_cache), ('gpt', gpt_cache))
+    for _, cache in caches:
         _vote_journal(cache)
     with store._db() as db:
         db.execute('CREATE TABLE IF NOT EXISTS route_sync (name TEXT PRIMARY KEY, identity TEXT, seq INTEGER)')
         db.execute('CREATE TEMP TABLE touched (doc_id TEXT PRIMARY KEY)')
         checkpoints = []
         first_sync = not db.execute('SELECT 1 FROM route_sync LIMIT 1').fetchone()
-        for name, cache in (('jev', jev_cache), ('gpt', gpt_cache)):
+        for name, cache in caches:
             db.execute(f'ATTACH DATABASE ? AS {name}', (cache.path.resolve().as_uri() + '?mode=ro',))
             identity = f'{cache.path.resolve()}:{rule.RULE_VERSION}:{questions.QVER}'
             old = db.execute('SELECT identity, seq FROM route_sync WHERE name=?', (name,)).fetchone()
@@ -84,8 +85,11 @@ def rebuild_final(store, jev_cache, gpt_cache):
             high = db.execute(f'SELECT COALESCE(MAX(seq),0) FROM {name}.route_vote_changes').fetchone()[0]
             db.execute(f'INSERT OR IGNORE INTO touched SELECT doc_id FROM {name}.route_vote_changes WHERE seq>? AND seq<=?', (seq, high))
             checkpoints.append((name, identity, high))
-        changed = db.execute("""SELECT 1 FROM route_sync WHERE identity NOT LIKE ? LIMIT 1""",
-                             (f'%:{rule.RULE_VERSION}:{questions.QVER}',)).fetchone()
+        active_names = tuple(name for name, _ in caches)
+        changed = db.execute(f"""SELECT 1 FROM route_sync
+            WHERE name IN ({','.join('?' for _ in active_names)})
+            AND identity NOT LIKE ? LIMIT 1""",
+            (*active_names, f'%:{rule.RULE_VERSION}:{questions.QVER}')).fetchone()
         if first_sync:
             changed = db.execute("""SELECT 1 FROM final WHERE source NOT IN ('human','model')
                 AND (rule_version!=? OR questions_version!=?) LIMIT 1""",
@@ -93,35 +97,53 @@ def rebuild_final(store, jev_cache, gpt_cache):
         if changed:
             db.execute("DELETE FROM final WHERE source!='human' AND source!='model'")
             db.execute("DELETE FROM queue WHERE reason='grade_mismatch' AND status='open'")
-        candidates = db.execute("""SELECT t.doc_id, j.payload_json AS jev_json, g.payload_json AS gpt_json
-            FROM touched t CROSS JOIN jev.votes j ON j.doc_id=t.doc_id
-            CROSS JOIN gpt.votes g ON g.doc_id=t.doc_id
-            LEFT JOIN final f ON f.doc_id=t.doc_id
-            WHERE j.status='done' AND g.status='done' AND f.doc_id IS NULL""").fetchall()
+        if mode == 'gpt_only':
+            # A prior cross sync may have consumed GPT deltas without a Jev pair.
+            candidates = db.execute("""SELECT g.doc_id, g.payload_json AS gpt_json
+                FROM gpt.votes g LEFT JOIN final f ON f.doc_id=g.doc_id
+                WHERE g.status='done' AND f.doc_id IS NULL""").fetchall()
+        else:
+            # Copied GPT-only projections may have already-consumed cursors.
+            db.execute("INSERT OR IGNORE INTO touched SELECT doc_id FROM final WHERE source='gpt_only'")
+            candidates = db.execute("""SELECT t.doc_id, j.payload_json AS jev_json, g.payload_json AS gpt_json
+                FROM touched t CROSS JOIN jev.votes j ON j.doc_id=t.doc_id
+                CROSS JOIN gpt.votes g ON g.doc_id=t.doc_id
+                LEFT JOIN final f ON f.doc_id=t.doc_id
+                WHERE j.status='done' AND g.status='done'
+                AND (f.doc_id IS NULL OR f.source='gpt_only')""").fetchall()
         for row in candidates:
-            jev = JevVote.model_validate_json(row['jev_json'])
             gpt = GptVote.model_validate_json(row['gpt_json'])
-            merged = merge(jev, gpt)
-            tags = Tags.model_validate(merged.model_dump())
-            db.execute('INSERT INTO final VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
-                (row['doc_id'], merged.evidence_level, merged.confidence, 'agreed',
-                 'escalated:grade_mismatch' if merged.grade_mismatch else 'accepted',
+            if mode == 'gpt_only':
+                tags = Tags.model_validate(gpt.model_dump())
+                level = rule.grade(dict(anchor=int(tags.anchor), situation=int(tags.situation), **tags.sem))
+                confidence, source, mismatch, disagree = None, 'gpt_only', False, []
+                jev_json = None
+            else:
+                jev = JevVote.model_validate_json(row['jev_json'])
+                merged = merge(jev, gpt)
+                tags = Tags.model_validate(merged.model_dump())
+                level, confidence, source = merged.evidence_level, merged.confidence, 'agreed'
+                mismatch, disagree = merged.grade_mismatch, merged.disagree
+                jev_json = jev.model_dump()
+            db.execute('INSERT OR REPLACE INTO final VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                (row['doc_id'], level, confidence, source,
+                 'escalated:grade_mismatch' if mismatch else 'accepted',
                  tags.model_dump_json(), tags.reason_code, tags.signal, rule.RULE_VERSION,
-                 questions.QVER, json.dumps({'jev': jev.model_dump(), 'gpt': gpt.model_dump()}),
-                 json.dumps(merged.disagree), int(merged.grade_mismatch)))
+                 questions.QVER, json.dumps({'jev': jev_json, 'gpt': gpt.model_dump()}),
+                 json.dumps(disagree), int(mismatch)))
         db.executemany('INSERT OR REPLACE INTO route_sync VALUES (?,?,?)', checkpoints)
         return len(candidates)
 
 
-def sync(store, jev_cache=None, gpt_cache=None):
-    rebuild_queue(store, jev_cache, gpt_cache)
+def sync(store, jev_cache=None, gpt_cache=None, mode='cross'):
+    rebuild_queue(store, jev_cache, gpt_cache, mode=mode)
     if next_item(store, 'audit') is None and next_item(store, 'reissue') is None:
         with store._db() as db:
             accepted = db.execute("SELECT count(*) FROM final WHERE route='accepted'").fetchone()[0]
         audit.maybe_new_round(store, accepted)
 
 
-def rebuild_queue(store, jev_cache=None, gpt_cache=None):
+def rebuild_queue(store, jev_cache=None, gpt_cache=None, mode='cross'):
     """Reconcile committed vote deltas while preserving completed review rows."""
     schema(store)
     with store._db() as db:
@@ -130,8 +152,8 @@ def rebuild_queue(store, jev_cache=None, gpt_cache=None):
     if has_inference:
         from app.model.infer import refresh_predictions
         model_mode = refresh_predictions(store)
-    if not model_mode and jev_cache is not None and gpt_cache is not None:
-        rebuild_final(store, jev_cache, gpt_cache)
+    if not model_mode and gpt_cache is not None and (mode == 'gpt_only' or jev_cache is not None):
+        rebuild_final(store, jev_cache, gpt_cache, mode=mode)
     with store._db() as db:
         # T09 carry-over: a recovered failed vote must not leave a stale review.
         db.execute("""UPDATE queue SET status='closed' WHERE status='open'
@@ -146,7 +168,7 @@ def rebuild_queue(store, jev_cache=None, gpt_cache=None):
         if model_mode:
             return
         for name, cache in (('jev', jev_cache), ('gpt', gpt_cache)):
-            if cache is None:
+            if cache is None or (mode == 'gpt_only' and name == 'jev'):
                 continue
             db.execute(f'ATTACH DATABASE ? AS {name}', (cache.path.resolve().as_uri() + '?mode=ro',))
             db.execute(f"""INSERT INTO queue(doc_id, reason, priority, status)

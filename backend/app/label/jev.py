@@ -14,6 +14,26 @@ from app.label.schema import JevVote
 
 URL = 'https://jevmodel.org/v1/systemone'
 MAX_RETRIES = 5
+GPT_ONLY_MESSAGE = 'Jev가 연결되지 않아 GPT 단독으로 판정합니다.'
+
+
+def jev_available() -> bool:
+    if settings.jev_backend == 'http':
+        return bool(settings.jev_api_keys)
+    if settings.jev_backend == 'fake':
+        return settings.label_fake_jev_cross
+    return False
+
+
+def labeler_mode(data: dict) -> str:
+    labeling = data.get('labeling', {})
+    if 'labelerMode' in labeling:
+        return labeling['labelerMode']
+    # Preserve the rules of sessions started before modes were persisted.
+    if labeling.get('started'):
+        return 'cross'
+    return 'cross' if jev_available() else 'gpt_only'
+
 
 _limiter_pool: dict[str, ChannelLimiter] = {}
 _limiter_pool_lock = threading.Lock()

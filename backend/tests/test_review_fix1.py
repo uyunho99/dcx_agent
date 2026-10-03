@@ -288,7 +288,7 @@ from app.context.store import load_session
 assert caches_for(ctx.sid, load_session(ctx.sid))['jev'].counts()['done'] == 3
 '''
     env = dict(os.environ, LOCAL_DATA_DIR=str(data_dir), JEV_BACKEND='fake',
-        JEVMODEL_API_KEY='offline-placeholder', LABEL_GPT_BACKEND='fake', EMBED_BACKEND='fake', MONITOR_RATE='1')
+        JEVMODEL_API_KEY='offline-placeholder', LABEL_FAKE_JEV_CROSS='true', LABEL_GPT_BACKEND='fake', EMBED_BACKEND='fake', MONITOR_RATE='1')
     result = subprocess.run([sys.executable, '-c', script, kind],
         cwd=Path(__file__).resolve().parents[1], env=env, capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, result.stderr

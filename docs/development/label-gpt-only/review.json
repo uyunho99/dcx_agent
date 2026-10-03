@@ -1,0 +1,17 @@
+{
+  "verdict": "PASS",
+  "head": "c3ed4c0a0d1de7b4140779dbe1baa2f7c458e953",
+  "fingerprint": "54c93b95adb3bf32addf3703aa3de1b890eeb80bfb20695cba99cf86ef33752d",
+  "commands": [
+    {
+      "command": "git diff 271c067..HEAD (Codex read-only review + Claude re-review)",
+      "exitCode": 0
+    }
+  ],
+  "findings": [],
+  "resolved": [
+    "R1 High fixed c3ed4c0",
+    "R2 High fixed c3ed4c0",
+    "R3 Low fixed c3ed4c0"
+  ]
+}

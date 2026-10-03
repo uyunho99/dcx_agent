@@ -10,7 +10,7 @@ from app.config import settings
 from app.context import versions
 from app.context.stale import judge_done
 from app.label import gpt
-from app.label.jev import get_jev_client as JevClient, JevError, build_state
+from app.label.jev import get_jev_client as JevClient, JevError, build_state, GPT_ONLY_MESSAGE, labeler_mode
 from app.label.questions import QVER, jev_questions
 from app.label.votes import VoteCache
 from app.work.status import transaction
@@ -75,6 +75,8 @@ def run_worker(ctx):
     if labeler not in ('jev', 'gpt'):
         raise ValueError('Unknown labeler')
     session = versions._data(ctx.sid, ctx.version)
+    if labeler == 'jev' and labeler_mode(session) == 'gpt_only':
+        raise ValueError(GPT_ONLY_MESSAGE)
     ref = session['prep']['derivedRef']
     one_liner = session['projectContext']['oneLiner']
     root = cache_root(ctx.sid, ref['prepKey'], labeler, one_liner)
@@ -105,7 +107,7 @@ def run_worker(ctx):
         caches = {name: VoteCache(cache_root(ctx.sid, ref['prepKey'], name, one_liner))
                   for name in ('jev', 'gpt')}
         # Bootstrap cached results on restart, even if there is no work to lease.
-        sync(labels, caches['jev'], caches['gpt'])
+        sync(labels, caches['jev'], caches['gpt'], mode=labeler_mode(session))
         ctx_key = context_key(one_liner, labeler)
         recent = deque([(time.monotonic(), cache.counts()['done'])])
         message = '판정 맥락이 바뀌어 다시 판정합니다' if changed else None
@@ -156,7 +158,7 @@ def run_worker(ctx):
                         for doc_id in ids:
                             cache.fail(doc_id, 'gpt_backend_failed')
                     cache.release()
-                    sync(labels, caches['jev'], caches['gpt'])
+                    sync(labels, caches['jev'], caches['gpt'], mode=labeler_mode(session))
                     _pause(ctx, str(exc), detail)
                     continue
                 for doc_id, vote in votes.items():
@@ -189,7 +191,7 @@ def run_worker(ctx):
                     else:
                         transient_failures = 0
                         cache.put(doc['doc_id'], vote.model_dump())
-            sync(labels, caches['jev'], caches['gpt'])
+            sync(labels, caches['jev'], caches['gpt'], mode=labeler_mode(session))
             recent.append((time.monotonic(), cache.counts()['done']))
             while len(recent) > 1 and recent[0][0] < time.monotonic() - 600:
                 recent.popleft()

@@ -40,7 +40,7 @@ def build_targets(final_rows, jev_cache=None) -> Targets:
     """
     rows = [dict(r) for r in final_rows]
     rows = [r for r in rows if r['source'] == 'human' or
-            (r['source'] == 'agreed' and r.get('route') == 'accepted')]
+            (r['source'] in ('agreed', 'gpt_only') and r.get('route') == 'accepted')]
     values = {k: torch.zeros(len(rows), n) for k, n in HEADS.items()}
     hard = {k: v.clone() for k, v in values.items()}
     masks = {k: torch.zeros(len(rows), dtype=torch.bool) for k in HEADS}
@@ -60,7 +60,8 @@ def build_targets(final_rows, jev_cache=None) -> Targets:
         for head, fields in [('anchor', ('anchor',)), ('sem', rule.SEM), ('situation', ('situation',))]:
             hard[head][i] = torch.tensor([binary[k] for k in fields])
             values[head][i] = hard[head][i] if human else torch.tensor([
-                (vote['probs'][k] + gpt_binary[k]) / 2 for k in fields])
+                (vote['probs'][k] + gpt_binary[k]) / 2 if vote else gpt_binary[k]
+                for k in fields])
             masks[head][i] = head == 'anchor' or bool(tags['anchor'])
         for head, classes, field, eligible in [('signal', SIGNALS, 'signal', level != 'non'),
                                                ('reason', REASONS, 'reason_code', level == 'non')]:
@@ -71,7 +72,7 @@ def build_targets(final_rows, jev_cache=None) -> Targets:
             if eligible and label in classes and final_label in classes:
                 values[head][i, classes.index(label)] = 1
                 masks[head][i] = True
-                if head == 'reason' and not human:
+                if head == 'reason' and vote:
                     p = torch.tensor([vote.get('reason_probs', {}).get(k, 0.) for k in classes])
                     if p.sum() > 0:
                         values[head][i] = (values[head][i] + p / p.sum()) / 2
