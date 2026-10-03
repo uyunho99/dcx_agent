@@ -349,6 +349,34 @@ export function SegmentScreen({ sid, version, readonly = false }: Props) {
     function bulk() { const run = current?.run; if (!run || !chosen || !visibleContexts.length)
         return; const items = visibleContexts.map(c => ({ id: c.id, name: edits[c.id]?.name ?? c.name ?? c.nameDraft ?? '', action: edits[c.id]?.action ?? c.action ?? c.actionDraft ?? '' })); if (items.some(i => !i.name.trim() || !i.action.trim()))
         return; void mutate(() => api.confirmSegmentContexts(sid, chosen.id, { run, contexts: items }, version), items.map(i => i.id)); }
+    // Confirm every remaining Cluster/Persona of this layer with its edit or draft; invalid rows stay for manual entry.
+    function bulkLayer() {
+        const run = current?.run;
+        if (!run || !loaded) return;
+        const work: (() => Promise<unknown>)[] = [];
+        const ids: string[] = [];
+        if (layer === '6-A') for (const row of clusters) {
+            if (row.confirmed && !edits[row.id]) continue;
+            const name = edits[row.id]?.name ?? row.name ?? row.nameDraft ?? '';
+            if (!name.trim()) continue;
+            ids.push(row.id);
+            work.push(() => api.confirmSegmentCluster(sid, row.id, { run, name, confirm: true }, version));
+        }
+        if (layer === '6-B') for (const row of personas) {
+            if (row.confirmed && !edits[row.id]) continue;
+            const e = edits[row.id];
+            const name = e?.name ?? row.name ?? row.nameDraft ?? '';
+            const desire = e?.desire ?? row.desire ?? row.desireDraft ?? '';
+            const goals = e?.goals ?? (row.goals.length ? row.goals : row.goalsDraft);
+            if (!name.trim() || !desire.trim() || !goals.length || goals.length > 3 || goals.some(g => !g.trim())) continue;
+            ids.push(row.id);
+            work.push(() => api.confirmSegmentPersona(sid, row.id, { run, name, desire, goals: goals as SegmentPersonaConfirmation['goals'], confirm: true }, version));
+        }
+        if (!work.length) return;
+        void mutate(async () => { for (const call of work) await call(); }, ids);
+    }
+    const bulkRemaining = layer === '6-A' ? clusters.filter(c => !c.confirmed || edits[c.id]).length
+        : layer === '6-B' ? personas.filter(p => !p.confirmed || edits[p.id]).length : 0;
     const gates = current ? layerState(current) : null;
     const forward = loaded && !running(current) && (layer === '6-A'
         ? !gates?.personas.locked && !clusters.some(c => !c.confirmed || edits[c.id])
@@ -367,6 +395,6 @@ export function SegmentScreen({ sid, version, readonly = false }: Props) {
  {layer === '6-B' && <PersonaLayer sid={sid} version={version} {...editor} forwardPrimary={!!forward} personas={personas} clusters={clusters} selected={chosen?.id ?? ''} onSelect={setSelected}/>}
  {layer === '6-C' && <div className="grid grid-cols-[minmax(160px,1fr)_minmax(0,3fr)] gap-5"><nav aria-label="Persona 목록" className="min-w-0 space-y-2">{personas.map(p => { const rows = contexts.filter(c => c.personaId === p.id); return <Button key={p.id} className="w-full whitespace-normal text-left" aria-current={chosen?.id === p.id ? 'true' : undefined} onClick={() => setSelected(p.id)}>{p.clusterId} · {p.name ?? p.nameDraft ?? p.id} · {rows.filter(c => c.confirmed).length}/{rows.length} 확정</Button>; })}</nav><ContextLayer key={current.run} sid={sid} version={version} {...editor} contexts={visibleContexts} emptyRatio={emptyRatio} onBulk={bulk}/></div>}
  {forward && <div className="flex justify-end"><Button data-forward variant="primary" disabled={blocked} onClick={() => setLayer(layer === '6-A' ? '6-B' : '6-C')}>{layer === '6-A' ? '6-B로 →' : '6-C로 →'}</Button></div>}
- <p aria-live="polite">{layer === '6-A' ? current.confirm.clusters : layer === '6-B' ? current.confirm.personas : current.confirm.contexts} 확정</p></>}
+ <div className="flex flex-wrap items-center gap-3"><p aria-live="polite">{layer === '6-A' ? current.confirm.clusters : layer === '6-B' ? current.confirm.personas : current.confirm.contexts} 확정</p>{(layer === '6-A' || layer === '6-B') && bulkRemaining > 0 && <Button disabled={editor.disabled} onClick={bulkLayer}>{`남은 ${layer === '6-A' ? '클러스터' : 'Persona'} ${bulkRemaining}개 초안으로 모두 확정`}</Button>}</div></>}
  <div className="flex justify-end"><Button disabled={!evidence.allowed} title={evidence.allowed ? undefined : evidence.reason} onClick={() => router.push('/pipeline/evidence?start=1')}>근거 탐색 실행</Button></div></div></VersionStage>;
 }
