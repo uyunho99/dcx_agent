@@ -478,6 +478,39 @@ try:
 except (KeyError,ValueError,TypeError,IndexError): print('unknown')
 PY
 }
+local_ci_status() { # sha; runs the CI suite on this Mac once per commit
+    local sha="$1" result="$SHARED/local-ci/$1" tree="$APP_ROOT/ci/$1" log="$APP_ROOT/logs/local-ci-$1.log" key venv
+    if [[ -f "$result" ]]; then cat "$result"; return; fi
+    mkdir -p "$SHARED/local-ci" "$APP_ROOT/ci" "$SHARED/venvs" "$APP_ROOT/logs"
+    rm -rf "$tree"; mkdir -p "$tree"
+    if ! (set -o pipefail; git -C "$APP_ROOT/repo" archive "$sha" | tar -x -C "$tree"); then
+        rm -rf "$tree"; echo unknown; return
+    fi
+    key="$(cat "$tree/backend/requirements.txt" "$tree/backend/requirements-dev.txt" "$tree/backend/constraints.txt" 2>/dev/null | { cat; python3.12 --version; } | shasum -a 256 | cut -c1-16)"
+    venv="$SHARED/venvs/ci-$key"
+    # Isolated environment: never inherit operator keys or production data paths.
+    if env -i HOME="$HOME" PATH="$PATH" TMPDIR="${TMPDIR:-/tmp}" /bin/bash -c '
+        set -e; tree="$1"; venv="$2"; cd "$tree"
+        if [[ ! -f "$venv/.complete" ]]; then
+            rm -rf "$venv"; python3.12 -m venv "$venv"
+            c=(); [[ -f backend/constraints.txt ]] && c=(-c backend/constraints.txt)
+            "$venv/bin/pip" install -q -r backend/requirements.txt -r backend/requirements-dev.txt "${c[@]}"
+            touch "$venv/.complete"
+        fi
+        # One rerun of only the failed tests absorbs known timing-sensitive flakes.
+        "$venv/bin/python" -m pytest backend/tests -q -n auto || "$venv/bin/python" -m pytest backend/tests -q --lf
+        npm ci --prefix frontend --silent
+        npm --prefix frontend run lint
+        npm --prefix frontend test
+        npm --prefix frontend run build
+    ' local-ci "$tree" "$venv" > "$log" 2>&1; then
+        echo success > "$result"
+    else
+        echo "failed:local" > "$result"
+    fi
+    rm -rf "$tree"
+    cat "$result"
+}
 prune_releases() {
     local keep dir
     keep=" $(current_sha) $(tail -n 3 "$HISTORY" 2>/dev/null | awk '{print $1}' | tr '\n' ' ') "

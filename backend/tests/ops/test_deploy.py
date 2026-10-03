@@ -521,3 +521,15 @@ def test_writer_discovery_includes_manual_repo_and_node(macmini, kind, location)
         assert m.lib('worker_pids') == str(child.pid)
     finally:
         child.terminate(); child.wait(timeout=5)
+
+
+def test_local_ci_mode_uses_recorded_result_not_github(macmini):
+    m = macmini
+    (m.root / "shared/ci-mode").write_text("local\n")
+    (m.root / "shared/local-ci").mkdir(parents=True)
+    (m.root / f"shared/local-ci/{m.b}").write_text("failed:local\n")
+    m.ci(conclusion="success")
+    assert m.run_deploy()[1]["decision"] == "ci-failed"
+    assert m.current == m.a
+    (m.root / f"shared/local-ci/{m.b}").write_text("success\n")
+    assert m.run_deploy()[1]["decision"] == "deployed" and m.current == m.b
