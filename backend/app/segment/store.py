@@ -150,18 +150,21 @@ class SegmentStore:
     def contexts(self, persona_id=None):
         return self._list('contexts', 'persona_id', persona_id)
 
-    def docs(self, context_id=None, band=None, limit=100, offset=0):
+    def docs(self, context_id=None, band=None, limit=100, offset=0, *, cluster_id=None, persona_id=None, sort='id'):
         if not isinstance(limit, int) or not isinstance(offset, int) or limit < 0 or offset < 0:
             raise ValueError('limit and offset must be nonnegative integers')
+        # center: nearest the Context centroid first; edge: farthest first (hidden-need candidates).
+        order = {'id': 'doc_id', 'center': 'dist_centroid IS NULL, dist_centroid, doc_id',
+                 'edge': 'dist_centroid IS NULL, dist_centroid DESC, doc_id'}[sort]
         filters, args = [], []
-        for key, value in (('context_id', context_id), ('band', band)):
+        for key, value in (('context_id', context_id), ('band', band), ('cluster_id', cluster_id), ('persona_id', persona_id)):
             if value is not None:
                 filters.append(f'{key}=?')
                 args.append(value)
         where = ' WHERE ' + ' AND '.join(filters) if filters else ''
         with self._db() as db:
             return [_decode(row) for row in db.execute(
-                f'SELECT * FROM docs{where} ORDER BY doc_id LIMIT ? OFFSET ?', (*args, limit, offset))]
+                f'SELECT * FROM docs{where} ORDER BY {order} LIMIT ? OFFSET ?', (*args, limit, offset))]
 
     def _confirm(self, db, layer, item_id, values):
         if layer not in _LAYERS or not values or set(values) - _CONFIRM[layer]:

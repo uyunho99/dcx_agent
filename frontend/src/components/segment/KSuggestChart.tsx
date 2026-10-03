@@ -21,7 +21,7 @@ export function KSuggestChart({ k, silhouette, sample }: KSuggestChartProps) {
       {points.map(point => <g key={point.k}>
         <circle cx={point.x} cy={point.y} r={point.k === k ? 5 : 2} fill={point.k === k ? "var(--blue)" : "var(--sub)"} />
         <text x={point.x} y="115" fontSize="11" fill="var(--sub)" textAnchor="middle">{point.k}</text>
-        {point.k === k && <text x={point.x} y={point.y - 10} fontSize="11" fill="var(--ink-strong)" textAnchor="middle">{point.score}</text>}
+        {point.k === k && <text x={point.x} y={point.y - 10} fontSize="11" fill="var(--ink-strong)" textAnchor="middle">{Number(point.score).toFixed(2)}</text>}
       </g>)}
     </svg>
   </figure>;

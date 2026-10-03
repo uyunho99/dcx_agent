@@ -303,12 +303,14 @@ def request_memo(sid: str, body: RequestMemo, version: str | None = None):
 @router.get('/docs')
 def docs(sid: str, context: str | None = None, band: Literal['core', 'fringe', 'edge'] | None = None,
          offset: int = Query(default=0, ge=0), limit: int = Query(default=100, ge=1, le=1000),
-         version: str | None = None):
+         version: str | None = None, cluster: str | None = None, persona: str | None = None,
+         sort: Literal['id', 'center', 'edge'] = 'id'):
     data, store = _open(sid, version)
     with store.snapshot() as run:
-        rows = store.docs(context_id=context, band=band, limit=limit, offset=offset)
+        rows = store.docs(context_id=context, band=band, limit=limit, offset=offset,
+                          cluster_id=cluster, persona_id=persona, sort=sort)
         filters, values = [], []
-        for key, value in (('context_id', context), ('band', band)):
+        for key, value in (('context_id', context), ('band', band), ('cluster_id', cluster), ('persona_id', persona)):
             if value is not None:
                 filters.append(f'{key}=?')
                 values.append(value)

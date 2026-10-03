@@ -99,3 +99,15 @@ def test_write_layers_atomic_replacement(layers):
     layers.write_layers(clusters=[{'cluster_id': 'CL1'}])
     assert len(layers.clusters()) == 1
     assert layers.docs() == []
+
+
+def test_docs_filter_by_cluster_persona_and_sort_by_distance(tmp_path):
+    from app.segment.store import SegmentStore
+    store = SegmentStore(tmp_path)
+    rows = [dict(doc_id=f'd{i}', cluster_id='CL1' if i < 4 else 'CL2', persona_id='P1' if i < 2 else 'P2',
+                 context_id='C1', dist_centroid=d, band='core') for i, d in enumerate([0.5, 0.1, 0.9, 0.3, 0.2])]
+    store.write_layers(docs=rows)
+    assert [r['doc_id'] for r in store.docs(cluster_id='CL1', sort='center')] == ['d1', 'd3', 'd0', 'd2']
+    assert [r['doc_id'] for r in store.docs(cluster_id='CL1', sort='edge')] == ['d2', 'd0', 'd3', 'd1']
+    assert [r['doc_id'] for r in store.docs(persona_id='P1')] == ['d0', 'd1']
+    assert [r['doc_id'] for r in store.docs(sort='center', limit=2, offset=1)] == ['d4', 'd3']
