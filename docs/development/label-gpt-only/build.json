@@ -1,17 +1,17 @@
 {
   "verdict": "PASS",
-  "head": "86ead3a16762720a8fd02b08ec468222b87dd2b9",
-  "fingerprint": "fb0d064230f8d06650cf307419a82a8bde10379b22ff03574875daa38062b4cb",
+  "head": "c3ed4c0a0d1de7b4140779dbe1baa2f7c458e953",
+  "fingerprint": "54c93b95adb3bf32addf3703aa3de1b890eeb80bfb20695cba99cf86ef33752d",
   "commands": [
     {
       "command": "backend/.venv/bin/python -m pytest backend/tests -q -n auto",
       "exitCode": 0,
-      "summary": "2687 passed"
+      "summary": "2690 passed"
     },
     {
       "command": "npm --prefix frontend test",
       "exitCode": 0,
-      "summary": "776 passed"
+      "summary": "778 passed"
     },
     {
       "command": "npm --prefix frontend run lint",
@@ -62,6 +62,14 @@
       "dispatch": "codex:codex-rescue agent a835e443b2e0ce924 (report docs/development/label-gpt-only/reports/T5.md)",
       "red": "docs/development/label-gpt-only/reports/T5.md#RED",
       "green": "docs/development/label-gpt-only/reports/T5.md#GREEN",
+      "review": "docs/development/label-gpt-only/reports/review.md"
+    },
+    {
+      "id": "FIX-R1-R3",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent a857c48f3ce816883 (report docs/development/label-gpt-only/reports/fix-R1-R3.md)",
+      "red": "docs/development/label-gpt-only/reports/fix-R1-R3.md#RED",
+      "green": "docs/development/label-gpt-only/reports/fix-R1-R3.md#GREEN",
       "review": "docs/development/label-gpt-only/reports/review.md"
     }
   ],

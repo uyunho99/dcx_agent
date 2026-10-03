@@ -1,0 +1,45 @@
+{
+  "verdict": "PASS",
+  "head": "c3ed4c0a0d1de7b4140779dbe1baa2f7c458e953",
+  "fingerprint": "54c93b95adb3bf32addf3703aa3de1b890eeb80bfb20695cba99cf86ef33752d",
+  "commands": [],
+  "findings": [],
+  "scenarios": [
+    {
+      "id": "S1",
+      "url": "http://localhost:3320/pipeline/labeling",
+      "result": "PASS",
+      "evidence": "docs/development/label-gpt-only/reports/qa.md#S1"
+    },
+    {
+      "id": "S2",
+      "url": "http://localhost:3320/pipeline/labeling",
+      "result": "PASS",
+      "evidence": "docs/development/label-gpt-only/reports/qa.md#S2"
+    },
+    {
+      "id": "S3",
+      "url": "http://localhost:3320/pipeline/labeling",
+      "result": "PASS",
+      "evidence": "docs/development/label-gpt-only/reports/qa.md#S3"
+    },
+    {
+      "id": "S4",
+      "url": "http://localhost:8320/label/{sid}/judge/jev/resume",
+      "result": "PASS",
+      "evidence": "docs/development/label-gpt-only/reports/qa.md#S4"
+    },
+    {
+      "id": "S5",
+      "url": "http://localhost:3320/pipeline/training",
+      "result": "PASS",
+      "evidence": "docs/development/label-gpt-only/reports/qa.md#S5"
+    },
+    {
+      "id": "S6",
+      "url": "http://localhost:3320/pipeline/labeling",
+      "result": "PASS",
+      "evidence": "docs/development/label-gpt-only/reports/qa.md#S6"
+    }
+  ]
+}
