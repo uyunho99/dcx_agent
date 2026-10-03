@@ -60,7 +60,7 @@ def _vote_journal(cache):
 
 
 def rebuild_final(store, jev_cache, gpt_cache, mode='cross'):
-    """Merge only pairs touched since this version's last committed sync.
+    """Merge touched cross-mode pairs or all unprojected completed GPT votes.
 
     Journals bootstrap existing caches once. Cursors and projections commit in
     one transaction; a crash or a second worker cannot lose a newly paired vote.
@@ -85,8 +85,11 @@ def rebuild_final(store, jev_cache, gpt_cache, mode='cross'):
             high = db.execute(f'SELECT COALESCE(MAX(seq),0) FROM {name}.route_vote_changes').fetchone()[0]
             db.execute(f'INSERT OR IGNORE INTO touched SELECT doc_id FROM {name}.route_vote_changes WHERE seq>? AND seq<=?', (seq, high))
             checkpoints.append((name, identity, high))
-        changed = db.execute("""SELECT 1 FROM route_sync WHERE identity NOT LIKE ? LIMIT 1""",
-                             (f'%:{rule.RULE_VERSION}:{questions.QVER}',)).fetchone()
+        active_names = tuple(name for name, _ in caches)
+        changed = db.execute(f"""SELECT 1 FROM route_sync
+            WHERE name IN ({','.join('?' for _ in active_names)})
+            AND identity NOT LIKE ? LIMIT 1""",
+            (*active_names, f'%:{rule.RULE_VERSION}:{questions.QVER}')).fetchone()
         if first_sync:
             changed = db.execute("""SELECT 1 FROM final WHERE source NOT IN ('human','model')
                 AND (rule_version!=? OR questions_version!=?) LIMIT 1""",
@@ -95,9 +98,9 @@ def rebuild_final(store, jev_cache, gpt_cache, mode='cross'):
             db.execute("DELETE FROM final WHERE source!='human' AND source!='model'")
             db.execute("DELETE FROM queue WHERE reason='grade_mismatch' AND status='open'")
         if mode == 'gpt_only':
-            candidates = db.execute("""SELECT t.doc_id, g.payload_json AS gpt_json
-                FROM touched t JOIN gpt.votes g ON g.doc_id=t.doc_id
-                LEFT JOIN final f ON f.doc_id=t.doc_id
+            # A prior cross sync may have consumed GPT deltas without a Jev pair.
+            candidates = db.execute("""SELECT g.doc_id, g.payload_json AS gpt_json
+                FROM gpt.votes g LEFT JOIN final f ON f.doc_id=g.doc_id
                 WHERE g.status='done' AND f.doc_id IS NULL""").fetchall()
         else:
             # Copied GPT-only projections may have already-consumed cursors.

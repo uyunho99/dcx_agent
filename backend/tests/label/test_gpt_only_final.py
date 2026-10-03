@@ -14,6 +14,43 @@ from app.work.status import transaction
 from tests.label.test_merge import put, rows, votes
 
 
+def test_gpt_only_recovers_vote_consumed_by_cross_sync(tmp_path):
+    labels = LabelStore(tmp_path / 'v1')
+    jc, gc = [VoteCache(tmp_path / name) for name in ('jev', 'gpt')]
+    put(gc, 'd', votes()[1])
+    route.sync(labels, jc, gc, mode='cross')
+    assert rows(labels, 'final') == []
+    route.sync(labels, jc, gc, mode='gpt_only')
+    assert [(r['doc_id'], r['source']) for r in rows(labels, 'final')] == [('d', 'gpt_only')]
+    assert route.rebuild_final(labels, jc, gc, mode='gpt_only') == 0
+    put(jc, 'd', votes()[0])
+    route.sync(labels, jc, gc, mode='cross')
+    assert labels.get('d').source == 'agreed'
+
+
+@pytest.mark.parametrize('changed', ['rule', 'questions'])
+def test_gpt_only_ignores_inactive_checkpoint_version(tmp_path, monkeypatch, changed):
+    labels = LabelStore(tmp_path / 'v1')
+    jc, gc = [VoteCache(tmp_path / name) for name in ('jev', 'gpt')]
+    put(jc, 'd', votes()[0])
+    put(gc, 'd', votes()[1])
+    route.sync(labels, jc, gc, mode='cross')
+    route.sync(labels, jc, gc, mode='gpt_only')
+    monkeypatch.setattr(rule if changed == 'rule' else questions,
+                        'RULE_VERSION' if changed == 'rule' else 'QVER', 'next')
+    route.sync(labels, jc, gc, mode='gpt_only')
+    before = rows(labels, 'final')
+    assert len(before) == 1
+    assert before[0]['source'] == 'gpt_only'
+    assert (before[0]['rule_version'], before[0]['questions_version']) == (rule.RULE_VERSION, questions.QVER)
+    route.sync(labels, jc, gc, mode='gpt_only')
+    assert rows(labels, 'final') == before
+    # Recreating rows on every sync would hide the stale-checkpoint bug.
+    assert route.rebuild_final(labels, jc, gc, mode='gpt_only') == 0
+    route.sync(labels, jc, gc, mode='cross')
+    assert labels.get('d').source == 'agreed'
+
+
 @pytest.mark.parametrize('jev_kind', ['none', 'missing', 'bad'])
 def test_gpt_only_final_and_queue(tmp_path, jev_kind):
     labels = LabelStore(tmp_path / 'v1')

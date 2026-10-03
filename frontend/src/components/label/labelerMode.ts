@@ -9,7 +9,7 @@ export function isGptOnly(o: Pick<Overview, 'labelerMode'>): boolean {
 export function formatRate(value: number | null | undefined): string {
  return value == null ? '—' : `${(value * 100).toFixed(1)}%`;
 }
-export function labelerView(o: Pick<Overview, 'labelerMode' | 'progress'>) {
- const showNotice = isGptOnly(o);
+export function labelerView(o: Pick<Overview, 'labelerMode' | 'progress' | 'mode'>, mode = o.mode) {
+ const showNotice = mode === 'llm' && isGptOnly(o);
  return {showNotice, workers:Object.entries(o.progress).filter(([name]) => !showNotice || name === 'gpt')};
 }

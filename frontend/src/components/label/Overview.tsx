@@ -21,7 +21,7 @@ export function Overview({sid, version, overview: o, readonly = false, onRefresh
   const lock = useRef(false);
   const workers = useRef<HTMLDivElement>(null);
   const now = pickNowCard(o);
-  const view = labelerView(o);
+  const view = labelerView(o, o.started ? o.mode : mode);
   useEffect(() => {
     if (o.started) return;
     let active = true;

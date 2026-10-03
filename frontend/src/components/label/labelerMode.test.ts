@@ -1,5 +1,22 @@
 import { expect, it } from 'vitest';
-import { formatRate, GPT_ONLY_BODY, GPT_ONLY_TITLE, isGptOnly } from './labelerMode';
+import { formatRate, GPT_ONLY_BODY, GPT_ONLY_TITLE, isGptOnly, labelerView } from './labelerMode';
+
+const overview = {
+ mode:'llm' as const, labelerMode:'gpt_only' as const,
+ progress:{jev:{state:'none',pending:0},gpt:{state:'none',pending:0},infer:{state:'none',pending:0}},
+};
+it('shows the GPT-only notice and filters workers only in LLM mode', () => {
+ expect(labelerView(overview).showNotice).toBe(true);
+ expect(labelerView(overview).workers.map(([name]) => name)).toEqual(['gpt']);
+ const modelView = labelerView({...overview,mode:'model'});
+ expect(modelView.showNotice).toBe(false);
+ expect(modelView.workers.map(([name]) => name)).toEqual(['jev','gpt','infer']);
+});
+it('uses the local labeling selection when provided before Start', () => {
+ expect(labelerView(overview, 'model').showNotice).toBe(false);
+ expect(labelerView(overview, 'model').workers.map(([name]) => name)).toEqual(['jev','gpt','infer']);
+ expect(labelerView({...overview,mode:'model'}, 'llm').showNotice).toBe(true);
+});
 
 it('recognizes GPT-only mode while retaining cross mode for older overviews', () => {
  expect(isGptOnly({labelerMode:'gpt_only'})).toBe(true);
