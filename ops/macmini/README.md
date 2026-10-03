@@ -1,6 +1,7 @@
 # DCX 2.0 맥미니 운영
 
 운영 기본 루트는 `$HOME/srv/dcx-agent`, API는 `127.0.0.1:8400`, 웹은 `127.0.0.1:3400`입니다. 모든 진입점은 `APP_ROOT`를 지원하며 macOS 기본 `/bin/bash` 3.2에서 실행합니다. 운영 잡은 사용자 `UserName`과 `HOME`을 가진 LaunchDaemon 세 개입니다. 배포 잡은 로그인 여부와 관계없이 120초마다 main CI 결과를 조회합니다.
+Codex 판정(LABEL_GPT_BACKEND=codex_exec)을 쓰려면 아래 `--agent` 방식으로 설치하세요.
 
 ## 설치 준비와 미리보기
 
@@ -38,6 +39,45 @@ NEXT_PUBLIC_API_URL=https://dcx-api.person-a.ai
 기존 `shared/runtime.env`에 `NEXT_PUBLIC_API_URL` 또는 `CORS_ORIGINS`가 있으면 각 값을 환경변수·기본값보다 우선하여 보존합니다. 일반 설치 계획과 `--dry-run` 모두 실제 사용할 두 값을 출력합니다. 기존 localhost 설정도 보존되므로 공개 주소로 전환할 때는 운영자가 해당 값을 직접 수정해야 합니다.
 
 운영 스크립트는 `$APP_ROOT/ops/`에 복사되어 코드 롤백과 독립적으로 남습니다. `ops_outdated: true` 로그가 나오면 새 릴리스의 `ops/macmini/install.sh`로 재설치합니다. 기존 current가 있으면 설치기는 코드를 바꾸지 않고 스크립트·잡을 갱신합니다. NEXT_PUBLIC 값 변경은 프론트 재빌드가 필요하므로 다른 커밋을 정식 배포해야 합니다.
+
+## 운영 사용자 에이전트(권장)
+
+LaunchDaemon 아래에서는 `codex exec`가 `Failed to synchronize managed preferences` 오류로 실패하고, 사용자 로그인 세션에서는 정상 동작합니다(D-342). Codex 판정을 사용하는 운영 서비스는 `--agent`로 설치합니다. 사용자 `persona1`의 자동 로그인을 계속 켜 두어야 하며, 로그아웃하면 서비스가 중단됩니다.
+
+운영 에이전트는 sudo 없이 `~/Library/LaunchAgents/ai.person-a.dcx-agent.{deploy,api,web}.plist`를 `gui/<uid>` 도메인에 등록합니다. 운영 루트·라벨·포트(8400/3400)와 공개 주소 설정은 운영 데몬과 같습니다. 전환 전 다음 명령으로 미리볼 수 있습니다.
+
+```bash
+APP_ROOT="$HOME/srv/dcx-agent" /bin/bash "$HOME/srv/dcx-agent/current/ops/macmini/install.sh" --agent --dry-run --output-dir /tmp/dcx-agent-plan
+```
+
+전환은 `persona1`의 로그인 세션 터미널에서 다음 세 단계로 진행합니다.
+
+1. 기존 운영 데몬을 내리고 plist를 삭제합니다.
+
+   ```bash
+   for job in deploy api web; do sudo launchctl bootout system/ai.person-a.dcx-agent.$job; sudo rm -f /Library/LaunchDaemons/ai.person-a.dcx-agent.$job.plist; done
+   ```
+
+2. sudo 없이 운영 에이전트를 설치하고, 확인 프롬프트에 소문자 `y`를 직접 입력합니다.
+
+   ```bash
+   APP_ROOT="$HOME/srv/dcx-agent" /bin/bash "$HOME/srv/dcx-agent/current/ops/macmini/install.sh" --agent
+   ```
+
+3. 운영 상태를 확인합니다.
+
+   ```bash
+   APP_ROOT="$HOME/srv/dcx-agent" "$HOME/srv/dcx-agent/ops/dcxctl" status
+   ```
+
+실제 `--agent` 설치 시 데몬 plist나 등록된 데몬 잡이 하나라도 남아 있으면 설치기는 확인 프롬프트 전에 변경 없이 중단하고, 1단계 명령을 그대로 출력합니다. 드라이런은 이 가드를 적용하지 않습니다. `--agent` 실제 설치는 sudo를 거부하며, `--qa`와 함께 사용할 수 없습니다.
+
+운영 데몬으로 되돌리려면 같은 사용자 세션에서 에이전트를 내리고 plist를 삭제한 뒤, sudo로 플래그 없는 데몬 설치를 실행하고 `y`를 입력합니다. 에이전트가 남아 있으면 데몬 설치도 중단됩니다. 데몬으로 되돌리면 위 Codex 실행 제약도 다시 적용됩니다.
+
+```bash
+for job in deploy api web; do launchctl bootout gui/$(id -u)/ai.person-a.dcx-agent.$job; rm -f ~/Library/LaunchAgents/ai.person-a.dcx-agent.$job.plist; done
+sudo APP_ROOT="$HOME/srv/dcx-agent" /bin/bash "$HOME/srv/dcx-agent/current/ops/macmini/install.sh"
+```
 
 ## 수동 명령
 

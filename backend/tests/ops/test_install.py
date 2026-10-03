@@ -246,3 +246,120 @@ def test_install_existing_public_urls_preserved(macmini, tmp_path, qa, cors):
         assert shlex.split(rendered[key]) == [value]
         assert f'{key}={value}' in r.stdout
     assert runtime.read_text() == original
+
+
+@pytest.mark.parametrize('ports', [('18400', '13400'), ('', '')])
+def test_agent_dry_run(macmini, tmp_path, ports):
+    m = macmini
+    forbid_services(m)
+    (m.root/'shared/runtime.env').unlink()
+    agent = tmp_path/'agent'
+    daemon = tmp_path/'daemon'
+    env = dict(DCX_API_PORT=ports[0], DCX_WEB_PORT=ports[1])
+    if not ports[0]:
+        env.update(HOME=str(tmp_path/'home'), APP_ROOT=str(tmp_path/'home/srv/dcx-agent'))
+    r = run(m, 'install.sh', '--agent', '--dry-run', '--output-dir', str(agent), **env)
+    assert r.returncode == 0, r.stderr
+    assert 'Library/LaunchAgents' in r.stdout and '/Library/LaunchDaemons' not in r.stdout
+    d = run(m, 'install.sh', '--dry-run', '--output-dir', str(daemon), **env)
+    assert d.returncode == 0, d.stderr
+    assert len(list(agent.glob('*.plist'))) == 3
+    for job in ('deploy', 'api', 'web'):
+        name = f'ai.person-a.dcx-agent.{job}.plist'
+        actual = plistlib.loads((agent/name).read_bytes())
+        expected = plistlib.loads((daemon/name).read_bytes())
+        expected.pop('UserName')
+        assert actual == expected
+        assert actual['Label'] == f'ai.person-a.dcx-agent.{job}'
+    for name in ('runtime.env', 'launch.env'):
+        assert (agent/name).read_bytes() == (daemon/name).read_bytes()
+    assert 'NEXT_PUBLIC_API_URL=https://dcx-api.person-a.ai' in (agent/'runtime.env').read_text()
+    launch = (agent/'launch.env').read_text()
+    assert f'DCX_API_PORT={ports[0] or "8400"}' in launch
+    assert f'DCX_WEB_PORT={ports[1] or "3400"}' in launch
+    assert not (m.root/'ops').exists()
+
+
+def test_agent_qa_usage_error(macmini):
+    forbid_services(macmini)
+    r = run(macmini, 'install.sh', '--agent', '--qa')
+    assert r.returncode == 2
+    assert '[--agent|--qa]' in r.stderr
+
+
+@pytest.mark.parametrize('answer', ['', 'y\n'])
+def test_agent_requires_interactive_confirmation(macmini, answer):
+    forbid_services(macmini)
+    r = run(macmini, 'install.sh', '--agent', input=answer, DCX_INSTALL_ASSUME_YES='1')
+    assert 'y 입력' in r.stdout
+    if answer:
+        assert r.returncode == 1 and '대화형' in r.stderr
+    else:
+        assert r.returncode == 0
+    assert not (macmini.root/'ops').exists()
+
+
+def test_agent_refuses_sudo(macmini):
+    forbid_services(macmini)
+    r = run(macmini, 'install.sh', '--agent', SUDO_USER='test-operator')
+    assert r.returncode == 1
+    assert '운영 에이전트 설치는 sudo 없이 실행하세요' in r.stderr
+    assert not (macmini.root/'ops').exists()
+
+
+@pytest.fixture(autouse=True)
+def isolated_launch_registration(macmini, tmp_path):
+    # Keep every installer test away from the host's registration directories.
+    macmini.env.update(DCX_DAEMON_DIR=str(tmp_path/'Library/LaunchDaemons'),
+                       DCX_AGENT_DIR=str(tmp_path/'Library/LaunchAgents'))
+    macmini.command('launchctl', "import sys; assert sys.argv[1] == 'print'; sys.exit(1)")
+
+
+@pytest.mark.parametrize('agent', [True, False])
+@pytest.mark.parametrize('source', ['plist', 'registered'])
+@pytest.mark.parametrize('job', ['deploy', 'api', 'web'])
+def test_install_transition_guard(macmini, tmp_path, agent, source, job):
+    m = macmini
+    forbid_services(m)
+    m.command('launchctl', "import sys; assert sys.argv[1] == 'print'; sys.exit(1)")
+    label = f'ai.person-a.dcx-agent.{job}'
+    domain = 'system' if agent else f'gui/{os.getuid()}'
+    if source == 'plist':
+        directory = tmp_path/'Library'/('LaunchDaemons' if agent else 'LaunchAgents')
+        directory.mkdir(parents=True)
+        (directory/f'{label}.plist').touch()
+    else:
+        m.command('launchctl', f"import sys; assert sys.argv[1] == 'print'; sys.exit(0 if sys.argv[2] == {f'{domain}/{label}'!r} else 1)")
+    before = {str(p.relative_to(m.root)): p.read_bytes() for p in m.root.rglob('*') if p.is_file()}
+    out = tmp_path/'not-created'
+    r = run(m, 'install.sh', *(['--agent'] if agent else []), '--output-dir', str(out))
+    assert r.returncode == 1, r.stderr
+    kind = 'LaunchDaemon' if agent else 'LaunchAgent'
+    command = ('sudo launchctl bootout system/ai.person-a.dcx-agent.$job; '
+               'sudo rm -f /Library/LaunchDaemons/ai.person-a.dcx-agent.$job.plist' if agent else
+               'launchctl bootout gui/$(id -u)/ai.person-a.dcx-agent.$job; '
+               'rm -f ~/Library/LaunchAgents/ai.person-a.dcx-agent.$job.plist')
+    assert r.stderr == (f'운영 {kind}이 아직 등록돼 있습니다. 아래를 터미널에서 실행한 뒤 다시 설치하세요.\n'
+                        f'for job in deploy api web; do {command}; done\n')
+    assert 'y 입력' not in r.stdout
+    assert not out.exists() and not (m.root/'ops').exists()
+    assert before == {str(p.relative_to(m.root)): p.read_bytes() for p in m.root.rglob('*') if p.is_file()}
+
+
+@pytest.mark.parametrize('mode', ['--agent', '--qa', 'daemon'])
+def test_install_destination_override(macmini, tmp_path, mode):
+    forbid_services(macmini)
+    r = run(macmini, 'install.sh', *([] if mode == 'daemon' else [mode]),
+            '--dry-run', '--output-dir', str(tmp_path/'render'))
+    assert r.returncode == 0, r.stderr
+    directory = tmp_path/'Library'/('LaunchDaemons' if mode == 'daemon' else 'LaunchAgents')
+    assert f'등록 위치: {directory}\n' in r.stdout
+
+
+def test_clean_agent_reaches_prompt(macmini):
+    forbid_services(macmini)
+    macmini.command('launchctl', "import sys; assert sys.argv[1] == 'print'; sys.exit(1)")
+    r = run(macmini, 'install.sh', '--agent')
+    assert r.returncode == 0, r.stderr
+    assert 'y 입력' in r.stdout and r.stderr == ''
+    assert not (macmini.root/'ops').exists()
