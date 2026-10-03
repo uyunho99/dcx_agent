@@ -5,6 +5,7 @@ must be supplied by the caller (the contexts table has no reps column).
 Returns per-item flags and persists them in meta.draft_flags, including Persona
 flags which have no dedicated column in the committed store schema.
 """
+from concurrent.futures import ThreadPoolExecutor
 import json
 from pathlib import Path
 import re
@@ -12,6 +13,7 @@ import re
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.config import settings
 from app.llm import registry
 from app.llm.base import Attachment, LLMTask
 from app.segment import params
@@ -91,22 +93,25 @@ def generate_drafts(sid, store, project_context, *, context_reps=None):
         ('personas', 'persona_id', 'persona_draft', PersonaDraftOut, {'name': '', 'desire': '', 'goals': []}),
         ('contexts', 'context_id', 'context_draft', ContextDraftOut, {'name': '', 'action': ''}),
     ):
-        for row in getattr(store, table)():
-            item_id = row[key]
+        def evidence_for(row):
             if table == 'clusters':
-                evidence = {'keywords': (row['keywords'] or [])[:params.CTFIDF_TOP],
-                            'reps': (row['reps'] or [])[:params.REPS]}
-            elif table == 'personas':
-                evidence = {'targetScope': context.get('targetScope'),
-                            'centrality': (row['centrality'] or [])[:params.CENTRALITY_TOP],
-                            'reps': (row['reps'] or [])[:params.REPS],
-                            'cluster_name': clusters.get(row['cluster_id'], '')}
-            else:
-                evidence = {'keywords': (row['keywords'] or [])[:params.CTFIDF_TOP],
-                            'reps': context_reps.get(item_id, [])[:params.REPS],
-                            'dominant_constraint': row['dominant_constraint'],
-                            'persona_desire': personas.get(row['persona_id'], '')}
-            draft = _draft(sid, task, model, one_liner, evidence)
+                return {'keywords': (row['keywords'] or [])[:params.CTFIDF_TOP],
+                        'reps': (row['reps'] or [])[:params.REPS]}
+            if table == 'personas':
+                return {'targetScope': context.get('targetScope'),
+                        'centrality': (row['centrality'] or [])[:params.CENTRALITY_TOP],
+                        'reps': (row['reps'] or [])[:params.REPS],
+                        'cluster_name': clusters.get(row['cluster_id'], '')}
+            return {'keywords': (row['keywords'] or [])[:params.CTFIDF_TOP],
+                    'reps': context_reps.get(row[key], [])[:params.REPS],
+                    'dominant_constraint': row['dominant_constraint'],
+                    'persona_desire': personas.get(row['persona_id'], '')}
+        rows = list(getattr(store, table)())
+        # Items in one layer are independent; the next layer reads this layer's results.
+        with ThreadPoolExecutor(max_workers=max(1, min(settings.segment_concurrency, len(rows) or 1))) as pool:
+            results = list(pool.map(lambda r: _draft(sid, task, model, one_liner, evidence_for(r)), rows))
+        for row, draft in zip(rows, results):
+            item_id = row[key]
             flags[item_id] = ['draft_failed'] if draft is None else []
             draft = empty if draft is None else draft
             values = {f'{field}_draft': value for field, value in draft.items()}

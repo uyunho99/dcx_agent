@@ -12,6 +12,7 @@ new layers. The legacy resume argument is unnecessary and cannot override reset.
 """
 from collections import Counter, defaultdict
 import hashlib
+import threading
 import os
 import shutil
 import tempfile
@@ -114,13 +115,15 @@ def _bind(function, **dependencies):
 class _Calls:
     def __init__(self, root, pulse):
         self.root, self.pulse = root, pulse
+        self.lock = threading.Lock()  # Segment LLM calls run concurrently (SEGMENT_CONCURRENCY).
         self.results = []
         self.path = root / 'llm_calls.json'
         self.counts = sessions.read_json(self.path) or dict.fromkeys(
             ('cluster_name', 'persona_draft', 'context_draft', 'dims'), 0)
 
     def run_task(self, task):
-        self.pulse()
+        with self.lock:
+            self.pulse()
         name = task.task.split('.')[-1]
         payload = task.model_dump(exclude={'output_schema'})
         digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
@@ -129,16 +132,18 @@ class _Calls:
         if cached is not None and cached.get('ok'):
             result = validate(task, cached['raw'])
             return result
-        self.counts[name] += 1
-        _write(self.path, self.counts)
+        with self.lock:
+            self.counts[name] += 1
+            _write(self.path, self.counts)
         try:
             result = registry.run_task(task)
         except (TimeoutError, ConnectionError):
             from app.llm.base import failure
             result = failure('backend', 'Provider unavailable')
-        self.results.append(None if result.ok else result.error.kind if result.error else 'unknown')
-        if name != 'dims' and result.ok:
-            _write(path, {'ok': True, 'raw': result.raw})
+        with self.lock:
+            self.results.append(None if result.ok else result.error.kind if result.error else 'unknown')
+            if name != 'dims' and result.ok:
+                _write(path, {'ok': True, 'raw': result.raw})
         return result
 
 

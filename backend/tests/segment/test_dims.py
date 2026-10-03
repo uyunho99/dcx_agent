@@ -73,7 +73,8 @@ def test_fixture_schema():
         dims.DimsOut.model_validate({'items': [missing]})
 
 
-def test_sample_cap_per_context(setup, calls):
+def test_sample_cap_per_context(setup, calls, monkeypatch):
+    monkeypatch.setattr(dims.params, 'DIMS_PER_CONTEXT', 100)
     store, rows = setup(114, 2)
     result = dims.extract_sample('s', 'v1', store)
     assert result['sampled'] == 200
@@ -225,3 +226,18 @@ def test_nullable_export_probabilities_resume(setup, calls, data_dir, sem):
     assert first['act_mismatch'] == 0
     assert first['contexts']['C0']['act_unknown'] == 2
     assert dims.extract_sample('s', 'v1', store) == first
+
+
+def test_extract_runs_batches_concurrently(setup, monkeypatch):
+    import threading
+    monkeypatch.setattr(dims.settings, 'segment_concurrency', 4)
+    store, rows = setup(41, 1)  # 40 Core documents -> four batches of ten.
+    barrier = threading.Barrier(4, timeout=5)
+    real = dims.registry.run_task
+    def concurrent(task):
+        barrier.wait()  # Fails unless four batches are in flight together.
+        return real(task)
+    monkeypatch.setattr(dims.registry, 'run_task', concurrent)
+    monkeypatch.setattr(dims.params, 'DIMS_PER_CONTEXT', 40)
+    result = dims.extract_sample('s', 'v1', store)
+    assert result['extracted'] == 40 and not result['dims_failed']

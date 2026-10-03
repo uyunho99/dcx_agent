@@ -5,6 +5,7 @@
 against that fixed codebook without changing either table.
 """
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 from fnmatch import fnmatchcase
 import hashlib
@@ -203,10 +204,14 @@ def write_cache(path, values, *, origin, model):
 
 def _extract(sid, batches, docs, cache, instructions):
     failed = []
+    ready = []
     for batch in batches:
         if any(doc_id not in docs for doc_id in batch):
             failed.extend(batch)
-            continue
+        else:
+            ready.append(batch)
+
+    def call(batch):
         attachments = []
         for doc_id in batch:
             doc = docs[doc_id]
@@ -229,10 +234,16 @@ def _extract(sid, batches, docs, cache, instructions):
             for row in items:
                 values, too_long = _clean(row.model_dump())
                 rows.append((row.doc_id, json.dumps(values, ensure_ascii=False), 'sample', _model(), too_long))
-            _write_rows(cache, rows)
-            break
-        else:
-            failed.extend(batch)
+            return rows
+        return None
+
+    # Provider calls run concurrently; the SQLite cache is written by this thread only.
+    with ThreadPoolExecutor(max_workers=max(1, min(settings.segment_concurrency, len(ready) or 1))) as pool:
+        for batch, rows in zip(ready, pool.map(call, ready)):
+            if rows is None:
+                failed.extend(batch)
+            else:
+                _write_rows(cache, rows)
     return failed
 
 
