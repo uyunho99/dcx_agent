@@ -1,4 +1,4 @@
-import type { Overview, QueueItem, ReviewMode } from '@/lib/types';
+import type { LabelVote, Overview, QueueItem, ReviewMode, SemanticTag } from '@/lib/types';
 
 const reasonLabels = {
   labeler_failed: '판정 실패',
@@ -15,4 +15,12 @@ export function queueReasonSummary(mode: Overview['mode'], counts: Overview['que
   return mode === 'model'
     ? `${reasonLabels.model_uncertain} ${counts.model_uncertain ?? 0}건 · ${reasonLabels.model_disagree} ${counts.model_disagree ?? 0}건`
     : `등급 불일치 ${counts.grade_mismatch ?? 0}건 · ${reasonLabels.labeler_failed} ${counts.labeler_failed ?? 0}건`;
+}
+
+export function voteValue(vote: LabelVote | null | undefined, field: string): string {
+ if(!vote) return '—';
+ if(vote.probs?.[field] != null) return vote.probs[field].toFixed(2);
+ const tags = vote.tags ?? vote;
+ const value = field === 'anchor' ? tags.anchor : field === 'situation' ? tags.situation : tags.sem?.[field as SemanticTag];
+ return value == null ? '—' : value ? '있음' : '없음';
 }

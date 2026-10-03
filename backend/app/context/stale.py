@@ -5,6 +5,7 @@ import sqlite3
 import time
 
 from app.context import store, versions
+from app.label.jev import labeler_mode
 from app.work.status import database_path, transaction
 
 
@@ -23,13 +24,14 @@ def clear_stale(sid, version, stage, *, already_locked=False):
         store.write_json(path, data)
 
 
-def _judges_complete(db, version):
+def _judges_complete(db, version, mode='cross'):
     latest = {}
     for labeler, state in db.execute("""SELECT labeler, state FROM runs
             WHERE version=? AND kind='judge'
             ORDER BY started_at DESC, rowid DESC""", (version,)):
         latest.setdefault(labeler, state)
-    return all(latest.get(name) == 'done' for name in ('jev', 'gpt'))
+    required = ('gpt',) if mode == 'gpt_only' else ('jev', 'gpt')
+    return all(latest.get(name) == 'done' for name in required)
 
 
 def _publication_pending(data):
@@ -65,8 +67,9 @@ def reconcile_judge_done(sid, data, version=None):
             if not selected:
                 return data
             store.assert_writable(sid, selected)
+            saved = store.read_json(versions.version_dir(sid, selected) / 'session.json') or {}
             with closing(sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True)) as db:
-                complete = _judges_complete(db, selected)
+                complete = _judges_complete(db, selected, mode=labeler_mode(saved))
             if complete:
                 return _publish_judges(sid, selected) or data
     except Exception:
@@ -82,6 +85,7 @@ def judge_done(ctx):
     from durable terminal rows. Older failed attempts do not block a done retry.
     """
     with store.locked(ctx.sid):
+        saved = store.read_json(versions.version_dir(ctx.sid, ctx.version) / 'session.json') or {}
         with transaction(ctx.sid) as db:
             changed = db.execute("""UPDATE runs SET state='done', heartbeat_at=?
                 WHERE run_id=? AND version=? AND kind='judge' AND pid=?
@@ -91,6 +95,6 @@ def judge_done(ctx):
                     WHERE run_id=? AND version=? AND kind='judge' AND state='done'""",
                     (ctx.run_id, ctx.version)).fetchone():
                 return
-            complete = _judges_complete(db, ctx.version)
+            complete = _judges_complete(db, ctx.version, mode=labeler_mode(saved))
         if complete:
             _publish_judges(ctx.sid, ctx.version)

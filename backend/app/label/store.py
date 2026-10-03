@@ -13,13 +13,26 @@ class LabelStore:
         self.path = Path(version_dir) / 'labels.sqlite'
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._db() as db:
-            db.execute('''CREATE TABLE IF NOT EXISTS final (
+            final_sql = '''CREATE TABLE IF NOT EXISTS final (
                 doc_id TEXT PRIMARY KEY, level TEXT NOT NULL,
-                confidence REAL NOT NULL, source TEXT NOT NULL, route TEXT NOT NULL,
+                confidence REAL, source TEXT NOT NULL, route TEXT NOT NULL,
                 tags_json TEXT NOT NULL, reason_code TEXT, signal TEXT,
                 rule_version TEXT NOT NULL, questions_version TEXT NOT NULL,
                 votes_json TEXT NOT NULL, disagree_json TEXT NOT NULL,
-                grade_mismatch INTEGER NOT NULL)''')
+                grade_mismatch INTEGER NOT NULL)'''
+            db.execute(final_sql)
+            confidence = next(row for row in db.execute('PRAGMA table_info(final)')
+                              if row['name'] == 'confidence')
+            if confidence['notnull']:
+                # The surrounding transaction preserves data and schema on failure.
+                objects = db.execute("""SELECT sql FROM sqlite_master WHERE tbl_name='final'
+                    AND type IN ('index','trigger') AND sql IS NOT NULL""").fetchall()
+                db.execute(final_sql.replace('IF NOT EXISTS final', 'final_nullable'))
+                db.execute('INSERT INTO final_nullable SELECT * FROM final')
+                db.execute('DROP TABLE final')
+                db.execute('ALTER TABLE final_nullable RENAME TO final')
+                for obj in objects:
+                    db.execute(obj['sql'])
             db.execute('''CREATE TABLE IF NOT EXISTS human (
                 doc_id TEXT NOT NULL, labeler TEXT NOT NULL,
                 mode TEXT NOT NULL CHECK(mode IN ('escalate', 'audit', 'reissue')),

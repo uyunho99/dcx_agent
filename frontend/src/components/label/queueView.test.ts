@@ -20,3 +20,16 @@ it('uses a fallback for an unknown queue reason', () => {
  expect(queueReasonLabel(unknown)).toBe('기타');
  expect(queueReasonLabel(unknown, 'audit')).toBe('기타');
 });
+
+import { voteValue } from './queueView';
+it('renders unavailable Jev comparison values as dashes while preserving GPT and cross values', () => {
+ const votes = {jev:null,gpt:{anchor:true,situation:false,sem:{sense:1 as const,feel:0 as const,think:0 as const,act:0 as const,relate:0 as const,outcome:0 as const}}};
+ for(const field of ['anchor','sense','feel','think','act','relate','outcome','situation']) {
+  expect(voteValue(votes.jev,field)).toBe('—');
+ }
+ expect(voteValue(undefined,'anchor')).toBe('—');
+ expect(voteValue(votes.gpt,'anchor')).toBe('있음');
+ expect(voteValue(votes.gpt,'feel')).toBe('없음');
+ expect(voteValue({probs:{anchor:0}},'anchor')).toBe('0.00');
+ expect(voteValue({probs:{anchor:.875}},'anchor')).toBe('0.88');
+});

@@ -36,8 +36,8 @@ class JevVote(BaseModel):
 class Label(Tags):
     doc_id: str
     evidence_level: Literal['core', 'supporting', 'non']
-    confidence: Probability
-    source: Literal['agreed', 'human', 'model']
+    confidence: Probability | None
+    source: Literal['agreed', 'human', 'model', 'gpt_only']
     votes: dict = Field(default_factory=dict)
     route: str = Field(pattern=r'^(accepted|audited|escalated:.+)$')
     rule_version: str = RULE_VERSION

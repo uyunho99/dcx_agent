@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.config import settings
 from app.context import store
 from app.label import audit, rule
+from app.label.jev import GPT_ONLY_MESSAGE, labeler_mode
 from app.label.overview import (session, labels_for, caches_for, index_documents,
                                 overview, LEGACY_MESSAGE)
 from app.label.route import next_item, rebuild_queue, submit_item, sync
@@ -93,13 +94,14 @@ def start(sid: str, version: str | None = None):
             store._update_locked(sid, {'labeling': {'inferRunId': work['runId']},
                                      'training': {'inferRunId': work['runId'], 'inferStatus': 'running'}})
             return dict(started=True, workers={'infer': work})
+        judge_mode = labeler_mode(data)
         caches = caches_for(sid, data)
         refs = {name: str(cache.path.parent.relative_to(settings.local_data_dir)) for name, cache in caches.items()}
         # Persist the start lock and each successful launch, including a partial launch.
         store._update_locked(sid, {'labeling': {'started': True, 'mode': data.get('labeling', {}).get('mode', 'llm'),
-            'modelId': data.get('labeling', {}).get('modelId'), 'judgeRefs': refs}})
+            'modelId': data.get('labeling', {}).get('modelId'), 'judgeRefs': refs, 'labelerMode': judge_mode}})
         works = {}
-        for name in ('jev', 'gpt'):
+        for name in (('gpt',) if judge_mode == 'gpt_only' else ('jev', 'gpt')):
             works[name] = runner.start(sid, data['version'], 'judge', {'labeler': name})
             store._update_locked(sid, {'labeling': {'judgeRuns': {name: works[name]['runId']}}})
         return dict(started=True, workers=works)
@@ -109,6 +111,8 @@ def start(sid: str, version: str | None = None):
 def control(sid: str, labeler: Literal['jev', 'gpt', 'infer'], action: Literal['pause', 'resume', 'stop'], version: str | None = None):
     with store.locked(sid):
         data = session(sid, version, writable=True)
+        if labeler == 'jev' and labeler_mode(data) == 'gpt_only':
+            raise store.StoreError(GPT_ONLY_MESSAGE, 409)
         model_mode = data.get('labeling', {}).get('mode') == 'model'
         if model_mode != (labeler == 'infer'):
             raise store.StoreError('현재 라벨링 방식의 워커를 선택하세요.')
@@ -166,7 +170,7 @@ def next_review(sid: str, mode: ReviewMode = 'escalate', version: str | None = N
     item = next_item(labels, mode, round, after)
     if item is None and (version is None or version == store.load_session(sid)['version']):
         caches = caches_for(sid, data)
-        sync(labels, caches.get('jev'), caches.get('gpt'))
+        sync(labels, caches.get('jev'), caches.get('gpt'), mode=labeler_mode(data))
         item = next_item(labels, mode, round, after)
     return dict(item=item, message=None if item else '사람이 볼 문서가 없습니다. 감사 라운드를 만들거나 학습으로 넘어가세요.')
 
@@ -196,7 +200,7 @@ def new_audit(sid: str, version: str | None = None):
         data = session(sid, version, writable=True)
         labels = labels_for(sid, data)
         caches = caches_for(sid, data)
-        rebuild_queue(labels, caches.get('jev'), caches.get('gpt'))
+        rebuild_queue(labels, caches.get('jev'), caches.get('gpt'), mode=labeler_mode(data))
         if next_item(labels, 'audit') or next_item(labels, 'reissue'):
             raise store.StoreError('진행 중인 감사 라운드를 먼저 완료하세요.')
         with labels._db() as db:

@@ -3,7 +3,7 @@ import json
 
 import numpy as np
 
-TRAINING_WHERE = "source='human' OR (source='agreed' AND route='accepted')"
+TRAINING_WHERE = "source='human' OR (source IN ('agreed','gpt_only') AND route='accepted')"
 
 
 def training_rows(labels):

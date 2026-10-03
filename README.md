@@ -324,6 +324,7 @@ sudo certbot renew --dry-run
 | `JEVMODEL_API_KEY` | Jev HTTP 사용 시 | Jev API 키; 여러 키는 쉼표로 구분 |
 | `JEV_BACKEND` / `JEV_MODEL` | - | `http` 또는 오프라인 `fake` / `jev-latest` |
 | `JEV_RATE_PER_MIN` | - | 키당 분당 요청 수 (`120`) |
+| `LABEL_FAKE_JEV_CROSS` | - | 기본 `false`; 테스트 · 오프라인 QA 전용: fake Jev를 실제 교차 판정 라벨러로 취급 |
 | `LABEL_GPT_BACKEND` | - | `codex_exec` (기본), `openai_api`, 오프라인 `fake` |
 | `LABEL_BATCH_SIZE` / `LABEL_CONCURRENCY` | - | GPT 배치 문서 수 (`20`) / 동시 실행 수 (`4`) |
 | `EVIDENCE_LLM_CONCURRENCY` | - | 7단계 근거 탐색 LLM 동시 호출 수 (`4`, `1`이면 순차 실행) |
@@ -336,6 +337,8 @@ sudo certbot renew --dry-run
 | `AUDIT_FIRST` / `AUDIT_EVERY` | - | 첫 감사 채택 수 (`1000`) / 이후 간격 (`10000`) |
 | `AUDIT_SIZE` / `AUDIT_REISSUE` | - | 감사 표본 수 (`50`) / 재판정 수 (`2`) |
 | `KAPPA_FLOOR` | - | 태그 정의 점검 기준 (`0.75`) |
+
+Jev 키가 없거나 `JEV_BACKEND=fake`이면 라벨링은 GPT 단독 판정으로 시작합니다(D-340). Jev 실행 없이 GPT 판정을 그대로 채택하고 confidence는 비웁니다. Jev를 연결한 뒤 새 버전에서 라벨링을 시작하면 교차 판정합니다.
 
 3단계에서 만든 로컬 벡터로 Core · Supporting 문서를 검색하며, Known Insight 필터를 적용합니다.
 별도의 벡터 DB 업로드나 API 키가 필요하지 않습니다. 오프라인 판정·임베딩 점검에는

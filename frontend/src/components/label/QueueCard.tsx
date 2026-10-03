@@ -5,25 +5,18 @@ import { Card } from '../ds/Card';
 import { Table } from '../ds/Table';
 import { Select } from '../ds/Select';
 import './queueCard.css';
-import { queueReasonLabel } from './queueView';
+import { queueReasonLabel, voteValue } from './queueView';
 import { TagToggle } from './TagToggle';
 import { LevelBadge, levelNames } from './LevelBadge';
 import { previewLabelRule, submitLabel } from '@/lib/api/label';
 import { displayError } from '@/lib/api/errors';
 import { keyAction, type FocusZone } from '@/lib/logic/labelKeys';
-import type { EvidenceLevel, LabelResult, LabelTags, LabelVote, QueueItem, ReviewMode, SemanticTag } from '@/lib/types';
+import type { EvidenceLevel, LabelResult, LabelTags, QueueItem, ReviewMode, SemanticTag } from '@/lib/types';
 const semantics: [SemanticTag,string][] = [['sense','감각'],['feel','감정'],['think','판단'],['act','행동'],['relate','관계'],['outcome','결과']];
 const initialTags = (): LabelTags => ({anchor:false,sem:{sense:0,feel:0,think:0,act:0,relate:0,outcome:0},situation:false,reason_code:null,signal:null});
 export type QueueCardProps = {sid: string; version?: string; item: QueueItem; mode?: ReviewMode; labeler: string; focusZone?: FocusZone; readonly?: boolean; onNext: (after?: string) => void; onSubmitted?: (result: LabelResult) => void};
 // Remount local drafts when navigating to a different document, round, or version.
 export function QueueCard(props: QueueCardProps) { return <JudgingCard key={`${props.sid}:${props.version}:${props.mode}:${props.item.round}:${props.item.doc_id}`} {...props}/>; }
-function voteValue(vote: LabelVote | undefined, field: string): string {
- if(!vote) return '—';
- if(vote.probs?.[field] != null) return vote.probs[field].toFixed(2);
- const tags = vote.tags ?? vote;
- const value = field === 'anchor' ? tags.anchor : field === 'situation' ? tags.situation : tags.sem?.[field as SemanticTag];
- return value == null ? '—' : value ? '있음' : '없음';
-}
 function JudgingCard({sid, version, item, mode = 'escalate', labeler, focusZone = 'card', readonly = false, onNext, onSubmitted}: QueueCardProps) {
  const [tags,setTags] = useState<LabelTags>(initialTags);
  const [preview,setPreview] = useState<{tags: LabelTags; level: EvidenceLevel} | null>(null);
