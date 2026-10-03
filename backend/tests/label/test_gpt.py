@@ -164,3 +164,14 @@ def test_empty_answer_can_retry_same_batch(gpt, fake_codex):
     assert judge(gpt, docs('a')) == ({}, ['a'])
     assert set(judge(gpt, docs('a'))[0]) == {'a'}
     assert (root / 'answers/bad/task-0.json').exists()
+
+
+def test_build_task_truncates_long_body():
+    from app.label.gpt import GPT_BODY_LIMIT, build_task
+    long = {'doc_id': 'd1', 'body': '가' * (GPT_BODY_LIMIT + 500), 'title': 't'}
+    short = {'doc_id': 'd2', 'body': '짧은 본문'}
+    task = build_task([long, short], '한 줄')
+    assert '가' * GPT_BODY_LIMIT in task.instructions
+    assert '가' * (GPT_BODY_LIMIT + 1) not in task.instructions
+    assert '짧은 본문' in task.instructions
+    assert len(long['body']) == GPT_BODY_LIMIT + 500

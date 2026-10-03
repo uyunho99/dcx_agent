@@ -74,12 +74,17 @@ def _grade_conditions():
     return '\n'.join(rows)
 
 
+GPT_BODY_LIMIT = 8000  # Very long crawled bodies (300k+ chars) exceed Codex argv limits.
+
+
 def build_task(docs: list[dict], one_liner: str) -> LLMTask:
     if not isinstance(one_liner, str) or '\n' in one_liner or '\r' in one_liner:
         raise ValueError('one_liner must be a single line')
     ids = [doc.get('doc_id') for doc in docs]
     if any(not isinstance(doc_id, str) or not doc_id for doc_id in ids) or len(set(ids)) != len(ids):
         raise ValueError('Documents require unique nonempty doc_id values')
+    docs = [dict(doc, body=doc['body'][:GPT_BODY_LIMIT])
+            if isinstance(doc.get('body'), str) and len(doc['body']) > GPT_BODY_LIMIT else doc for doc in docs]
     instructions = _TEMPLATE.read_text(encoding='utf-8').format(
         one_liner=one_liner,
         definitions=json.dumps(load_questions(), ensure_ascii=False, indent=2),
