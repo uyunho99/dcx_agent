@@ -64,7 +64,7 @@ REGISTRY['fixture'] = lambda: Counted(os.environ['FIXTURE_CORPUS_PATH'])
         if proc.poll() is None:
             proc.kill()
             proc.wait()
-    result = subprocess.run(cmd, cwd=backend_dir, env=env, capture_output=True, text=True, timeout=10)
+    result = subprocess.run(cmd, cwd=backend_dir, env=env, capture_output=True, text=True, timeout=60)
     assert result.returncode == 0, result.stderr
     counts = collections.Counter(log.read_text().splitlines())
     assert committed

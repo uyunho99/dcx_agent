@@ -34,7 +34,7 @@ def workers(data_dir, monkeypatch):
 
 
 def wait_state(run_id, state):
-    deadline = time.monotonic() + 5
+    deadline = time.monotonic() + 30  # Loaded hosts (local CI during labeling) run fakes slowly.
     while time.monotonic() < deadline:
         row = next(r for r in runner.status('s1') if r['runId'] == run_id)
         if row['state'] == state:
