@@ -1,0 +1,34 @@
+{
+  "verdict": "PASS",
+  "head": "1d002b85dc930ed58e1babeaa4d0657310b8ca7d",
+  "fingerprint": "87966ecef511031ed15360de79528d49761cfada471dc7a9ad08f6ce7e3ca2e8",
+  "findings": [],
+  "commands": [],
+  "scenarios": [
+    {
+      "id": "Q1",
+      "url": "http://localhost:8320/label/{sid}/overview",
+      "result": "PASS",
+      "evidence": "docs/development/label-concurrency/reports/qa.md#Q1"
+    },
+    {
+      "id": "Q2",
+      "url": "http://localhost:8320/label/{sid}/overview",
+      "result": "PASS",
+      "evidence": "docs/development/label-concurrency/reports/qa.md#Q2"
+    },
+    {
+      "id": "Q3",
+      "url": "http://localhost:8320/label/{sid}/overview",
+      "result": "PASS",
+      "evidence": "docs/development/label-concurrency/reports/qa.md#Q3"
+    },
+    {
+      "id": "Q4",
+      "url": "http://localhost:8320/label/{sid}/overview",
+      "result": "PASS",
+      "evidence": "docs/development/label-concurrency/reports/qa.md#Q4"
+    }
+  ],
+  "notApplicable": "No UI change"
+}

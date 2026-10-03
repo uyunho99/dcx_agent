@@ -1,0 +1,31 @@
+{
+  "verdict": "PASS",
+  "head": "1d002b85dc930ed58e1babeaa4d0657310b8ca7d",
+  "fingerprint": "87966ecef511031ed15360de79528d49761cfada471dc7a9ad08f6ce7e3ca2e8",
+  "findings": [],
+  "commands": [
+    {
+      "command": "backend/.venv/bin/python -m pytest backend/tests -q -n auto",
+      "exitCode": 0,
+      "summary": "2703 passed"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T1",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent ac90bf100d0974c7c (report docs/development/label-concurrency/reports/T1.md)",
+      "red": "docs/development/label-concurrency/reports/T1.md#RED",
+      "green": "docs/development/label-concurrency/reports/T1.md#GREEN",
+      "review": "docs/development/label-concurrency/reports/review.md"
+    },
+    {
+      "id": "T2",
+      "executor": "codex",
+      "dispatch": "codex:codex-rescue agent ac90bf100d0974c7c (report docs/development/label-concurrency/reports/T2.md)",
+      "red": "docs/development/label-concurrency/reports/T2.md#RED",
+      "green": "docs/development/label-concurrency/reports/T2.md#GREEN",
+      "review": "docs/development/label-concurrency/reports/review.md"
+    }
+  ]
+}

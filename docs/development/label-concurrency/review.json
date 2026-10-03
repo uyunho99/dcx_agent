@@ -1,0 +1,12 @@
+{
+  "verdict": "PASS",
+  "head": "1d002b85dc930ed58e1babeaa4d0657310b8ca7d",
+  "fingerprint": "87966ecef511031ed15360de79528d49761cfada471dc7a9ad08f6ce7e3ca2e8",
+  "findings": [],
+  "commands": [
+    {
+      "command": "review 818717a..HEAD",
+      "exitCode": 0
+    }
+  ]
+}
