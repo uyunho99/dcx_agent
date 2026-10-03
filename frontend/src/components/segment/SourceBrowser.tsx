@@ -8,14 +8,17 @@ import type { SegmentDocument } from '@/lib/types';
 const PAGE = 20;
 const bandLabel: Record<string, string> = { core: '핵심', fringe: '주변', edge: '가장자리' };
 export const sourceSorts = [['center', '중심순'], ['edge', '가장자리순 · 숨은 니즈 후보']] as const;
+export const supportSorts = [['center', '가까운 순'], ['edge', '먼 순']] as const;
 export function previewText(doc: Pick<SegmentDocument, 'body' | 'title'>, open: boolean, limit = 300) {
     const text = doc.body || doc.title || '';
     return open || text.length <= limit ? text : `${text.slice(0, limit)}…`;
 }
 
 /** All originals of one Cluster · Persona · Context, paged, centre- or edge-first. */
-export function SourceBrowser({ sid, version, filter, total }: {
+export function SourceBrowser({ sid, version, filter, total, support = false }: {
     sid?: string; version?: string; filter: { cluster?: string; persona?: string; context?: string }; total?: number;
+    /** Auxiliary channel (YouTube comments) attached to the nearest Context. */
+    support?: boolean;
 }) {
     const [sort, setSort] = useState<'center' | 'edge'>('center');
     const [docs, setDocs] = useState<SegmentDocument[] | null>(null);
@@ -30,7 +33,7 @@ export function SourceBrowser({ sid, version, filter, total }: {
         setLoading(true);
         setError('');
         try {
-            const result = await getSegmentDocs(sid, { ...filter, sort: nextSort, limit: PAGE, offset: append ? docs?.length ?? 0 : 0 }, version);
+            const result = await getSegmentDocs(sid, { ...filter, sort: nextSort, ...(support ? { support: true } : {}), limit: PAGE, offset: append ? docs?.length ?? 0 : 0 }, version);
             if (id !== request.current) return;
             setDocs(append ? [...(docs ?? []), ...result.docs] : result.docs);
             setCount(result.total);
@@ -41,8 +44,8 @@ export function SourceBrowser({ sid, version, filter, total }: {
         }
     }
     return <details onToggle={event => { if (event.currentTarget.open && !docs) void load(); }}>
-        <summary className="cursor-pointer ds-t-caption">원문 더 보기{total !== undefined ? ` · ${total.toLocaleString('ko-KR')}건` : ''}</summary>
-        <div className="my-3 flex flex-wrap gap-2" role="group" aria-label="원문 정렬">{sourceSorts.map(([key, label]) =>
+        <summary className="cursor-pointer ds-t-caption">{support ? '공감 댓글 · 보조 근거' : '원문 더 보기'}{total !== undefined ? ` · ${total.toLocaleString('ko-KR')}건` : ''}</summary>
+        <div className="my-3 flex flex-wrap gap-2" role="group" aria-label="원문 정렬">{(support ? supportSorts : sourceSorts).map(([key, label]) =>
             <Button key={key} variant={sort === key ? 'primary' : 'secondary'} disabled={loading} onClick={() => { setSort(key); setOpen({}); void load(key); }}>{label}</Button>)}</div>
         {error && <Banner tone="danger" actions={<Button onClick={() => void load()}>다시 불러오기</Button>}>{error}</Banner>}
         {docs && <ol className="space-y-3">{docs.map(doc => {

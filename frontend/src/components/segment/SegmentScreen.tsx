@@ -11,7 +11,7 @@ import { usePolling } from '@/lib/usePolling';
 import { getVersionSession } from '@/lib/api/versions';
 import { patchSession } from '@/lib/api/context';
 import * as api from '@/lib/api/segment';
-import type { SegmentCluster, SegmentContext, SegmentDraft, SegmentKSuggest, SegmentPersona, SegmentPersonaConfirmation, SegmentStatus } from '@/lib/types';
+import type { SegmentCluster, SegmentContext, SegmentDraft, SegmentKSuggest, SegmentPersona, SegmentPersonaConfirmation, SegmentStatus, SegmentSupportCounts } from '@/lib/types';
 import { LayerTabs, type SegmentLayer } from './LayerTabs';
 import { ClusterLayer, type Edit } from './ClusterLayer';
 import { PersonaLayer } from './PersonaLayer';
@@ -48,6 +48,8 @@ export function SegmentScreen({ sid, version, readonly = false }: Props) {
     const [busy, setBusy] = useState(false);
     const [loaded, setLoaded] = useState(false);
     const [resetOpen, setResetOpen] = useState(false);
+    const [structureOnly, setStructureOnly] = useState(false);
+    const [supportCounts, setSupportCounts] = useState<SegmentSupportCounts | null>(null);
     const resetPanel = useRef<HTMLDivElement | null>(null);
     const resetTrigger = useRef<HTMLButtonElement | null>(null);
     useEffect(() => { if (resetOpen)
@@ -171,6 +173,7 @@ export function SegmentScreen({ sid, version, readonly = false }: Props) {
             setPersonas(b?.personas ?? []);
             setContexts(c?.contexts ?? []);
             setEmptyRatio(c?.emptyGoalConstraintRatio ?? 0);
+            try { setSupportCounts(await api.getSegmentSupportCounts(sid, version)); } catch { setSupportCounts(null); }
             setLoaded(true);
         }
         catch (e) {
@@ -313,7 +316,8 @@ export function SegmentScreen({ sid, version, readonly = false }: Props) {
         epoch.current++;
         try {
             await draftWrite.current?.catch(() => { });
-            const result = await api.startSegment(sid, reset ? { k, confirmReset: true } : {}, version);
+            const sources = structureOnly ? { structureSources: ['naver_blog', 'naver_cafe'] as ('naver_blog' | 'naver_cafe')[] } : {};
+            const result = await api.startSegment(sid, reset ? { k, confirmReset: true, ...sources } : sources, version);
             if (active.current) {
                 pendingDraft.current = null;
                 draftRevision.current++;
@@ -389,11 +393,11 @@ export function SegmentScreen({ sid, version, readonly = false }: Props) {
  {current?.run && !running(current) && layer === '6-A' && <><div className="flex flex-wrap items-center gap-3"><label>클러스터 수 k<select aria-label="클러스터 수 k" className="ds-inp" disabled={blocked} value={k} onChange={e => setK(Number(e.target.value))}>{[3, 4, 5, 6, 7, 8].map(n => <option key={n}>{n}</option>)}</select></label><button ref={resetTrigger} type="button" className="ds-btn ds-secondary" disabled={blocked} aria-haspopup="dialog" aria-expanded={resetOpen} onClick={() => setResetOpen(true)}>다시 나누기</button></div>{resetOpen && <div ref={resetPanel} className="ds-card space-y-3" tabIndex={-1} role="dialog" aria-modal="false" aria-label="다시 나누기 확인" onKeyDown={e => { if (e.key === 'Escape') {
         e.preventDefault();
         closeReset();
-    } }}><p>이름 · Desire · Context 확정이 모두 지워집니다.</p><Button disabled={blocked} onClick={() => void start(true)}>확인하고 다시 나누기</Button><Button disabled={busy} onClick={closeReset}>취소</Button></div>}</>}
- {!current ? <Card><p role="status">클러스터링 정보를 불러오는 중…</p></Card> : running(current) ? <Card className="space-y-4"><h2 className="ds-t-card">6단계 · 실행 중</h2><p aria-live="polite">{`${current.step} · ${steps.find(([key]) => key === current.step)?.[1] ?? ''} ${current.detail?.personas ? `${current.detail.persona}/${current.detail.personas} Persona ` : current.detail?.total ? `${current.detail.docs}/${current.detail.total} 문서 ` : ''}${current.status === 'paused' ? '일시 정지' : '진행 중'} ${Math.round(current.progress * 100)}%`}</p><ol className="grid grid-cols-4 gap-3">{steps.map(([key, label], i) => { const position = steps.findIndex(([k]) => k === current.step); return <li key={key}><Badge>{i < position ? '완료' : i === position ? '진행 중' : '대기'}</Badge><p>{label}</p></li>; })}</ol><ProgressBar label="클러스터링 진행" value={current.progress * 100}/><p>화면을 닫아도 계속됩니다.</p><Button disabled>다시 나누기</Button></Card> : !current.run || !['review', 'done'].includes(current.status) ? <Card className="space-y-4"><p>학습 결과의 Core · Supporting 문서를 나눕니다.</p><Button variant="primary" disabled={blocked} onClick={() => void start()}>{current.status === 'failed' || current.status === 'interrupted' ? '이어서 진행' : '클러스터링 실행'}</Button></Card> : !loaded ? <Card><p role="status">결과를 불러오는 중…</p></Card> : <>
- {layer === '6-A' && <>{suggest && <details><summary className="cursor-pointer">k 제안 근거 보기</summary><div className="max-w-sm"><KSuggestChart k={suggest.suggested} silhouette={suggest.silhouette} sample={suggest.sample}/></div></details>}{clusters.length ? <ClusterLayer sid={sid} version={version} {...editor} clusters={clusters} onRequest={(id, kind, note) => void mutate(() => api.createSegmentRequest(sid, { layer: 'clusters', id, kind, note }, version))}/> : <Card>클러스터링할 문서가 없습니다.</Card>}</>}
- {layer === '6-B' && <PersonaLayer sid={sid} version={version} {...editor} forwardPrimary={!!forward} personas={personas} clusters={clusters} selected={chosen?.id ?? ''} onSelect={setSelected}/>}
- {layer === '6-C' && <div className="grid grid-cols-[minmax(220px,1fr)_minmax(0,3fr)] gap-5"><nav aria-label="Persona 목록" className="min-w-0 space-y-2">{personas.map(p => { const rows = contexts.filter(c => c.personaId === p.id); return <Button key={p.id} className="ds-wrap w-full" aria-current={chosen?.id === p.id ? 'true' : undefined} onClick={() => setSelected(p.id)}>{p.clusterId} · {p.name ?? p.nameDraft ?? p.id} · {rows.filter(c => c.confirmed).length}/{rows.length} 확정</Button>; })}</nav><ContextLayer key={current.run} sid={sid} version={version} {...editor} contexts={visibleContexts} emptyRatio={emptyRatio} onBulk={bulk}/></div>}
+    } }}><p>이름 · Desire · Context 확정이 모두 지워집니다.</p><label className="flex items-center gap-2"><input type="checkbox" checked={structureOnly} disabled={blocked} onChange={e => setStructureOnly(e.target.checked)}/>블로그 · 카페로 구조 만들기 (유튜브 댓글은 가까운 Context의 보조 근거)</label><Button disabled={blocked} onClick={() => void start(true)}>확인하고 다시 나누기</Button><Button disabled={busy} onClick={closeReset}>취소</Button></div>}</>}
+ {!current ? <Card><p role="status">클러스터링 정보를 불러오는 중…</p></Card> : running(current) ? <Card className="space-y-4"><h2 className="ds-t-card">6단계 · 실행 중</h2><p aria-live="polite">{`${current.step} · ${steps.find(([key]) => key === current.step)?.[1] ?? ''} ${current.detail?.personas ? `${current.detail.persona}/${current.detail.personas} Persona ` : current.detail?.total ? `${current.detail.docs}/${current.detail.total} 문서 ` : ''}${current.status === 'paused' ? '일시 정지' : '진행 중'} ${Math.round(current.progress * 100)}%`}</p><ol className="grid grid-cols-4 gap-3">{steps.map(([key, label], i) => { const position = steps.findIndex(([k]) => k === current.step); return <li key={key}><Badge>{i < position ? '완료' : i === position ? '진행 중' : '대기'}</Badge><p>{label}</p></li>; })}</ol><ProgressBar label="클러스터링 진행" value={current.progress * 100}/><p>화면을 닫아도 계속됩니다.</p><Button disabled>다시 나누기</Button></Card> : !current.run || !['review', 'done'].includes(current.status) ? <Card className="space-y-4"><p>학습 결과의 Core · Supporting 문서를 나눕니다.</p><label className="flex items-center gap-2"><input type="checkbox" checked={structureOnly} disabled={blocked} onChange={e => setStructureOnly(e.target.checked)}/>블로그 · 카페로 구조 만들기 (유튜브 댓글은 가까운 Context의 보조 근거)</label><Button variant="primary" disabled={blocked} onClick={() => void start()}>{current.status === 'failed' || current.status === 'interrupted' ? '이어서 진행' : '클러스터링 실행'}</Button></Card> : !loaded ? <Card><p role="status">결과를 불러오는 중…</p></Card> : <>
+ {layer === '6-A' && <>{suggest && <details><summary className="cursor-pointer">k 제안 근거 보기</summary><div className="max-w-sm"><KSuggestChart k={suggest.suggested} silhouette={suggest.silhouette} sample={suggest.sample}/></div></details>}{clusters.length ? <ClusterLayer sid={sid} version={version} support={supportCounts} {...editor} clusters={clusters} onRequest={(id, kind, note) => void mutate(() => api.createSegmentRequest(sid, { layer: 'clusters', id, kind, note }, version))}/> : <Card>클러스터링할 문서가 없습니다.</Card>}</>}
+ {layer === '6-B' && <PersonaLayer sid={sid} version={version} support={supportCounts} {...editor} forwardPrimary={!!forward} personas={personas} clusters={clusters} selected={chosen?.id ?? ''} onSelect={setSelected}/>}
+ {layer === '6-C' && <div className="grid grid-cols-[minmax(220px,1fr)_minmax(0,3fr)] gap-5"><nav aria-label="Persona 목록" className="min-w-0 space-y-2">{personas.map(p => { const rows = contexts.filter(c => c.personaId === p.id); return <Button key={p.id} className="ds-wrap w-full" aria-current={chosen?.id === p.id ? 'true' : undefined} onClick={() => setSelected(p.id)}>{p.clusterId} · {p.name ?? p.nameDraft ?? p.id} · {rows.filter(c => c.confirmed).length}/{rows.length} 확정</Button>; })}</nav><ContextLayer key={current.run} sid={sid} version={version} support={supportCounts} {...editor} contexts={visibleContexts} emptyRatio={emptyRatio} onBulk={bulk}/></div>}
  {forward && <div className="flex justify-end"><Button data-forward variant="primary" disabled={blocked} onClick={() => setLayer(layer === '6-A' ? '6-B' : '6-C')}>{layer === '6-A' ? '6-B로 →' : '6-C로 →'}</Button></div>}
  <div className="flex flex-wrap items-center gap-3"><p aria-live="polite">{layer === '6-A' ? current.confirm.clusters : layer === '6-B' ? current.confirm.personas : current.confirm.contexts} 확정</p>{(layer === '6-A' || layer === '6-B') && bulkRemaining > 0 && <Button disabled={editor.disabled} onClick={bulkLayer}>{`남은 ${layer === '6-A' ? '클러스터' : 'Persona'} ${bulkRemaining}개 초안으로 모두 확정`}</Button>}</div></>}
  <div className="flex justify-end"><Button disabled={!evidence.allowed} title={evidence.allowed ? undefined : evidence.reason} onClick={() => router.push('/pipeline/evidence?start=1')}>근거 탐색 실행</Button></div></div></VersionStage>;

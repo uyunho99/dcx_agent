@@ -30,6 +30,8 @@ class Body(BaseModel):
 class Run(Body):
     k: int | None = Field(default=None, ge=3, le=8, strict=True)
     confirmReset: bool = False
+    # Channels that build the structure; other channels become auxiliary evidence.
+    structureSources: list[Literal['naver_blog', 'naver_cafe', 'youtube']] | None = None
 
 
 class Confirmation(Body):
@@ -180,7 +182,10 @@ def start(sid: str, body: Run = Run(), version: str | None = None):
         if (body.k is not None or completed) and not body.confirmReset:
             raise sessions.StoreError('다시 나누면 확정값이 지워집니다. 다시 나누기를 확인하세요.', 409, 'confirm_required')
         selected = data['version']
-    work = runner.start(sid, selected, 'segment', {'k': body.k, 'fresh': body.confirmReset})
+    args = {'k': body.k, 'fresh': body.confirmReset}
+    if body.structureSources:
+        args['structureSources'] = body.structureSources
+    work = runner.start(sid, selected, 'segment', args)
     return {'runId': work['runId']}
 
 
@@ -300,22 +305,34 @@ def request_memo(sid: str, body: RequestMemo, version: str | None = None):
         return store.add_request(body.layer, body.id, body.kind, body.note)
 
 
+@router.get('/support-counts')
+def support_counts(sid: str, version: str | None = None):
+    _, store = _open(sid, version)
+    return store.support_counts()
+
+
 @router.get('/docs')
 def docs(sid: str, context: str | None = None, band: Literal['core', 'fringe', 'edge'] | None = None,
          offset: int = Query(default=0, ge=0), limit: int = Query(default=100, ge=1, le=1000),
          version: str | None = None, cluster: str | None = None, persona: str | None = None,
-         sort: Literal['id', 'center', 'edge'] = 'id'):
+         sort: Literal['id', 'center', 'edge'] = 'id', support: bool = False):
     data, store = _open(sid, version)
     with store.snapshot() as run:
-        rows = store.docs(context_id=context, band=band, limit=limit, offset=offset,
+        if support:
+            rows, total = store.support_docs(cluster_id=cluster, persona_id=persona, context_id=context,
+                                             sort='edge' if sort == 'edge' else 'center', limit=limit, offset=offset)
+        else:
+            rows, total = None, None
+        rows = rows if support else store.docs(context_id=context, band=band, limit=limit, offset=offset,
                           cluster_id=cluster, persona_id=persona, sort=sort)
         filters, values = [], []
         for key, value in (('context_id', context), ('band', band), ('cluster_id', cluster), ('persona_id', persona)):
             if value is not None:
                 filters.append(f'{key}=?')
                 values.append(value)
-        with store._db() as db:
-            total = db.execute('SELECT count(*) FROM docs' + (' WHERE ' + ' AND '.join(filters) if filters else ''), values).fetchone()[0]
+        if not support:
+            with store._db() as db:
+                total = db.execute('SELECT count(*) FROM docs' + (' WHERE ' + ' AND '.join(filters) if filters else ''), values).fetchone()[0]
     # Read only the requested originals into memory, preserving collection source.
     wanted = {r['doc_id'] for r in rows}
     originals = {}
