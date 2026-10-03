@@ -164,7 +164,7 @@ class _SelectedVectors(VectorStore):
         return [r['doc_id'] for r in selected], values
 
 
-def load_input(sid: str, version: str, *, pulse=None) -> SegmentInput:
+def load_input(sid: str, version: str, *, pulse=None, structure_sources=None) -> SegmentInput:
     data = store.read_json(version_dir(sid, version) / 'session.json')
     if data is None:
         raise store.StoreError('Session not found', 404, 'not_found')
@@ -180,6 +180,7 @@ def load_input(sid: str, version: str, *, pulse=None) -> SegmentInput:
     ids, joined, selected_tokens, selected_nouns = [], {}, {}, {}
     report = dict(relevant=len(relevant), zero_vector=0, no_tokens=0, truncated=0, by_channel={})
     vectors = _SelectedVectors(root, selected)
+    support_ids, support_vectors = [], []
     # Keep the full result float16; only one normalization batch is float32.
     output = None
     count = 0
@@ -202,6 +203,11 @@ def load_input(sid: str, version: str, *, pulse=None) -> SegmentInput:
             if not tokens.get(doc_id):
                 report['no_tokens'] += 1
                 continue
+            if structure_sources and doc.get('source') not in structure_sources:
+                # Auxiliary channel: kept out of the structure, attached to the nearest Context later.
+                support_ids.append(doc_id)
+                support_vectors.append(values[index] / norms[index])
+                continue
             report['truncated'] += int(len(_text(doc)) > 2000)
             output[count] = values[index] / norms[index]
             count += 1
@@ -213,4 +219,10 @@ def load_input(sid: str, version: str, *, pulse=None) -> SegmentInput:
         _, empty = vectors.get([])
         output = np.empty(empty.shape, dtype=np.float16)
     report['by_channel'] = dict(Counter(doc.get('source', '') for doc in joined.values()))
-    return SegmentInput(ids, output[:count], selected_tokens, selected_nouns, joined, report)
+    if structure_sources:
+        report['support'] = len(support_ids)
+    result = SegmentInput(ids, output[:count], selected_tokens, selected_nouns, joined, report)
+    result.support_ids = support_ids
+    result.support_vectors = (np.asarray(support_vectors, dtype=np.float16) if support_vectors
+                              else np.empty((0, output.shape[1]), dtype=np.float16))
+    return result

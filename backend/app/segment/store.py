@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS docs (
     theta REAL, theta_json TEXT, dist_centroid REAL, band TEXT, combo_rarity REAL,
     emerging REAL, lexical_surprise REAL, sentiment REAL, pred_entropy REAL,
     evidence_level TEXT, source TEXT, author_hash TEXT, date TEXT);
+CREATE TABLE IF NOT EXISTS support_docs (
+    doc_id TEXT PRIMARY KEY, cluster_id TEXT, persona_id TEXT, context_id TEXT, sim REAL);
 CREATE TABLE IF NOT EXISTS clusters (
     cluster_id TEXT PRIMARY KEY, name_draft TEXT, name TEXT, keywords_json TEXT,
     reps_json TEXT, metrics_json TEXT, quality_json TEXT, channels_json TEXT,
@@ -81,6 +83,10 @@ class SegmentStore:
                 if 'flags_json' not in {row['name'] for row in db.execute('PRAGMA table_info(personas)')}:
                     db.execute("ALTER TABLE personas ADD COLUMN flags_json TEXT DEFAULT '[]'")
                 db.execute('PRAGMA user_version=1')
+            if db.execute('PRAGMA user_version').fetchone()[0] < 2:
+                db.execute('CREATE TABLE IF NOT EXISTS support_docs (doc_id TEXT PRIMARY KEY, cluster_id TEXT, '
+                           'persona_id TEXT, context_id TEXT, sim REAL)')
+                db.execute('PRAGMA user_version=2')
             if 'quality_json' not in {r['name'] for r in db.execute('PRAGMA table_info(personas)')}:
                 db.execute('ALTER TABLE personas ADD COLUMN quality_json TEXT')
             self._columns = {table: {row['name'] for row in db.execute(f'PRAGMA table_info({table})')}
@@ -165,6 +171,31 @@ class SegmentStore:
         with self._db() as db:
             return [_decode(row) for row in db.execute(
                 f'SELECT * FROM docs{where} ORDER BY {order} LIMIT ? OFFSET ?', (*args, limit, offset))]
+
+    def write_support(self, rows):
+        """Replace auxiliary documents assigned to the nearest Context (structure built elsewhere)."""
+        with self._db(write=True) as db:
+            db.execute('DELETE FROM support_docs')
+            db.executemany('INSERT INTO support_docs (doc_id, cluster_id, persona_id, context_id, sim) VALUES (?,?,?,?,?)',
+                           [(r['doc_id'], r['cluster_id'], r['persona_id'], r['context_id'], r['sim']) for r in rows])
+
+    def support_docs(self, *, cluster_id=None, persona_id=None, context_id=None, sort='center', limit=100, offset=0):
+        filters, args = [], []
+        for key, value in (('cluster_id', cluster_id), ('persona_id', persona_id), ('context_id', context_id)):
+            if value is not None:
+                filters.append(f'{key}=?')
+                args.append(value)
+        where = ' WHERE ' + ' AND '.join(filters) if filters else ''
+        order = 'sim ASC, doc_id' if sort == 'edge' else 'sim DESC, doc_id'
+        with self._db() as db:
+            rows = [dict(r) for r in db.execute(f'SELECT * FROM support_docs{where} ORDER BY {order} LIMIT ? OFFSET ?', (*args, limit, offset))]
+            total = db.execute(f'SELECT count(*) FROM support_docs{where}', args).fetchone()[0]
+        return rows, total
+
+    def support_counts(self):
+        with self._db() as db:
+            return {level: dict(db.execute(f'SELECT {level}_id, count(*) FROM support_docs GROUP BY {level}_id').fetchall())
+                    for level in ('cluster', 'persona', 'context')}
 
     def _confirm(self, db, layer, item_id, values):
         if layer not in _LAYERS or not values or set(values) - _CONFIRM[layer]:

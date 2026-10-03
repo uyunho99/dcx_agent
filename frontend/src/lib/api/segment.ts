@@ -4,7 +4,7 @@ import type {
   SegmentStatus, SegmentRunRequest, SegmentClustersResponse, SegmentPersonasResponse, SegmentContextsResponse,
   SegmentCluster, SegmentPersona, SegmentContext, SegmentConfirmation, SegmentPersonaConfirmation,
   SegmentContextConfirmation, SegmentBulkConfirmation, SegmentBulkResponse, SegmentRequest, SegmentRequestMemo,
-  SegmentDocsOptions, SegmentDocsResponse,
+  SegmentDocsOptions, SegmentDocsResponse, SegmentSupportCounts,
 } from '../types';
 
 const path = (sid: string, suffix: string, version?: string) => versionQuery(`/segment/${encodeURIComponent(sid)}${suffix}`, version);
@@ -24,3 +24,4 @@ export function getSegmentDocs(sid: string, options: SegmentDocsOptions = {}, ve
   for (const [key, value] of Object.entries(options)) if (value !== undefined) query.set(key, String(value));
   return contextRequest<SegmentDocsResponse>(path(sid, `/docs${query.size ? `?${query}` : ''}`, version));
 }
+export const getSegmentSupportCounts = (sid: string, version?: string) => contextRequest<SegmentSupportCounts>(path(sid, '/support-counts', version));

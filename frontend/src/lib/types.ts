@@ -210,14 +210,15 @@ export type SegmentStatus = {
 export type SegmentClustersResponse = { run: string | null; clusters: SegmentCluster[]; kSuggest: SegmentKSuggest | null };
 export type SegmentPersonasResponse = { run: string | null; personas: SegmentPersona[] };
 export type SegmentContextsResponse = { run: string | null; contexts: SegmentContext[]; emptyGoalConstraintRatio: number };
-export type SegmentRunRequest = { k?: number; confirmReset?: boolean };
+export type SegmentRunRequest = { k?: number; confirmReset?: boolean; structureSources?: ('naver_blog' | 'naver_cafe' | 'youtube')[] };
+export type SegmentSupportCounts = { cluster: Record<string, number>; persona: Record<string, number>; context: Record<string, number> };
 export type SegmentConfirmation = { run: string; name: string; confirm: true };
 export type SegmentPersonaConfirmation = SegmentConfirmation & { desire: string; goals: [string] | [string, string] | [string, string, string] };
 export type SegmentContextConfirmation = SegmentConfirmation & { action: string };
 export type SegmentBulkConfirmation = { run: string; contexts: { id: string; name: string; action: string }[] };
 export type SegmentBulkResponse = { run: string; contexts: SegmentContext[] };
 export type SegmentBand = 'core' | 'fringe' | 'edge';
-export type SegmentDocsOptions = { context?: string; cluster?: string; persona?: string; band?: SegmentBand; sort?: 'id' | 'center' | 'edge'; offset?: number; limit?: number };
+export type SegmentDocsOptions = { context?: string; cluster?: string; persona?: string; band?: SegmentBand; sort?: 'id' | 'center' | 'edge'; support?: boolean; offset?: number; limit?: number };
 export type SegmentDocument = {
   docId: string; title: string; body: string; comments: unknown[]; url: string;
   clusterId: string | null; personaId: string | null; contextId: string | null;

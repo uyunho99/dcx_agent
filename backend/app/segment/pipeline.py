@@ -223,6 +223,37 @@ def _boundary_sample(vectors, labels):
     return vectors[indices], labels[indices]
 
 
+def _assign_support(source, store):
+    """Attach auxiliary-channel documents to the nearest Context centroid (cosine)."""
+    support_ids = getattr(source, 'support_ids', None) or []
+    if not support_ids:
+        store.write_support([])
+        return
+    with store._db() as db:
+        rows = db.execute('SELECT doc_id, cluster_id, persona_id, context_id FROM docs WHERE context_id IS NOT NULL').fetchall()
+    groups = defaultdict(list)
+    parents = {}
+    for doc_id, cluster_id, persona_id, context_id in rows:
+        if doc_id in source.index:
+            groups[context_id].append(source.index[doc_id])
+            parents[context_id] = (cluster_id, persona_id)
+    if not groups:
+        store.write_support([])
+        return
+    names = sorted(groups)
+    centers = np.stack([np.asarray(source.vectors[groups[n]], dtype=np.float32).mean(axis=0) for n in names])
+    centers /= np.maximum(np.linalg.norm(centers, axis=1, keepdims=True), 1e-12)
+    result = []
+    for start in range(0, len(support_ids), 20000):
+        sims = np.asarray(source.support_vectors[start:start + 20000], dtype=np.float32) @ centers.T
+        best = sims.argmax(axis=1)
+        for offset, column in enumerate(best):
+            name = names[column]
+            result.append(dict(doc_id=support_ids[start + offset], cluster_id=parents[name][0],
+                               persona_id=parents[name][1], context_id=name, sim=float(sims[offset, column])))
+    store.write_support(result)
+
+
 def run(context):
     sid, version = context.sid, context.version
     root = version_dir(sid, version) / 'segment'
@@ -242,9 +273,11 @@ def run(context):
                 else:
                     path.unlink()
         store.write_layers()
+        store.write_support([])
         with store._db(write=True) as db:
             db.execute('DELETE FROM meta')
         checkpoint = {'done': [], 'k': context.args.get('k'),
+                      'structureSources': context.args.get('structureSources') or None,
                       'stopwords': stopwords.stopwords_signature()}
     if resume and 'drafts' in checkpoint.get('done', []):
         with store._db() as db:
@@ -297,7 +330,9 @@ def run(context):
             pulse()
             if step == 'load':
                 if step not in checkpoint['done']:
-                    source = inputs.load_input(sid, version, pulse=pulse)
+                    source = inputs.load_input(sid, version, pulse=pulse,
+                                               structure_sources=checkpoint.get('structureSources'))
+                    np.save(root / 'support.npy', source.support_vectors, allow_pickle=False)
                     if len(source.ids) < 3:
                         raise sessions.StoreError('클러스터링할 문서가 없습니다.' if not source.ids else '클러스터링할 문서가 부족합니다.', 409)
                     fd, temporary = tempfile.mkstemp(dir=root, prefix='.vectors-')
@@ -310,11 +345,17 @@ def run(context):
                     finally:
                         if os.path.exists(temporary):
                             os.unlink(temporary)
-                    _write(root / 'input.json', {'ids': source.ids, 'report': source.report})
+                    _write(root / 'input.json', {'ids': source.ids, 'report': source.report,
+                                                 'support_ids': source.support_ids})
                     state['input'] = source.report
                 else:
-                    source = inputs.restore_input(sid, version, sessions.read_json(root / 'input.json'),
+                    saved = sessions.read_json(root / 'input.json')
+                    source = inputs.restore_input(sid, version, saved,
                         np.load(root / 'vectors.npy', mmap_mode='r', allow_pickle=False), pulse=pulse)
+                    source.support_ids = saved.get('support_ids', [])
+                    support_path = root / 'support.npy'
+                    source.support_vectors = (np.load(support_path, allow_pickle=False) if support_path.exists()
+                                              else np.empty((0, source.vectors.shape[1]), dtype=np.float16))
                 source.index = {doc_id: i for i, doc_id in enumerate(source.ids)}
             if step in checkpoint['done']:
                 continue
@@ -380,6 +421,7 @@ def run(context):
                     _write(root / 'state.json', state)
                 store.write_layers(clusters=state['clusters'], personas=state['personas'], contexts=state['contexts'], docs=state['docs'])
             elif step == 'quality':
+                _assign_support(source, store)
                 _quality(source, state, store, pulse)
             elif step == 'dims':
                 extract = _bind(dims.extract_sample, _extract=_bind(dims._extract, registry=calls))

@@ -34,7 +34,7 @@ def test_schema_roundtrip_and_version_isolation(layers):
     assert layers.path == version_dir('segment', 'v1') / 'segment/segment.sqlite'
     with sqlite3.connect(layers.path) as db:
         assert {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")} == {
-            'docs', 'clusters', 'personas', 'contexts', 'codes', 'combos', 'meta'}
+            'docs', 'clusters', 'personas', 'contexts', 'codes', 'combos', 'meta', 'support_docs'}
         assert {'theta_json', 'emerging', 'lexical_surprise', 'pred_entropy'} <= {
             r[1] for r in db.execute('PRAGMA table_info(docs)')}
         assert db.execute('SELECT count FROM codes').fetchone()[0] == 2
@@ -111,3 +111,25 @@ def test_docs_filter_by_cluster_persona_and_sort_by_distance(tmp_path):
     assert [r['doc_id'] for r in store.docs(cluster_id='CL1', sort='edge')] == ['d2', 'd0', 'd3', 'd1']
     assert [r['doc_id'] for r in store.docs(persona_id='P1')] == ['d0', 'd1']
     assert [r['doc_id'] for r in store.docs(sort='center', limit=2, offset=1)] == ['d4', 'd3']
+
+
+def test_support_docs_attach_to_nearest_context(tmp_path):
+    import numpy as np
+    from types import SimpleNamespace
+    from app.segment.pipeline import _assign_support
+    from app.segment.store import SegmentStore
+    store = SegmentStore(tmp_path)
+    store.write_layers(docs=[dict(doc_id='a', cluster_id='CL0', persona_id='P0', context_id='C0'),
+                             dict(doc_id='b', cluster_id='CL1', persona_id='P1', context_id='C1')])
+    source = SimpleNamespace(index={'a': 0, 'b': 1}, vectors=np.array([[1, 0], [0, 1]], dtype=np.float16),
+                             support_ids=['y1', 'y2', 'y3'],
+                             support_vectors=np.array([[0.9, 0.1], [0.2, 0.98], [0.6, 0.8]], dtype=np.float16))
+    _assign_support(source, store)
+    rows, total = store.support_docs(context_id='C1')
+    assert total == 2 and [r['doc_id'] for r in rows] == ['y2', 'y3']
+    assert [r['doc_id'] for r in store.support_docs(context_id='C1', sort='edge')[0]] == ['y3', 'y2']
+    assert store.support_counts() == {'cluster': {'CL0': 1, 'CL1': 2}, 'persona': {'P0': 1, 'P1': 2},
+                                      'context': {'C0': 1, 'C1': 2}}
+    source.support_ids = []
+    _assign_support(source, store)
+    assert store.support_counts()['context'] == {}
