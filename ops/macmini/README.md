@@ -33,6 +33,8 @@ NEXT_PUBLIC_API_URL=https://dcx-api.person-a.ai
 
 `JEV_BACKEND=fake`이면 4단계 라벨링은 GPT 단독 판정으로 돕니다(가짜 Jev 값은 쓰지 않음).
 
+Codex 판정 동시 수는 `shared/app.env`의 `LABEL_CONCURRENCY=<n>`로 조절합니다(설치기가 `runtime.env`를 다시 쓰므로 `app.env`에 둡니다). 바꾼 뒤 API를 재시작해야 합니다. `dcxctl`에는 restart 명령이 없으며, 설치된 `ops/env.sh` → `ops/lib.sh` → `shared/launch.env`를 읽은 Bash에서 `restart_services`를 호출하는 기존 경로는 API·웹과 작업자를 함께 중지한 뒤 maintenance hold를 해제해 launchd가 다시 시작하게 합니다. Codex 플랜 한도에 걸리면 판정이 일시정지되며, 동시 수를 낮추고 재시작한 뒤 이어서 진행하세요.
+
 설치 시 `DCX_PUBLIC_API_URL`과 `DCX_PUBLIC_WEB_URL` 환경변수로 공개 API·웹 주소를 바꿀 수 있습니다. 웹 주소는 CORS에 지정 웹 포트의 localhost origin과 함께 들어갑니다. 예: `sudo APP_ROOT="$HOME/srv/dcx-agent" DCX_PUBLIC_API_URL=https://api.example.com DCX_PUBLIC_WEB_URL=https://example.com /bin/bash ops/macmini/install.sh`. `--qa`는 이 공개 주소 환경변수를 사용하지 않고 `NEXT_PUBLIC_API_URL=http://localhost:8401`, `CORS_ORIGINS=http://localhost:3401`을 기본값으로 사용합니다. QA 포트 변경 시 localhost URL도 함께 바뀝니다.
 
 기존 `shared/runtime.env`에 `NEXT_PUBLIC_API_URL` 또는 `CORS_ORIGINS`가 있으면 각 값을 환경변수·기본값보다 우선하여 보존합니다. 일반 설치 계획과 `--dry-run` 모두 실제 사용할 두 값을 출력합니다. 기존 localhost 설정도 보존되므로 공개 주소로 전환할 때는 운영자가 해당 값을 직접 수정해야 합니다.

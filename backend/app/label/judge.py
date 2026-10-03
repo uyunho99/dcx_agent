@@ -1,5 +1,6 @@
 """Judge prepared documents with durable, shared caches and bounded retries."""
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
 import json
 import math
@@ -114,6 +115,7 @@ def run_worker(ctx):
         batch_size = 50 if labeler == 'jev' else settings.label_batch_size
         if batch_size <= 0:
             raise ValueError('Batch size must be positive')
+        concurrency = max(1, settings.label_concurrency) if labeler == 'gpt' else 1
         total_estimate = estimate(list(docs.values()), one_liner, labeler)
         client = JevClient(settings.jev_api_keys, settings.jev_model) if labeler == 'jev' else None
         transient_failures = 0
@@ -131,7 +133,7 @@ def run_worker(ctx):
             ctx.heartbeat(progress, detail)
             if ctx.should_stop():
                 return
-            ids = cache.lease(batch_size, ctx.run_id)
+            ids = cache.lease(batch_size * concurrency, ctx.run_id)
             if not ids:
                 if counts['pending']:
                     # Another version may own live leases in this shared cache.
@@ -151,20 +153,35 @@ def run_worker(ctx):
             lease_waits = 0
             batch = [docs[i] for i in ids]
             if labeler == 'gpt':
-                try:
-                    votes, missing = gpt.judge_batch(batch, one_liner, sid=ctx.sid, ctx_key=ctx_key, qver=QVER)
-                except gpt.LabelerPaused as exc:
-                    if not exc.usage_limit:
-                        for doc_id in ids:
-                            cache.fail(doc_id, 'gpt_backend_failed')
+                chunks = [batch[i:i + batch_size] for i in range(0, len(batch), batch_size)]
+                paused = error = None
+                with ThreadPoolExecutor(max_workers=min(concurrency, len(chunks))) as pool:
+                    futures = {pool.submit(gpt.judge_batch, chunk, one_liner,
+                               sid=ctx.sid, ctx_key=ctx_key, qver=QVER): chunk for chunk in chunks}
+                    for future in as_completed(futures):
+                        try:
+                            votes, missing = future.result()
+                        except gpt.LabelerPaused as exc:
+                            if not exc.usage_limit:
+                                for doc in futures[future]:
+                                    cache.fail(doc['doc_id'], 'gpt_backend_failed')
+                            if paused is None or exc.usage_limit and not paused.usage_limit:
+                                paused = exc
+                        except Exception as exc:
+                            if error is None:
+                                error = exc
+                        else:
+                            for doc_id, vote in votes.items():
+                                cache.put(doc_id, vote.model_dump())
+                            for doc_id in missing:
+                                cache.fail(doc_id, 'invalid_or_missing_vote')
+                if error is not None:
+                    raise error
+                if paused is not None:
                     cache.release()
                     sync(labels, caches['jev'], caches['gpt'], mode=labeler_mode(session))
-                    _pause(ctx, str(exc), detail)
+                    _pause(ctx, str(paused), detail)
                     continue
-                for doc_id, vote in votes.items():
-                    cache.put(doc_id, vote.model_dump())
-                for doc_id in missing:
-                    cache.fail(doc_id, 'invalid_or_missing_vote')
             else:
                 for doc in batch:
                     try:

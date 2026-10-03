@@ -362,6 +362,7 @@ def test_worker_creates_audit_after_committed_batches(setup_judge, monkeypatch):
     env.prepare(3)
     monkeypatch.setattr(settings, 'audit_first', 2)
     monkeypatch.setattr(settings, 'audit_size', 2)
+    monkeypatch.setattr(settings, 'label_concurrency', 1)
     monkeypatch.setattr(settings, 'label_batch_size', 1)
     env.judge.run_worker(Context('jev'))
     def matching(docs, *args, **kwargs):
