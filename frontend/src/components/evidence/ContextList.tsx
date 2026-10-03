@@ -7,7 +7,7 @@ export function ContextList({rows,selected,disabled,onSelect,onRetry,onSkip,onRe
   onSelect: (id:string)=>void; onRetry:(id:string)=>void; onSkip:(id:string)=>void; onRefresh:(id:string)=>void;
 }) {
   return <nav aria-label="Context 목록" className="min-w-0 space-y-3">{rows.map(row => <Card key={row.id} size="sm" className="min-w-0 space-y-2">
-    <Button className="w-full whitespace-normal text-left" disabled={row.status !== 'done'} aria-current={selected === row.id ? 'true' : undefined} onClick={() => {if(row.status === 'done') onSelect(row.id);}}>
+    <Button className="ds-wrap w-full" disabled={row.status !== 'done'} aria-current={selected === row.id ? 'true' : undefined} onClick={() => {if(row.status === 'done') onSelect(row.id);}}>
       {row.name || row.id} <Badge>{rowBadge(row.status)}</Badge>
     </Button>
     <p className="ds-t-caption">Coverage {row.coverage ?? 0}/6 · 새 발견 {row.counts.new ?? 0}</p>
