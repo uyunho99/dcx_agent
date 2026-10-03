@@ -21,3 +21,4 @@ export * from "./InsightCard";
 export * from "./BarList";
 export * from "./StatGrid";
 export * from "./ProgressBar";
+export * from "./TextArea";
