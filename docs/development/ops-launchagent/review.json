@@ -1,0 +1,12 @@
+{
+  "verdict": "PASS",
+  "head": "fc3107a96c8dfd406a892dc39c387942bfb7fd6d",
+  "fingerprint": "3374c7d54a10ac51b4597c2ab6bee506cb73aeaf758a0ceab7bd0d4f73a171ed",
+  "commands": [
+    {
+      "command": "git diff 2c..HEAD review",
+      "exitCode": 0
+    }
+  ],
+  "findings": []
+}

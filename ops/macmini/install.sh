@@ -1,20 +1,33 @@
 #!/bin/bash
-# Render only: install.sh --dry-run --output-dir /tmp/dcx-plan [--qa]
+# Render only: install.sh --dry-run --output-dir /tmp/dcx-plan [--agent|--qa]
 # Production: sudo APP_ROOT=/path/to/dcx-agent ./install.sh (interactive y).
 set -Eeuo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 dry=false
 qa=false
+agent=false
+agent_domain=false
 output=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run) dry=true ;;
         --qa) qa=true ;;
+        --agent) agent=true ;;
         --output-dir) [[ $# -ge 2 && -n "$2" ]] || exit 2; output="$2"; shift ;;
-        *) echo '사용법: install.sh [--qa] [--dry-run --output-dir DIR]' >&2; exit 2 ;;
+        *) echo '사용법: install.sh [--agent|--qa] [--dry-run --output-dir DIR]' >&2; exit 2 ;;
     esac
     shift
 done
+if $agent && $qa; then
+    echo '사용법: install.sh [--agent|--qa] [--dry-run --output-dir DIR]' >&2
+    exit 2
+fi
+if $agent || $qa; then agent_domain=true; fi
+# Refuse sudo before resolving its user's home or making any changes.
+if $agent && ! $dry && [[ $EUID == 0 || -n "${SUDO_USER:-}" ]]; then
+    echo '운영 에이전트 설치는 sudo 없이 실행하세요' >&2
+    exit 1
+fi
 if $dry && [[ -z "$output" ]]; then echo '--dry-run에는 --output-dir이 필요합니다' >&2; exit 2; fi
 TARGET_USER="${SUDO_USER:-$(id -un)}"
 TARGET_HOME="$HOME"
@@ -29,11 +42,18 @@ fi
 . "$HERE/env.sh"
 . "$HERE/lib.sh"
 if $qa; then
-    export DCX_LAUNCH_LABEL=ai.person-a.dcx-agent-qa INSTALL_DOMAIN="gui/$(id -u)"
-    destination="$HOME/Library/LaunchAgents"
+    export DCX_LAUNCH_LABEL=ai.person-a.dcx-agent-qa
 else
-    export DCX_LAUNCH_LABEL=ai.person-a.dcx-agent INSTALL_DOMAIN=system
-    destination=/Library/LaunchDaemons
+    export DCX_LAUNCH_LABEL=ai.person-a.dcx-agent
+fi
+DCX_DAEMON_DIR="${DCX_DAEMON_DIR:-/Library/LaunchDaemons}"
+DCX_AGENT_DIR="${DCX_AGENT_DIR:-$HOME/Library/LaunchAgents}"
+if $agent_domain; then
+    export INSTALL_DOMAIN="gui/$(id -u)"
+    destination="$DCX_AGENT_DIR"
+else
+    export INSTALL_DOMAIN=system
+    destination="$DCX_DAEMON_DIR"
 fi
 # Explicit overrides are supported, but protected demo ports are never targets.
 for port in "$DCX_API_PORT" "$DCX_WEB_PORT"; do
@@ -79,6 +99,30 @@ printf 'runtime.env: AUTHOR_SALT_PATH=%s/shared/data/.author_salt\n' "$APP_ROOT"
 printf 'runtime.env: NEXT_PUBLIC_API_URL=%s\n' "$public_api_url"
 printf 'runtime.env: CORS_ORIGINS=%s\n' "$cors_origins"
 if ! $dry; then
+    if ! $qa; then
+        if $agent_domain; then
+            other_directory="$DCX_DAEMON_DIR"
+            other_domain=system
+        else
+            other_directory="$DCX_AGENT_DIR"
+            other_domain="gui/$(id -u "$TARGET_USER")"
+        fi
+        for job in deploy api web; do
+            if [[ -e "$other_directory/ai.person-a.dcx-agent.$job.plist" ]] ||
+                launchctl print "$other_domain/ai.person-a.dcx-agent.$job" >/dev/null 2>&1; then
+                if $agent_domain; then
+                    printf '%s\n' \
+                        '운영 LaunchDaemon이 아직 등록돼 있습니다. 아래를 터미널에서 실행한 뒤 다시 설치하세요.' \
+                        'for job in deploy api web; do sudo launchctl bootout system/ai.person-a.dcx-agent.$job; sudo rm -f /Library/LaunchDaemons/ai.person-a.dcx-agent.$job.plist; done' >&2
+                else
+                    printf '%s\n' \
+                        '운영 LaunchAgent이 아직 등록돼 있습니다. 아래를 터미널에서 실행한 뒤 다시 설치하세요.' \
+                        'for job in deploy api web; do launchctl bootout gui/$(id -u)/ai.person-a.dcx-agent.$job; rm -f ~/Library/LaunchAgents/ai.person-a.dcx-agent.$job.plist; done' >&2
+                fi
+                exit 1
+            fi
+        done
+    fi
     if ! $qa || [[ "${DCX_INSTALL_ASSUME_YES:-0}" != 1 ]]; then
         printf '진행하려면 y 입력: '
         answer=""
@@ -87,7 +131,7 @@ if ! $dry; then
         [[ -t 0 ]] || { echo '실제 설치는 대화형 터미널에서 y 확인이 필요합니다' >&2; exit 1; }
     fi
     [[ "$(uname -s)" == Darwin ]] || { echo '실제 설치는 macOS 전용입니다' >&2; exit 1; }
-    if $qa; then
+    if $agent_domain; then
         [[ $EUID -ne 0 ]] || { echo 'QA는 sudo 없이 실행하세요' >&2; exit 1; }
     else
         [[ $EUID == 0 && -n "${SUDO_USER:-}" ]] || { echo '운영 설치는 sudo로 실행하세요' >&2; exit 1; }
@@ -100,7 +144,7 @@ else
     done
 fi
 as_user() {
-    if [[ $EUID == 0 ]] && ! $qa; then
+    if [[ $EUID == 0 ]] && ! $agent_domain; then
         sudo -u "$TARGET_USER" env HOME="$TARGET_HOME" APP_ROOT="$APP_ROOT" PATH="$PATH" \
             DCX_API_PORT="$DCX_API_PORT" DCX_WEB_PORT="$DCX_WEB_PORT" DCX_REPO_URL="$DCX_REPO_URL" "$@"
     else
@@ -114,9 +158,9 @@ log() {
 }
 # Render templates structurally: XML metacharacters and spaces stay valid.
 render() {
-    python3.12 - "$HERE" "$1" "$APP_ROOT" "$TARGET_USER" "$TARGET_HOME" "$DCX_LAUNCH_LABEL" "$INSTALL_DOMAIN" "$DCX_API_PORT" "$DCX_WEB_PORT" "$qa" "$public_api_url" "$cors_origins" <<'PY'
+    python3.12 - "$HERE" "$1" "$APP_ROOT" "$TARGET_USER" "$TARGET_HOME" "$DCX_LAUNCH_LABEL" "$INSTALL_DOMAIN" "$DCX_API_PORT" "$DCX_WEB_PORT" "$agent_domain" "$public_api_url" "$cors_origins" <<'PY'
 import pathlib, plistlib, shlex, sys
-here,out,root,user,home,label,domain,api,web,qa,public_api,cors=sys.argv[1:]
+here,out,root,user,home,label,domain,api,web,agent_domain,public_api,cors=sys.argv[1:]
 out=pathlib.Path(out); out.mkdir(parents=True,exist_ok=True)
 values={'__APP_ROOT__':root,'__USER__':user,'__HOME__':home,'__LABEL__':label,'__DOMAIN__':domain,'__API_PORT__':api,'__WEB_PORT__':web}
 def fill(x):
@@ -129,7 +173,7 @@ def fill(x):
 for job in ('deploy','api','web'):
     p=pathlib.Path(here)/'launchd'/('ai.person-a.dcx-agent.'+job+'.plist')
     data=fill(plistlib.loads(p.read_bytes()))
-    if qa=='true': data.pop('UserName')
+    if agent_domain=='true': data.pop('UserName')
     (out/(label+'.'+job+'.plist')).write_bytes(plistlib.dumps(data,sort_keys=False))
 config={'AUTHOR_SALT_PATH':root+'/shared/data/.author_salt','STORAGE':'local','LOCAL_DATA_DIR':root+'/shared/data',
         'LABEL_GPT_BACKEND':'codex_exec','JEV_BACKEND':'fake','CORS_ORIGINS':cors,'NEXT_PUBLIC_API_URL':public_api}
@@ -185,7 +229,7 @@ for job in api web deploy; do
     label="$DCX_LAUNCH_LABEL.$job"
     dest="$destination/$label.plist"
     cp "$staging/$label.plist" "$dest"
-    if ! $qa; then chown root:wheel "$dest"; fi
+    if ! $agent_domain; then chown root:wheel "$dest"; fi
     chmod 644 "$dest"
     plutil -lint "$dest"
     if launchctl print "$INSTALL_DOMAIN/$label" >/dev/null 2>&1; then
