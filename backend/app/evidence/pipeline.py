@@ -14,7 +14,8 @@ import hashlib
 import json
 from queue import Empty, Queue
 import sqlite3
-from threading import BoundedSemaphore, Event, Lock
+from threading import BoundedSemaphore, Event, Lock, RLock
+import time
 import uuid
 
 from app.config import settings
@@ -226,19 +227,23 @@ def run(context):
     previous_calls = sessions.read_json(root / 'llm_calls.json') or {}
     saved_calls = Counter()
 
+    state = RLock()  # Persona and Context jobs share checkpoint state across threads.
+
     def save():
-        with calls.lock:
-            current_calls = calls.counts.copy()
-        with sessions.locked(sid):
-            if ev.get_run() != run_id:
-                return
-            checkpoint['done'] = [r['context_id'] for r in ev.contexts() if r['status'] in ('done', 'skipped')]
-            sessions.write_json(root / 'checkpoint.json', checkpoint)
-            totals = Counter(sessions.read_json(root / 'llm_calls.json') or {})
-            totals.update(current_calls - saved_calls)
-            saved_calls.clear()
-            saved_calls.update(current_calls)
-            sessions.write_json(root / 'llm_calls.json', dict(totals))
+        # state is always taken before the session file lock (never the reverse).
+        with state:
+            with calls.lock:
+                current_calls = calls.counts.copy()
+            with sessions.locked(sid):
+                if ev.get_run() != run_id:
+                    return
+                checkpoint['done'] = [r['context_id'] for r in ev.contexts() if r['status'] in ('done', 'skipped')]
+                sessions.write_json(root / 'checkpoint.json', checkpoint)
+                totals = Counter(sessions.read_json(root / 'llm_calls.json') or {})
+                totals.update(current_calls - saved_calls)
+                saved_calls.clear()
+                saved_calls.update(current_calls)
+                sessions.write_json(root / 'llm_calls.json', dict(totals))
 
     def pulse(**detail):
         if context.should_stop():
@@ -272,8 +277,11 @@ def run(context):
                 if missing or ids - used or (row.get('counts') or {}).get('knownSnapshot', {}) != known_snapshot(known):
                     ev.set_context(row['context_id'], row['persona_id'], 'done',
                                    counts={**(row.get('counts') or {}), 'knownChanged': True})
-            checkpoint['knownIds'] = sorted(ids)
-            return known
+            known_ids = sorted(ids)
+        # Lock order is state -> session file lock (save); never take state while holding the file lock.
+        with state:
+            checkpoint['knownIds'] = known_ids
+        return known
 
     def drain():
         while True:
@@ -299,8 +307,9 @@ def run(context):
                 setattr(result, key, getattr(result, key) + getattr(batch, key))
             result.untagged_ids.extend(batch.untagged_ids)
             result.reason_counts = dict(Counter(result.reason_counts) + Counter(batch.reason_counts))
-            for key in ('cache_hits', 'lazy_dims'):
-                checkpoint['tagging'][key] += getattr(batch, key)
+            with state:
+                for key in ('cache_hits', 'lazy_dims'):
+                    checkpoint['tagging'][key] += getattr(batch, key)
             save()
             drain()
         check()
@@ -338,7 +347,7 @@ def run(context):
         def ingest(rows):
             fresh_rows = [r for r in rows if r['doc_id'] not in pool]
             if fresh_rows:
-                result, current = rpc(prepare, cid, fresh_rows)
+                result, current = prepare(cid, fresh_rows)
                 known[:] = current
                 tags.update(result.tags)
                 counts.update(cache_hits=result.cache_hits, lazy_dims=result.lazy_dims)
@@ -399,13 +408,14 @@ def run(context):
         pending_ids = {r['context_id'] for r in ev.contexts() if r['status'] not in ('done','skipped')}
         if requested is not None:
             pending_ids &= set(requested)
-        for persona in source['seg'].personas():
+        def persona_job(persona):
             pid = persona['persona_id']
             owned = [c for c in contexts if c['persona_id']==pid]
             if not any(c['context_id'] in pending_ids for c in owned):
-                continue
-            if pid in checkpoint['personas']:
-                continue
+                return
+            with state:
+                if pid in checkpoint['personas']:
+                    return
             if pid not in checkpoint['queries']:
                 pulse(step='queries', persona=pid)
                 call, check = calls.step(pid, 'queries')
@@ -416,12 +426,14 @@ def run(context):
                 ev.write_queries('persona:'+pid, result.persona_rows)
                 for cid, rows in result.context_rows.items():
                     ev.write_queries('context:'+cid, rows)
-                checkpoint['queries'].append(pid)
-                save()
+                with state:
+                    checkpoint['queries'].append(pid)
+                    save()
             persona_queries = ev.queries('persona:'+pid)
             # Persona support uses all-tab ranking and is checkpointed with queries.
             support = []
             embedding_failed = False
+            failed_ids = set()
             for kind, qs in [('desire',[q for q in persona_queries if q['dim'].startswith('desire_check')]),
                              ('artifact',[q for q in persona_queries if q['dim']=='artifact'])]:
                 try:
@@ -435,7 +447,9 @@ def run(context):
                             cid = owned_context['context_id']
                             if cid in pending_ids:
                                 ev.set_context(cid, pid, 'failed', error=str(exc))
-                                pending_ids.discard(cid)
+                                failed_ids.add(cid)
+                    with state:
+                        pending_ids.difference_update(failed_ids)
                     embedding_failed = True
                     break
                 tagged, known = prepare(pid, rows)
@@ -443,12 +457,23 @@ def run(context):
                 support.extend(dict(doc_id=r['doc_id'], rank=r['rank'], kind=kind) for r in selection.rows)
             if embedding_failed:
                 save()
-                continue
+                return
             with sessions.locked(sid):
                 generation.check(sid, version, ev, run_id)
                 ev.write_persona_support(pid, support)
-            checkpoint['personas'].append(pid)
-            save()
+            with state:
+                checkpoint['personas'].append(pid)
+                save()
+        # Personas are independent: run them together (LLM calls stay bounded by calls.limit).
+        personas = list(source['seg'].personas())
+        with ThreadPoolExecutor(max_workers=max(1, min(len(personas), concurrency))) as persona_pool:
+            futures = [persona_pool.submit(persona_job, persona) for persona in personas]
+            while not all(f.done() for f in futures):
+                drain()
+                time.sleep(.05)
+            drain()
+            for future in futures:
+                future.result()
         sessions.write_json(root / 'queries.json', ev.queries())
         executor = ThreadPoolExecutor(max_workers=concurrency)
         pending = iter(c for c in contexts if c['context_id'] in pending_ids)
