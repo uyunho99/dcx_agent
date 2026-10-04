@@ -26,6 +26,7 @@ class TrainBody(BaseModel):
 class ExportBody(BaseModel):
     model_config = ConfigDict(extra='forbid')
     withoutModel: bool = False
+    partial: bool = False  # Export documents judged so far while labeling continues.
 
 
 @router.get('/models')
@@ -79,7 +80,7 @@ def status(sid: str, version: str | None = None):
 
 @router.post('/train/{sid}/export')
 def export_session(sid: str, body: ExportBody = ExportBody(), version: str | None = None):
-    return export.write(sid, version, without_model=body.withoutModel)
+    return export.write(sid, version, without_model=body.withoutModel, partial=body.partial)
 
 
 def _pack(X, targets):

@@ -14,6 +14,7 @@ export const saveCrawlGate = (sid:string, exclusions:string[], version?:string) 
 export const startCrawlList = (sid:string, added=false, version?:string) => contextRequest(path(sid,'list',version)+(added ? `${version ? '&' : '?'}mode=added-keywords` : ''),'POST');
 export const startCrawlDetail = (sid:string, snapshot_id:string, version?:string) => contextRequest(path(sid,'detail',version),'POST',{snapshot_id});
 export const resumeCrawl = (sid:string, version?:string, body?:{min_interval_s:Record<string,number>}) => contextRequest(path(sid,'resume',version),'POST',body);
+export const setAutoChain = (sid:string, enabled:boolean) => contextRequest<{autoChain:boolean}>(path(sid,'auto-chain'),'PUT',{enabled});
 export const finishPartialCrawl = (sid:string, version?:string) => contextRequest(path(sid,'finish-partial',version),'POST');
 export const stopCrawl = (sid:string, version?:string) => contextRequest(path(sid,'stop',version),'POST');
 export type Integration = {name:string;connected:boolean;affects:string[];env_vars:string[];last_error:string|null};

@@ -153,6 +153,9 @@ def execute(context: Context):
             db.execute('''UPDATE runs SET state=?,error=?,heartbeat_at=?
                 WHERE run_id=? AND pid=? AND state IN ('running','paused')''',
                        (state, error, time.time(), context.run_id, os.getpid()))
+    if state == 'done' and context.kind == 'prep':
+        from app import autochain
+        autochain.after_prep(context.sid, context.version)
 
 
 def main():

@@ -77,12 +77,12 @@ function TrainingScreen({ sid, version, readonly }: { sid: string; version?: str
     } catch (e) { if (mounted.current) setError(displayError(e)); }
     finally { lock.current = false; if (mounted.current) setBusy(false); }
   }
-  async function save(withoutModel: boolean) {
+  async function save(withoutModel: boolean, partial = false) {
     if (blocked || lock.current || (!withoutModel && !state.ready)) return;
     lock.current = true; generation.current++; setBusy(true); setError('');
     try {
       await exportAndAdvance(async () => {
-        const result = await exportTraining(sid, withoutModel, version);
+        const result = await (partial ? exportTraining(sid, withoutModel, version, true) : exportTraining(sid, withoutModel, version));
         if (result.exportRef && mounted.current) await refreshSessionAfterStage().catch(() => {});
         return result;
       }, () => patchSession(sid, {step: 'clustering'}, version), () => {
@@ -95,7 +95,7 @@ function TrainingScreen({ sid, version, readonly }: { sid: string; version?: str
     finally { lock.current = false; if (mounted.current) setBusy(false); }
   }
 
-  return <div className="space-y-6"><Button variant="quiet" onClick={() => router.push('/pipeline/labeling')}>← 라벨링으로</Button><header className="flex flex-wrap justify-between gap-4"><div className="space-y-2"><p className="ds-eyebrow">5단계 · 학습</p><h1 className="ds-t-section">합의 라벨로 분류 모델을 만듭니다</h1><p className="ds-t-body">벡터 위 작은 모델 4개(앙상블)가 태그를 예측하고, 등급은 규칙으로 계산합니다. 다음 세션은 이 모델로 LLM 없이 라벨링할 수 있습니다.</p></div><div className="ds-actions"><Button disabled={blocked} onClick={() => void save(true)}>모델 없이 내보내기</Button><Button variant={state.ready && model ? 'secondary' : 'primary'} disabled={blocked || empty} onClick={() => void start()}>{model ? '다시 학습' : '학습 시작'}</Button></div></header>
+  return <div className="space-y-6"><Button variant="quiet" onClick={() => router.push('/pipeline/labeling')}>← 라벨링으로</Button><header className="flex flex-wrap justify-between gap-4"><div className="space-y-2"><p className="ds-eyebrow">5단계 · 학습</p><h1 className="ds-t-section">합의 라벨로 분류 모델을 만듭니다</h1><p className="ds-t-body">벡터 위 작은 모델 4개(앙상블)가 태그를 예측하고, 등급은 규칙으로 계산합니다. 다음 세션은 이 모델로 LLM 없이 라벨링할 수 있습니다.</p></div><div className="ds-actions"><Button disabled={blocked} onClick={() => void save(true)}>모델 없이 내보내기</Button><Button disabled={blocked} title="라벨링이 끝나지 않았어도 지금까지 판정된 문서(블로그 · 카페 먼저)로 다음 단계를 시작합니다." onClick={() => void save(true, true)}>판정된 문서로 먼저 내보내기</Button><Button variant={state.ready && model ? 'secondary' : 'primary'} disabled={blocked || empty} onClick={() => void start()}>{model ? '다시 학습' : '학습 시작'}</Button></div></header>
     {(readonly || status?.readonly) && <Banner>읽기 전용 버전입니다.</Banner>}
     {loadError && <Banner tone="danger" actions={<Button onClick={() => setRetry(n => n + 1)}>다시 확인하기</Button>}>{loadError}</Banner>}
     {(error || state.error) && <Banner tone="danger">{error || state.error}</Banner>}

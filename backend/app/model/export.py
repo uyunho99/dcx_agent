@@ -43,7 +43,8 @@ def write_stage5(sid, data, model=None, *, generation=None):
     return result
 
 
-def write(sid, version=None, *, without_model=False):
+def write(sid, version=None, *, without_model=False, partial=False):
+    """partial: export only documents judged so far (labeling may still be running)."""
     with store.locked(sid):
         data = session(sid, version, writable=True)
         labels = labels_for(sid, data)
@@ -53,7 +54,7 @@ def write(sid, version=None, *, without_model=False):
             (data.get('labeling', {}).get('modelId') if data.get('labeling', {}).get('mode') == 'model' else None))
         meta = registry.require_compatible(model_id, infer.embedder_for(sid, data)) if model_id else None
         with labels._db() as db:
-            if db.execute("SELECT 1 FROM queue WHERE status='open' LIMIT 1").fetchone():
+            if not partial and db.execute("SELECT 1 FROM queue WHERE status='open' LIMIT 1").fetchone():
                 raise store.StoreError('사람 검수를 먼저 완료하세요.')
             final = {r['doc_id']: dict(r) for r in db.execute('SELECT * FROM final')}
             exists = db.execute("SELECT 1 FROM sqlite_master WHERE name='model_predictions'").fetchone()
@@ -66,6 +67,8 @@ def write(sid, version=None, *, without_model=False):
             unavailable = bool(model_id) and (prediction is None or prediction['invalid_vector'])
             if label and (label['source'] == 'human' or not model_id or unavailable):
                 if label['source'] != 'human' and label['route'] not in ('accepted', 'audited'):
+                    if partial:
+                        continue
                     raise store.StoreError('사람 검수를 먼저 완료하세요.')
                 tags = json.loads(label['tags_json'])
                 probs = dict(anchor=float(tags['anchor']), situation=float(tags['situation']),
@@ -82,6 +85,8 @@ def write(sid, version=None, *, without_model=False):
                     pred_entropy=pred['predEntropy'], relevance_score=pred['relevanceScore'],
                     tagProbs=pred['tagProbs'], signal=pred['signal'] if pred['level'] != 'non' else None,
                     source='model')
+            elif partial:
+                continue
             else:
                 raise store.StoreError('모든 문서의 판정 또는 추론을 먼저 완료하세요.')
             rows.append({**doc, 'title': doc.get('title') or '',
@@ -106,7 +111,8 @@ def write(sid, version=None, *, without_model=False):
             finally:
                 os.close(fd)
         ref = base + '/relevant.jsonl'
-        store._update_locked(sid, {'training': {'exportRef': ref, 'allRef': base + '/all.jsonl', 'stage5Ref': base + '/stage_5.json', 'exportedAt': store.now()}})
+        store._update_locked(sid, {'training': {'exportRef': ref, 'allRef': base + '/all.jsonl', 'stage5Ref': base + '/stage_5.json', 'exportedAt': store.now(),
+                                                'exportPartial': partial}})
         # Compatibility report is atomic too; authoritative exported artifacts
         # remain together under stage5Ref/exportRef. Retain generations because
         # historical versions may still point to them.

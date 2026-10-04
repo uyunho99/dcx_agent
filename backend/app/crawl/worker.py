@@ -534,6 +534,10 @@ def main(argv=None):
             print(run_list(args.sid, collection=args.collection))
         else:
             run_detail(args.sid, args.snapshot, collection=args.collection)
+            from app.crawl import control
+            from app import autochain
+            if control.phase_state(args.sid) == 'done':
+                autochain.after_crawl(args.sid)
     except Exception as exc:
         print(f'Worker error: {_error(exc)}', file=sys.stderr)
         return 1

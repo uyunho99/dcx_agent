@@ -5,6 +5,7 @@ import { VersionStage, StageVersionAction } from "@/components/versions/StageVer
 import { useVersion } from "@/components/versions/VersionProvider";
 import { versionPath } from "@/lib/api/versions";
 import { useSessionStore } from '@/stores/useSessionStore';
+import { AutoChainToggle } from '@/components/crawl/AutoChainToggle';
 import { Badge, Banner, Button, Card, InsightCard, StatGrid } from '@/components/ds';
 import { SaveBar } from '@/components/SaveBar';
 import { Settings, channelNames } from '@/components/crawl/Settings';
@@ -88,7 +89,7 @@ function CrawlScreen({sid}:{sid:string}) {
 
     {setupView?<Settings config={config} onChange={setConfig} availableSources={status.available_sources} axes={axes} disabled={disabled}/>:gateView?<>
       <div className="crawl-columns"><InsightCard eyebrow="목록 신호" insight={`키워드 ${status.gate!.filter(r=>r.badges.length).length}개를 검토하세요`} interpretation={status.gate!.every(r=>r.listed===0)?'수집된 목록이 없습니다. 날짜 범위와 채널을 확인하고 목록을 다시 수집하세요.':'0건 · 저수율 · 고유 기여 낮음 배지를 확인하고 제외할 키워드를 선택하세요.'} evidence={[{label:'키워드',value:`${status.gate!.length}개`}]} nextAction={<Button disabled={disabled} onClick={()=>setSettings(true)}>설정으로 돌아가기</Button>}/><Card><h2 className="ds-t-card">상세 수집 예상</h2><StatGrid items={[{label:'대상 URL',value:status.estimate?.urls.toLocaleString()??'—'},{label:'예상 소요',value:status.estimate?`약 ${Math.ceil(status.estimate.minutes)}분`:'—'}]}/><p className="ds-t-caption">저장된 제외 목록 기준입니다. 중간에 멈춰도 이어서 진행합니다.</p></Card></div><GateTable rows={status.gate!} excluded={excluded} onChange={setExcluded} disabled={disabled}/>
-    </>:<Progress status={status}/>}
+    </>:<><AutoChainToggle sid={sid} disabled={disabled}/><Progress status={status}/></>}
     {!freshSetup&&INTERNAL_TOOLS&&status.snapshot_id&&<p className="ds-t-caption"><Badge>내부용</Badge> 스냅샷 {status.snapshot_id}</p>}
     {(setupView||gateView)&&<SaveBar dirty={gateView?isDirty(draftGate,excluded):isDirty(draftConfig,config)} valid={!disabled&&(gateView||valid)} saving={busy} onDraft={()=>void draft()} onSave={()=>void save()} primary={<Button variant="primary" disabled={disabled||(gateView?gateChanged||!status.snapshot_id:configChanged||!valid||keywords.length===0)} onClick={()=>void action(async()=>{if(gateView){if(gateChanged||!status.snapshot_id)return;await startCrawlDetail(sid,status.snapshot_id,version);}else{if(configChanged||!valid)return;await startCrawlList(sid,false,version);setFreshStarted(true);setExcluded([]);setSavedGate([]);setDraftGate([]);}setSettings(false);})}>{gateView?'상세 수집 시작':crawlStartLabel(freshSetup)}</Button>}/>}
     {(setupView||gateView)&&<p className="ds-t-caption">설정과 제외 선택을 저장한 다음 수집을 시작하세요.</p>}
