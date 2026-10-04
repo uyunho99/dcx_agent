@@ -48,10 +48,11 @@ def test_overview_reuses_count_and_human_submit_invalidates(client, counted):
     response = client.post(f'/label/{sid}/submit', json=dict(
         doc_id='d3', labeler='person', mode='escalate', tags=tags))
     assert response.status_code == 200, response.text
+    # Label changes recount with SQL only; documents/vectors are rescanned only when prepared data change.
     assert client.get(url).json()['trainable'] == 4
-    assert calls == dict(documents=2, vectors=2)
+    assert calls == dict(documents=1, vectors=1)
     assert client.get(url).json()['trainable'] == 4
-    assert calls == dict(documents=2, vectors=2)
+    assert calls == dict(documents=1, vectors=1)
 
 
 @pytest.mark.parametrize('change,expected', [
@@ -97,9 +98,11 @@ def test_count_invalidates_on_input_changes(counted, change, expected):
         store.update_session(sid, {'prep': {'derivedRef': {
             'collectionId': 'c1', 'prepKey': replacement.name}}})
     assert overview(sid)['trainable'] == expected
-    assert calls == dict(documents=2, vectors=2)
+    rescans = 1 if change in ('final_update', 'final_delete', 'human') else 2
+    assert calls == dict(documents=rescans, vectors=rescans)
     assert overview(sid)['trainable'] == expected
-    assert calls == dict(documents=2, vectors=2)
+    rescans = 1 if change in ('final_update', 'final_delete', 'human') else 2
+    assert calls == dict(documents=rescans, vectors=rescans)
 
 
 def test_empty_selection_is_cached_and_new_labels_invalidate(counted):
@@ -127,8 +130,9 @@ def test_label_change_during_scan_is_not_cached_as_current(counted, monkeypatch)
         return documents(*args, **kwargs)
 
     monkeypatch.setattr(infer, 'documents', change_during_read)
-    assert overview(sid)['trainable'] == 3
+    # The label count is taken after the scan, so a concurrent label change is already reflected.
+    assert overview(sid)['trainable'] == 2
     monkeypatch.setattr(infer, 'documents', documents)
     assert overview(sid)['trainable'] == 2
     assert overview(sid)['trainable'] == 2
-    assert calls == dict(documents=2, vectors=2)
+    assert calls == dict(documents=1, vectors=1)
