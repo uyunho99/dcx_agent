@@ -123,8 +123,6 @@ def overview(sid, version=None, *, sync=True) -> dict:
         from app.label.route import schema
         schema(labels)
     with labels._db() as db:
-        accepted = db.execute("SELECT count(*) FROM final WHERE route='accepted'").fetchone()[0]
-    with labels._db() as db:
         rounds = [row[0] for row in db.execute('SELECT DISTINCT round FROM audit_set ORDER BY round')]
     history = []
     for r in rounds:

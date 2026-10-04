@@ -88,7 +88,7 @@ def test_gpt_only_final_and_queue(tmp_path, jev_kind):
         assert (label.rule_version, label.questions_version) == (rule.RULE_VERSION, questions.QVER)
     assert [(r['doc_id'], r['reason']) for r in rows(labels, 'queue')] == [('bad', 'labeler_failed')]
     with labels._db() as db:
-        assert [r[0] for r in db.execute('SELECT name FROM route_sync')] == ['gpt']
+        assert [r[0] for r in db.execute("SELECT name FROM route_sync WHERE name!='mode'")] == ['gpt']
     assert route.rebuild_final(labels, jc, gc, mode='gpt_only') == 0
 
 

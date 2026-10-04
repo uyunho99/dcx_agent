@@ -153,3 +153,26 @@ def test_chunk_failures_preserve_peers(concurrent_judge, monkeypatch, failure, a
             assert db.execute("SELECT state FROM runs WHERE run_id='run'").fetchone()[0] == 'paused'
         assert [d['reason'] for d in ctx.details if 'reason' in d] == [
             'backend failed' if failure == 'backend' else 'usage limit']
+
+
+def test_finished_slot_is_refilled_while_a_slow_batch_runs(concurrent_judge, monkeypatch):
+    env = concurrent_judge
+    monkeypatch.setattr(settings, 'label_concurrency', 2)
+    third_started = threading.Event()
+    order = []
+    lock = threading.Lock()
+
+    def judge(docs, *args, **kwargs):
+        with lock:
+            order.append(docs[0]['doc_id'])
+            position = len(order)
+        if position == 1:
+            # The slow first batch only finishes once a refilled batch has started.
+            assert third_started.wait(5), 'slot was not refilled while the slow batch ran'
+        elif position == 3:
+            third_started.set()
+        return votes(docs)
+
+    monkeypatch.setattr(gpt, 'judge_batch', judge)
+    env.judge.run_worker(Context('gpt'))
+    assert third_started.is_set() and sorted(env.puts) == sorted(rows(env))

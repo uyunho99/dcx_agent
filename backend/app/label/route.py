@@ -97,11 +97,19 @@ def rebuild_final(store, jev_cache, gpt_cache, mode='cross'):
         if changed:
             db.execute("DELETE FROM final WHERE source!='human' AND source!='model'")
             db.execute("DELETE FROM queue WHERE reason='grade_mismatch' AND status='open'")
+        previous_mode = db.execute("SELECT identity FROM route_sync WHERE name='mode'").fetchone()
+        checkpoints.append(('mode', mode, 0))
         if mode == 'gpt_only':
-            # A prior cross sync may have consumed GPT deltas without a Jev pair.
-            candidates = db.execute("""SELECT g.doc_id, g.payload_json AS gpt_json
-                FROM gpt.votes g LEFT JOIN final f ON f.doc_id=g.doc_id
-                WHERE g.status='done' AND f.doc_id IS NULL""").fetchall()
+            if first_sync or changed or previous_mode is None or previous_mode['identity'] != mode:
+                # A prior cross sync may have consumed GPT deltas without a Jev pair: rescan once.
+                candidates = db.execute("""SELECT g.doc_id, g.payload_json AS gpt_json
+                    FROM gpt.votes g LEFT JOIN final f ON f.doc_id=g.doc_id
+                    WHERE g.status='done' AND f.doc_id IS NULL""").fetchall()
+            else:
+                candidates = db.execute("""SELECT t.doc_id, g.payload_json AS gpt_json
+                    FROM touched t JOIN gpt.votes g ON g.doc_id=t.doc_id
+                    LEFT JOIN final f ON f.doc_id=t.doc_id
+                    WHERE g.status='done' AND f.doc_id IS NULL""").fetchall()
         else:
             # Copied GPT-only projections may have already-consumed cursors.
             db.execute("INSERT OR IGNORE INTO touched SELECT doc_id FROM final WHERE source='gpt_only'")

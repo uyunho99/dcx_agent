@@ -56,7 +56,7 @@ class VoteCache:
                 db.executemany('UPDATE votes SET priority=? WHERE doc_id=? AND priority!=?',
                                ((p, i, p) for i, p in priorities.items()))
 
-    def reclaim(self, db):
+    def reclaim(self, db, keep=None):
         """Fence dead, inactive, and expired owners inside the claim transaction."""
         runs = None
         if self.sid is not None:
@@ -68,6 +68,8 @@ class VoteCache:
                         'SELECT run_id,pid,state,heartbeat_at FROM runs')}
         now = time.time()
         for owner in db.execute('SELECT * FROM owners').fetchall():
+            if keep is not None and owner['run_id'] == keep and owner['pid'] == os.getpid():
+                continue  # This live object already holds in-flight batches for this run.
             run = runs.get(owner['run_id']) if runs is not None else None
             inactive = runs is not None and (not run or run[0] != owner['pid']
                 or run[1] not in ACTIVE or run[2] < now - STALE_AFTER_S)
@@ -75,15 +77,17 @@ class VoteCache:
                 db.execute("UPDATE votes SET run_id=NULL WHERE run_id=? AND status='pending'", (owner['run_id'],))
                 db.execute('DELETE FROM owners WHERE run_id=?', (owner['run_id'],))
         db.execute("""UPDATE votes SET run_id=NULL WHERE status='pending' AND run_id IS NOT NULL
+            AND run_id IS NOT ?
             AND (at IS NULL OR at < ? OR NOT EXISTS
-                 (SELECT 1 FROM owners WHERE owners.run_id=votes.run_id))""", (now - LEASE_MAX_AGE_S,))
+                 (SELECT 1 FROM owners WHERE owners.run_id=votes.run_id))""", (keep, now - LEASE_MAX_AGE_S))
 
     def lease(self, n, run_id):
         if n <= 0:
             raise ValueError('Lease size must be positive')
+        keep = run_id if self.run_id == run_id else None  # Only after this object leased before.
         self.run_id = run_id
         with self._db() as db:
-            self.reclaim(db)
+            self.reclaim(db, keep)
             owner = db.execute('SELECT pid FROM owners WHERE run_id=?', (run_id,)).fetchone()
             if owner and owner['pid'] != os.getpid():
                 raise ValueError('Run already owned by another process')

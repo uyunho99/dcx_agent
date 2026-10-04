@@ -1,6 +1,6 @@
 """Judge prepared documents with durable, shared caches and bounded retries."""
 from collections import deque
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 import hashlib
 import json
 import math
@@ -100,6 +100,7 @@ def run_worker(ctx):
     cache = VoteCache(root)
     ctx._heartbeat_callback = lambda: cache.refresh(ctx.run_id)
     client = None
+    pool = None
     try:
         first = set(settings.label_priority_sources)
         cache.seed(docs, {doc_id: 0 if doc.get('source') in first else 1 for doc_id, doc in docs.items()})
@@ -121,6 +122,8 @@ def run_worker(ctx):
         client = JevClient(settings.jev_api_keys, settings.jev_model) if labeler == 'jev' else None
         transient_failures = 0
         lease_waits = 0
+        pool = ThreadPoolExecutor(max_workers=concurrency) if labeler == 'gpt' else None
+        inflight = {}
         while True:
             counts = cache.counts()
             progress = (counts['done'] + counts['bad']) / len(docs) if docs else 1
@@ -134,7 +137,19 @@ def run_worker(ctx):
             ctx.heartbeat(progress, detail)
             if ctx.should_stop():
                 return
-            ids = cache.lease(batch_size * concurrency, ctx.run_id)
+            if labeler == 'gpt':
+                # Rolling slots: refill each finished batch immediately instead of
+                # waiting for the slowest batch of a whole group.
+                while len(inflight) < concurrency:
+                    chunk_ids = cache.lease(batch_size, ctx.run_id)
+                    if not chunk_ids:
+                        break
+                    chunk = [docs[i] for i in chunk_ids]
+                    inflight[pool.submit(gpt.judge_batch, chunk, one_liner, sid=ctx.sid,
+                                         ctx_key=ctx_key, qver=QVER)] = chunk
+                ids = [doc['doc_id'] for chunk in inflight.values() for doc in chunk]
+            else:
+                ids = cache.lease(batch_size, ctx.run_id)
             if not ids:
                 if counts['pending']:
                     # Another version may own live leases in this shared cache.
@@ -152,19 +167,18 @@ def run_worker(ctx):
                 judge_done(ctx)
                 return
             lease_waits = 0
-            batch = [docs[i] for i in ids]
             if labeler == 'gpt':
-                chunks = [batch[i:i + batch_size] for i in range(0, len(batch), batch_size)]
                 paused = error = None
-                with ThreadPoolExecutor(max_workers=min(concurrency, len(chunks))) as pool:
-                    futures = {pool.submit(gpt.judge_batch, chunk, one_liner,
-                               sid=ctx.sid, ctx_key=ctx_key, qver=QVER): chunk for chunk in chunks}
-                    for future in as_completed(futures):
+
+                def collect(finished):
+                    nonlocal paused, error
+                    for future in finished:
+                        chunk = inflight.pop(future)
                         try:
                             votes, missing = future.result()
                         except gpt.LabelerPaused as exc:
                             if not exc.usage_limit:
-                                for doc in futures[future]:
+                                for doc in chunk:
                                     cache.fail(doc['doc_id'], 'gpt_backend_failed')
                             if paused is None or exc.usage_limit and not paused.usage_limit:
                                 paused = exc
@@ -176,6 +190,12 @@ def run_worker(ctx):
                                 cache.put(doc_id, vote.model_dump())
                             for doc_id in missing:
                                 cache.fail(doc_id, 'invalid_or_missing_vote')
+
+                finished, _ = wait(list(inflight), timeout=5, return_when=FIRST_COMPLETED)
+                collect(finished)
+                if paused is not None or error is not None:
+                    # Store the batches already in flight before stopping or pausing.
+                    collect(wait(list(inflight))[0])
                 if error is not None:
                     raise error
                 if paused is not None:
@@ -183,7 +203,10 @@ def run_worker(ctx):
                     sync(labels, caches['jev'], caches['gpt'], mode=labeler_mode(session))
                     _pause(ctx, str(paused), detail)
                     continue
+                if not finished:
+                    continue
             else:
+                batch = [docs[i] for i in ids]
                 for doc in batch:
                     try:
                         vote = client.judge(doc, one_liner, idempotency_key=f"{doc['doc_id']}:{QVER}-{ctx_key}")
@@ -214,6 +237,8 @@ def run_worker(ctx):
             while len(recent) > 1 and recent[0][0] < time.monotonic() - 600:
                 recent.popleft()
     finally:
+        if pool is not None:
+            pool.shutdown(wait=True)
         ctx._heartbeat_callback = None
         cache.release()
         if client is not None:
