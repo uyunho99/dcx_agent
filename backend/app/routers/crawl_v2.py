@@ -149,6 +149,22 @@ def stop(sid: str, version: str | None = None):
     return control.stop(sid, version)
 
 
+class AutoChain(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    enabled: bool
+
+
+@router.put('/{sid}/auto-chain')
+def auto_chain(sid: str, body: AutoChain):
+    """When on, a finished crawl starts preprocessing and then labeling automatically."""
+    from app.context import store
+    store.update_session(sid, {'autoChain': body.enabled})
+    return {'autoChain': body.enabled}
+
+
 @router.post('/{sid}/finish-partial')
 def finish_partial(sid: str, version: str | None = None):
-    return control.finish_partial(sid, version)
+    result = control.finish_partial(sid, version)
+    from app import autochain
+    autochain.after_crawl(sid)
+    return result

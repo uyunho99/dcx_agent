@@ -30,6 +30,8 @@ class VoteCache:
                 status TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0,
                 last_error TEXT, run_id TEXT, at REAL)''')
             db.execute('CREATE INDEX IF NOT EXISTS votes_pending ON votes(status, run_id)')
+            if 'priority' not in {r['name'] for r in db.execute('PRAGMA table_info(votes)')}:
+                db.execute('ALTER TABLE votes ADD COLUMN priority INTEGER NOT NULL DEFAULT 1')
             db.execute('CREATE TABLE IF NOT EXISTS owners (run_id TEXT PRIMARY KEY, pid INTEGER NOT NULL)')
 
     @contextmanager
@@ -46,9 +48,13 @@ class VoteCache:
         finally:
             db.close()
 
-    def seed(self, doc_ids):
+    def seed(self, doc_ids, priorities=None):
+        """priorities: optional {doc_id: int}; lower values are leased first."""
         with self._db() as db:
             db.executemany('INSERT OR IGNORE INTO votes(doc_id) VALUES (?)', ((i,) for i in doc_ids))
+            if priorities:
+                db.executemany('UPDATE votes SET priority=? WHERE doc_id=? AND priority!=?',
+                               ((p, i, p) for i, p in priorities.items()))
 
     def reclaim(self, db):
         """Fence dead, inactive, and expired owners inside the claim transaction."""
@@ -82,7 +88,7 @@ class VoteCache:
             if owner and owner['pid'] != os.getpid():
                 raise ValueError('Run already owned by another process')
             db.execute('INSERT OR IGNORE INTO owners VALUES (?,?)', (run_id, os.getpid()))
-            ids = [r['doc_id'] for r in db.execute("SELECT doc_id FROM votes WHERE status='pending' AND run_id IS NULL ORDER BY attempts, doc_id LIMIT ?", (n,))]
+            ids = [r['doc_id'] for r in db.execute("SELECT doc_id FROM votes WHERE status='pending' AND run_id IS NULL ORDER BY priority, attempts, doc_id LIMIT ?", (n,))]
             db.executemany('UPDATE votes SET run_id=?, at=? WHERE doc_id=?', ((run_id, time.time(), i) for i in ids))
             return ids
 

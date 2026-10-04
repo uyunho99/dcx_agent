@@ -101,7 +101,8 @@ def run_worker(ctx):
     ctx._heartbeat_callback = lambda: cache.refresh(ctx.run_id)
     client = None
     try:
-        cache.seed(docs)
+        first = set(settings.label_priority_sources)
+        cache.seed(docs, {doc_id: 0 if doc.get('source') in first else 1 for doc_id, doc in docs.items()})
         from app.label.route import sync
         from app.label.store import LabelStore
         labels = LabelStore(versions.version_dir(ctx.sid, ctx.version))
